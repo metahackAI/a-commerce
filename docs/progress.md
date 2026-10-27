@@ -17,13 +17,20 @@ Run everything with `make check`: server tests, web build, and the browser test 
 | Real-model path | OpenAI-compatible client (Baseten / Fireworks / vLLM) drives the same loop; a worker that gives up hands the request to the planner | `test_harness.py::test_openai_compatible_client_*`, `::test_a_worker_that_gives_up_*` |
 | Definition of done | `make try-model` runs the two operator messages through the model in `.env` and judges the change set on 7 criteria (40 products, chore coat and parka out, $67.15, $71.20, 1,284 coupons, VIP hero Nov 7–8, 6 of 6 checks) | `test_harness.py::test_acceptance_judge_*` (scripted); real model: pending keys |
 | Back office web | Layout A at `make web`: conversation left, `change_set` block right (understood, checks, price group, coupon, left out, hero preview, after-approval). In Chromium: suggestion → v1 with 4 of 6 and Approve disabled → typed revision → v2 with 6 of 6, $67.15 and $71.20 → Approve → "Live · verified" with the read-back panel (40 of 40 prices, VIPWEEKEND20 to 1,284) → Jamie's price is $71.20 on Saturday → Undo all together → back to $89.00 | `web/e2e/back-office.spec.ts` (Playwright, in `make check` and CI) |
+| Shopper agent | The model picks the component (`compare_table`, `look_gallery`, `product_list`) and the products; the harness fills every price and spec from the tools, so no model-written price reaches the screen. Memories come back as `memory_note` blocks with Undo; shoppers never see cost or operator tools | `test_storefront.py` |
+| Storefront web | `/fo?shopper=jamie`: after the operator approves #1042, Jamie asks for a light jacket → comparison table (because Jamie compares specs) with $71.20 / $102.40 / $67.15 → "Which one packs smallest?" is remembered with Undo → "The windbreaker. Same size as last time." → cart $89.00 − $17.80, free shipping, $71.20 → Jamie taps Place order → #20432. Mina gets a list at list prices, says "bigger photos" → same products as a gallery, memory undone | `web/e2e/storefront.spec.ts` (Playwright) |
 | HTTP | Tool definitions (every field described), shopper scope hides operator tools, change set and order over HTTP, action log | `test_api.py` |
 
 ## Not done yet (next loops, in order)
 
-1. **Storefront web** and the shopper agent (`understood_chips`, `compare_table`, `cart`, `memory_note`).
-2. **Run `make try-model` on Glimmer and Spark Open** as soon as keys exist; until then the harness runs the scripted stand-in, which is labelled "scripted" in every event.
-3. P1: returns (`return_options` → `refund_review`), Mina's layout switch, task list, evaluation against a screen-shaped facade.
+1. **Run `make try-model` on Glimmer and Spark Open** as soon as keys exist; until then the harness runs the scripted stand-in, which is labelled "scripted" in every event.
+2. P1: returns (`return_options` → `refund_review`), Mina's layout switch, task list, evaluation against a screen-shaped facade.
+
+## Known gaps
+
+- The scripted stand-ins understand only the demo's sentences. A real model is needed for anything else.
+- Removing a chip on the storefront only hides it; it does not re-run the search yet.
+- Mina's first answer is a list (as in `fo-mobile-adapt`); `fo-two-shoppers` shows her a 4-item gallery instead. Pick one.
 
 ## Blockers for the team
 

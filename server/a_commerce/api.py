@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from . import changesets
-from .harness import operator_models, run_operator
+from .harness import operator_models, run_operator, run_shopper, shopper_model
 from .db import Store
 from .seed import fresh_store
 from .tools.base import REGISTRY, ToolError, call
@@ -83,6 +83,29 @@ def operator_chat(body: OperatorRequest) -> dict:
     """One operator message in, agent steps and UI blocks out. Edits to a change set pass its id."""
     worker, fallback = operator_models(store())
     return run_operator(store(), body.request, worker, change_set_id=body.change_set_id, fallback=fallback)
+
+
+# -- storefront chat ---------------------------------------------------------------
+
+class ShopperMessage(BaseModel):
+    message: str
+
+
+@app.post("/fo/chat")
+def shopper_chat(body: ShopperMessage, x_shopper: str = Header(...)) -> dict:
+    """One shopper message in, UI blocks out. The conversation is kept per shopper until /demo/reset."""
+    ctx = shopper(x_shopper)
+    history = _state.setdefault("fo_history", {}).setdefault(x_shopper, [])
+    result = run_shopper(store(), body.message, shopper_model(store()), ctx, history)
+    shown = next((e["data"] for e in result["events"] if e.get("ui") in ("compare_table", "look_gallery", "product_list")), None)
+    ids = [p["product_id"] for p in (shown.get("products") or shown.get("items") or [])] if shown else []
+    history.append({"user": body.message, "shown": ids})
+    return result
+
+
+@app.get("/fo/profile")
+def shopper_profile(x_shopper: str = Header(...)) -> dict:
+    return call(store(), "get_my_profile", {}, actor="storefront", context=shopper(x_shopper))
 
 
 # -- change sets ----------------------------------------------------------------
@@ -180,4 +203,5 @@ def set_clock(body: Clock) -> dict:
 @app.post("/demo/reset")
 def reset() -> dict:
     _state.pop("store", None)
+    _state.pop("fo_history", None)
     return health()

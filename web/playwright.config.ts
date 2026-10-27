@@ -7,6 +7,7 @@ const WEB_PORT = 5180;
 export default defineConfig({
   testDir: "e2e",
   timeout: 30_000,
+  workers: 1, // every test resets the one shared demo API, so tests must not overlap
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["github"], ["list"]] : "list",
   use: { baseURL: `http://127.0.0.1:${WEB_PORT}`, viewport: { width: 1440, height: 900 }, trace: "retain-on-failure" },

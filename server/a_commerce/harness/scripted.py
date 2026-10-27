@@ -137,3 +137,71 @@ class ScriptedOperator:
 
 def next_saturday(now: datetime) -> datetime:
     return (now + timedelta(days=(5 - now.weekday()) % 7 or 7)).replace(hour=0, minute=0)
+
+
+class ScriptedShopper:
+    """Stand-in for the shopper model in the storefront demo: Jamie compares and buys, Mina asks for photos."""
+
+    name = NAME
+    LIGHT_JACKETS = ["prd_windbreaker", "prd_field_jacket", "prd_overshirt"]
+
+    def __init__(self, store: Store):
+        self.store = store
+
+    def complete(self, messages: list[dict], tools: list[dict]) -> Reply:
+        if any(m["role"] == "tool" for m in messages):
+            return Reply("", [], NAME, 0)
+        system, text = messages[0]["content"], messages[1]["content"].lower()
+        profile = json.loads(re.search(r"knows about this shopper: (\{.*?\})\n", system).group(1))
+        prefs = {p["key"]: p["value"] for p in profile.get("preferences", [])}
+        m = re.search(r"Earlier in this conversation: (\[.*\])", system)
+        history = json.loads(m.group(1)) if m else []
+        shown = next((h["shown"] for h in reversed(history) if h.get("shown")), self.LIGHT_JACKETS)
+        calls = self._calls(text, prefs, shown, profile)
+        return Reply("", [ToolCallReq(f"s{i}", n, a) for i, (n, a) in enumerate(calls)], NAME, 0)
+
+    def _chips(self, text: str, prefs: dict) -> list[dict]:
+        chips = [{"label": "Light jacket", "source": "conversation"}, {"label": "Spring travel", "source": "conversation"}]
+        if "carry-on" in text or "packs" in text or "bulky" in text:
+            chips.append({"label": "Packs small", "source": "conversation"})
+        if "size" in prefs:
+            chips.append({"label": f"Size {prefs['size']}", "source": "profile"})
+        if "fabric" in prefs:
+            chips.append({"label": prefs["fabric"], "source": "profile"})
+        return chips
+
+    def _calls(self, text: str, prefs: dict, shown: list[str], profile: dict) -> list[tuple[str, dict]]:
+        search = ("search_products", {"category": "summer_outerwear", "fields": ["name", "weight_g", "fabric", "stock"], "limit": 50})
+        if any(w in text for w in ("packs smallest", "bulky", "smallest")):
+            return [("update_my_preferences", {"add": [{"key": "travel", "value": "Weight and packed size matter to you when traveling"}]}),
+                    ("show_products", {"view": "compare_table", "product_ids": shown, "sort": "weight",
+                                       "chips": self._chips(text + " packs", prefs),
+                                       "reply": "Side by side on the right. The windbreaker folds into its own pocket and weighs 190 g. "
+                                                "Of the natural fabrics, the field jacket is lightest."})]
+        if any(w in text for w in ("bigger photos", "less text", "show photos", "show me photos")):
+            return [("update_my_preferences", {"add": [{"key": "view", "value": "Photos over details"}]}),
+                    ("show_products", {"view": "look_gallery", "product_ids": shown, "chips": self._chips(text, prefs),
+                                       "reply": "Same results, bigger photos."})]
+        if "compare" in text:
+            return [("show_products", {"view": "compare_table", "product_ids": shown, "sort": "weight",
+                                       "chips": self._chips(text, prefs), "reply": "Side by side on the right."})]
+        if any(w in text for w in ("the windbreaker", "add it", "same size", "i'll take")):
+            pid = next((p for p in shown if self._name(p).split()[-1].lower() in text), shown[0])
+            size = prefs.get("size", "M")
+            name = self._name(pid).split()[-1].lower()
+            color = self.store.one("SELECT color FROM products WHERE id = ?", (pid,))["color"].lower()
+            vip = " Your VIP weekend price is applied." if profile.get("tier") == "vip" else ""
+            return [("add_to_cart", {"product_id": pid, "size": size}),
+                    ("show_cart", {"reply": f"Added the {name} in {size}, {color}.{vip} Take a look at the cart when you're ready."})]
+        if any(w in text for w in ("jacket", "coat", "looking for", "need a")):
+            view = ("compare_table" if prefs.get("view") == "Compares specs"
+                    else "look_gallery" if prefs.get("view") == "Photos over details" else "product_list")
+            reply = ("Here are a few in your size. I kept to natural fabrics like you usually do, plus one packable nylon "
+                     "that's hard to beat for a carry-on." if profile.get("tier") else
+                     "Here are three. Tell me what matters most and I'll narrow it down.")
+            return [search, ("show_products", {"view": view, "product_ids": self.LIGHT_JACKETS, "sort": "weight",
+                                               "chips": self._chips(text, prefs), "reply": reply})]
+        return []
+
+    def _name(self, pid: str) -> str:
+        return self.store.one("SELECT name FROM products WHERE id = ?", (pid,))["name"]

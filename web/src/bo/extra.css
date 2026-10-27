@@ -1,13 +1,13 @@
 /* Pieces the static mockup did not need: live composer, demo clock, system lines. */
-.composer textarea { width: 100%; border: 0; outline: 0; resize: none; font: inherit; color: var(--ink); background: none; }
-.composer textarea::placeholder { color: var(--mute); }
-.send { color: #fff; font-weight: 700; }
-.send:disabled, .btn:disabled { opacity: .45; cursor: default; }
-.sys { font-size: 12.5px; text-align: center; }
-.empty { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; margin-top: 20px; }
-.empty .chip { white-space: normal; text-align: left; line-height: 1.4; padding: 8px 12px; }
-.demo { margin-top: auto; padding: 10px 8px; display: flex; flex-wrap: wrap; gap: 5px; border-top: 1px solid var(--line); }
-.demo .pill { cursor: pointer; background: #fff; }
-.demo .pill.on { border-color: var(--ink); color: var(--ink); }
-.demo + .me { margin-top: 0; }
-.calls span:first-child { margin-left: 0; }
+.bo .composer textarea{ width: 100%; border: 0; outline: 0; resize: none; font: inherit; color: var(--ink); background: none; }
+.bo .composer textarea::placeholder{ color: var(--mute); }
+.bo .send{ color: #fff; font-weight: 700; }
+.bo .send:disabled,.bo .btn:disabled{ opacity: .45; cursor: default; }
+.bo .sys{ font-size: 12.5px; text-align: center; }
+.bo .empty{ display: flex; flex-direction: column; gap: 12px; align-items: flex-start; margin-top: 20px; }
+.bo .empty .chip{ white-space: normal; text-align: left; line-height: 1.4; padding: 8px 12px; }
+.bo .demo{ margin-top: auto; padding: 10px 8px; display: flex; flex-wrap: wrap; gap: 5px; border-top: 1px solid var(--line); }
+.bo .demo .pill{ cursor: pointer; background: #fff; }
+.bo .demo .pill.on{ border-color: var(--ink); color: var(--ink); }
+.bo .demo + .me{ margin-top: 0; }
+.bo .calls span:first-child{ margin-left: 0; }

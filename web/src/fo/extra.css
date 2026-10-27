@@ -1,0 +1,19 @@
+/* Live pieces the static storefront mockup did not need. */
+.fo .a { font-size: 14px; display: flex; flex-direction: column; gap: 8px; }
+.fo .mem .undo { margin-left: auto; color: var(--mute); font-weight: 500; }
+.fo .composer textarea { width: 100%; border: 0; outline: 0; resize: none; font: inherit; background: none; }
+.fo .send { color: #fff; font-weight: 700; margin-left: auto; }
+.fo .sh .pill { cursor: pointer; text-decoration: none; }
+.fo .sh .pill.on { border-color: var(--ink); color: var(--ink); }
+.fo .sys { font-size: 12.5px; text-align: center; }
+.fo .empty { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.fo .empty .chip { white-space: normal; text-align: left; line-height: 1.4; padding: 8px 12px; }
+.fo .chip .x { cursor: pointer; }
+.fo .grid.big { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.fo .list { display: flex; flex-direction: column; gap: 10px; }
+.fo .list .row { display: flex; gap: 12px; border-bottom: 1px solid var(--line2); padding-bottom: 10px; }
+.fo .list .art { width: 64px; height: 76px; flex: none; }
+.fo .list b, .fo .card b { display: block; font-weight: 500; }
+.fo .list small { display: block; color: var(--mute); font-size: 12px; }
+.fo .btn:disabled, .fo .send:disabled { opacity: .45; }
+.bo .demo a.pill { text-decoration: none; color: var(--ink2); }

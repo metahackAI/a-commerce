@@ -62,7 +62,8 @@ PROMOTIONS = [
 def seed(store: Store) -> None:
     store.create_schema()
     store.set_clock(SEED_CLOCK)
-    for prefix, start in (("cs", 1041), ("order", 20431)):
+    # Sequences start after the ids the seed writes by hand.
+    for prefix, start in (("cs", 1041), ("order", 20431), ("pref", 3)):
         store.execute("INSERT INTO meta (key, value) VALUES (?, ?)", (f"seq:{prefix}", str(start)))
 
     store.executemany("INSERT INTO categories VALUES (?, ?)", CATEGORIES)

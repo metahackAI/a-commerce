@@ -60,4 +60,37 @@ export const api = {
   undo: (id: number) => post<ChangeSetView>(`/change-sets/${id}/undo`, {}),
 };
 
+// -- storefront --------------------------------------------------------------
+
+export type Shopper = "jamie" | "mina" | "alex";
+export type Price = { now: number; was: number | null; note: string | null };
+export type Chip = { label: string; source?: "conversation" | "profile" };
+export type CompareData = { products: { product_id: string; name: string; sub: string }[]; rows: { label: string; values: (string | Price)[] }[]; sort: string };
+export type GalleryData = { items: { product_id: string; name: string; color: string; price: Price; facts: string[]; look: string | null }[] };
+export type CartData = {
+  order_preview_id: string; lines: { product_id: string; name: string; variant: string; qty: number; price: number }[];
+  subtotal: number; benefit: { label: string; amount: number; coupon: string | null } | null; shipping: number; total: number;
+  ship_to: string; arrives: string; pay_with: string; notice: string;
+};
+export type FoBlock =
+  | { type: "ui"; ui: "understood_chips"; data: { chips: Chip[] } }
+  | { type: "ui"; ui: "compare_table"; why: string; data: CompareData }
+  | { type: "ui"; ui: "look_gallery" | "product_list"; why: string; data: GalleryData }
+  | { type: "ui"; ui: "cart"; data: CartData }
+  | { type: "ui"; ui: "memory_note"; data: { memory_id: string; text: string } };
+export type FoEvent = AgentStep | FoBlock;
+export type Profile = { name: string | null; tier: string | null; preferences: { id: string; key: string; value: string; source: string }[] };
+
+const as = (shopper: Shopper) => ({ "content-type": "application/json", "X-Shopper": shopper });
+
+export const shop = {
+  chat: (shopper: Shopper, message: string) =>
+    req<{ events: FoEvent[] }>("/fo/chat", { method: "POST", headers: as(shopper), body: JSON.stringify({ message }) }),
+  profile: (shopper: Shopper) => req<Profile>("/fo/profile", { headers: as(shopper) }),
+  placeOrder: (shopper: Shopper, order_preview_id: string) =>
+    req<{ order_id: string; total: number; coupon: string | null }>("/orders", { method: "POST", headers: as(shopper), body: JSON.stringify({ order_preview_id }) }),
+  undoMemory: (shopper: Shopper, id: string) =>
+    req<{ ok: boolean }>(`/memories/${id}/undo`, { method: "POST", headers: as(shopper) }),
+};
+
 export const usd = (n: number) => `$${n.toFixed(2)}`;

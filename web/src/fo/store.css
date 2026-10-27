@@ -1,0 +1,53 @@
+/* From design/mockups/store.html, scoped to the storefront root. */
+.fo{display:flex;flex-direction:column;height:100vh}
+.fo .sh{height:56px;flex:none;display:flex;align-items:center;gap:26px;padding:0 24px;border-bottom:1px solid var(--line)}
+.fo .logo{font-weight:700;letter-spacing:.14em;font-size:14px}
+.fo .sh nav{display:flex;gap:20px;font-size:13.5px;color:var(--ink2)}
+.fo .sh nav .vip{color:var(--ink);font-weight:500}
+.fo .sh .r{margin-left:auto;display:flex;align-items:center;gap:18px;font-size:13px;color:var(--ink2)}
+.fo .sh .cart{display:flex;align-items:center;gap:6px;color:var(--ink)}
+.fo .wrap{flex:1;display:grid;grid-template-columns:380px minmax(0,1fr) 320px;min-height:0}
+.fo .conv{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.fo .msgs{flex:1;overflow:auto;padding:22px 20px;display:flex;flex-direction:column;gap:16px}
+.fo .u{align-self:flex-end;max-width:88%;background:var(--fill);border-radius:14px;padding:9px 13px}
+.fo .who{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--mute);margin-bottom:6px}
+.fo .who .mark{width:18px;height:18px;font-size:10px;border-radius:5px}
+.fo .mem{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.fo .mem b{font-weight:500;color:var(--mute);margin-left:auto}
+.fo .cfoot{padding:12px 16px 16px}
+.fo .canvas{overflow:auto;padding:22px 26px 30px;display:flex;flex-direction:column;gap:22px}
+.fo .ua{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.fo .ua .l{font-size:12.5px;color:var(--mute);margin-right:4px}
+.fo h2{font-size:15px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px}
+.fo h2 span{font-size:12.5px;font-weight:400;color:var(--mute)}
+.fo .cmp{border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.fo .cmp table{table-layout:fixed}
+.fo .cmp th,.fo .cmp td{padding:10px 14px;border-bottom:1px solid var(--line2);font-size:13px;text-align:left;vertical-align:top}
+.fo .cmp tr:last-child td{border-bottom:0}
+.fo .cmp td:first-child,.fo .cmp th:first-child{width:118px;color:var(--mute);font-size:12.5px}
+.fo .cmp .best{background:#f8f7f3}
+.fo .cmp th{font-weight:500}
+.fo .cmp .art{height:124px;margin-bottom:10px}
+.fo .cmp th b{display:block;font-weight:600;font-size:13.5px}
+.fo .cmp th small{color:var(--mute);font-weight:400}
+.fo .cmp .bmark{display:inline-block;font-size:11.5px;font-weight:500;border:1px solid var(--ink);border-radius:4px;padding:0 6px;margin-bottom:6px}
+.fo .price b{font-weight:600}
+.fo .price s{color:var(--mute);margin-left:6px}
+.fo .price small{display:block;color:var(--mute);font-size:11.5px}
+.fo .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.fo .card .art{aspect-ratio:4/5;margin-bottom:8px}
+.fo .card b{display:block;font-weight:500;font-size:13px}
+.fo .card span{font-size:12.5px;color:var(--ink2)}
+.fo .card small{display:block;font-size:12px;color:var(--mute)}
+.fo .cartp{border-left:1px solid var(--line);padding:22px 20px;display:flex;flex-direction:column;gap:16px;overflow:auto}
+.fo .cartp h3{font-size:14px;font-weight:600}
+.fo .line{display:flex;gap:12px}
+.fo .line .art{width:62px;height:74px;flex:none}
+.fo .line b{font-weight:500;display:block}
+.fo .line small{color:var(--mute);font-size:12.5px;display:block}
+.fo .sum{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+.fo .sum.tot{font-weight:600;font-size:15px;border-top:1px solid var(--line);margin-top:6px;padding-top:10px}
+.fo .sum .g{color:var(--ok)}
+.fo .lbl{font-size:12px;color:var(--mute);margin-bottom:3px}
+.fo .wide{width:100%;justify-content:center;padding:11px;font-size:14px}
+.fo .note{font-size:12px;color:var(--mute)}

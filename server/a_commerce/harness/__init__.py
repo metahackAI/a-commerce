@@ -3,7 +3,8 @@
 from ..db import Store
 from .models import Model, from_env
 from .operator import run_operator
-from .scripted import ScriptedOperator
+from .scripted import ScriptedOperator, ScriptedShopper
+from .shopper import run_shopper
 
 
 def operator_models(store: Store) -> tuple[Model, Model | None]:
@@ -16,4 +17,8 @@ def operator_models(store: Store) -> tuple[Model, Model | None]:
     return worker, planner
 
 
-__all__ = ["run_operator", "operator_models", "ScriptedOperator"]
+def shopper_model(store: Store) -> Model:
+    return from_env("WORKER") or from_env("PLANNER") or ScriptedShopper(store)
+
+
+__all__ = ["run_operator", "operator_models", "run_shopper", "shopper_model", "ScriptedOperator", "ScriptedShopper"]

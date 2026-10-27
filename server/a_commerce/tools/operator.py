@@ -98,11 +98,14 @@ class GetProductIn(BaseModel):
 
 @read_tool("get_product", "Read one product with stock for each size.", GetProductIn,
            consumes=["product_id"], produces=["product"], scope="both")
-def get_product(store: Store, args: GetProductIn) -> dict:
+def get_product(store: Store, args: GetProductIn, context: dict | None = None) -> dict:
     row = store.one("SELECT * FROM products WHERE id = ?", (args.product_id,))
     if row is None:
         raise ToolError("unknown_product", f"No product {args.product_id}.", "search_products")
-    return pick(product_row(store, row), args.fields)
+    item = product_row(store, row)
+    if context and context.get("shopper"):
+        item.pop("cost")  # shoppers never see cost
+    return pick(item, args.fields)
 
 
 class NoInput(BaseModel):

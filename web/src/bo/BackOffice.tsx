@@ -89,7 +89,7 @@ export function BackOffice() {
 
   const editing = view?.status === "waiting_for_approval";
   return (
-    <div className="app">
+    <div className="bo"><div className="app">
       <aside className="side">
         <div className="storesw"><span className="mark">N</span><div><b>Northwind Apparel</b><small>Back office</small></div></div>
         <button className="nav">Inbox<span className="cnt">3</span></button>
@@ -114,6 +114,7 @@ export function BackOffice() {
             <button key={at} className={`pill ${clock === at ? "on" : ""}`} disabled={busy} onClick={() => changeClock(at)}>{label}</button>
           ))}
           <button className="pill" disabled={busy} onClick={reset}>Reset data</button>
+          <a className="pill" href="/fo?shopper=jamie">Open storefront →</a>
         </div>
         <div className="me"><span className="av">SJ</span><div>Son SeongJun<small>Merchandiser</small></div></div>
       </aside>
@@ -170,6 +171,6 @@ export function BackOffice() {
         <section className="cs"><div className="csh"><h1 className="mute">Change set</h1></div>
           <div className="body"><p className="mute">The change set appears here: what the agent understood, the checks, and every change grouped for review.</p></div></section>
       )}
-    </div>
+    </div></div>
   );
 }
