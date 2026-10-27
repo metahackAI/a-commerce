@@ -1,0 +1,107 @@
+# A-Commerce design
+
+Status: draft (Oct 27). This document is the brief for everyone building A-Commerce, people and coding agents alike.
+
+## 1. Goal
+
+Build a commerce back-end that is **AI-friendly by design**, plus a **commerce harness** that uses it to do real work, and show that:
+
+1. A small open-weight model (Muse Glimmer) can find the right tools, chain them, and finish back-office and storefront tasks.
+2. The same tasks fail or cost much more when the same model faces a typical screen-shaped commerce API.
+3. Operators and shoppers only talk; the UI they need appears as components.
+
+## 2. What makes a commerce API hard for AI
+
+From building enterprise commerce platforms, we see the same patterns again and again. Each is fine for a team clicking through screens, and each confuses a model:
+
+| Pattern | Example shape | Why it hurts a model |
+|---|---|---|
+| Screen-shaped endpoints | `getRefundPopupInitData`, `getOrderGridList` | One business action is split across many screen calls; the model must know the screen flow |
+| Abbreviated names | `getPrmtTgtMbrMgmtList` | The model can't tell what a tool does from its name |
+| Codes instead of meaning | `promoType: "T03"` | Valid values live in a code table the model never sees |
+| Reads as POST, separate count calls | `POST /getXList` + `GET /getXListCount` | Unclear which calls are safe; two calls for one answer |
+| Bulk saves | `saveXList(rows[])` with a row-status flag | Create, update, and delete hidden behind one call |
+| Version duplicates | `XController` and `XControllerV2` | Two tools look like the same thing |
+| Rules only in people's heads | "coupons don't stack with tier discounts" | The model breaks rules it was never told |
+
+## 3. Tool design rules
+
+Every capability in A-Commerce is exposed as a tool that follows these rules. Code review checks them.
+
+1. **One business verb per tool.** `create_promotion`, `issue_coupon`, `cancel_order`. No screens, popups, or grids.
+2. **Plain names.** `verb_noun`, full English words. The name and a one-line description must be enough to pick the tool.
+3. **Typed inputs with meaning, not codes.** Enums are words (`"percent_off"`, `"vip"`). Every field has a description and an example.
+4. **Safe reads.** Reads never change state. A list returns items and the total together. A `fields` argument keeps responses small.
+5. **Writes go through preview.** Every write supports `preview=true`, which returns what will change, the rule checks, and whether a person must approve. The real write takes the `preview_id`.
+6. **Declared links.** Each tool declares what it consumes and produces (for example, `search_products` produces `product_id[]`; `create_promotion` consumes `product_id[]` and produces `promotion_id`). The harness builds a tool graph from these declarations.
+7. **Rules are data.** Business rules (maximum discount, stacking, approval thresholds) live in a policy file that the back-end enforces. A violation comes back as a readable reason plus the tool that can fix it. Rules are never hidden in a prompt.
+8. **Actionable errors.** Each error has a code, a human sentence, and a suggested next tool.
+
+## 4. Domain scope
+
+Written from scratch; the names and shapes are ours.
+
+| Domain | Entities | Example tools |
+|---|---|---|
+| Catalog | product, variant, brand, category | `search_products`, `get_product`, `create_product`, `update_product`, `set_variant_stock` |
+| Pricing | price, price schedule | `set_price`, `schedule_price_change` |
+| Display | category page, slot, banner | `list_display_slots`, `schedule_display` |
+| Promotion | promotion, coupon, benefit rule | `create_promotion`, `issue_coupon`, `list_active_promotions` |
+| Member | member, tier, preference | `search_members`, `get_member`, `list_tiers` |
+| Order | order, order line, payment | `search_orders`, `get_order`, `place_order` |
+| Claim | cancel, return, exchange, refund | `request_cancel`, `approve_return`, `refund_order` |
+| Shopper | cart, wishlist, profile | `add_to_cart`, `get_cart`, `checkout`, `remember_preference` |
+
+Out of scope for the hackathon: settlement, partner management, real payment gateways, real shipping carriers. They are stubbed.
+
+## 5. Harness
+
+```
+request ─► tool search ─► plan ─► execute ─► check ─► answer as UI
+              │             │        │          │
+          tool graph     Spark    Glimmer    read back
+                       (if needed)  + preview/approve
+```
+
+- **Tool search**: the model never sees all tools. The harness retrieves a few candidates by description match plus graph neighbors (what usually comes before or after).
+- **Plan**: a short ordered list of tool calls. Glimmer plans simple tasks; Muse Spark plans multi-step ones or takes over after a failed check.
+- **Execute**: tool calls with preview first; writes that need approval pause and show an approval card.
+- **Check**: after a write, the harness reads the state back and compares it with the request (for example, the promotion exists, covers the right products, and has the right discount and period).
+- **Action log**: every call, preview, approval, and check is recorded and visible.
+
+## 6. UI protocol
+
+The agent never writes HTML. It returns UI blocks that name a component from a fixed library and fill it with data:
+
+```json
+{"ui": "promotion_preview", "data": {"promotion_id": "...", "products": 42, "discount": "20%", "period": "..."}}
+```
+
+Initial components: `product_table`, `product_gallery`, `product_compare`, `promotion_preview`, `approval_card`, `order_detail`, `cart`, `checkout_card`, `action_log`.
+
+Storefront personalization: what the shopper says is stored as preferences (`remember_preference`). Preferences change both the content (ranking, filters) and the form (for example, a comparison table for a shopper who compares specs, a gallery for one who browses by look).
+
+## 7. Proof: AI-friendly vs. screen-shaped
+
+To show that the tool design matters, we build a **screen-shaped facade** over the same back-end that reproduces the patterns in section 2 (generic examples, written by us). Then we run the same task set through both:
+
+| | Screen-shaped facade | A-Commerce tools |
+|---|---|---|
+| Muse Glimmer | ? | ? |
+| Muse Spark | ? | ? |
+
+Metrics: task completion, tool selection accuracy, calls per task, cost per task, consistency over repeated runs. Tasks are split into a design set (used while building) and a held-out set (scored only at the end). Only held-out numbers go into the README.
+
+## 8. Stack (proposal)
+
+- Back-end: Python, FastAPI, SQLite (Postgres optional), seed data generated by us
+- Tools: exposed over MCP and as OpenAPI from the same definitions
+- Harness: Python service; models via the Meta Model API, and Glimmer via a self-hosted vLLM endpoint (OpenRouter during development)
+- Front-end: React (Vite, TypeScript); one chat shell for the back office and one for the storefront, both rendering the UI blocks
+
+## 9. Demo scenarios
+
+- **Back office**: "Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page." → search products → preview promotion (rule check: maximum discount) → approval card → create → issue coupon → schedule display → check → promotion preview and action log.
+- **Storefront**: a shopper looks for a light jacket in conversation → gallery → shopper asks about material and weight → the view switches to a comparison table → add to cart → checkout card, with the VIP coupon from the back-office scenario applied.
+
+The two scenarios connect: what the operator sets up is what the shopper sees.

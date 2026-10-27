@@ -99,7 +99,7 @@ Numbers will be added here once measured.
               Commerce back-end services
 ```
 
-> TODO: component details once implemented.
+Design details: [docs/design.md](docs/design.md).
 
 ## Getting started
 
