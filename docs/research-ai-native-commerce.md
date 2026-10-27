@@ -57,6 +57,27 @@ Five properties, each with what we build:
 - Show **trust built into the flow**: interpretation shown before acting, checks, approval, read-back verification, undo.
 - Avoid claiming speed or accuracy we have not measured.
 
+## 5. Similar products and how we differ
+
+| Product | What it does | Difference from A-Commerce |
+|---|---|---|
+| OpenAI ACP / ChatGPT shopping | Open protocol (Apache-2.0) for agents to buy from merchants; product feeds into ChatGPT. Since Mar 2026 ChatGPT focuses on discovery and hands checkout to merchants | Shopper side, outside the store. Nothing about running the store |
+| Google UCP / Universal Cart | Shared cart and checkout across Search, Gemini, YouTube | Same: a channel for outside agents |
+| Shopify Sidekick | Assistant in the Shopify admin: proposals (Pulse), multi-step tasks with approval, skills, background work | Closest on the operator side, but sits on top of Shopify's admin screens and works only with Shopify |
+| Genstore (seed $10M, Sep 2025) | Merchants run a whole store by chat with a team of agents (design, product, launch, analytics); builds a store from a description | Closest pitch. Aimed at new small stores; nothing on large existing back-ends, change review, or measured tool use |
+| Saleor (Feb 2026) | Calls itself "the first fully open, end-to-end AI-native commerce stack": ACP entry, conversational storefront (Ink AI), config as files, AI skills | Open-source and agent-ready, but agents still call the regular GraphQL API; no operator agent or change sets |
+| Salesforce Agentforce Commerce, VTEX AI Workspace | Merchant, shopper, and buyer agents on enterprise platforms | Vendor-locked, closed models; agents layered on existing platforms |
+| Thesys C1 and other GenUI toolkits | Generative UI components for shopping agents | UI layer only |
+
+Where A-Commerce is different:
+
+1. **It starts from the back-end.** We redesign a large commerce back-end into an AI-friendly tool layer (the "A2API" idea) and measure that a small open model can use it. Others either expose the existing API or build a new small-store product.
+2. **Change sets.** Operator work is reviewed as a change set with interpretation, checks, preview, read-back, and undo. Sidekick has approval; nobody we found treats store changes like reviewable pull requests.
+3. **One tool layer for every agent.** Our operator agent, our shopper agent, and outside agents (ChatGPT, Gemini through ACP/UCP-style endpoints) use the same tools and policies.
+4. **Open weights, on our own servers.** Muse Glimmer runs inside the company, so catalog and customer data stay in-house.
+
+Sources: [OpenAI ACP docs](https://developers.openai.com/commerce), [OpenAI, Buy it in ChatGPT](https://openai.com/index/buy-it-in-chatgpt/), [Forbes on Genstore](https://www.forbes.com/sites/tanyaakim/2026/03/26/genstore---ai-agents-now-run-your-entire-e-commerce-store/), [Saleor](https://saleor.io/blog/end-to-end-agentic-commerce), [Thesys](https://www.thesys.dev/solutions/ecommerce).
+
 ## Sources
 
 - OpenAI Instant Checkout and ACP: [TechCrunch, Sep 2025](https://techcrunch.com/2025/09/29/openai-takes-on-google-amazon-with-new-agentic-shopping-system/), shift in Mar 2026: [Digital Commerce 360](https://digitalcommerce360.com/2026/03/06/openai-shifts-checkout-plans-agentic-commerce-strategy/), [Checkout.com](https://cfworker-www.checkout.com/blog/openai-agentic-commerce-shift)
