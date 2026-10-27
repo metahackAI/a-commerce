@@ -50,6 +50,11 @@ export type Handoff = { type: "handoff"; from: string; to: string; reason: strin
 export type Event = AgentStep | UiBlock | Handoff;
 export type ChatResult = { ok: boolean; events: Event[]; change_set_id: number | null; error?: string };
 
+export type Task = {
+  title: string; source: string; at: string; state: "needs_you" | "running" | "done"; diff: string[]; status_label: string;
+  change_set_id?: number; version?: number; checks?: string; kind?: string; action?: string; seeded?: boolean;
+};
+
 export class ApiError extends Error {
   constructor(public code: string, message: string) {
     super(message);
@@ -72,6 +77,8 @@ export const api = {
   health: () => req<{ ok: boolean; clock: string; tools: number }>("/health"),
   setClock: (at: string) => post<{ clock: string }>("/demo/clock", { at }),
   reset: () => post<{ clock: string }>("/demo/reset", {}),
+  tasks: () => req<{ items: Task[]; counts: Record<Task["state"], number> }>("/bo/tasks"),
+  changeSet: (id: number) => req<AnyView>(`/change-sets/${id}`),
   operatorChat: (request: string, change_set_id: number | null) => post<ChatResult>("/bo/chat", { request, change_set_id }),
   approve: (id: number, version: number) => post<AnyView>(`/change-sets/${id}/approve`, { version }),
   undo: (id: number) => post<AnyView>(`/change-sets/${id}/undo`, {}),

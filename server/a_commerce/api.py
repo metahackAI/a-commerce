@@ -10,7 +10,7 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import changesets
+from . import changesets, tasks
 from .harness import operator_models, run_operator, run_shopper, shopper_model
 from .db import Store
 from .seed import fresh_store
@@ -106,6 +106,12 @@ def shopper_chat(body: ShopperMessage, x_shopper: str = Header(...)) -> dict:
 @app.get("/fo/profile")
 def shopper_profile(x_shopper: str = Header(...)) -> dict:
     return call(store(), "get_my_profile", {}, actor="storefront", context=shopper(x_shopper))
+
+
+@app.get("/bo/tasks")
+def bo_tasks() -> dict:
+    """The back office home: open change sets, work the agent noticed, and what is done."""
+    return tasks.task_list(store())
 
 
 # -- change sets ----------------------------------------------------------------

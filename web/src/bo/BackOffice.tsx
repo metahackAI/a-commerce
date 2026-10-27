@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { AgentStep, AnyView, Event } from "../api";
+import type { AgentStep, AnyView, Event, Task } from "../api";
 import { api, ApiError } from "../api";
 import { ChangeSet } from "../blocks/ChangeSet";
 import { RefundReview } from "../blocks/RefundReview";
@@ -22,8 +22,15 @@ export function BackOffice() {
   const [busy, setBusy] = useState(false);
   const [clock, setClock] = useState("");
   const [model, setModel] = useState("");
+  const [home, setHome] = useState(true);
+  const [tasks, setTasks] = useState<{ items: Task[]; counts: Record<Task["state"], number> } | null>(null);
+  const [tab, setTab] = useState<Task["state"]>("needs_you");
   const end = useRef<HTMLDivElement>(null);
 
+  const refreshTasks = () => api.tasks().then(setTasks).catch(() => setTasks(null));
+  useEffect(() => {
+    if (home) refreshTasks();
+  }, [home, clock]);
   useEffect(() => {
     api.health().then((h) => setClock(h.clock)).catch(() => setMsgs([{ role: "system", text: "The API is not running. Start it with make serve." }]));
   }, []);
@@ -33,12 +40,18 @@ export function BackOffice() {
 
   async function send(text: string) {
     if (!text.trim() || busy) return;
+    if (home) {
+      // A request from home starts a new task.
+      setHome(false);
+      setMsgs([]);
+      setView(null);
+    }
     setDraft("");
     setBusy(true);
     setMsgs((m) => [...m, { role: "user", text, at: clock }]);
     try {
       // A message about an open sale change set edits it; anything else starts a new task.
-      const editing = view && view.status === "waiting_for_approval" && view.kind !== "refund_review" && !/return|refund/i.test(text);
+      const editing = !home && view && view.status === "waiting_for_approval" && view.kind !== "refund_review" && !/return|refund/i.test(text);
       const res = await api.operatorChat(text, editing ? view.id : null);
       const step = res.events.find((e): e is AgentStep => e.type === "agent_step");
       const block = res.events.find((e: Event) => e.type === "ui");
@@ -69,6 +82,21 @@ export function BackOffice() {
     }
   }
 
+  async function openTask(t: Task) {
+    if (t.action) return send(t.action);
+    if (!t.change_set_id) return;
+    const v = await api.changeSet(t.change_set_id);
+    setView(v);
+    setMsgs(v.request.map((r) => ({ role: "user" as const, text: r, at: clock })));
+    setHome(false);
+  }
+
+  function goHome() {
+    setHome(true);
+    setMsgs([]);
+    setView(null);
+  }
+
   async function changeClock(at: string) {
     setBusy(true);
     try {
@@ -96,8 +124,8 @@ export function BackOffice() {
     <div className="bo"><div className="app">
       <aside className="side">
         <div className="storesw"><span className="mark">N</span><div><b>Northwind Apparel</b><small>Back office</small></div></div>
-        <button className="nav">Inbox<span className="cnt">3</span></button>
-        <button className="nav on">Change sets</button>
+        <button className={`nav ${home ? "on" : ""}`} onClick={goHome}>Tasks{tasks && <span className="cnt">{tasks.counts.needs_you}</span>}</button>
+        <button className={`nav ${home ? "" : "on"}`}>Change sets</button>
         <button className="nav">Automations<span className="cnt">4</span></button>
         <button className="nav">Catalog</button>
         <button className="nav">Customers</button>
@@ -123,8 +151,43 @@ export function BackOffice() {
         <div className="me"><span className="av">SJ</span><div>Son SeongJun<small>Merchandiser</small></div></div>
       </aside>
 
+      {home ? (
+        <section className="home" data-testid="home">
+          <div className="col">
+            <div className="hello">What should the store do next?</div>
+            <form className="composer" onSubmit={(e) => { e.preventDefault(); send(draft); }}>
+              <textarea className="ph" rows={2} value={draft} placeholder="Describe a task. e.g. “Run a 20% weekend sale on summer outerwear for VIP members”"
+                        onChange={(e) => setDraft(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(draft); } }} />
+              <div className="cbar"><span className="pill">Ask before any change</span><span className="pill">{model || "model"} · auto</span>
+                <button className="send" type="submit" disabled={busy} aria-label="Send">↑</button></div>
+            </form>
+            <div className="sugg">
+              <button className="chip" disabled={busy} onClick={() => send(SUGGESTION)}>{SUGGESTION}</button>
+              <button className="chip" disabled={busy} onClick={() => send(SUGGESTION_RETURNS)}>{SUGGESTION_RETURNS}</button>
+            </div>
+            <div className="tl">
+              {(["needs_you", "running", "done"] as const).map((k) => (
+                <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>
+                  {{ needs_you: "To review", running: "Running", done: "Done" }[k]} {tasks?.counts[k] ?? ""}
+                </button>
+              ))}
+            </div>
+            {tasks?.items.filter((t) => t.state === tab).map((t) => (
+              <button key={t.title + (t.change_set_id ?? "")} className={`task ${t.seeded ? "seeded" : ""}`} data-testid="task"
+                      onClick={() => openTask(t)} disabled={t.seeded || busy} title={t.seeded ? "Seeded example of the operator's morning" : undefined}>
+                <span className={`st ${t.state === "needs_you" ? "need" : t.state === "running" ? "run" : "done"}`} />
+                <span>{t.title}</span>
+                <small>{t.source} · {t.at}{t.version ? ` · v${t.version}` : ""}</small>
+                <span className="diff mono">{t.diff.map((d) => <span key={d} style={{ display: "block" }}>{d}</span>)}</span>
+                <span className="r"><span className={`tag ${t.state === "needs_you" ? "warn" : t.state === "done" ? "ok" : ""}`}>{t.status_label}</span>{t.checks && <small>{t.checks}</small>}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : (<>
       <section className="conv">
-        <div className="ch">{view ? view.title.split(":")[0] : "New request"}</div>
+        <div className="ch"><button className="back" onClick={goHome} aria-label="Back to tasks">←</button>{view ? view.title.split(":")[0] : "New request"}</div>
         <div className="msgs">
           {msgs.length === 0 && (
             <div className="empty">
@@ -188,6 +251,7 @@ export function BackOffice() {
         <section className="cs"><div className="csh"><h1 className="mute">Change set</h1></div>
           <div className="body"><p className="mute">The change set appears here: what the agent understood, the checks, and every change grouped for review.</p></div></section>
       )}
+      </>)}
     </div></div>
   );
 }

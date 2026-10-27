@@ -69,3 +69,31 @@ test("a reply that contradicts the change set is replaced and the correction is 
   await expect(page.getByText("Nothing has changed in the store yet.")).toBeVisible();
   expect((await (await request.get(`${API}/change-sets/1042`)).json()).status).toBe("waiting_for_approval");
 });
+
+test("home is a task list: open the sale from it, approve, and see it move to Done", async ({ page }) => {
+  await page.goto("/");
+  const home = page.getByTestId("home");
+  await expect(home.getByRole("button", { name: /11 return requests over \$200/ })).toBeVisible();
+  await expect(home.getByRole("button", { name: /Linen shirts will sell out/ })).toBeDisabled(); // seeded example
+
+  await home.getByRole("button", { name: /Run a 20% weekend sale/ }).click();
+  await page.getByPlaceholder("Ask for changes to this set…").fill("Drop the low-stock ones. Give the overshirt 15% instead.");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("change-set").getByText("#1042 · v2")).toBeVisible();
+
+  await page.getByRole("button", { name: "Back to tasks" }).click();
+  const sale = home.getByTestId("task").filter({ hasText: "VIP weekend sale: summer outerwear" });
+  await expect(sale).toContainText("Ready to review");
+  await expect(sale).toContainText("~40 prices");
+  await expect(sale).toContainText("6/6 checks");
+  await sale.click();
+
+  const cs = page.getByTestId("change-set");
+  await expect(cs.getByText("#1042 · v2")).toBeVisible();
+  await cs.getByRole("button", { name: "Approve and run" }).click();
+  await expect(cs.locator(".csh .tag")).toHaveText("Live · verified");
+
+  await page.getByRole("button", { name: "Back to tasks" }).click();
+  await home.getByRole("button", { name: /^Done/ }).click();
+  await expect(home.getByTestId("task").filter({ hasText: "VIP weekend sale" })).toContainText("Live · verified");
+});

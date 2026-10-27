@@ -11,7 +11,7 @@ real one; otherwise it says `scripted` and the narration must not claim a model 
 
 | Time | Screen | Do | Say (about this much) |
 |---|---|---|---|
-| 0:00–0:15 | Back office, empty | — | "Running a sale today means five back-office screens in the right order. With A-Commerce the merchandiser just says it." |
+| 0:00–0:15 | Back office home (task list) | Point at To review: the returns the agent noticed, the reorder draft | "Running a sale today means five back-office screens in the right order. With A-Commerce the merchandiser just says it." |
 | 0:15–0:40 | Back office | Click **Fri Nov 6, 11:02**, then the VIP weekend suggestion. Point at the step line (model, tool calls) and the change set: understood, 4 of 6 checks | "The agent found the tools it needed, prepared every change as a preview, and stopped. Nothing has changed in the store. Two checks need a decision: two products are almost out, and 20% would sell the overshirt below its price floor." |
 | 0:40–1:00 | Back office | Type "Drop the low-stock ones. Give the overshirt 15% instead." | "I answer like I would a colleague. Version 2: 40 products, the overshirt at 15%, all six checks pass." |
 | 1:00–1:20 | Back office | **Approve and run**; scroll to the read-back panel | "Only a person can approve. After running, the harness reads every change back from the store and compares it with what I approved: 40 of 40 prices, the coupon for 1,284 VIP members, the banner. And it can all be undone together until Monday night." |
