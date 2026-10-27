@@ -1,0 +1,62 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Storefront · two shoppers</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="fo.css"><style>
+body{display:flex;flex-direction:column;height:100vh}
+.wrap2{flex:1;display:grid;grid-template-columns:380px minmax(0,1fr);min-height:0}
+.uil{font-family:var(--mono);font-size:11px;color:var(--mute);border:1px solid var(--line);border-radius:4px;padding:0 6px;font-weight:400}
+.att{display:flex;align-items:center;gap:8px;margin-top:8px}
+.att .art{width:46px;height:46px;border-radius:7px}
+.box{border:1px solid var(--line);border-radius:var(--r)}
+.bh{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line2);font-size:13px;background:var(--fill2)}
+.bh b{font-weight:600}.bh .r{margin-left:auto;color:var(--mute);font-size:12.5px}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:7px 12px;padding:12px 14px;font-size:13px}
+.kv dt{color:var(--mute)}
+.why{font-size:12px;color:var(--mute);display:flex;gap:6px;align-items:center}
+.why svg.i{width:13px;height:13px}
+
+body{background:#fff;padding:26px 30px;display:block;height:auto}
+.top{display:flex;align-items:flex-end;gap:16px;margin-bottom:16px}
+.top small{display:block;font-size:12.5px;color:var(--mute)}.top b{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.lbl2{font-size:13px;color:var(--ink2);margin-bottom:8px}.lbl2 b{color:var(--ink)}
+.mini{border:1px solid var(--line);border-radius:10px;overflow:hidden;height:742px;display:flex;flex-direction:column}
+.mini .sh{gap:18px;padding:0 18px}.mini .sh nav{gap:14px}
+.mb{padding:16px 18px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+.cmp .art{height:96px}
+.gal{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.lk .art{aspect-ratio:16/10;margin-bottom:7px}
+.lk b{font-weight:500;font-size:13.5px;margin-right:6px}.lk span{font-size:13px;color:var(--ink2)}
+.lk small{display:block;font-size:12px;color:var(--mute)}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<symbol id="field" viewBox="0 0 120 140"><path fill="currentColor" d="M42 14 60 24 78 14 100 26 110 94 96 97 92 54 91 130H29L28 54 24 97 10 94 20 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M42 14 51 32 60 24 69 32 78 14M60 24V130"/><rect x="36" y="58" width="16" height="15" rx="1.5"/><rect x="68" y="58" width="16" height="15" rx="1.5"/><rect x="35" y="92" width="18" height="18" rx="1.5"/><rect x="67" y="92" width="18" height="18" rx="1.5"/></g></symbol>
+<symbol id="wind" viewBox="0 0 120 140"><path fill="currentColor" d="M44 18Q60-2 76 18L100 28 110 94 96 97 92 56 91 126H29L28 56 24 97 10 94 20 28Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M48 22Q60 10 72 22M60 24V72M38 92H82L86 114H34Z"/><path d="M29 120H91" stroke-dasharray="3 3"/></g></symbol>
+<symbol id="shirt" viewBox="0 0 120 140"><path fill="currentColor" d="M44 14 60 22 76 14 98 26 106 70 94 73 91 52 90 126H30L29 52 26 73 14 70 22 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M44 14 53 34 60 22 67 34 76 14M60 26V126"/><rect x="67" y="44" width="14" height="14" rx="1.5"/></g><g fill="#000" fill-opacity=".18"><circle cx="63" cy="42" r="1.6"/><circle cx="63" cy="60" r="1.6"/><circle cx="63" cy="78" r="1.6"/><circle cx="63" cy="96" r="1.6"/><circle cx="63" cy="114" r="1.6"/></g></symbol>
+<symbol id="chore" viewBox="0 0 120 140"><path fill="currentColor" d="M42 14 60 24 78 14 100 26 110 96 96 99 92 54 92 134H28L28 54 24 99 10 96 20 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M42 14 49 38 60 24 71 38 78 14M60 24V134"/><rect x="66" y="48" width="15" height="15" rx="1.5"/><rect x="34" y="94" width="20" height="21" rx="1.5"/><rect x="66" y="94" width="20" height="21" rx="1.5"/></g></symbol>
+<symbol id="parka" viewBox="0 0 120 140"><path fill="currentColor" d="M42 18Q60-4 78 18L100 28 110 100 96 103 92 58 93 138H27L28 58 24 103 10 100 20 28Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M46 22Q60 6 74 22M60 24V138M28 84H92"/><path d="M36 98H52V112H36ZM68 98H84V112H68Z"/></g></symbol>
+<symbol id="boot" viewBox="0 0 120 140"><path fill="currentColor" d="M38 22H74V84Q74 92 82 95L104 104Q112 108 112 118V124H22Q18 124 18 118L20 96Q22 88 30 84 38 80 38 70Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M46 26L52 66 58 26M22 114H112"/></g></symbol></defs></svg>
+
+
+<div class="top"><div><small>Same question, two shoppers</small><b>“I need a light jacket for spring trips.”</b></div>
+<span class="mute" style="margin-left:auto;font-size:13px">Same tools, same products, same price rules. Different screens.</span></div>
+<div class="pair">
+ <div class="col"><div class="lbl2"><b>Jamie</b> · VIP, 6 orders · usually opens the specs</div>
+  <div class="mini"><header class="sh"><span class="logo">NORTHWIND</span><nav><span class="">New in</span><span class="">Men</span><span class="">Women</span><span class="vip">VIP weekend</span></nav>
+  <div class="r"><span>Orders</span><span>Jamie · VIP</span><span class="cart"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16l-1.5 12h-13z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>0</span></div></header>
+   <div class="mb">
+    <div class="ua"><span class="l">Looking for</span><span class="chip">Light jacket <span class="x">×</span></span><span class="chip">Spring travel <span class="x">×</span></span><span class="chip">Size M <small>your profile</small> <span class="x">×</span></span><span class="chip">Natural fabrics <small>your profile</small> <span class="x">×</span></span></div>
+    <h2>Side by side <span>sorted by weight</span><span class="uil" style="margin-left:auto">UI: compare_table</span></h2>
+    <div class="cmp"><table><tr><th></th><th class="best"><div class="art t-slate" style=""><svg><use href="#wind"/></svg></div><b>Packable windbreaker</b><small>recycled nylon</small></th><th><div class="art t-sand" style=""><svg><use href="#field"/></svg></div><b>Linen blend field jacket</b><small>linen, cotton</small></th><th><div class="art t-clay" style=""><svg><use href="#shirt"/></svg></div><b>Seersucker overshirt</b><small>cotton</small></th></tr><tr><td>Packed</td><td class="best">Into its own pocket</td><td>Folds flat</td><td>Folds flat</td></tr><tr><td>Weight, M</td><td class="best">190 g</td><td>340 g</td><td>360 g</td></tr><tr><td>Light rain</td><td class="best">Yes</td><td>No</td><td>No</td></tr><tr><td>Your price</td><td class="best"><span class="price"><b>$71.20</b><s>$89</s></span></td><td><span class="price"><b>$102.40</b><s>$128</s></span></td><td><span class="price"><b>$67.15</b><s>$79</s></span></td></tr></table></div>
+    <div class="why"><svg class="i" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Shown as a table because you compare specs. Say “show photos” to change it.</div>
+   </div></div></div>
+ <div class="col"><div class="lbl2"><b>Mina</b> · first visit · no history yet</div>
+  <div class="mini"><header class="sh"><span class="logo">NORTHWIND</span><nav><span class="vip">New in</span><span class="">Men</span><span class="">Women</span><span class="">VIP weekend</span></nav>
+  <div class="r"><span>Orders</span><span>Sign in</span><span class="cart"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16l-1.5 12h-13z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>0</span></div></header>
+   <div class="mb">
+    <div class="ua"><span class="l">Looking for</span><span class="chip">Light jacket <span class="x">×</span></span><span class="chip">Spring travel <span class="x">×</span></span><span class="chip" style="border-style:dashed">+ Your size</span></div>
+    <h2>Four ways to wear it <span>a few looks to start</span><span class="uil" style="margin-left:auto">UI: look_gallery</span></h2>
+    <div class="gal"><div class="lk"><div class="art t-slate" style=""><svg><use href="#wind"/></svg></div><b>Packable windbreaker</b><span>$89</span><small>Over a tee for windy days</small></div><div class="lk"><div class="art t-sand" style=""><svg><use href="#field"/></svg></div><b>Linen blend field jacket</b><span>$128</span><small>With chinos, sleeves rolled</small></div><div class="lk"><div class="art t-clay" style=""><svg><use href="#shirt"/></svg></div><b>Seersucker overshirt</b><span>$79</span><small>Open, as a light layer</small></div><div class="lk"><div class="art t-olive" style=""><svg><use href="#chore"/></svg></div><b>Chore coat</b><span>$142</span><small>Boxy fit, goes with denim</small></div></div>
+    <div class="why"><svg class="i" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>No history yet, so photos first. Say “compare them” for a table.</div>
+   </div></div></div>
+</div>
+</body></html>

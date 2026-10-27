@@ -99,7 +99,7 @@ Numbers will be added here once measured.
               Commerce back-end services
 ```
 
-Design details: [docs/design.md](docs/design.md). Research (what AI-native commerce means, who else is building it, with source captures): [docs/research.md](docs/research.md). UI mockups: [design/mockups](design/mockups).
+Design details: [docs/design.md](docs/design.md). Research (what AI-native commerce means, who else is building it, with source captures): [docs/research.md](docs/research.md). UI mockups: [design/mockups](design/mockups), layout options and UI per intent: [design/options](design/options), storefront plan: [design/storefront](design/storefront).
 
 ## Getting started
 

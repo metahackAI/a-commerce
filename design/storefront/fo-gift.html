@@ -1,0 +1,50 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Storefront · gift</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="fo.css"><style>
+body{display:flex;flex-direction:column;height:100vh}
+.wrap2{flex:1;display:grid;grid-template-columns:380px minmax(0,1fr);min-height:0}
+.uil{font-family:var(--mono);font-size:11px;color:var(--mute);border:1px solid var(--line);border-radius:4px;padding:0 6px;font-weight:400}
+.att{display:flex;align-items:center;gap:8px;margin-top:8px}
+.att .art{width:46px;height:46px;border-radius:7px}
+.box{border:1px solid var(--line);border-radius:var(--r)}
+.bh{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line2);font-size:13px;background:var(--fill2)}
+.bh b{font-weight:600}.bh .r{margin-left:auto;color:var(--mute);font-size:12.5px}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:7px 12px;padding:12px 14px;font-size:13px}
+.kv dt{color:var(--mute)}
+.why{font-size:12px;color:var(--mute);display:flex;gap:6px;align-items:center}
+.why svg.i{width:13px;height:13px}
+
+.canvas{gap:16px}
+.gs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.g{border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.g.on{border-color:var(--ink)}
+.g .art{width:100%;aspect-ratio:4/3}
+.g>b{font-weight:600;font-size:14px}
+.g .price small{display:inline;margin-left:6px}
+.g span{font-size:12.5px;color:var(--ink2);flex:1}
+.two3{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.foot2{display:flex;align-items:center;gap:12px;border-top:1px solid var(--line);padding-top:14px}
+.foot2 .btn{margin-left:auto;padding:9px 18px}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<symbol id="field" viewBox="0 0 120 140"><path fill="currentColor" d="M42 14 60 24 78 14 100 26 110 94 96 97 92 54 91 130H29L28 54 24 97 10 94 20 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M42 14 51 32 60 24 69 32 78 14M60 24V130"/><rect x="36" y="58" width="16" height="15" rx="1.5"/><rect x="68" y="58" width="16" height="15" rx="1.5"/><rect x="35" y="92" width="18" height="18" rx="1.5"/><rect x="67" y="92" width="18" height="18" rx="1.5"/></g></symbol>
+<symbol id="wind" viewBox="0 0 120 140"><path fill="currentColor" d="M44 18Q60-2 76 18L100 28 110 94 96 97 92 56 91 126H29L28 56 24 97 10 94 20 28Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M48 22Q60 10 72 22M60 24V72M38 92H82L86 114H34Z"/><path d="M29 120H91" stroke-dasharray="3 3"/></g></symbol>
+<symbol id="shirt" viewBox="0 0 120 140"><path fill="currentColor" d="M44 14 60 22 76 14 98 26 106 70 94 73 91 52 90 126H30L29 52 26 73 14 70 22 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M44 14 53 34 60 22 67 34 76 14M60 26V126"/><rect x="67" y="44" width="14" height="14" rx="1.5"/></g><g fill="#000" fill-opacity=".18"><circle cx="63" cy="42" r="1.6"/><circle cx="63" cy="60" r="1.6"/><circle cx="63" cy="78" r="1.6"/><circle cx="63" cy="96" r="1.6"/><circle cx="63" cy="114" r="1.6"/></g></symbol>
+<symbol id="chore" viewBox="0 0 120 140"><path fill="currentColor" d="M42 14 60 24 78 14 100 26 110 96 96 99 92 54 92 134H28L28 54 24 99 10 96 20 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M42 14 49 38 60 24 71 38 78 14M60 24V134"/><rect x="66" y="48" width="15" height="15" rx="1.5"/><rect x="34" y="94" width="20" height="21" rx="1.5"/><rect x="66" y="94" width="20" height="21" rx="1.5"/></g></symbol>
+<symbol id="parka" viewBox="0 0 120 140"><path fill="currentColor" d="M42 18Q60-4 78 18L100 28 110 100 96 103 92 58 93 138H27L28 58 24 103 10 100 20 28Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M46 22Q60 6 74 22M60 24V138M28 84H92"/><path d="M36 98H52V112H36ZM68 98H84V112H68Z"/></g></symbol>
+<symbol id="boot" viewBox="0 0 120 140"><path fill="currentColor" d="M38 22H74V84Q74 92 82 95L104 104Q112 108 112 118V124H22Q18 124 18 118L20 96Q22 88 30 84 38 80 38 70Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M46 26L52 66 58 26M22 114H112"/></g></symbol></defs></svg>
+
+<header class="sh"><span class="logo">NORTHWIND</span><nav><span class="">New in</span><span class="">Men</span><span class="">Women</span><span class="vip">VIP weekend</span></nav>
+  <div class="r"><span>Orders</span><span>Jamie · VIP</span><span class="cart"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16l-1.5 12h-13z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>0</span></div></header><div class="wrap2"><section class="conv"><div class="msgs"><div class="u">A gift for my dad. He hikes a lot. Under $100, and it has to arrive by Nov 14.</div><div class="a"><div class="who"><span class="mark">N</span>Northwind</div>Here are three that hikers keep using. I won't save any of this to your profile, since it's about your dad, not you.</div><div class="u">He's about my size, maybe a bit bigger.</div><div class="a"><div class="who"><span class="mark">N</span>Northwind</div>Then L. If it doesn't fit he can exchange it himself with the gift receipt, no need to involve you.</div></div>
+  <div class="cfoot"><div class="composer"><div class="ph" style="min-height:30px">Ask about gifts, sizes, delivery…</div>
+  <div class="cbar"><span class="pill"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg>Photo</span><span class="pill"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Voice</span><button class="send"><svg class="i" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div></div></div></section><section class="canvas">
+ <div class="ua"><span class="l">Looking for</span><span class="chip">Gift <span class="x">×</span></span><span class="chip">Hiking <span class="x">×</span></span><span class="chip">Under $100 <span class="x">×</span></span><span class="chip">Arrives by Nov 14 <span class="x">×</span></span><span class="chip">Size L <small>his</small> <span class="x">×</span></span><span class="uil" style="margin-left:auto">UI: gift_picker</span></div>
+ <h2>Three picks for a hiker</h2>
+ <div class="gs"><div class="g on"><div class="art t-slate" style=""><svg><use href="#wind"/></svg></div><b>Packable windbreaker</b><div class="price"><b>$71.20</b><s>$89</s><small>VIP weekend price</small></div><span>Packs into its own pocket, handles light rain</span><button class="btn dark sm">Chosen · L</button></div><div class="g"><div class="art t-olive" style=""><svg><use href="#chore"/></svg></div><b>Fleece half-zip</b><div class="price"><b>$84.00</b></div><span>Warm layer for cold starts, fits under a shell</span><button class="btn sm">Choose</button></div><div class="g"><div class="art t-navy" style=""><svg><use href="#shirt"/></svg></div><b>Merino trail tee</b><div class="price"><b>$58.00</b></div><span>Doesn't smell after a long day</span><button class="btn sm">Choose</button></div></div>
+ <div class="two3">
+  <div class="box"><div class="bh"><b>Gift options</b></div><dl class="kv"><dt>Wrap</dt><dd>Paper wrap and card, +$5.00</dd><dt>Card message</dt><dd>“For the next trail. Love, J.”</dd><dt>Receipt</dt><dd>Gift receipt, no prices shown</dd><dt>Exchange</dt><dd>He can swap the size until Dec 31</dd></dl></div>
+  <div class="box"><div class="bh"><b>Delivery</b></div><dl class="kv"><dt>To</dt><dd>Dad · 48 Pine Rd, Lakeview</dd><dt>Arrives</dt><dd>Tue Nov 10, four days early</dd><dt>Address</dt><dd>Used for this order only. <span class="mute">Save it?</span></dd><dt>Total</dt><dd><b>$76.20</b> <span class="mute">windbreaker $71.20 + wrap $5.00</span></dd></dl></div>
+ </div>
+ <div class="foot2"><span class="note">Northwind prepares the order. Only you can place it.</span><button class="btn dark">Review gift order · $76.20</button></div>
+</section></div>
+</body></html>
