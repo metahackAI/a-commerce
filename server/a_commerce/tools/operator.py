@@ -184,12 +184,16 @@ def loose_overrides(value):
         out, pending = [], None
         for x in value:
             if isinstance(x, str):
+                if pending is not None:
+                    raise ValueError(f"{pending!r} has no percent_off. To leave products out of the sale, use exclude")
                 pending = x
             elif isinstance(x, dict) and "product_id" not in x and pending is not None:
                 out.append({"product_id": pending, **x})
                 pending = None
             else:
                 out.append(x)
+        if pending is not None:
+            raise ValueError(f"{pending!r} has no percent_off. To leave products out of the sale, use exclude")
         return out
     return value
 

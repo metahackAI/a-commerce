@@ -14,7 +14,7 @@ from .db import Store
 from .tools.base import REGISTRY, ToolError, loose_json, make_preview, normalize
 
 PAGE_MAX = 20
-GRADES = {"G01": "vip", "G02": "gold", "G03": "member"}
+GRADES = {"G00": "everyone", "G01": "vip", "G02": "gold", "G03": "member"}
 PROMO_TYPES = {"T01": "Amount off", "T02": "Free shipping", "T03": "Rate off", "T04": "Bundle", "T05": "Coupon"}
 
 

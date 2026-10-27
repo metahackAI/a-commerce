@@ -77,11 +77,11 @@ First measurements, with a stand-in model (details and limits in [eval/README.md
 
 | Model | Demo request, first message | Our tools: tasks passed | Screen-shaped API: tasks passed |
 |---|---|---|---|
-| Llama 3.2 3B (local) | 3 of 3 runs right | 2 of 3 (20 of 21 criteria, 0 errors) | 0 of 3 (3 errors per task) |
+| Llama 3.2 3B (local) | 3 of 3 runs right | 3 of 6 (38 of 42 criteria, 0.2 errors a task) | 0 of 6 (3.5 errors a task) |
 | Muse Glimmer 30B | pending keys | pending | pending |
 | Muse Spark Open | pending keys | pending | pending |
 
-These are early numbers: one run per task at temperature 0, tasks written by us, and a 3B stand-in. The 3B model still fails the revision step ("Drop the low-stock ones…"), which is the step designed for the planner.
+These are early numbers: one run per task at temperature 0, six tasks written by us (three of them after the tools were tuned), and a 3B stand-in. The 3B model still fails the revision step ("Drop the low-stock ones…"), which is the step designed for the planner.
 
 ## Architecture
 
