@@ -17,3 +17,9 @@
 .fo .list small { display: block; color: var(--mute); font-size: 12px; }
 .fo .btn:disabled, .fo .send:disabled { opacity: .45; }
 .bo .demo a.pill { text-decoration: none; color: var(--ink2); }
+.fo .opts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fo .opt{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;text-align:left;display:flex;flex-direction:column;gap:8px;background:#fff}
+.fo .opt.on{border-color:var(--ink);outline:1px solid var(--ink)}
+.fo .opt b{font-weight:600}
+.fo .opt dl{display:grid;grid-template-columns:96px 1fr;gap:4px 8px;font-size:12.5px}
+.fo .opt dt{color:var(--mute)}

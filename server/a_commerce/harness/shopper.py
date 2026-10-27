@@ -44,6 +44,18 @@ SHOW_CART = {"type": "function", "function": {
     "parameters": {"type": "object", "required": ["reply"], "properties": {"reply": {"type": "string", "description": "One sentence."}}},
 }}
 
+SHOW_RETURN = {"type": "function", "function": {
+    "name": "show_return_options",
+    "description": "Show the shopper what they can do about an order they want to return: a new item or a refund. "
+                   "The shopper picks and sends it themselves.",
+    "parameters": {"type": "object", "required": ["order_id", "reason", "reply"], "properties": {
+        "order_id": {"type": "string", "description": "Order number from get_my_orders, e.g. #20402."},
+        "reason": {"type": "string", "enum": ["defect", "damaged", "too_small", "too_large", "color", "changed_mind"]},
+        "chosen": {"type": "string", "enum": ["replacement", "refund"], "description": "Preselect what the shopper asked for."},
+        "reply": {"type": "string", "description": "One or two sentences to the shopper."},
+    }},
+}}
+
 SYSTEM = """You are the shopping assistant for Northwind, talking with {who}. Store time is {now}.
 What the store knows about this shopper: {profile}
 - Find products with the tools, then show them with show_products. Never write prices yourself.
@@ -55,10 +67,10 @@ What the store knows about this shopper: {profile}
 def run_shopper(store: Store, message: str, model: Model, context: dict, history: list[dict] | None = None) -> dict:
     profile = call(store, "get_my_profile", {}, actor="shopper-agent", context=context)
     tools = [REGISTRY[t.name].definition() for t in search(message, scope="shopper")]
-    for always in ("get_my_profile", "search_products", "compare_products", "update_my_preferences", "add_to_cart"):
+    for always in ("get_my_profile", "search_products", "compare_products", "update_my_preferences", "add_to_cart", "get_my_orders"):
         if always not in [t["function"]["name"] for t in tools]:
             tools.append(REGISTRY[always].definition())
-    tools += [SHOW_PRODUCTS, SHOW_CART]
+    tools += [SHOW_PRODUCTS, SHOW_CART, SHOW_RETURN]
     hist = "Earlier in this conversation: " + json.dumps(history[-6:]) if history else ""
     messages = [
         {"role": "system", "content": SYSTEM.format(who=profile.get("name") or "a first-time visitor",
@@ -81,6 +93,16 @@ def run_shopper(store: Store, message: str, model: Model, context: dict, history
             try:
                 if c.name == "show_products":
                     blocks += products_blocks(store, context, c.arguments)
+                    text = c.arguments.get("reply", text)
+                    out = {"ok": True}
+                elif c.name == "show_return_options":
+                    opts = call(store, "get_return_options", {"order_id": c.arguments.get("order_id"), "reason": c.arguments.get("reason")},
+                                actor="harness", context=context)
+                    if "error" in opts:
+                        raise ToolError(opts["error"]["code"], opts["error"]["message"], opts["error"]["next_tool"])
+                    opts["chosen"] = c.arguments.get("chosen")
+                    blocks.append({"type": "ui", "ui": "return_options", "schema": 1, "block_id": f"ret_{opts['order']['id']}",
+                                   "data": opts, "actions": [{"intent": "send_return_request", "label": "Send request", "by": "shopper"}]})
                     text = c.arguments.get("reply", text)
                     out = {"ok": True}
                 elif c.name == "show_cart":

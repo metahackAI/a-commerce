@@ -31,6 +31,8 @@ class ScriptedOperator:
 
     # -- the plan --------------------------------------------------------------
     def _next(self, system: str, request: str, results: list[dict]) -> list[tuple[str, dict]]:
+        if "return" in request.lower() and "You are revising" not in system:
+            return self._returns(request, results)
         revising = "You are revising change set" in system
         sale = self._sale_args(system, request, revising)
         if sale is None:
@@ -64,6 +66,18 @@ class ScriptedOperator:
                 "title": f"{sale['audience'].upper()} weekend sale: {self._category_name(sale['category']).lower()}",
                 "preview_ids": [r["preview_id"] for r in previews],
                 "reply": self._reply(previews, sale, revising)})]
+        return []
+
+    def _returns(self, request: str, results: list[dict]) -> list[tuple[str, dict]]:
+        m = re.search(r"\$\s?(\d+)", request)
+        if not results:
+            return [("plan_return_review", {"min_amount": float(m.group(1)) if m else 200})]
+        if len(results) == 1 and "preview_ids" in results[0]:
+            r = results[0]
+            return [("propose_change_set", {
+                "title": f"Returns over ${int(float(m.group(1))) if m else 200}", "preview_ids": r["preview_ids"],
+                "reply": f"{r['waiting']} return requests over ${int(float(m.group(1))) if m else 200} are waiting. The refund policy "
+                         f"says a person approves refunds above $200, so I sorted them by what the policy says instead of refunding."})]
         return []
 
     def _sale_args(self, system: str, request: str, revising: bool) -> dict | None:
@@ -172,6 +186,15 @@ class ScriptedShopper:
 
     def _calls(self, text: str, prefs: dict, shown: list[str], profile: dict) -> list[tuple[str, dict]]:
         search = ("search_products", {"category": "summer_outerwear", "fields": ["name", "weight_g", "fabric", "stock"], "limit": 50})
+        if any(w in text for w in ("coming apart", "broke", "broken", "defect", "falling apart")):
+            return [("get_my_orders", {}),
+                    ("show_return_options", {"order_id": "#20402", "reason": "defect", "reply":
+                        "Sorry about that. It looks like a defect, so you can have a new pair or a full refund, and return "
+                        "shipping is free either way. Refunds over $200 are confirmed by a person at Northwind, usually within "
+                        "one business day. A new pair doesn't wait."})]
+        if text.startswith("refund") or "refund, please" in text:
+            return [("show_return_options", {"order_id": "#20402", "reason": "defect", "chosen": "refund",
+                                             "reply": "OK. Check the details on the right and send it. Nothing is sent until you do."})]
         if any(w in text for w in ("packs smallest", "bulky", "smallest")):
             return [("update_my_preferences", {"add": [{"key": "travel", "value": "Weight and packed size matter to you when traveling"}]}),
                     ("show_products", {"view": "compare_table", "product_ids": shown, "sort": "weight",

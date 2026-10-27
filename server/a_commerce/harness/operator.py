@@ -155,9 +155,9 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
     if corrections:
         event["corrected"] = {"said": said, "issues": corrections}
     events.append(event)
-    events.append({"type": "ui", "ui": "change_set", "schema": 1, "block_id": f"cs_{change_set_id}_v{view['version']}",
+    events.append({"type": "ui", "ui": view.get("kind", "change_set"), "schema": 1, "block_id": f"cs_{change_set_id}_v{view['version']}",
                    "title": view["title"], "data": view,
-                   "actions": [{"intent": "approve_change_set", "label": "Approve and run", "by": "operator",
+                   "actions": [{"intent": "approve_change_set", "label": view.get("approve_label", "Approve and run"), "by": "operator",
                                 "args": {"change_set_id": change_set_id, "version": view["version"]}}]})
     return {"ok": True, "events": events, "change_set_id": change_set_id}
 
@@ -212,7 +212,7 @@ def compact(out: dict, limit: int = RESULT_CHARS) -> str:
 def _tools_for(request: str) -> list[dict]:
     picked = search(request, scope="operator")
     names = [t.name for t in picked]
-    for always in ("plan_sale", "get_policy", "search_products"):
+    for always in ("plan_sale", "plan_return_review", "get_policy", "search_products"):
         if always not in names:
             names.append(always)
     return [REGISTRY[n].definition() for n in names] + [PROPOSE]

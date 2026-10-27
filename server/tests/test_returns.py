@@ -95,3 +95,28 @@ def test_alex_over_http():
     assert again.status_code == 409 and again.json()["detail"]["code"] == "already_sent"
     other = client.post("/returns", json={"order_id": "#20402"}, headers={"X-Shopper": "jamie"})
     assert other.status_code == 409 and other.json()["detail"]["code"] == "unknown_order"
+
+
+def test_alex_and_the_operator_through_the_agents():
+    client = TestClient(app)
+    client.post("/demo/reset")
+    client.post("/demo/clock", json={"at": "2026-11-06T09:30"})
+    events = client.post("/fo/chat", json={"message": "The sole on my chelsea boots is coming apart after a week."},
+                         headers={"X-Shopper": "alex"}).json()["events"]
+    block = next(e for e in events if e.get("ui") == "return_options")
+    assert [o["kind"] for o in block["data"]["options"]] == ["replacement", "refund"]
+    events = client.post("/fo/chat", json={"message": "Refund, please. I'll pick a different pair later."},
+                         headers={"X-Shopper": "alex"}).json()["events"]
+    assert events[0]["text"] == "OK. Check the details on the right and send it. Nothing is sent until you do."
+    assert next(e for e in events if e.get("ui") == "return_options")["data"]["chosen"] == "refund"
+    # Nothing was sent by the agent.
+    assert client.post("/tools/search_return_requests", json={"args": {"min_amount": 200}}).json()["total"] == 11
+    client.post("/returns", json={"order_id": "#20402", "option": "refund", "reason": "defect", "photos": 2}, headers={"X-Shopper": "alex"})
+
+    client.post("/demo/clock", json={"at": "2026-11-06T10:40"})
+    out = client.post("/bo/chat", json={"request": "Check returns waiting over $200"}).json()
+    step, block = out["events"]
+    assert step["text"].startswith("12 return requests over $200 are waiting.") and "corrected" not in step
+    assert block["ui"] == "refund_review" and block["data"]["summary"]["refund"] == {"count": 9, "amount": 2463.00}
+    live = client.post(f"/change-sets/{out['change_set_id']}/approve", json={"version": 1}).json()
+    assert live["status"] == "live" and live["verification"]["all_match"]

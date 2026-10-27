@@ -27,11 +27,25 @@ export type ChangeSetView = {
   after_approval: { tools: string[]; undo_until: string | null };
   verification: { all_match: boolean; changes: { tool: string; matches: boolean; detail: string }[] } | null;
 };
+export type RefundRow = {
+  return_request_id: string; order_id: string; item: string; amount: number; reason: string; evidence: string;
+  suggested: "refund" | "ask_for_photos" | "decline"; rule: string;
+};
+export type RefundView = {
+  kind: "refund_review"; id: number; version: number; status: ChangeSetView["status"]; title: string; request: string[];
+  summary: { waiting: number; refund: { count: number; amount: number }; ask_for_photos: number; decline: number };
+  rows: RefundRow[]; checks: Check[]; checks_passed: number; checks_total: number;
+  messages: { order_id: string; kind: string; text: string }[]; approve_label: string;
+  after_approval: { tools: string[]; undo_until: null; text: string };
+  verification: ChangeSetView["verification"];
+};
+export type AnyView = (ChangeSetView & { kind?: undefined }) | RefundView;
+
 export type AgentStep = {
   type: "agent_step"; model: string; tool_calls: number; duration_ms: number; read_only: boolean; text: string;
   corrected?: { said: string; issues: string[] }; // the model's reply contradicted the change set; text is built from it instead
 };
-export type UiBlock = { type: "ui"; ui: string; block_id: string; title: string; data: ChangeSetView };
+export type UiBlock = { type: "ui"; ui: string; block_id: string; title: string; data: AnyView };
 export type Handoff = { type: "handoff"; from: string; to: string; reason: string };
 export type Event = AgentStep | UiBlock | Handoff;
 export type ChatResult = { ok: boolean; events: Event[]; change_set_id: number | null; error?: string };
@@ -59,8 +73,8 @@ export const api = {
   setClock: (at: string) => post<{ clock: string }>("/demo/clock", { at }),
   reset: () => post<{ clock: string }>("/demo/reset", {}),
   operatorChat: (request: string, change_set_id: number | null) => post<ChatResult>("/bo/chat", { request, change_set_id }),
-  approve: (id: number, version: number) => post<ChangeSetView>(`/change-sets/${id}/approve`, { version }),
-  undo: (id: number) => post<ChangeSetView>(`/change-sets/${id}/undo`, {}),
+  approve: (id: number, version: number) => post<AnyView>(`/change-sets/${id}/approve`, { version }),
+  undo: (id: number) => post<AnyView>(`/change-sets/${id}/undo`, {}),
 };
 
 // -- storefront --------------------------------------------------------------
@@ -75,12 +89,20 @@ export type CartData = {
   subtotal: number; benefit: { label: string; amount: number; coupon: string | null } | null; shipping: number; total: number;
   ship_to: string; arrives: string; pay_with: string; notice: string;
 };
+export type ReturnOptionsData = {
+  order: { id: string; delivered: string; item: string; variant: string; amount: number };
+  reason: string; chosen: "replacement" | "refund" | null; note: string;
+  options: ({ kind: "replacement"; title: string; ships: string; arrives: string; you_pay: number }
+    | { kind: "refund"; title: string; amount: number; to: string; confirmed_by: string; money_back: string })[];
+  send_back: { cost: string; pickup: string };
+};
 export type FoBlock =
   | { type: "ui"; ui: "understood_chips"; data: { chips: Chip[] } }
   | { type: "ui"; ui: "compare_table"; why: string; data: CompareData }
   | { type: "ui"; ui: "look_gallery" | "product_list"; why: string; data: GalleryData }
   | { type: "ui"; ui: "cart"; data: CartData }
-  | { type: "ui"; ui: "memory_note"; data: { memory_id: string; text: string } };
+  | { type: "ui"; ui: "memory_note"; data: { memory_id: string; text: string } }
+  | { type: "ui"; ui: "return_options"; data: ReturnOptionsData };
 export type FoEvent = AgentStep | FoBlock;
 export type Profile = { name: string | null; tier: string | null; preferences: { id: string; key: string; value: string; source: string }[] };
 
@@ -92,8 +114,10 @@ export const shop = {
   profile: (shopper: Shopper) => req<Profile>("/fo/profile", { headers: as(shopper) }),
   placeOrder: (shopper: Shopper, order_preview_id: string) =>
     req<{ order_id: string; total: number; coupon: string | null }>("/orders", { method: "POST", headers: as(shopper), body: JSON.stringify({ order_preview_id }) }),
+  sendReturn: (shopper: Shopper, body: { order_id: string; option: string; reason: string; photos: number }) =>
+    req<{ return_request_id: string; status: string; next: string }>("/returns", { method: "POST", headers: as(shopper), body: JSON.stringify(body) }),
   undoMemory: (shopper: Shopper, id: string) =>
     req<{ ok: boolean }>(`/memories/${id}/undo`, { method: "POST", headers: as(shopper) }),
 };
 
-export const usd = (n: number) => `$${n.toFixed(2)}`;
+export const usd = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

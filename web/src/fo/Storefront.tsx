@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import type { AgentStep, CartData, Chip, FoBlock, Profile, Shopper } from "../api";
+import type { AgentStep, CartData, Chip, FoBlock, Profile, ReturnOptionsData, Shopper } from "../api";
 import { api, shop } from "../api";
-import { Cart, Chips, CompareTable, Gallery } from "./blocks";
+import { Cart, Chips, CompareTable, Gallery, ReturnOptions } from "./blocks";
 
 type Msg =
   | { role: "user"; text: string }
@@ -11,12 +11,11 @@ type Msg =
 type Main = Extract<FoBlock, { ui: "compare_table" | "look_gallery" | "product_list" }>;
 
 const WHO: Record<Shopper, string> = { jamie: "Jamie · VIP", mina: "Mina · first visit", alex: "Alex" };
-const SUGGESTIONS = [
-  "I need a light jacket for spring trips. Not too warm, and it has to fit in a carry-on.",
-  "Which one packs smallest? I hate bulky bags.",
-  "The windbreaker. Same size as last time.",
-  "Less text. Just show me bigger photos.",
-];
+const FIRST: Record<Shopper, string> = {
+  jamie: "I need a light jacket for spring trips. Not too warm, and it has to fit in a carry-on.",
+  mina: "I need a light jacket for spring trips.",
+  alex: "The sole on my chelsea boots is coming apart after a week.",
+};
 
 export function Storefront({ shopper }: { shopper: Shopper }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -24,6 +23,8 @@ export function Storefront({ shopper }: { shopper: Shopper }) {
   const [main, setMain] = useState<Main | null>(null);
   const [cart, setCart] = useState<CartData | null>(null);
   const [placed, setPlaced] = useState<string | null>(null);
+  const [ret, setRet] = useState<ReturnOptionsData | null>(null);
+  const [retSent, setRetSent] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -53,6 +54,7 @@ export function Storefront({ shopper }: { shopper: Shopper }) {
         if (b.ui === "understood_chips") setChips(b.data.chips);
         if (b.ui === "compare_table" || b.ui === "look_gallery" || b.ui === "product_list") setMain(b);
         if (b.ui === "cart") { setCart(b.data); setPlaced(null); }
+        if (b.ui === "return_options") setRet(b.data);
       }
       setMsgs((m) => [...m, { role: "agent", text: step?.text ?? "", model: step?.model ?? "", memories }]);
       if (memories.length) refreshProfile();
@@ -67,6 +69,19 @@ export function Storefront({ shopper }: { shopper: Shopper }) {
     await shop.undoMemory(shopper, id);
     setMsgs((m) => m.map((x) => (x.role === "agent" ? { ...x, memories: x.memories.map((mm) => (mm.memory_id === id ? { ...mm, undone: true } : mm)) } : x)));
     refreshProfile();
+  }
+
+  async function sendReturn(option: "replacement" | "refund") {
+    if (!ret) return;
+    setBusy(true);
+    try {
+      const r = await shop.sendReturn(shopper, { order_id: ret.order.id, option, reason: ret.reason, photos: 2 });
+      setRetSent(r.next);
+    } catch (e) {
+      setMsgs((m) => [...m, { role: "system", text: e instanceof Error ? e.message : String(e) }]);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function placeOrder() {
@@ -102,7 +117,7 @@ export function Storefront({ shopper }: { shopper: Shopper }) {
             {msgs.length === 0 && (
               <div className="empty">
                 <p className="mute">Ask in your own words. The page changes to fit what you ask.</p>
-                {SUGGESTIONS.slice(0, 1).map((s) => <button key={s} className="chip" disabled={busy} onClick={() => send(s)}>{s}</button>)}
+                <button className="chip" disabled={busy} onClick={() => send(FIRST[shopper])}>{FIRST[shopper]}</button>
               </div>
             )}
             {msgs.map((m, i) =>
@@ -136,7 +151,8 @@ export function Storefront({ shopper }: { shopper: Shopper }) {
           {chips.length > 0 && <Chips chips={chips} onRemove={(l) => setChips((c) => c.filter((x) => x.label !== l))} />}
           {main?.ui === "compare_table" && <CompareTable data={main.data} why={main.why} />}
           {(main?.ui === "look_gallery" || main?.ui === "product_list") && <Gallery data={main.data} why={main.why} big={main.ui === "look_gallery"} />}
-          {!main && <p className="mute">What you ask for appears here, laid out for you.</p>}
+          {ret && <ReturnOptions data={ret} sent={retSent} busy={busy} onSend={sendReturn} />}
+          {!main && !ret && <p className="mute">What you ask for appears here, laid out for you.</p>}
         </section>
 
         <aside className="cartp">

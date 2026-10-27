@@ -45,3 +45,14 @@ def test_summary_is_built_from_the_change_set(store):
         "at 20% off. Coupon VIPWEEKEND20 for 1,284 VIP members. Main page hero, Nov 7–8. 4 of 6 checks pass. "
         "Needs your call: no price below the floor (Seersucker overshirt would be $63.20, floor $64.40); "
         "enough stock (Under 10 units: Cotton chore coat (7 left), Light rain parka (4 left)).")
+
+
+def test_refund_review_replies_are_checked(store):
+    store.set_clock("2026-11-06T10:40")
+    out = call(store, "plan_return_review", {"min_amount": 200})
+    view = changesets.view(store, changesets.create(store, "Returns over $200", "Check returns", out["preview_ids"]))
+    assert check_reply("I refunded all 11 requests. 11 refunds have been sent, $3,000.00 in total.", view) == [
+        "It said refunds or messages went out, but nothing goes out until you approve.",
+        "It said 11 refunds, but the policy allows 8.",
+        "It said $3,000.00, which is not an amount in this review."]
+    assert summary(view).startswith("Change set #1042: 11 returns waiting. The policy allows 8 refunds ($2,151.00)")

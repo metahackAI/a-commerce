@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { CartData, Chip, CompareData, GalleryData, Price } from "../api";
 import { usd } from "../api";
 
@@ -111,6 +112,40 @@ export function Cart({ data, placed, busy, onPlace }: { data: CartData; placed: 
         <button className="btn dark wide" disabled={busy} onClick={onPlace}>Place order · {usd(data.total)}</button>
       )}
       <p className="note">{data.notice}</p>
+    </div>
+  );
+}
+
+export function ReturnOptions({ data, sent, busy, onSend }: {
+  data: import("../api").ReturnOptionsData; sent: string | null; busy: boolean; onSend: (option: "replacement" | "refund") => void;
+}) {
+  const [choice, setChoice] = useState<"replacement" | "refund">(data.chosen ?? "replacement");
+  useEffect(() => { if (data.chosen) setChoice(data.chosen); }, [data.chosen]);
+  return (
+    <div data-testid="return_options" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <h2>Order {data.order.id}<span>delivered {data.order.delivered}</span></h2>
+      <div className="line"><div className={`art ${tone(data.order.item)}`} /><div><b>{data.order.item}</b><small>{data.order.variant} · {usd(data.order.amount)}</small></div></div>
+      <div className="opts">
+        {data.options.map((o) => (
+          <button key={o.kind} className={`opt ${choice === o.kind ? "on" : ""}`} onClick={() => setChoice(o.kind)} disabled={!!sent}>
+            <b>{o.title}</b>
+            {o.kind === "replacement" ? (
+              <dl><dt>Ships</dt><dd>{o.ships}</dd><dt>Arrives</dt><dd>{o.arrives}</dd><dt>You pay</dt><dd>Nothing</dd></dl>
+            ) : (
+              <dl><dt>Amount</dt><dd>{usd(o.amount)} to {o.to}</dd><dt>Confirmed by</dt><dd>{o.confirmed_by}</dd><dt>Money back</dt><dd>{o.money_back}</dd></dl>
+            )}
+          </button>
+        ))}
+      </div>
+      <div className="note">Send the item back: {data.send_back.cost}. Pickup {data.send_back.pickup}.</div>
+      {sent ? (
+        <div className="tag ok" data-testid="return-sent">Sent. {sent}</div>
+      ) : (
+        <button className="btn dark wide" disabled={busy} onClick={() => onSend(choice)}>
+          {choice === "refund" ? "Send refund request" : "Send exchange request"}
+        </button>
+      )}
+      <p className="note">Your photos and this conversation go with the request. Nothing is sent until you tap the button.</p>
     </div>
   );
 }

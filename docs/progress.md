@@ -22,13 +22,13 @@ Run everything with `make check`: server tests, web build, and the browser test 
 | Real open model | Llama 3.2 3B (Meta open weights, local) gets the first message right in 3 of 3 runs: 42 products at 20%, coupon, VIP banner, low stock and the overshirt floor flagged. The revision is 0 of 3. Ten failure types found and fixed in tools and harness (`eval/README.md`) | `make try-model RUNS=3`; `test_harness.py::test_plan_sale_*`, `::test_a_model_that_times_out_*` |
 | Replies checked against the change set | Claims that it is live before approval, that low-stock products were left out when they were not, wrong product counts, wrong per-product rates, and "all checks pass" are caught; the operator sees a summary built from the change set and a note with the correction. Correct replies pass through unchanged | `test_grounding.py` (with the real 3B replies); `e2e/back-office.spec.ts` (note shown); real 3B run in `eval/results/` |
 | Returns (server) | Alex sees "New pair, same size" (6 in stock, arrives Tue Nov 10) or "Full refund" $312.00 to card 0937 confirmed by a person; only Alex's own Send creates the request. `plan_return_review` sorts the 12 waiting returns over $200 by policy: 9 refunds $2,463.00, 2 photo requests, 1 decline (#20290, day 39); checks 12 of 12 payments, 3 coupons, 11 of 12 in window, one repeat returner (#20431). One approval refunds and sends, reads each back; refunds cannot be undone | `test_returns.py` |
+| Returns on screen | Alex on `/fo?shopper=alex`: the agent shows `return_options` (new pair or full refund), "Refund, please." preselects the refund, Alex taps Send. The operator asks "Check returns waiting over $200": the agent calls `plan_return_review` and the `refund_review` block shows 12 requests, 9 · $2,463.00, the policy per row, 1 check to look at, and the three messages; one approval refunds and sends, then every order is read back | `e2e/returns.spec.ts`; `test_returns.py::test_alex_and_the_operator_through_the_agents` |
 | HTTP | Tool definitions (every field described), shopper scope hides operator tools, change set and order over HTTP, action log | `test_api.py` |
 
 ## Not done yet (next loops, in order)
 
 1. **Run `make try-model RUNS=3` on Glimmer and Spark Open** as soon as keys exist. The 3B stand-in fails the revision; that step is meant for the planner.
-2. **Returns on screen**: `return_options` on the storefront for Alex and the `refund_review` block in the back office (the server side is done).
-3. P1: task list, evaluation against a screen-shaped facade.
+2. P1: task list, evaluation against a screen-shaped facade.
 
 ## Known gaps
 

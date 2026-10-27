@@ -18,8 +18,14 @@ COUNT = re.compile(r"\b(\d{1,4})\s+(prices|products now|products on sale|product
 CHECKS = re.compile(r"\ball\s+(\d+)\s+checks?\s+pass", re.I)
 
 
+REFUND_COUNT = re.compile(r"\b(\d{1,3})\s+refunds?\b", re.I)
+MONEY = re.compile(r"\$\s?([\d,]+\.\d{2})")
+
+
 def check_reply(text: str, view: dict) -> list[str]:
     """Contradictions between the reply and the change set, in words for the operator."""
+    if view.get("kind") == "refund_review":
+        return check_refund_reply(text, view)
     issues = []
     groups = {g["op"]: g for g in view["groups"]}
     rows = groups.get("update", {}).get("rows", [])
@@ -50,8 +56,36 @@ def check_reply(text: str, view: dict) -> list[str]:
     return issues
 
 
+def check_refund_reply(text: str, view: dict) -> list[str]:
+    issues = []
+    if view["status"] != "live" and re.search(r"\b(have been|has been|were|was)\s+(refunded|sent|issued)\b", text, re.I):
+        issues.append("It said refunds or messages went out, but nothing goes out until you approve.")
+    m = REFUND_COUNT.search(text)
+    if m and int(m.group(1)) != view["summary"]["refund"]["count"]:
+        issues.append(f"It said {m.group(1)} refunds, but the policy allows {view['summary']['refund']['count']}.")
+    amounts = [float(x.replace(",", "")) for x in MONEY.findall(text)]
+    rows = {r["amount"] for r in view["rows"]} | {view["summary"]["refund"]["amount"]}
+    wrong = [a for a in amounts if a not in rows]
+    if wrong:
+        issues.append(f"It said ${wrong[0]:,.2f}, which is not an amount in this review.")
+    return issues
+
+
+def refund_summary(view: dict) -> str:
+    s = view["summary"]
+    failing = [c for c in view["checks"] if not c["passed"]]
+    parts = [f"Change set #{view['id']}: {s['waiting']} returns waiting. The policy allows {s['refund']['count']} refunds "
+             f"(${s['refund']['amount']:,.2f}), asks for photos on {s['ask_for_photos']} and declines {s['decline']}. "
+             "Nothing is refunded or sent until you approve."]
+    if failing:
+        parts.append(f"{len(failing)} to look at: " + "; ".join(c["detail"] for c in failing) + ".")
+    return " ".join(parts)
+
+
 def summary(view: dict) -> str:
     """A reply built only from the change set."""
+    if view.get("kind") == "refund_review":
+        return refund_summary(view)
     groups = {g["op"]: g for g in view["groups"]}
     understood = {u["label"]: u for u in view["understood"]}
     parts = [f"Change set #{view['id']} v{view['version']} is ready for review. Nothing has changed in the store yet."]

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { AgentStep, ChangeSetView, Event } from "../api";
+import type { AgentStep, AnyView, Event } from "../api";
 import { api, ApiError } from "../api";
 import { ChangeSet } from "../blocks/ChangeSet";
+import { RefundReview } from "../blocks/RefundReview";
 
 type Msg =
   | { role: "user"; text: string; at: string }
@@ -9,13 +10,14 @@ type Msg =
   | { role: "system"; text: string };
 
 const SUGGESTION = "Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.";
+const SUGGESTION_RETURNS = "Check returns waiting over $200";
 const CLOCKS: [string, string][] = [["Fri Nov 6, 11:02", "2026-11-06T11:02"], ["Sat Nov 7, 10:00", "2026-11-07T10:00"], ["Tue Nov 10", "2026-11-10T09:00"]];
 
 const hhmm = (iso: string) => iso.slice(11, 16);
 
 export function BackOffice() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
-  const [view, setView] = useState<ChangeSetView | null>(null);
+  const [view, setView] = useState<AnyView | null>(null);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [clock, setClock] = useState("");
@@ -35,7 +37,9 @@ export function BackOffice() {
     setBusy(true);
     setMsgs((m) => [...m, { role: "user", text, at: clock }]);
     try {
-      const res = await api.operatorChat(text, view && view.status === "waiting_for_approval" ? view.id : null);
+      // A message about an open sale change set edits it; anything else starts a new task.
+      const editing = view && view.status === "waiting_for_approval" && view.kind !== "refund_review" && !/return|refund/i.test(text);
+      const res = await api.operatorChat(text, editing ? view.id : null);
       const step = res.events.find((e): e is AgentStep => e.type === "agent_step");
       const block = res.events.find((e: Event) => e.type === "ui");
       const handoff = res.events.find((e: Event) => e.type === "handoff");
@@ -52,7 +56,7 @@ export function BackOffice() {
     }
   }
 
-  async function act(fn: () => Promise<ChangeSetView>, note: (v: ChangeSetView) => string) {
+  async function act(fn: () => Promise<AnyView>, note: (v: AnyView) => string) {
     setBusy(true);
     try {
       const v = await fn();
@@ -126,6 +130,7 @@ export function BackOffice() {
             <div className="empty">
               <p className="mute">Tell the agent what the store should do. Nothing changes until you approve.</p>
               <button className="chip" disabled={busy} onClick={() => send(SUGGESTION)}>{SUGGESTION}</button>
+              <button className="chip" disabled={busy} onClick={() => send(SUGGESTION_RETURNS)}>{SUGGESTION_RETURNS}</button>
             </div>
           )}
           {msgs.map((m, i) =>
@@ -168,7 +173,12 @@ export function BackOffice() {
         </div>
       </section>
 
-      {view ? (
+      {view?.kind === "refund_review" ? (
+        <RefundReview view={view} busy={busy}
+          onApprove={() => act(() => api.approve(view.id, view.version), (v) => v.status === "live"
+            ? `Approved. ${v.kind === "refund_review" ? v.after_approval.text : ""}: every order read back and matches.`
+            : "Approved, but the read-back found a mismatch.")} />
+      ) : view ? (
         <ChangeSet view={view} busy={busy}
           onApprove={() => act(() => api.approve(view.id, view.version), (v) => v.status === "live"
             ? `Approved v${v.version}. Ran ${v.after_approval.tools.length} tools and read everything back: all match.`
