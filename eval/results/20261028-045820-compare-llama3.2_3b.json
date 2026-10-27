@@ -1,0 +1,822 @@
+[
+ {
+  "task": "vip_weekend",
+  "toolset": "a2api",
+  "model": "llama3.2:3b",
+  "passed": true,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "42 products in summer_outerwear",
+    true
+   ],
+   [
+    "at 20%",
+    true
+   ],
+   [
+    "for VIP tier",
+    true
+   ],
+   [
+    "on Nov 7\u20138",
+    true
+   ],
+   [
+    "coupon prepared",
+    true
+   ],
+   [
+    "banner prepared",
+    true
+   ]
+  ],
+  "tool_calls": 2,
+  "errors": 0,
+  "seconds": 12.5,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "vip",
+     "on_main_page": "true",
+     "period": "this_weekend",
+     "category": "summer outerwear",
+     "percent_off": "20"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": "['pv_1', 'pv_2', 'pv_3']",
+     "title": "VIP weekend sale: summer outerwear",
+     "reply": "Sale prices for vip, Nov 7 - Nov 8, Coupon VIPWEEKEND20 for 1,284 vip members, Hero slot, Nov 7\u20138, vip"
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "gold_next_weekend",
+  "toolset": "a2api",
+  "model": "llama3.2:3b",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "42 products in summer_outerwear",
+    true
+   ],
+   [
+    "at 10%",
+    true
+   ],
+   [
+    "for Gold tier",
+    true
+   ],
+   [
+    "on Nov 14\u201315",
+    false
+   ],
+   [
+    "coupon prepared",
+    true
+   ],
+   [
+    "banner not made",
+    true
+   ]
+  ],
+  "tool_calls": 2,
+  "errors": 0,
+  "seconds": 8.9,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "category": "summer outerwear",
+     "percent_off": "10",
+     "audience": "gold",
+     "ends_at": "next_7_days",
+     "overrides": "[\"prd_outerwear\"]"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": "['pv_1', 'pv_2']",
+     "title": "Gold sale: 10% off summer outerwear",
+     "reply": "Gold sale: 10% off summer outerwear next weekend. No banner."
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "everyone_shirts",
+  "toolset": "a2api",
+  "model": "llama3.2:3b",
+  "passed": true,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "1 products in shirts",
+    true
+   ],
+   [
+    "at 15%",
+    true
+   ],
+   [
+    "for Everyone tier",
+    true
+   ],
+   [
+    "on Nov 7\u20138",
+    true
+   ],
+   [
+    "coupon not made",
+    true
+   ],
+   [
+    "banner not made",
+    true
+   ]
+  ],
+  "tool_calls": 2,
+  "errors": 0,
+  "seconds": 10.4,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "percent_off": "15",
+     "period": "this_weekend",
+     "ends_at": "Sun 23:59",
+     "name": "Shirt sale: 15% off for everyone this weekend",
+     "min_stock": "null",
+     "category": "shirts",
+     "audience": "everyone",
+     "starts_at": "Sat 00:00",
+     "overrides": "[]",
+     "exclude": "[]",
+     "leave_out_low_stock": "false"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": "['pv_1']",
+     "reply": "The plan for a 15% sale on shirts for everyone this weekend has been created. However, the maximum discount allowed by policy is 20%, so this sale is slightly below that threshold.",
+     "title": "Shirt sale: 15% off for everyone this weekend"
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "vip_without_parka",
+  "toolset": "a2api",
+  "model": "llama3.2:3b",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "41 products in summer_outerwear without Light rain parka",
+    false
+   ],
+   [
+    "at 15%",
+    true
+   ],
+   [
+    "for VIP tier",
+    false
+   ],
+   [
+    "on Nov 7\u20138",
+    true
+   ],
+   [
+    "coupon prepared",
+    true
+   ],
+   [
+    "banner not made",
+    true
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 1,
+  "seconds": 9.3,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "category": "summer outerwear",
+     "percent_off": 15,
+     "audience": "gold",
+     "overrides": [
+      "prd_rainparka"
+     ]
+    },
+    "error": {
+     "code": "no_period",
+     "message": "Give period (e.g. this_weekend) or both starts_at and ends_at.",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "gold",
+     "category": "summer outerwear",
+     "overrides": [
+      "prd_rainparka"
+     ],
+     "percent_off": 15,
+     "period": "this_weekend"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": [
+      "pv_1",
+      "pv_2"
+     ],
+     "reply": "The sale applies to 42 summer outerwear products for gold VIP members, except for the rain parka, with a 15% discount. The sale will run from this weekend. Please approve the change set.",
+     "title": "VIP weekend sale: summer outerwear"
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "gold_shirts_tomorrow",
+  "toolset": "a2api",
+  "model": "llama3.2:3b",
+  "passed": true,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "1 products in shirts",
+    true
+   ],
+   [
+    "at 10%",
+    true
+   ],
+   [
+    "for Gold tier",
+    true
+   ],
+   [
+    "on Nov 7\u20137",
+    true
+   ],
+   [
+    "coupon prepared",
+    true
+   ],
+   [
+    "banner not made",
+    true
+   ]
+  ],
+  "tool_calls": 2,
+  "errors": 0,
+  "seconds": 7.7,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "period": "tomorrow",
+     "ends_at": "2026-11-07T23:59:00Z",
+     "category": "shirts",
+     "percent_off": "10",
+     "audience": "gold"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "title": "Gold sale: 10% off shirts tomorrow only",
+     "reply": "The sale plan has passed all checks, but the highest discount allowed is 30%, and the sale offers a 10% discount.",
+     "preview_ids": "['pv_1', 'pv_2']"
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "everyone_banner",
+  "toolset": "a2api",
+  "model": "llama3.2:3b",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "42 products in summer_outerwear",
+    true
+   ],
+   [
+    "at 10%",
+    true
+   ],
+   [
+    "for Everyone tier",
+    true
+   ],
+   [
+    "on Nov 14\u201315",
+    false
+   ],
+   [
+    "coupon not made",
+    true
+   ],
+   [
+    "banner prepared",
+    true
+   ]
+  ],
+  "tool_calls": 2,
+  "errors": 0,
+  "seconds": 9.5,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "percent_off": "10",
+     "audience": "everyone",
+     "on_main_page": "true",
+     "period": "next_7_days",
+     "category": "summer outerwear"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": "['pv_1', 'pv_2']",
+     "title": "Everyone gets 10% off summer outerwear next weekend",
+     "reply": "The sale includes 42 products, but the Cotton chore coat and Light rain parka will not be included due to low stock. The hero slot is already occupied, but the sale is free from overlapping promotions."
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "vip_weekend",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 3,
+  "seconds": 9.5,
+  "calls": [
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "dispAreaCd": "main page",
+     "bnrTtl": "20% weekend sale on summer outerwear for VIP members",
+     "tgtMbrGrdCd": "VIP members",
+     "strtDtm": "Fri Nov 6 2026 00:00:00",
+     "endDtm": "Sun Nov 8 2026 23:59:59",
+     "prmtNo": "summer outerwear",
+     "lnkUrl": "https://northwindapparel.com/summer-outerwear-vip-sale"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "strtDtm": "Fri Nov 6 2026 00:00:00",
+     "tgtMbrGrdCd": "VIP members",
+     "dispAreaCd": "main page",
+     "endDtm": "Sun Nov 8 2026 23:59:59",
+     "lnkUrl": "https://northwindapparel.com/summer-outerwear-vip-sale",
+     "prmtNo": "summer outerwear"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "lnkUrl": "https://northwindapparel.com/summer-outerwear-vip-sale",
+     "prmtNo": "summer outerwear",
+     "strtDtm": "Fri Nov 6 2026 00:00:00",
+     "tgtMbrGrdCd": "VIP members",
+     "dispAreaCd": "main page",
+     "endDtm": "Sun Nov 8 2026 23:59:59"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "gold_next_weekend",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 3,
+  "seconds": 7.2,
+  "calls": [
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "prmtNo": "Gold member discount",
+     "tgtMbrGrdCd": "Gold",
+     "dispAreaCd": "Gold member discount",
+     "bnrTtl": "10% off summer outerwear",
+     "strtDtm": "2026-11-13",
+     "endDtm": "2026-11-14",
+     "lnkUrl": "https://northwind.apparel.com/summer-outerwear"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "endDtm": "2026-11-14",
+     "lnkUrl": "https://northwind.apparel.com/summer-outerwear",
+     "prmtNo": "Gold member discount",
+     "strtDtm": "2026-11-13",
+     "tgtMbrGrdCd": "Gold",
+     "dispAreaCd": "Gold member discount"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "lnkUrl": "https://northwind.apparel.com/summer-outerwear",
+     "prmtNo": "Gold member discount",
+     "strtDtm": "2026-11-13",
+     "tgtMbrGrdCd": "Gold",
+     "dispAreaCd": "Gold member discount",
+     "endDtm": "2026-11-14"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "everyone_shirts",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 3,
+  "seconds": 6.2,
+  "calls": [
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "cpnCd": "SALE15",
+     "prmtNo": "",
+     "tgtMbrGrdCd": "*",
+     "autoApplyYn": "Y",
+     "dupUseYn": "N"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "autoApplyYn": "N",
+     "cpnCd": "SALE15",
+     "dupUseYn": "N",
+     "prmtNo": "",
+     "tgtMbrGrdCd": "*"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "autoApplyYn": "N",
+     "cpnCd": "SALE15",
+     "dupUseYn": "N",
+     "prmtNo": "",
+     "tgtMbrGrdCd": "*"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "vip_without_parka",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ]
+  ],
+  "tool_calls": 1,
+  "errors": 0,
+  "seconds": 1.6,
+  "calls": [
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "title": "VIP weekend sale: summer outerwear",
+     "preview_ids": [
+      "saveCpnIssue",
+      "saveDispBnr",
+      "savePrmtListV2",
+      "savePrmtList",
+      "getPrdGridList",
+      "getCodeList"
+     ],
+     "reply": "Please check the policies regarding promotional codes and product availability. The rain parka is excluded from the discount."
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "gold_shirts_tomorrow",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 3,
+  "seconds": 6.9,
+  "calls": [
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "prmtNo": "null",
+     "tgtMbrGrdCd": "null",
+     "autoApplyYn": "Y",
+     "dupUseYn": "N",
+     "cpnCd": "GOLD10"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "cpnCd": "GOLD10",
+     "dupUseYn": "N",
+     "prmtNo": "null",
+     "tgtMbrGrdCd": "null",
+     "autoApplyYn": "N"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "autoApplyYn": "N",
+     "cpnCd": "GOLD10",
+     "dupUseYn": "N",
+     "prmtNo": "null",
+     "tgtMbrGrdCd": "null"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "everyone_banner",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ]
+  ],
+  "tool_calls": 9,
+  "errors": 9,
+  "seconds": 10.6,
+  "calls": [
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "cpnCd": "SUMMER10",
+     "prmtNo": "NULL",
+     "tgtMbrGrdCd": "NULL",
+     "autoApplyYn": "Y",
+     "dupUseYn": "N",
+     "reply": "This change will be applied to the main page. Please review the preview for any policy checks."
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "prmtNo": "NULL",
+     "reply": "This change will be applied to the main page. Please review the preview for any policy checks.",
+     "tgtMbrGrdCd": "NULL",
+     "autoApplyYn": "N",
+     "cpnCd": "SUMMER10",
+     "dupUseYn": "N"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "autoApplyYn": "N",
+     "cpnCd": "SUMMER20",
+     "dupUseYn": "N",
+     "prmtNo": "NULL",
+     "reply": "This change will be applied to the main page. Please review the preview for any policy checks.",
+     "tgtMbrGrdCd": "NULL"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "prmtNo": "NULL",
+     "reply": "This change will be applied to the main page. Please review the preview for any policy checks.",
+     "tgtMbrGrdCd": "NULL",
+     "autoApplyYn": "N",
+     "cpnCd": "SUMMER15",
+     "dupUseYn": "N"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "prmtNo": "SUMMER10PROMO",
+     "reply": "This change will be applied to the main page. Please review the preview for any policy checks.",
+     "tgtMbrGrdCd": "NULL",
+     "autoApplyYn": "N",
+     "cpnCd": "SUMMER10"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "tgtMbrGrdCd": "NULL",
+     "autoApplyYn": "N",
+     "cpnCd": "SUMMER10",
+     "prmtNo": "SUMMER10PROMO",
+     "reply": "This change will be applied to the main page. Please review the preview for any policy checks."
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "cpnCd": "SUMMER10",
+     "prmtNo": "SUMMER10PROMO",
+     "tgtMbrGrdCd": "NULL",
+     "reply": "This change will be applied to the main page. Please review the preview for any policy checks.",
+     "ref": "12345",
+     "autoApplyYn": "N"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "autoApplyYn": "N",
+     "cpnCd": "SUMMER10",
+     "prmtNo": "SUMMER10PROMO",
+     "ref": "12345",
+     "reply": "This change will be applied to the main page. Please review the preview for any policy checks.",
+     "tgtMbrGrdCd": "NULL"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "autoApplyYn": "N",
+     "cpnCd": "SUMMER10",
+     "prmtNo": "SUMMER10PROMO",
+     "ref": "12345",
+     "reply": "This change will be applied to the main page. Please review the preview for any policy checks.",
+     "tgtMbrGrdCd": "NULL"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ }
+]

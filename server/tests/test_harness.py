@@ -137,3 +137,15 @@ def test_a_period_name_in_a_date_field_and_bad_dates_never_crash(store):
     bad = call(store, "plan_sale", {"category": "summer outerwear", "percent_off": 10, "audience": "gold",
                                     "starts_at": "next friday", "ends_at": "sunday"})
     assert bad["error"]["code"] == "invalid_input" and "this_weekend" in bad["error"]["message"]
+
+
+def test_an_override_without_a_rate_says_to_use_exclude(store):
+    """Found in the comparison run: overrides: ["prd_rainparka"] used to be dropped silently."""
+    from a_commerce import call
+    store.set_clock("2026-11-06T11:02")
+    out = call(store, "plan_sale", {"category": "summer outerwear", "percent_off": 15, "audience": "vip",
+                                    "period": "this_weekend", "overrides": ["rain parka"]})
+    assert out["error"]["code"] == "invalid_input" and "use exclude" in out["error"]["message"]
+    ok = call(store, "plan_sale", {"category": "summer outerwear", "percent_off": 15, "audience": "vip",
+                                   "period": "this_weekend", "exclude": ["rain parka"]})
+    assert ok["products"] == 41

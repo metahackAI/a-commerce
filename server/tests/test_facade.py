@@ -27,3 +27,13 @@ def test_facade_by_hand_makes_the_same_change_set(store):
 def test_facade_errors_say_nothing_useful(store):
     assert facade.call(store, "savePrmtList", {"rows": [{"rowStatus": "I", "prmtTpCd": "T03"}]}) == {"resultCd": "E999", "resultMsg": "System error"}
     assert facade.call(store, "getCodeList", {"grpCd": "CATEGORY"})["resultMsg"] == "Invalid parameter"
+
+
+def test_every_comparison_task_can_be_expressed_on_the_facade(store):
+    """Fairness: each task's audience, category and dates have a facade code or format."""
+    from a_commerce.harness.compare import TASKS
+    grades = {c["cdNm"] for c in facade.call(store, "getCodeList", {"grpCd": "MBR_GRD"})["list"]}
+    cats = {c["cdNm"].lower().replace(" ", "_") for c in facade.call(store, "getCodeList", {"grpCd": "CTG"})["list"]}
+    for t in TASKS:
+        assert t["audience"].split()[0].upper() in grades, t["id"]
+        assert t["category"] in cats, t["id"]

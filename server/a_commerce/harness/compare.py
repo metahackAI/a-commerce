@@ -25,6 +25,14 @@ TASKS = [
      "category": "summer_outerwear", "pct": "10%", "audience": "Gold tier", "when": "Nov 14–15", "coupon": True, "banner": False},
     {"id": "everyone_shirts", "request": "Put shirts on a 15% sale for everyone this weekend.",
      "category": "shirts", "pct": "15%", "audience": "Everyone tier", "when": "Nov 7–8", "coupon": False, "banner": False},
+    # Added Oct 28 after the first comparison, so they were not used to tune the tools.
+    {"id": "vip_without_parka", "request": "VIP members get 15% off summer outerwear this weekend, except the rain parka.",
+     "category": "summer_outerwear", "pct": "15%", "audience": "VIP tier", "when": "Nov 7–8", "coupon": True, "banner": False,
+     "count": 41, "left_out": ["Light rain parka"]},
+    {"id": "gold_shirts_tomorrow", "request": "Gold members: 10% off shirts tomorrow only.",
+     "category": "shirts", "pct": "10%", "audience": "Gold tier", "when": "Nov 7–7", "coupon": True, "banner": False},
+    {"id": "everyone_banner", "request": "Everyone gets 10% off summer outerwear next weekend. Put it on the main page too.",
+     "category": "summer_outerwear", "pct": "10%", "audience": "Everyone tier", "when": "Nov 14–15", "coupon": False, "banner": True},
 ]
 
 
@@ -34,10 +42,12 @@ def judge(store, view: dict | None, task: dict) -> list[tuple[str, bool]]:
     groups = {g["op"]: g for g in view.get("groups", [])}
     rows = groups.get("update", {}).get("rows", [])
     understood = {u["label"]: u for u in view.get("understood", [])}
-    n = store.one("SELECT COUNT(*) AS n FROM products WHERE category_id = ?", (task["category"],))["n"]
+    n = task.get("count") or store.one("SELECT COUNT(*) AS n FROM products WHERE category_id = ?", (task["category"],))["n"]
+    names = {r["name"] for r in rows}
     return [
         ("change set proposed", True),
-        (f"all {n} products in {task['category']}", groups.get("update", {}).get("total_rows") == n),
+        (f"{n} products in {task['category']}" + (f" without {', '.join(task['left_out'])}" if task.get("left_out") else ""),
+         groups.get("update", {}).get("total_rows") == n and not names & set(task.get("left_out", []))),
         (f"at {task['pct']}", bool(rows) and all(r["discount"] == task["pct"] for r in rows)),
         (f"for {task['audience']}", understood.get("Who", {}).get("value") == task["audience"]),
         (f"on {task['when']}", understood.get("When", {}).get("value") == task["when"]),

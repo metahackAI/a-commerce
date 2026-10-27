@@ -28,6 +28,18 @@ dates, coupon, banner).
 |---|---|---|---|---|---|---|
 | Oct 28 | Llama 3.2 3B (local) | **A-Commerce tools** | **2/3** | **20/21** | 2.0 | 0.0 |
 | Oct 28 | Llama 3.2 3B (local) | Screen-shaped facade | 0/3 | 0/3 | 3.0 | 3.0 |
+| Oct 28, later | Llama 3.2 3B (local) | **A-Commerce tools** | **3/6** | **38/42** | 2.2 | 0.2 |
+| Oct 28, later | Llama 3.2 3B (local) | Screen-shaped facade | 0/6 | 0/6 | 3.7 | 3.5 |
+
+The second pair adds three tasks written after the first comparison (not used to tune the tools): "VIP members get 15%
+off summer outerwear this weekend, except the rain parka.", "Gold members: 10% off shirts tomorrow only.", "Everyone
+gets 10% off summer outerwear next weekend. Put it on the main page too." It also fixes a fairness bug in the first
+pair: the facade had no member-grade code for "everyone", so the shirts task could not be done on it (`G00` added;
+`test_facade.py` now checks every task can be expressed on the facade). The facade still passed none.
+
+Misses on our tools, all the model's: "next weekend" read as `next_7_days` (two tasks), "VIP" sent as `gold`, and the
+rain parka put in `overrides` instead of `exclude`. That last one was silently ignored by the tool; since this run an
+override without a rate is an error that says to use `exclude`. The numbers above are from before that fix.
 
 What happened on the facade: the model sent words where codes were needed (`"VIP members"` for `G01`, `"main page"`
 for `MAIN_HERO`), dates in its own format, and never got past `E999 System error`, so no change set was proposed.
