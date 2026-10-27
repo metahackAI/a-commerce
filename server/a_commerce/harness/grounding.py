@@ -86,6 +86,12 @@ def summary(view: dict) -> str:
     """A reply built only from the change set."""
     if view.get("kind") == "refund_review":
         return refund_summary(view)
+    if not view["understood"]:  # next-step change sets: reorder, campaign, notices
+        parts = [f"Change set #{view['id']} v{view['version']} is ready for review. Nothing has changed yet."]
+        parts += [f"{g['title']}: {g['summary']}." for g in view["groups"]]
+        if view["after_approval"].get("final"):
+            parts.append("Cannot be undone once run: " + "; ".join(view["after_approval"]["final"]).lower() + ".")
+        return " ".join(parts)
     groups = {g["op"]: g for g in view["groups"]}
     understood = {u["label"]: u for u in view["understood"]}
     parts = [f"Change set #{view['id']} v{view['version']} is ready for review. Nothing has changed in the store yet."]

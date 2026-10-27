@@ -18,7 +18,7 @@ member_benefits_per_order:
   meaning: One member benefit per order; sale coupons do not stack with tier coupons.
 
 approval_required_for:
-  value: [prices, coupons, display, refunds, customer_messages]
+  value: [prices, coupons, display, refunds, customer_messages, purchasing, campaigns]
   meaning: Changes of these kinds wait for a person to approve them.
 
 refund_without_person_max:
@@ -64,3 +64,7 @@ free_shipping_min_subtotal:
 pricing_rule:
   value: {markup: 2.5, ending: 9}
   meaning: New products are priced at cost times the markup, rounded to the nearest price ending in 9.
+
+reorder_weeks_of_cover:
+  value: 2
+  meaning: Reorders cover this many weeks of the usual sales of each size.

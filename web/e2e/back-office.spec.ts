@@ -115,3 +115,18 @@ test("a question gets a read-only answer whose numbers add up", async ({ page, r
   // Nothing was proposed.
   expect((await (await request.get(`${API}/change-sets`)).json()).length).toBe(0);
 });
+
+test("a next step from the answer becomes a change set: send the email, which cannot be undone", async ({ page, request }) => {
+  await request.post(`${API}/demo/clock`, { data: { at: "2026-11-06T11:20" } });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Why did sales drop yesterday?" }).click();
+  await page.getByTestId("sales-explainer").getByRole("button", { name: "Send the weekly email today" }).click();
+  const cs = page.getByTestId("change-set");
+  await expect(cs).toContainText("Weekly email");
+  await expect(cs).toContainText("Not possible once sent");
+  await expect(cs).toContainText("Cannot be undone");
+  await cs.getByRole("button", { name: "Approve and run" }).click();
+  await expect(cs.locator(".csh .tag")).toHaveText("Live · verified");
+  await expect(page.getByTestId("verification")).toContainText("Weekly email sent 2026-11-06");
+  await expect(cs.getByRole("button", { name: "Undo all together" })).toHaveCount(0);
+});

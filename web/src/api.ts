@@ -3,7 +3,7 @@
 export type Check = { rule: string; passed: boolean; title: string; detail: string };
 export type Row = { product_id?: string; name: string; stock?: number; discount?: string; note?: string | null; was?: number; now?: number };
 export type Group = {
-  op: "update" | "create" | "exclude" | "schedule";
+  op: "update" | "create" | "exclude" | "schedule" | "send";
   title: string;
   summary: string;
   undo?: string;
@@ -24,7 +24,7 @@ export type ChangeSetView = {
   checks_passed: number;
   checks_total: number;
   groups: Group[];
-  after_approval: { tools: string[]; undo_until: string | null };
+  after_approval: { tools: string[]; undo_until: string | null; final?: string[] };
   verification: { all_match: boolean; changes: { tool: string; matches: boolean; detail: string }[] } | null;
 };
 export type RefundRow = {

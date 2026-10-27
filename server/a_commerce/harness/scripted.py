@@ -33,6 +33,9 @@ class ScriptedOperator:
 
     # -- the plan --------------------------------------------------------------
     def _next(self, system: str, request: str, results: list[dict]) -> list[tuple[str, dict]] | str:
+        step = self._next_step(request, results)
+        if step is not None:
+            return step
         if ("sales" in request.lower() or "revenue" in request.lower()) and "You are revising" not in system:
             if not results:
                 return [("explain_sales_change", {})]
@@ -79,6 +82,25 @@ class ScriptedOperator:
                 "title": f"{sale['audience'].upper()} weekend sale: {self._category_name(sale['category']).lower()}",
                 "preview_ids": [r["preview_id"] for r in previews],
                 "reply": self._reply(previews, sale, revising)})]
+        return []
+
+    def _next_step(self, request: str, results: list[dict]):
+        """The sales answer's next steps: reorder, send the email, back-in-stock notices."""
+        text = request.lower()
+        if text.startswith("reorder"):
+            call, title = ("create_reorder", {"from_stockouts": True}), "Reorder sold-out sizes"
+        elif "send the weekly email" in text or "send the email" in text:
+            call, title = ("send_campaign", {"name": "Weekly email"}), "Send the weekly email"
+        elif text.startswith("show") and "back" in text:
+            call, title = ("set_back_in_stock_notice", {"from_stockouts": True}), "Back-in-stock notices"
+        else:
+            return None
+        if not results:
+            return [call]
+        if len(results) == 1 and "preview_id" in results[0]:
+            r = results[0]
+            return [("propose_change_set", {"title": title, "preview_ids": [r["preview_id"]],
+                                            "reply": f"{r['summary']}. Nothing changes until you approve."})]
         return []
 
     def _returns(self, request: str, results: list[dict]) -> list[tuple[str, dict]]:

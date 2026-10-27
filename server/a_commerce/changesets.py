@@ -15,7 +15,10 @@ from .db import Store
 from .tools.base import ToolError, commit, read_tool
 
 AUDIENCE_LABEL = {"vip": "VIP", "gold": "Gold", "member": "Member", "members": "Members", "everyone": "Everyone"}
-APPLY_ORDER = ["set_sale_prices", "create_coupon", "schedule_banner", "refund_return", "send_customer_message"]
+APPLY_ORDER = ["set_sale_prices", "create_coupon", "schedule_banner", "refund_return", "send_customer_message",
+               "create_reorder", "set_back_in_stock_notice", "send_campaign"]
+ACTION_TOOLS = {"create_reorder", "set_back_in_stock_notice", "send_campaign"}
+FINAL_TOOLS = {"refund_return": "Refunds have gone back to customers' cards", "send_campaign": "The email has gone out"}
 REFUND_TOOLS = {"refund_return", "send_customer_message"}
 
 
@@ -105,14 +108,18 @@ def undo(store: Store, cs_id: int, actor: str = "operator") -> dict:
     cs = _get(store, cs_id)
     if cs["status"] not in ("live", "failed"):
         raise ToolError("not_live", f"Change set #{cs_id} is {cs['status']}; nothing to undo.", None)
-    if any(p["tool"] == "refund_return" and p["committed_id"] for p in _previews(store, json.loads(cs["preview_ids"]))):
-        raise ToolError("refunds_final", "Refunds have gone back to customers' cards and cannot be undone.", None)
+    for p in _previews(store, json.loads(cs["preview_ids"])):
+        if p["tool"] in FINAL_TOOLS and p["committed_id"]:
+            code = "refunds_final" if p["tool"] == "refund_return" else "already_sent"
+            raise ToolError(code, f"{FINAL_TOOLS[p['tool']]} and cannot be undone.", None)
     if cs["undo_until"] and store.now().isoformat(timespec="minutes") > cs["undo_until"]:
         raise ToolError("undo_expired", f"Change set #{cs_id} could be undone until {cs['undo_until']}.", None)
-    table = {"set_sale_prices": "promotions", "create_coupon": "coupons", "schedule_banner": "displays"}
+    table = {"set_sale_prices": "promotions", "create_coupon": "coupons", "schedule_banner": "displays",
+             "create_reorder": "purchase_orders", "set_back_in_stock_notice": "product_notices"}
     for p in _previews(store, json.loads(cs["preview_ids"])):
-        if p["committed_id"]:
-            store.execute(f"UPDATE {table[p['tool']]} SET status = 'undone' WHERE id = ?", (p["committed_id"],))
+        for cid in (p["committed_id"] or "").split(","):
+            if cid:
+                store.execute(f"UPDATE {table[p['tool']]} SET status = 'undone' WHERE id = ?", (cid,))
     _set_status(store, cs_id, "undone")
     store.log(actor, "change_set:undo", {"id": cs_id})
     return view(store, cs_id)
@@ -157,6 +164,22 @@ def verify(store: Store, cs_id: int) -> dict:
             want = p["result"]["changes"][0]
             ok = f is not None and f["amount"] == want["amount"] and f["status"] == "refunded"  # request status after the refund
             results.append({"tool": p["tool"], "matches": ok, "detail": f"{want['order_id']} refunded ${want['amount']:.2f}"})
+        elif p["tool"] == "create_reorder":
+            po = store.one("SELECT * FROM purchase_orders WHERE id = ?", (p["committed_id"],))
+            want = p["result"]["changes"][0]
+            got = sum(line["units"] for line in json.loads(po["lines"])) if po else 0
+            results.append({"tool": p["tool"], "matches": bool(po) and po["status"] == "sent" and got == want["units"],
+                            "detail": f"Purchase order {p['committed_id']}: {got} units"})
+        elif p["tool"] == "set_back_in_stock_notice":
+            ids = p["committed_id"].split(",")
+            live = [store.one("SELECT text FROM product_notices WHERE id = ? AND status = 'live'", (i,)) for i in ids]
+            want = p["result"]["changes"][0]["notices"]
+            results.append({"tool": p["tool"], "matches": all(live) and len(ids) == len(want),
+                            "detail": f"“{want[0]['text']}” on {len(ids)} product pages"})
+        elif p["tool"] == "send_campaign":
+            want = p["result"]["changes"][0]
+            sent = store.one("SELECT 1 FROM campaign_sends WHERE name = ? AND day = ? AND status = 'sent'", (want["name"], want["day"]))
+            results.append({"tool": p["tool"], "matches": bool(sent), "detail": f"{want['name']} sent {want['day']}"})
         elif p["tool"] == "send_customer_message":
             m = store.one("SELECT kind, status FROM messages WHERE id = ?", (p["committed_id"],))
             want = p["result"]["changes"][0]
@@ -182,6 +205,8 @@ def view(store: Store, cs_id: int) -> dict:
     previews = _previews(store, json.loads(cs["preview_ids"]))
     if any(p["tool"] in REFUND_TOOLS for p in previews):
         return refund_view(store, cs, previews)
+    if all(p["tool"] in ACTION_TOOLS for p in previews):
+        return action_view(store, cs, previews)
     by_tool = {p["tool"]: p for p in previews}
     groups, understood = [], []
     checks = [c for p in previews for c in p["result"]["checks"]]
@@ -273,5 +298,31 @@ def refund_view(store: Store, cs, previews: list[dict]) -> dict:
         "after_approval": {"tools": tools_after, "undo_until": None,
                            "text": f"refund {len(refunds)} · send {n_photo} photo requests · send {n_decline} decline note"
                                    f"{'s' if n_decline != 1 else ''} · read back each order"},
+        "verification": json.loads(cs["verification"]) if cs["verification"] else None,
+    }
+
+
+def action_view(store: Store, cs, previews: list[dict]) -> dict:
+    """Change sets made of next steps (reorder, campaign, notices): one group per action, same review and read-back."""
+    groups = []
+    for p in sorted(previews, key=lambda p: APPLY_ORDER.index(p["tool"])):
+        c = p["result"]["changes"][0]
+        if p["tool"] == "create_reorder":
+            groups.append({"op": "create", "title": "Purchase order", "summary": p["result"]["summary"],
+                           "fields": {f"{l['name']}, {l['size']}": f"{l['units']} units" for l in c["lines"]}})
+        elif p["tool"] == "set_back_in_stock_notice":
+            groups.append({"op": "schedule", "title": "Product pages", "summary": p["result"]["summary"],
+                           "fields": {n["name"]: f"“{n['text']}”" for n in c["notices"]}})
+        elif p["tool"] == "send_campaign":
+            groups.append({"op": "send", "title": c["name"], "summary": f"Today, {c['day']}",
+                           "fields": {"Goes to": "The weekly list", "Usually brings": f"${c['usual_revenue']:,.0f}", "Undo": "Not possible once sent"}})
+    checks = [c for p in previews for c in p["result"]["checks"]]
+    final = [FINAL_TOOLS[p["tool"]] for p in previews if p["tool"] in FINAL_TOOLS]
+    return {
+        "id": cs["id"], "version": cs["version"], "status": cs["status"], "title": cs["title"],
+        "request": json.loads(cs["requests"]), "understood": [], "checks": checks,
+        "checks_passed": sum(1 for c in checks if c["passed"]), "checks_total": len(checks), "groups": groups,
+        "after_approval": {"tools": [t for t in APPLY_ORDER if any(p["tool"] == t for p in previews)] + ["verify_change_set"],
+                           "undo_until": None, "final": final},
         "verification": json.loads(cs["verification"]) if cs["verification"] else None,
     }

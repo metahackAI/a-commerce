@@ -176,6 +176,14 @@ CREATE TABLE campaign_sends (
   usual_revenue REAL NOT NULL   -- revenue the send brings on a usual day it goes out
 );
 
+CREATE TABLE purchase_orders (
+  id TEXT PRIMARY KEY, lines TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL
+);
+
+CREATE TABLE product_notices (
+  id TEXT PRIMARY KEY, product_id TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL
+);
+
 CREATE TABLE action_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   at TEXT NOT NULL,

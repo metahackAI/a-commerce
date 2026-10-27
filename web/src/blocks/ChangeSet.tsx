@@ -40,7 +40,7 @@ export function ChangeSet({ view, busy, onApprove, onUndo }: Props) {
               {busy ? "Running…" : "Approve and run"}
             </button>
           )}
-          {(view.status === "live" || view.status === "failed") && (
+          {(view.status === "live" || view.status === "failed") && !view.after_approval.final?.length && (
             <button className="btn" disabled={busy} onClick={onUndo}>Undo all together</button>
           )}
         </div>
@@ -53,11 +53,11 @@ export function ChangeSet({ view, busy, onApprove, onUndo }: Props) {
               <span key={i}>{i > 0 && " Then: "}“{r}”</span>
             ))}
           </div>
-          <div className="intent">
+          {view.understood.length > 0 && <div className="intent">
             {view.understood.map((u) => (
               <div key={u.label}><small>{u.label}</small><b>{u.value}</b><span>{u.detail}</span></div>
             ))}
-          </div>
+          </div>}
         </div>
 
         <div>
@@ -107,10 +107,19 @@ export function ChangeSet({ view, busy, onApprove, onUndo }: Props) {
           )}
         </div>
 
+        {view.groups.filter((g) => (g.op === "send" || (g.op === "schedule" && !g.preview))).map((g) => (
+          <div className="grp" key={g.title}>
+            <div className="gh"><span className="op">{g.op}</span><b>{g.title}</b><span className="r">{g.summary}</span></div>
+            <dl className="kv">{Object.entries(g.fields ?? {}).map(([k, v]) => [<dt key={k}>{k}</dt>, <dd key={k + "v"}>{v}</dd>])}</dl>
+          </div>
+        ))}
+
         {view.verification ? (
           <div className="grp" data-testid="verification">
             <div className="gh"><span className="op">read back</span><b>{view.verification.all_match ? "Everything matches this change set" : "Something does not match"}</b>
-              <span className="r">{view.status === "undone" ? "Undone" : `Undo all together until ${when(view.after_approval.undo_until)}`}</span></div>
+              <span className="r">{view.status === "undone" ? "Undone"
+                : view.after_approval.final?.length ? "Cannot be undone"
+                : view.after_approval.undo_until ? `Undo all together until ${when(view.after_approval.undo_until)}` : "Undo all together"}</span></div>
             <dl className="kv">
               {view.verification.changes.map((c) => [
                 <dt key={c.tool}><span className={`st ${c.matches ? "done" : "need"}`} style={{ width: 11, height: 11, marginRight: 6 }} />{c.tool}</dt>,
@@ -126,7 +135,13 @@ export function ChangeSet({ view, busy, onApprove, onUndo }: Props) {
               <li>read everything back</li>
               <li>compare with this change set</li>
             </ol>
-            <div className="undo">Undo all together<br /><span className="mute">until {when(view.after_approval.undo_until)}</span></div>
+            {view.after_approval.final?.length ? (
+              <div className="undo warn">Cannot be undone<br /><span className="mute">{view.after_approval.final.join("; ")}</span></div>
+            ) : view.after_approval.undo_until ? (
+              <div className="undo">Undo all together<br /><span className="mute">until {when(view.after_approval.undo_until)}</span></div>
+            ) : (
+              <div className="undo">Undo all together</div>
+            )}
           </div>
         )}
       </div>
