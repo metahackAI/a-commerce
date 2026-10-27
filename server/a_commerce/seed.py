@@ -72,6 +72,7 @@ def seed(store: Store) -> None:
     _promotions(store)
     _display(store)
     _orders(store)
+    _returns(store)
 
 
 def _products(store: Store) -> None:
@@ -171,3 +172,48 @@ def fresh_store(path: str = ":memory:") -> Store:
     store = Store(path)
     seed(store)
     return store
+
+
+# order, item, amount, reason, reason text, photos, delivered, coupon used  (docs/plan.md §4.9; clock Fri Nov 6)
+RETURNS = [
+    ("#20431", "Wool overcoat", 289.00, "color", "Color differs from photo", 1, "2026-11-02T13:00", None),
+    ("#20418", "Linen blend field jacket ×2", 256.00, "too_small", "Too small", 0, "2026-10-30T13:00", "BIRTHDAY10"),
+    ("#20377", "Field jacket + windbreaker", 217.00, "changed_mind", "Changed mind", 0, "2026-10-28T13:00", "BIRTHDAY10"),
+    ("#20366", "Rain parka ×2", 338.00, "damaged", "Arrived damaged", 0, "2026-11-04T13:00", None),
+    ("#20290", "Cashmere sweater", 248.00, "changed_mind", "Changed mind", 0, "2026-09-28T13:00", None),
+    ("#20380", "Wool overcoat", 315.00, "defect", "Zipper broke", 1, "2026-11-01T13:00", None),
+    ("#20385", "Cotton chore coat ×2", 302.00, "too_large", "Too large", 0, "2026-10-29T13:00", None),
+    ("#20391", "Utility jacket + linen shirt", 276.00, "changed_mind", "Changed mind", 0, "2026-10-25T13:00", "GOLD10"),
+    ("#20396", "Field jacket + tee", 268.00, "color", "Color differs from photo", 1, "2026-11-03T13:00", None),
+    ("#20399", "Linen shirts ×4", 228.00, "too_small", "Too small", 0, "2026-10-27T13:00", None),
+    ("#20405", "Merino trail tees ×4", 244.00, "damaged", "Arrived damaged", 0, "2026-11-05T13:00", None),
+]
+ALEX_RETURN = ("#20402", "mem_alex", "Leather chelsea boots", 312.00, "defect", "Defect: sole coming apart", 2,
+               "2026-10-31T13:00")
+
+
+def _returns(store: Store) -> None:
+    """Eleven waiting returns over $200. Alex's boots (#20402) become the twelfth when Alex sends the request."""
+    for i, (oid, item, amount, reason, text, photos, delivered, coupon) in enumerate(RETURNS, start=1):
+        mid = f"mem_ret_{oid[1:]}"
+        store.execute("INSERT INTO members (id, name, tier_id, profile) VALUES (?, ?, 'member', ?)",
+                      (mid, f"Customer {oid}", json.dumps({"card_last4": f"{1000 + i * 37}"})))
+        store.execute("INSERT INTO orders VALUES (?, ?, 'delivered', ?, ?, ?, ?, 0, 0, ?, ?, ?, 'home')",
+                      (oid, mid, delivered, delivered, json.dumps([{"item": item, "price": amount}]), amount, amount,
+                       coupon, f"card_{1000 + i * 37}"))
+        store.execute("INSERT INTO return_requests VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'refund', 'waiting')",
+                      (f"ret_{i}", oid, mid, item, amount, reason, text, photos, delivered, "2026-11-05T18:00"))
+    # The overcoat customer (#20431) already returned three things in the last 90 days.
+    for j, at in enumerate(("2026-08-20T10:00", "2026-09-15T10:00", "2026-10-10T10:00"), start=1):
+        store.execute("INSERT INTO return_requests VALUES (?, ?, 'mem_ret_20431', 'Earlier order', 120.0, 'changed_mind', "
+                      "'Changed mind', 0, ?, ?, 'refund', 'refunded')", (f"ret_old_{j}", f"#1990{j}", at, at))
+    store.execute("INSERT INTO meta (key, value) VALUES ('seq:ret', ?)", (str(len(RETURNS)),))
+
+
+def seed_alex_return(store: Store) -> str:
+    """For demos that skip scene 1: the request Alex would have sent from the storefront."""
+    oid, mid, item, amount, reason, text, photos, delivered = ALEX_RETURN
+    rid = store.new_id("ret")
+    store.execute("INSERT INTO return_requests VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'refund', 'waiting')",
+                  (rid, oid, mid, item, amount, reason, text, photos, delivered, store.now().isoformat(timespec="minutes")))
+    return rid

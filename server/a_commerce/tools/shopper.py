@@ -6,7 +6,7 @@ Context: {"shopper": True, "member_id": "mem_jamie" | None, "tier": "vip" | None
 from __future__ import annotations
 
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -249,3 +249,78 @@ def place_order(store: Store, order_preview_id: str, member_id: str, context: di
     store.execute("UPDATE previews SET status = 'committed', committed_id = ? WHERE id = ?", (oid, order_preview_id))
     store.log(member_id, "place_order", {"order_id": oid, "total": c["total"]})
     return {"order_id": oid, "total": c["total"], "coupon": c["benefit"]["coupon"] if c["benefit"] else None}
+
+
+# -- orders and returns (P1) ---------------------------------------------------------
+
+@read_tool("get_my_orders", "The shopper's recent orders with items and delivery dates.", NoInput,
+           produces=["order_id[]"], scope="shopper")
+def get_my_orders(store: Store, args: NoInput, context: dict | None = None) -> dict:
+    who = owner(context)
+    rows = store.all("SELECT id, status, placed_at, delivered_at, lines, total FROM orders WHERE member_id = ? ORDER BY placed_at DESC LIMIT 10",
+                     (who,))
+    items = [{**dict(r), "lines": json.loads(r["lines"])} for r in rows]
+    return {"items": items, "total": len(items)}
+
+
+class ReturnOptionsIn(BaseModel):
+    order_id: str = Field(description="Order number.", examples=["#20402"])
+    reason: Literal["defect", "damaged", "too_small", "too_large", "color", "changed_mind"] = Field(
+        description="Why it is coming back.", examples=["defect"])
+
+
+@read_tool("get_return_options", "What the shopper can choose for a return: a new item or a refund, with timing, cost, and who confirms.",
+           ReturnOptionsIn, consumes=["order_id"], produces=["return_options"], scope="shopper")
+def get_return_options(store: Store, args: ReturnOptionsIn, context: dict | None = None) -> dict:
+    who = owner(context)
+    order = store.one("SELECT * FROM orders WHERE id = ? AND member_id = ?", (args.order_id, who))
+    if order is None:
+        raise ToolError("unknown_order", f"No order {args.order_id} for this shopper.", "get_my_orders")
+    line = json.loads(order["lines"])[0]
+    product = store.one("SELECT * FROM products WHERE id = ?", (line.get("product_id"),))
+    days = (store.now().date() - datetime.fromisoformat(order["delivered_at"]).date()).days
+    window = store.policy_value("return_window_days")
+    if days > window:
+        raise ToolError("outside_window", f"Order {args.order_id} was delivered {days} days ago; returns close after {window} days.", None)
+    stock = store.one("SELECT stock FROM variants WHERE product_id = ? AND size = ?", (line.get("product_id"), line.get("size")))
+    arrives = store.now() + timedelta(days=4)
+    limit = store.policy_value("refund_without_person_max")
+    free = args.reason in ("defect", "damaged")
+    member = store.one("SELECT profile FROM members WHERE id = ?", (who,))
+    card = json.loads(member["profile"]).get("card_last4") if member else None
+    options = []
+    if stock and stock["stock"] > 0 and args.reason in ("defect", "damaged", "too_small", "too_large"):
+        options.append({"kind": "replacement", "title": "New pair, same size" if product and product["category_id"] == "footwear" else "New one, same size",
+                        "ships": f"Today, {stock['stock']} in stock", "arrives": f"{arrives:%a %b} {arrives.day}", "you_pay": 0.0})
+    options.append({"kind": "refund", "title": "Full refund", "amount": order["total"], "to": f"card ending {card}",
+                    "confirmed_by": "A person at Northwind, usually within 1 business day" if order["total"] > limit else "Automatic",
+                    "money_back": "3–5 days after it's confirmed"})
+    return {"order": {"id": order["id"], "delivered": f"{datetime.fromisoformat(order['delivered_at']):%a %b} {datetime.fromisoformat(order['delivered_at']).day}",
+                      "item": product["name"] if product else line.get("item"), "variant": f"Size {line.get('size')} · {product['color'] if product else ''}",
+                      "amount": order["total"]},
+            "reason": args.reason, "options": options,
+            "send_back": {"cost": "free, defect" if free else "paid by you", "pickup": "Mon Nov 9, 9:00–12:00"},
+            "note": f"Refunds over ${limit:.0f} are confirmed by a person at Northwind." if order["total"] > limit else ""}
+
+
+REASON_TEXT = {"defect": "Defect", "damaged": "Arrived damaged", "too_small": "Too small", "too_large": "Too large",
+               "color": "Color differs from photo", "changed_mind": "Changed mind"}
+
+
+def send_return_request(store: Store, member_id: str, order_id: str, option: str, reason: str, detail: str, photos: int) -> dict:
+    """Person-only: the shopper taps Send. The request lands in the back office review as it is."""
+    order = store.one("SELECT * FROM orders WHERE id = ? AND member_id = ?", (order_id, member_id))
+    if order is None:
+        raise ToolError("unknown_order", f"No order {order_id} for this shopper.", None)
+    if store.one("SELECT 1 FROM return_requests WHERE order_id = ? AND status = 'waiting'", (order_id,)):
+        raise ToolError("already_sent", f"A return for {order_id} is already waiting.", None)
+    line = json.loads(order["lines"])[0]
+    product = store.one("SELECT name FROM products WHERE id = ?", (line.get("product_id"),))
+    rid = store.new_id("ret")
+    text = REASON_TEXT.get(reason, reason) + (f": {detail}" if detail else "")
+    store.execute("INSERT INTO return_requests VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'waiting')",
+                  (rid, order_id, member_id, product["name"] if product else line.get("item", ""), order["total"], reason, text,
+                   photos, order["delivered_at"], store.now().isoformat(timespec="minutes"), option))
+    store.log(member_id, "send_return_request", {"return_request_id": rid, "order_id": order_id, "option": option})
+    return {"return_request_id": rid, "status": "waiting",
+            "next": "A person at Northwind confirms refunds over $200, usually within one business day."}

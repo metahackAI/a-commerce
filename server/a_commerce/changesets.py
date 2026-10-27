@@ -15,7 +15,8 @@ from .db import Store
 from .tools.base import ToolError, commit, read_tool
 
 AUDIENCE_LABEL = {"vip": "VIP", "gold": "Gold", "member": "Member", "members": "Members", "everyone": "Everyone"}
-APPLY_ORDER = ["set_sale_prices", "create_coupon", "schedule_banner"]
+APPLY_ORDER = ["set_sale_prices", "create_coupon", "schedule_banner", "refund_return", "send_customer_message"]
+REFUND_TOOLS = {"refund_return", "send_customer_message"}
 
 
 def _previews(store: Store, preview_ids: list[str]) -> list[dict]:
@@ -102,6 +103,8 @@ def undo(store: Store, cs_id: int, actor: str = "operator") -> dict:
     cs = _get(store, cs_id)
     if cs["status"] not in ("live", "failed"):
         raise ToolError("not_live", f"Change set #{cs_id} is {cs['status']}; nothing to undo.", None)
+    if any(p["tool"] == "refund_return" and p["committed_id"] for p in _previews(store, json.loads(cs["preview_ids"]))):
+        raise ToolError("refunds_final", "Refunds have gone back to customers' cards and cannot be undone.", None)
     if cs["undo_until"] and store.now().isoformat(timespec="minutes") > cs["undo_until"]:
         raise ToolError("undo_expired", f"Change set #{cs_id} could be undone until {cs['undo_until']}.", None)
     table = {"set_sale_prices": "promotions", "create_coupon": "coupons", "schedule_banner": "displays"}
@@ -146,6 +149,17 @@ def verify(store: Store, cs_id: int) -> dict:
             want = p["result"]["changes"][0]
             ok = d is not None and d["status"] == "live" and d["headline"] == want["headline"] and d["audience"] == want["audience"]
             results.append({"tool": p["tool"], "matches": ok, "detail": f"“{d['headline']}” for {d['audience']}, {d['starts_at']} – {d['ends_at']}"})
+        elif p["tool"] == "refund_return":
+            f = store.one("SELECT f.amount, r.status, r.order_id FROM refunds f JOIN return_requests r ON r.id = f.return_request_id"
+                          " WHERE f.id = ?", (p["committed_id"],))
+            want = p["result"]["changes"][0]
+            ok = f is not None and f["amount"] == want["amount"] and f["status"] == "refunded"  # request status after the refund
+            results.append({"tool": p["tool"], "matches": ok, "detail": f"{want['order_id']} refunded ${want['amount']:.2f}"})
+        elif p["tool"] == "send_customer_message":
+            m = store.one("SELECT kind, status FROM messages WHERE id = ?", (p["committed_id"],))
+            want = p["result"]["changes"][0]
+            ok = m is not None and m["status"] == "sent" and m["kind"] == want["kind"]
+            results.append({"tool": p["tool"], "matches": ok, "detail": f"{want['order_id']}: {want['kind'].replace('_', ' ')} sent"})
     return {"all_match": all(r["matches"] for r in results) and bool(results), "changes": results}
 
 
@@ -164,6 +178,8 @@ def verify_change_set(store: Store, args: VerifyIn) -> dict:
 def view(store: Store, cs_id: int) -> dict:
     cs = _get(store, cs_id)
     previews = _previews(store, json.loads(cs["preview_ids"]))
+    if any(p["tool"] in REFUND_TOOLS for p in previews):
+        return refund_view(store, cs, previews)
     by_tool = {p["tool"]: p for p in previews}
     groups, understood = [], []
     checks = [c for p in previews for c in p["result"]["checks"]]
@@ -224,5 +240,36 @@ def view(store: Store, cs_id: int) -> dict:
         "checks": checks, "checks_passed": sum(1 for c in checks if c["passed"]), "checks_total": len(checks),
         "groups": groups,
         "after_approval": {"tools": tools_after, "undo_until": cs["undo_until"] or _undo_until(store, previews)},
+        "verification": json.loads(cs["verification"]) if cs["verification"] else None,
+    }
+
+
+def refund_view(store: Store, cs, previews: list[dict]) -> dict:
+    """The refund_review block (docs/plan.md §5.4): one approval for refunds and messages; refunds cannot be undone."""
+    from .tools.returns import ORDER, evaluate, review_checks
+
+    rids = [p["args"]["return_request_id"] for p in previews]
+    rows = [evaluate(store, store.one("SELECT * FROM return_requests WHERE id = ?", (r,))) for r in rids]
+    rows.sort(key=lambda e: (ORDER[e["suggested"]], -e["amount"]))
+    refunds = [e for e in rows if e["suggested"] == "refund"]
+    messages = [{"order_id": p["result"]["changes"][0]["order_id"], "kind": p["args"]["kind"], "text": p["args"]["text"]}
+                for p in previews if p["tool"] == "send_customer_message"]
+    checks = review_checks(store, rids)
+    n_photo = sum(e["suggested"] == "ask_for_photos" for e in rows)
+    n_decline = sum(e["suggested"] == "decline" for e in rows)
+    tools_after = [t for t in APPLY_ORDER if any(p["tool"] == t for p in previews)] + ["verify_change_set"]
+    return {
+        "kind": "refund_review", "id": cs["id"], "version": cs["version"], "status": cs["status"], "title": cs["title"],
+        "request": json.loads(cs["requests"]),
+        "summary": {"waiting": len(rows), "refund": {"count": len(refunds), "amount": round(sum(e["amount"] for e in refunds), 2)},
+                    "ask_for_photos": n_photo, "decline": n_decline},
+        "rows": [{**e, "evidence": (f"{e['photos']} photo{'s' if e['photos'] != 1 else ''}" if e["photos"] else "None")
+                  + f" · Day {e['day']}"} for e in rows],
+        "checks": checks, "checks_passed": sum(c["passed"] for c in checks), "checks_total": len(checks),
+        "messages": messages,
+        "approve_label": f"Approve {len(refunds)} refunds and send {len(messages)} messages",
+        "after_approval": {"tools": tools_after, "undo_until": None,
+                           "text": f"refund {len(refunds)} · send {n_photo} photo requests · send {n_decline} decline note"
+                                   f"{'s' if n_decline != 1 else ''} · read back each order"},
         "verification": json.loads(cs["verification"]) if cs["verification"] else None,
     }

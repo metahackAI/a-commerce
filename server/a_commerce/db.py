@@ -136,6 +136,31 @@ CREATE TABLE orders (
   payment TEXT, ship_to TEXT
 );
 
+CREATE TABLE return_requests (
+  id TEXT PRIMARY KEY,
+  order_id TEXT NOT NULL,
+  member_id TEXT NOT NULL,
+  item TEXT NOT NULL,
+  amount REAL NOT NULL,
+  reason TEXT NOT NULL,            -- defect, damaged, too_small, too_large, color, changed_mind
+  reason_text TEXT NOT NULL,
+  photos INTEGER NOT NULL,
+  delivered_at TEXT NOT NULL,
+  requested_at TEXT NOT NULL,
+  option TEXT NOT NULL,            -- refund, replacement
+  status TEXT NOT NULL             -- waiting, refunded, photos_requested, declined
+);
+
+CREATE TABLE refunds (
+  id TEXT PRIMARY KEY, return_request_id TEXT NOT NULL, amount REAL NOT NULL, to_payment TEXT NOT NULL,
+  status TEXT NOT NULL, created_at TEXT NOT NULL
+);
+
+CREATE TABLE messages (
+  id TEXT PRIMARY KEY, member_id TEXT NOT NULL, return_request_id TEXT, kind TEXT NOT NULL, text TEXT NOT NULL,
+  status TEXT NOT NULL, created_at TEXT NOT NULL
+);
+
 CREATE TABLE action_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   at TEXT NOT NULL,

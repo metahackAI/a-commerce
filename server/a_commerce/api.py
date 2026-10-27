@@ -15,7 +15,7 @@ from .harness import operator_models, run_operator, run_shopper, shopper_model
 from .db import Store
 from .seed import fresh_store
 from .tools.base import REGISTRY, ToolError, call
-from .tools.shopper import place_order, undo_memory
+from .tools.shopper import place_order, send_return_request, undo_memory
 
 app = FastAPI(title="A-Commerce")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -169,6 +169,21 @@ class PlaceOrder(BaseModel):
 def post_order(body: PlaceOrder, x_shopper: str = Header(...)) -> dict:
     ctx = shopper(x_shopper)
     return guard(place_order, store(), body.order_preview_id, ctx["member_id"], ctx)
+
+
+class ReturnRequest(BaseModel):
+    order_id: str
+    option: str = "refund"
+    reason: str = "defect"
+    detail: str = ""
+    photos: int = 0
+
+
+@app.post("/returns")
+def post_return(body: ReturnRequest, x_shopper: str = Header(...)) -> dict:
+    """Person-only. Called by the shopper's Send button; the request joins the back office review."""
+    ctx = shopper(x_shopper)
+    return guard(send_return_request, store(), ctx["member_id"], body.order_id, body.option, body.reason, body.detail, body.photos)
 
 
 @app.post("/memories/{memory_id}/undo")
