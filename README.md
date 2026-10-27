@@ -83,12 +83,12 @@ The commerce domain model (products, orders, members, display, promotions) is in
 
 ## Team
 
-| Name | Role |
-|---|---|
-| Son SeongJun | TODO |
-| Ha-Ryeom Jang | TODO |
-| Haesoo Kim | TODO |
-| DongUk Kim | TODO |
+| Name | GitHub | Role |
+|---|---|---|
+| Son SeongJun | [@SonAIengine](https://github.com/SonAIengine) | TODO |
+| Ha-Ryeom Jang | [@CocoRoF](https://github.com/CocoRoF) | TODO |
+| Haesoo Kim | [@haesookimDev](https://github.com/haesookimDev) | TODO |
+| DongUk Kim | [@Createyouracccount](https://github.com/Createyouracccount) | TODO |
 
 ## License
 
