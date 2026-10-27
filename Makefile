@@ -15,8 +15,9 @@ web-build:
 e2e:
 	cd web && npx playwright test
 
-# Everything that must pass before a PR merges.
-check: test web-build e2e
+# Everything that must pass before a PR merges (same script as CI).
+check:
+	./scripts/check.sh
 
 serve:
 	cd server && uv run uvicorn a_commerce.api:app --reload --port 8000

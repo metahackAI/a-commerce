@@ -6,17 +6,17 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Chromium and its system libraries come preinstalled; installing them with apt hung for 15+ minutes.
+    container: mcr.microsoft.com/playwright:v1.48.2-noble
+    env:
+      HOME: /root
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: web/package-lock.json
       - run: cd server && uv sync
-      - run: cd web && npm ci && npx playwright install --with-deps chromium
-      - run: make check
+      - run: cd web && npm ci
+      - run: ./scripts/check.sh
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
