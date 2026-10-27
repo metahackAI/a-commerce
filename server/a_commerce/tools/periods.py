@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Literal
 
 Period = Literal["this_weekend", "next_weekend", "today", "tomorrow", "next_7_days"]
+PERIOD_NAMES = ("this_weekend", "next_weekend", "today", "tomorrow", "next_7_days")
 PERIOD_HELP = "Or pass period instead of dates: this_weekend, next_weekend, today, tomorrow, next_7_days."
 
 

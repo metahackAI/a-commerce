@@ -1,0 +1,373 @@
+[
+ {
+  "task": "vip_weekend",
+  "toolset": "a2api",
+  "model": "llama3.2:3b",
+  "passed": true,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "all 42 products in summer_outerwear",
+    true
+   ],
+   [
+    "at 20%",
+    true
+   ],
+   [
+    "for VIP tier",
+    true
+   ],
+   [
+    "on Nov 7\u20138",
+    true
+   ],
+   [
+    "coupon prepared",
+    true
+   ],
+   [
+    "banner prepared",
+    true
+   ]
+  ],
+  "tool_calls": 2,
+  "errors": 0,
+  "seconds": 6.2,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "category": "summer outerwear",
+     "percent_off": "20",
+     "audience": "vip",
+     "on_main_page": "true",
+     "period": "this_weekend"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": "['pv_1', 'pv_2', 'pv_3']",
+     "title": "VIP weekend sale: summer outerwear",
+     "reply": "Sale prices for vip, Nov 7 - Nov 8, Coupon VIPWEEKEND20 for 1,284 vip members, Hero slot, Nov 7\u20138, vip"
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "gold_next_weekend",
+  "toolset": "a2api",
+  "model": "llama3.2:3b",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "all 42 products in summer_outerwear",
+    true
+   ],
+   [
+    "at 10%",
+    true
+   ],
+   [
+    "for Gold tier",
+    true
+   ],
+   [
+    "on Nov 14\u201315",
+    false
+   ],
+   [
+    "coupon prepared",
+    true
+   ],
+   [
+    "banner not made",
+    true
+   ]
+  ],
+  "tool_calls": 2,
+  "errors": 0,
+  "seconds": 6.0,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "category": "summer outerwear",
+     "percent_off": "10",
+     "audience": "gold",
+     "ends_at": "next_7_days",
+     "overrides": "[\"prd_outerwear\"]"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": "['pv_1', 'pv_2']",
+     "title": "Gold sale: 10% off summer outerwear",
+     "reply": "Gold sale: 10% off summer outerwear next weekend. No banner."
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "everyone_shirts",
+  "toolset": "a2api",
+  "model": "llama3.2:3b",
+  "passed": true,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "all 1 products in shirts",
+    true
+   ],
+   [
+    "at 15%",
+    true
+   ],
+   [
+    "for Everyone tier",
+    true
+   ],
+   [
+    "on Nov 7\u20138",
+    true
+   ],
+   [
+    "coupon not made",
+    true
+   ],
+   [
+    "banner not made",
+    true
+   ]
+  ],
+  "tool_calls": 2,
+  "errors": 0,
+  "seconds": 6.4,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "percent_off": "15",
+     "audience": "everyone",
+     "period": "this_weekend",
+     "starts_at": "Sat 00:00",
+     "ends_at": "Sun 23:59",
+     "name": "Shirt Sale",
+     "overrides": "[]",
+     "category": "shirts"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": "['pv_1']",
+     "reply": "Shirt Sale: 15% off for everyone this weekend.",
+     "title": "Shirt Sale: 15% off for everyone this weekend."
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "vip_weekend",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 3,
+  "seconds": 7.6,
+  "calls": [
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "prmtNo": "summer outerwear",
+     "lnkUrl": "https://northwindapparel.com/summer-outerwear-vip-sale",
+     "dispAreaCd": "main page",
+     "bnrTtl": "20% weekend sale on summer outerwear for VIP members",
+     "tgtMbrGrdCd": "VIP members",
+     "strtDtm": "Fri Nov 6 2026 00:00:00",
+     "endDtm": "Sun Nov 8 2026 23:59:59"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "lnkUrl": "https://northwindapparel.com/summer-outerwear-vip-sale",
+     "prmtNo": "summer outerwear",
+     "strtDtm": "Fri Nov 6 2026 00:00:00",
+     "tgtMbrGrdCd": "VIP members",
+     "dispAreaCd": "main page",
+     "endDtm": "Sun Nov 8 2026 23:59:59"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "tgtMbrGrdCd": "VIP members",
+     "dispAreaCd": "main page",
+     "endDtm": "Sun Nov 8 2026 23:59:59",
+     "lnkUrl": "https://northwindapparel.com/summer-outerwear-vip-sale",
+     "prmtNo": "summer outerwear",
+     "strtDtm": "Fri Nov 6 2026 00:00:00"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "gold_next_weekend",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 3,
+  "seconds": 6.4,
+  "calls": [
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "bnrTtl": "10% off summer outerwear",
+     "strtDtm": "2026-11-13",
+     "endDtm": "2026-11-14",
+     "lnkUrl": "https://northwind.apparel.com/summer-outerwear",
+     "prmtNo": "Gold member discount",
+     "tgtMbrGrdCd": "Gold",
+     "dispAreaCd": "Gold member discount"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "lnkUrl": "https://northwind.apparel.com/summer-outerwear",
+     "prmtNo": "Gold member discount",
+     "strtDtm": "2026-11-13",
+     "tgtMbrGrdCd": "Gold",
+     "dispAreaCd": "Gold member discount",
+     "endDtm": "2026-11-14"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "dispAreaCd": "Gold member discount",
+     "endDtm": "2026-11-14",
+     "lnkUrl": "https://northwind.apparel.com/summer-outerwear",
+     "prmtNo": "Gold member discount",
+     "strtDtm": "2026-11-13",
+     "tgtMbrGrdCd": "Gold"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "everyone_shirts",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 3,
+  "seconds": 5.7,
+  "calls": [
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "autoApplyYn": "Y",
+     "dupUseYn": "N",
+     "cpnCd": "SALE15",
+     "prmtNo": "",
+     "tgtMbrGrdCd": "*"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "prmtNo": "",
+     "tgtMbrGrdCd": "*",
+     "autoApplyYn": "N",
+     "cpnCd": "SALE15",
+     "dupUseYn": "N"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "dupUseYn": "N",
+     "prmtNo": "",
+     "tgtMbrGrdCd": "*",
+     "autoApplyYn": "N",
+     "cpnCd": "SALE15"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ }
+]
