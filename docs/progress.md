@@ -27,6 +27,7 @@ Run everything with `make check`: server tests, web build, and the browser test 
 | The whole demo, as the README tells it | Alex → returns review approved → VIP sale #1042 v1 → v2 → approved → Saturday, Jamie buys at $71.20 → Mina switches to photos, in one browser run through the UI. Refund reviews are numbered from #1031 so the sale is #1042 in any order | `web/e2e/full-demo.spec.ts`; `test_returns.py::test_the_sale_is_1042_*` |
 | Task list home (layout E) | The back office opens on "What should the store do next?" with To review / Running / Done: open change sets with their diff (~40 prices, +1 coupon, +1 banner, 2 left out) and checks, waiting returns the agent noticed, and the seeded morning (marked, not clickable). A task opens into layout A; approved work moves to Done | `test_tasks.py`; `e2e/back-office.spec.ts` (home test) |
 | MCP for outside agents | `python -m a_commerce.mcp_server --role operator|shopper` proxies the running API over stdio. An outside operator agent can preview and propose (change set #1042, 6 of 6 checks, appears in the task list as "Ready to review") but has no approve, undo, order or refund tool; an outside shopper sees shopper tools and list prices, never cost. Checked over a real stdio connection against the dev API (18 operator tools) | `test_mcp.py` |
+| Answer a question (`sales_explainer`) | "Why did sales drop yesterday?" → `explain_sales_change` computes from the store's data: Thu Nov 5 $18,240 vs $22,900 (last 4 Thursdays), −$4,660 (−20%) = 3 bestsellers out of M and L −$2,700 + weekly email not sent −$1,300 + not explained −$660. Read only: no change set, nothing proposed. Dollar amounts and percentages in the reply are checked against the data | `test_insights.py`; `e2e/back-office.spec.ts` (question test) |
 | HTTP | Tool definitions (every field described), shopper scope hides operator tools, change set and order over HTTP, action log | `test_api.py` |
 
 ## Not done yet (next loops, in order)
@@ -37,6 +38,7 @@ Run everything with `make check`: server tests, web build, and the browser test 
 
 ## Known gaps
 
+- The sales answer's next steps ("Reorder M and L…", "Send the weekly email today") are buttons that send a new request, but there are no reorder or email tools yet, so the agent says it cannot put them together.
 - The scripted stand-ins understand only the demo's sentences. A real model is needed for anything else.
 - Removing a chip on the storefront only hides it; it does not re-run the search yet.
 - Mina's first answer is a list (as in `fo-mobile-adapt`); `fo-two-shoppers` shows her a 4-item gallery instead. Pick one.

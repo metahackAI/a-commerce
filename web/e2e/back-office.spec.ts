@@ -97,3 +97,21 @@ test("home is a task list: open the sale from it, approve, and see it move to Do
   await home.getByRole("button", { name: /^Done/ }).click();
   await expect(home.getByTestId("task").filter({ hasText: "VIP weekend sale" })).toContainText("Live · verified");
 });
+
+test("a question gets a read-only answer whose numbers add up", async ({ page, request }) => {
+  await request.post(`${API}/demo/clock`, { data: { at: "2026-11-06T11:20" } });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Why did sales drop yesterday?" }).click();
+  const answer = page.getByTestId("sales-explainer");
+  await expect(answer).toContainText("Nothing changed");
+  await expect(answer).toContainText("$18,240.00");
+  await expect(answer).toContainText("−$4,660.00 (-20%)");
+  await expect(answer.getByRole("row", { name: /3 bestsellers out of M and L/ })).toContainText("−$2,700.00");
+  await expect(answer.getByRole("row", { name: /Weekly email not sent/ })).toContainText("−$1,300.00");
+  await expect(answer.getByRole("row", { name: /Not explained/ })).toContainText("−$660.00");
+  await expect(answer.getByRole("button", { name: "Send the weekly email today" })).toBeVisible();
+  await expect(page.getByText("Revenue was $18,240, 20% under a normal Thursday.")).toBeVisible();
+  await expect(page.getByText("Read only · nothing changed")).toBeVisible();
+  // Nothing was proposed.
+  expect((await (await request.get(`${API}/change-sets`)).json()).length).toBe(0);
+});

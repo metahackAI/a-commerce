@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from .. import changesets, facade
 from ..db import Store
 from ..tools.base import REGISTRY, call, loose_json
-from .grounding import check_reply, summary
+from .grounding import check_reply, check_sales_reply, sales_summary, summary
 from .models import Model, ModelError, Reply, ToolCallReq
 from .search import search
 
@@ -91,7 +91,7 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
         {"role": "user", "content": request},
     ]
     step = Step(model.name)
-    proposal, errors, nudges, last_error, previews = None, 0, 0, None, []
+    proposal, errors, nudges, last_error, previews, insight = None, 0, 0, None, [], None
     for _ in range(MAX_STEPS):
         try:
             reply: Reply = model.complete(messages, tools)
@@ -103,7 +103,7 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
             reply.tool_calls = calls_in_text(reply.text, {t["function"]["name"] for t in tools})
         if not reply.tool_calls:
             text = reply.text
-            if proposal is not None or nudges >= MAX_NUDGES:
+            if proposal is not None or insight is not None or nudges >= MAX_NUDGES:
                 break
             # Small models often stop to talk after an error or before proposing. Point at the next step once or twice.
             nudges += 1
@@ -134,6 +134,8 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
             if "error" in out:
                 errors += 1
                 last_error = (c.name, out["error"])
+            elif out.get("read_only") and "causes" in out:
+                insight = out
             elif "preview_id" in out or "preview_ids" in out:
                 previews += [out["preview_id"]] if "preview_id" in out else out["preview_ids"]
                 last_error = None
@@ -145,6 +147,17 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
         text = ""
 
     events = []
+    if proposal is None and insight is not None:
+        # A question, not a change: answer with a read-only block. Numbers in the reply must be in the data.
+        issues = check_sales_reply(text, insight)
+        step_event = _step_event(step, sales_summary(insight) if issues or not text else text, read_only=True)
+        if issues:
+            step_event["corrected"] = {"said": text, "issues": issues}
+        events += [step_event, {"type": "ui", "ui": "sales_explainer", "schema": 1, "block_id": f"sales_{insight['day']}",
+                                "title": f"Sales on {insight['day']}", "data": insight,
+                                "actions": [{"intent": "new_request", "label": s, "by": "operator", "args": {"request": s}}
+                                            for s in insight["next_steps"]]}]
+        return {"ok": True, "events": events, "change_set_id": None}
     if proposal is None:
         error = "No change set proposed" + (f" ({errors} tool errors)" if errors else "")
         events.append(_step_event(step, text or "I couldn't put this together. " + error, read_only=True))
@@ -223,7 +236,7 @@ def compact(out: dict, limit: int = RESULT_CHARS) -> str:
 def _tools_for(request: str) -> list[dict]:
     picked = search(request, scope="operator")
     names = [t.name for t in picked]
-    for always in ("plan_sale", "plan_return_review", "get_policy", "search_products"):
+    for always in ("plan_sale", "plan_return_review", "explain_sales_change", "get_policy", "search_products"):
         if always not in names:
             names.append(always)
     return [REGISTRY[n].definition() for n in names] + [PROPOSE]

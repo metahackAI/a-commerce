@@ -104,3 +104,31 @@ def summary(view: dict) -> str:
     else:
         parts.append(f"All {view['checks_total']} checks pass.")
     return " ".join(parts)
+
+
+def check_sales_reply(text: str, data: dict) -> list[str]:
+    """Every dollar amount in an answer about sales must come from the data (allowing a rounded "about $4,000")."""
+    known = {abs(data["revenue"]), abs(data["usual_revenue"]), abs(data["difference"])}
+    known |= {abs(c["estimated"]) for c in data["causes"]}
+    explained = abs(sum(c["estimated"] for c in data["causes"] if c["cause"] != "Not explained"))
+    known.add(explained)
+    issues = []
+    for m in re.finditer(r"\$\s?([\d,]+(?:\.\d+)?)\s*(k)?", text):
+        value = float(m.group(1).replace(",", "")) * (1000 if m.group(2) else 1)
+        about = re.search(r"(about|around|roughly|nearly)\s*$", text[:m.start()], re.I)
+        if not any(abs(value - k) <= (max(k * 0.05, 50) if about else 0.5) for k in known):
+            issues.append(f"It said ${value:,.0f}, which is not in the sales data.")
+    m = re.search(r"(\d{1,2})\s*%\s*(under|below|down|less)", text, re.I)
+    if m and int(m.group(1)) != abs(data["difference_pct"]):
+        issues.append(f"It said {m.group(1)}% down, but the data says {abs(data['difference_pct'])}%.")
+    return issues
+
+
+def sales_summary(data: dict) -> str:
+    parts = [f"Revenue on {data['day']} was ${data['revenue']:,.0f}, ${abs(data['difference']):,.0f} "
+             f"({abs(data['difference_pct'])}%) {'under' if data['difference'] < 0 else 'over'} {data['baseline']} "
+             f"(${data['usual_revenue']:,.0f} on average)."]
+    for c in data["causes"]:
+        parts.append(f"{c['cause']}: ${abs(c['estimated']):,.0f}.")
+    parts.append("Nothing was changed.")
+    return " ".join(parts)

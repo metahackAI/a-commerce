@@ -30,3 +30,4 @@
 .bo .task:not(:disabled):hover{background:var(--fill2)}
 .bo .task.seeded{opacity:.75;cursor:default}
 .bo .back{margin-right:8px;color:var(--mute);font-size:15px}
+.bo td.n{white-space:nowrap}

@@ -3,6 +3,8 @@ import type { AgentStep, AnyView, Event, Task } from "../api";
 import { api, ApiError } from "../api";
 import { ChangeSet } from "../blocks/ChangeSet";
 import { RefundReview } from "../blocks/RefundReview";
+import type { SalesData } from "../blocks/SalesExplainer";
+import { SalesExplainer } from "../blocks/SalesExplainer";
 
 type Msg =
   | { role: "user"; text: string; at: string }
@@ -11,6 +13,7 @@ type Msg =
 
 const SUGGESTION = "Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.";
 const SUGGESTION_RETURNS = "Check returns waiting over $200";
+const SUGGESTION_SALES = "Why did sales drop yesterday?";
 const CLOCKS: [string, string][] = [["Fri Nov 6, 11:02", "2026-11-06T11:02"], ["Sat Nov 7, 10:00", "2026-11-07T10:00"], ["Tue Nov 10", "2026-11-10T09:00"]];
 
 const hhmm = (iso: string) => iso.slice(11, 16);
@@ -18,6 +21,7 @@ const hhmm = (iso: string) => iso.slice(11, 16);
 export function BackOffice() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [view, setView] = useState<AnyView | null>(null);
+  const [insight, setInsight] = useState<SalesData | null>(null);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [clock, setClock] = useState("");
@@ -45,6 +49,7 @@ export function BackOffice() {
       setHome(false);
       setMsgs([]);
       setView(null);
+      setInsight(null);
     }
     setDraft("");
     setBusy(true);
@@ -59,9 +64,15 @@ export function BackOffice() {
       if (handoff && handoff.type === "handoff") setMsgs((m) => [...m, { role: "system", text: `${handoff.from} handed this to ${handoff.to}.` }]);
       if (step) {
         setModel(step.model);
-        setMsgs((m) => [...m, { role: "agent", step, ref: block && block.type === "ui" ? { id: block.data.id, version: block.data.version } : undefined }]);
+        setMsgs((m) => [...m, { role: "agent", step, ref: block && block.type === "ui" && block.ui !== "sales_explainer" ? { id: block.data.id, version: block.data.version } : undefined }]);
       }
-      if (block && block.type === "ui") setView(block.data);
+      if (block && block.type === "ui" && block.ui === "sales_explainer") {
+        setInsight(block.data as unknown as SalesData);
+        setView(null);
+      } else if (block && block.type === "ui") {
+        setView(block.data);
+        setInsight(null);
+      }
     } catch (e) {
       setMsgs((m) => [...m, { role: "system", text: e instanceof Error ? e.message : String(e) }]);
     } finally {
@@ -95,6 +106,7 @@ export function BackOffice() {
     setHome(true);
     setMsgs([]);
     setView(null);
+    setInsight(null);
   }
 
   async function changeClock(at: string) {
@@ -165,6 +177,7 @@ export function BackOffice() {
             <div className="sugg">
               <button className="chip" disabled={busy} onClick={() => send(SUGGESTION)}>{SUGGESTION}</button>
               <button className="chip" disabled={busy} onClick={() => send(SUGGESTION_RETURNS)}>{SUGGESTION_RETURNS}</button>
+              <button className="chip" disabled={busy} onClick={() => send(SUGGESTION_SALES)}>{SUGGESTION_SALES}</button>
             </div>
             <div className="tl">
               {(["needs_you", "running", "done"] as const).map((k) => (
@@ -194,6 +207,7 @@ export function BackOffice() {
               <p className="mute">Tell the agent what the store should do. Nothing changes until you approve.</p>
               <button className="chip" disabled={busy} onClick={() => send(SUGGESTION)}>{SUGGESTION}</button>
               <button className="chip" disabled={busy} onClick={() => send(SUGGESTION_RETURNS)}>{SUGGESTION_RETURNS}</button>
+              <button className="chip" disabled={busy} onClick={() => send(SUGGESTION_SALES)}>{SUGGESTION_SALES}</button>
             </div>
           )}
           {msgs.map((m, i) =>
@@ -214,6 +228,7 @@ export function BackOffice() {
                   </details>
                 )}
                 <div className="calls"><span>{m.step.tool_calls} tool calls · {m.step.model}</span><span>{(m.step.duration_ms / 1000).toFixed(1)}s</span></div>
+                {m.step.read_only && insight && !m.ref && <div><span className="ref"><span className="st" style={{ width: 11, height: 11 }} />Read only · nothing changed</span></div>}
                 {m.ref && <div><span className="ref"><span className="st need" style={{ width: 11, height: 11 }} />Change set #{m.ref.id} · version {m.ref.version}</span></div>}
               </div>
             ) : (
@@ -236,7 +251,9 @@ export function BackOffice() {
         </div>
       </section>
 
-      {view?.kind === "refund_review" ? (
+      {insight && !view ? (
+        <SalesExplainer data={insight} busy={busy} onAsk={(r) => send(r)} />
+      ) : view?.kind === "refund_review" ? (
         <RefundReview view={view} busy={busy}
           onApprove={() => act(() => api.approve(view.id, view.version), (v) => v.status === "live"
             ? `Approved. ${v.kind === "refund_review" ? v.after_approval.text : ""}: every order read back and matches.`

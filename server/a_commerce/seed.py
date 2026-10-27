@@ -73,6 +73,7 @@ def seed(store: Store) -> None:
     _display(store)
     _orders(store)
     _returns(store)
+    _sales(store)
 
 
 def _products(store: Store) -> None:
@@ -217,3 +218,38 @@ def seed_alex_return(store: Store) -> str:
     store.execute("INSERT INTO return_requests VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'refund', 'waiting')",
                   (rid, oid, mid, item, amount, reason, text, photos, delivered, store.now().isoformat(timespec="minutes")))
     return rid
+
+
+# Thursdays before Nov 5 average $22,900 and 247 orders (docs/plan.md §4.10).
+THURSDAYS = {"2026-10-08": (22600, 244), "2026-10-15": (23100, 250), "2026-10-22": (22800, 246), "2026-10-29": (23100, 248)}
+OTHER_DAYS = [21400, 24100, 26800, 27900, 25200, 22300, 20900]  # Mon..Sun pattern
+
+
+def _sales(store: Store) -> None:
+    from datetime import date, timedelta
+
+    rows = []
+    d = date(2026, 10, 1)
+    while d <= date(2026, 11, 5):
+        key = d.isoformat()
+        if key in THURSDAYS:
+            revenue, orders = THURSDAYS[key]
+        elif key == "2026-11-05":
+            revenue, orders = 18240, 201
+        else:
+            revenue = OTHER_DAYS[d.weekday()] + (d.day % 5) * 120
+            orders = round(revenue / 92.7)
+        rows.append((key, float(revenue), orders, round(orders / 0.031)))  # conversion stays near 3.1%
+        d += timedelta(days=1)
+    # Nov 5: traffic normal, so conversion dips only because of fewer sizes and no email.
+    store.executemany("INSERT INTO daily_sales VALUES (?, ?, ?, ?)", rows)
+    store.execute("UPDATE daily_sales SET visits = 7920 WHERE day = '2026-11-05'")
+    store.executemany("INSERT INTO stockouts VALUES (?, ?, ?, ?, ?)", [
+        ("prd_chore_coat", "M,L", "2026-11-04T15:00", 980.0, "2026-11-12"),
+        ("prd_rain_parka", "M,L", "2026-11-04T15:00", 1010.0, "2026-11-12"),
+        ("prd_denim_jacket", "M,L", "2026-11-04T15:00", 710.0, "2026-11-12"),
+    ])
+    store.executemany("INSERT INTO campaign_sends VALUES (?, ?, ?, ?, ?)", [
+        ("2026-10-29", "Weekly email", "sent", None, 1300.0),
+        ("2026-11-05", "Weekly email", "not_sent", "List import failed Thu 08:00", 1300.0),
+    ])

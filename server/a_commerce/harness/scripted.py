@@ -27,10 +27,23 @@ class ScriptedOperator:
         system, request = messages[0]["content"], messages[1]["content"]
         results = [json.loads(m["content"]) for m in messages if m["role"] == "tool"]
         calls = self._next(system, request, results)
+        if isinstance(calls, str):
+            return Reply(calls, [], NAME, 0)
         return Reply("", [ToolCallReq(f"call_{len(results)}_{i}", n, a) for i, (n, a) in enumerate(calls)], NAME, 0)
 
     # -- the plan --------------------------------------------------------------
-    def _next(self, system: str, request: str, results: list[dict]) -> list[tuple[str, dict]]:
+    def _next(self, system: str, request: str, results: list[dict]) -> list[tuple[str, dict]] | str:
+        if ("sales" in request.lower() or "revenue" in request.lower()) and "You are revising" not in system:
+            if not results:
+                return [("explain_sales_change", {})]
+            d = results[0]
+            if "causes" not in d:
+                return ""
+            explained = abs(sum(c["estimated"] for c in d["causes"] if c["cause"] != "Not explained"))
+            return (f"Revenue was ${d['revenue']:,.0f}, {abs(d['difference_pct'])}% under a normal Thursday. Most of it comes from two "
+                    f"things: three bestsellers ran out of M and L on Wednesday afternoon, and the weekly email didn't go out. "
+                    f"The two causes cover about ${round(explained, -3):,.0f} of the ${abs(d['difference']):,.0f}. I couldn't explain "
+                    f"the rest; traffic and conversion look normal.")
         if "return" in request.lower() and "You are revising" not in system:
             return self._returns(request, results)
         revising = "You are revising change set" in system

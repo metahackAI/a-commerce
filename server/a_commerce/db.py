@@ -161,6 +161,21 @@ CREATE TABLE messages (
   status TEXT NOT NULL, created_at TEXT NOT NULL
 );
 
+CREATE TABLE daily_sales (
+  day TEXT PRIMARY KEY, revenue REAL NOT NULL, orders INTEGER NOT NULL, visits INTEGER NOT NULL
+);
+
+CREATE TABLE stockouts (
+  product_id TEXT NOT NULL, sizes TEXT NOT NULL, since TEXT NOT NULL,
+  usual_revenue REAL NOT NULL,  -- what these sizes make on a usual day of the same weekday
+  back_on TEXT                  -- expected restock date
+);
+
+CREATE TABLE campaign_sends (
+  day TEXT NOT NULL, name TEXT NOT NULL, status TEXT NOT NULL, detail TEXT,
+  usual_revenue REAL NOT NULL   -- revenue the send brings on a usual day it goes out
+);
+
 CREATE TABLE action_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   at TEXT NOT NULL,
