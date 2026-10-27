@@ -378,3 +378,7 @@ vite.config.ts.timestamp-*
 data/raw/
 *.gguf
 *.safetensors
+
+# A-Commerce
+*.sqlite3
+node_modules/

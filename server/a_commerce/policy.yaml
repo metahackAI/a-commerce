@@ -1,0 +1,66 @@
+# Business rules the back end enforces. Tools read these values; no rule lives in code or prompts.
+# Each entry: value plus one sentence an agent can quote back to a person.
+
+max_discount:
+  value: {vip: 30, gold: 30, member: 20, everyone: 20}
+  meaning: Highest percent off a sale may give, by audience.
+
+price_floor_markup:
+  value: 15
+  meaning: No sale price may go below cost plus this percent.
+
+promo_min_stock:
+  value: 10
+  meaning: Products with fewer units than this are left out of sales.
+
+member_benefits_per_order:
+  value: 1
+  meaning: One member benefit per order; sale coupons do not stack with tier coupons.
+
+approval_required_for:
+  value: [prices, coupons, display, refunds, customer_messages]
+  meaning: Changes of these kinds wait for a person to approve them.
+
+refund_without_person_max:
+  value: 200.00
+  meaning: Refunds above this amount are confirmed by a person.
+
+return_window_days:
+  value: 30
+  meaning: Returns are accepted within this many days of delivery.
+
+defect_refund:
+  value: full
+  meaning: Defects are refunded in full and return shipping is free.
+
+changed_mind_return_shipping:
+  value: customer
+  meaning: When the customer changed their mind, they pay return shipping.
+
+damage_claim_needs_photo:
+  value: true
+  meaning: Damage claims need at least one photo.
+
+size_exchange_days:
+  value: 30
+  meaning: Size exchanges are free within this many days.
+
+gift_exchange_until:
+  value: "2026-12-31"
+  meaning: Gift receipts allow size exchanges until this date.
+
+customer_messages:
+  value: always_ask
+  meaning: Every message to a customer is read and approved by a person first.
+
+undo_window_after_end_days:
+  value: 1
+  meaning: A change set can be undone until this many days after its last end date.
+
+free_shipping_min_subtotal:
+  value: 80.00
+  meaning: Shipping is free when the subtotal before member benefits reaches this amount.
+
+pricing_rule:
+  value: {markup: 2.5, ending: 9}
+  meaning: New products are priced at cost times the markup, rounded to the nearest price ending in 9.

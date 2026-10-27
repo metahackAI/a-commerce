@@ -105,13 +105,17 @@ Design details: [docs/design.md](docs/design.md). Research (what AI-native comme
 
 ### Requirements
 
-- TODO
+- Python 3.12+ and [uv](https://docs.astral.sh/uv/)
 
 ### Run locally
 
 ```bash
-# TODO
+make setup   # install server dependencies
+make check   # tests, including the VIP weekend acceptance test
+make serve   # API on http://localhost:8000 (docs at /docs)
 ```
+
+Build status and what is proven by tests: [docs/progress.md](docs/progress.md).
 
 ### Environment variables
 
