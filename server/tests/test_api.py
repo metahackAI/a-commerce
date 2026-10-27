@@ -59,3 +59,18 @@ def test_change_set_over_http():
 
     log = [a["action"] for a in client.get("/actions").json()]
     assert "change_set:approve" in log and "place_order" in log
+
+
+def test_operator_chat_builds_and_edits_the_change_set(monkeypatch):
+    for k in ("WORKER_BASE_URL", "PLANNER_BASE_URL"):
+        monkeypatch.delenv(k, raising=False)
+    client.post("/demo/reset")
+    client.post("/demo/clock", json={"at": "2026-11-06T11:02"})
+    first = client.post("/bo/chat", json={"request": "Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page."}).json()
+    assert first["change_set_id"] == 1042 and first["events"][1]["data"]["checks_passed"] == 4
+    second = client.post("/bo/chat", json={"request": "Drop the low-stock ones. Give the overshirt 15% instead.",
+                                            "change_set_id": 1042}).json()
+    view = second["events"][1]["data"]
+    assert (view["version"], view["checks_passed"]) == (2, 6)
+    live = client.post("/change-sets/1042/approve", json={"version": 2}).json()
+    assert live["status"] == "live"

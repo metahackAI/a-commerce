@@ -41,6 +41,7 @@ class Plan:
     approval_kind: str | None  # a key in policy approval_required_for, or None
     approval_reason: str = ""
     summary: str = ""
+    resolved_args: dict | None = None  # what commit will run, when it differs from what was asked
 
 
 @dataclass
@@ -159,7 +160,7 @@ def make_preview(store: Store, tool: Tool, args: dict, *, actor: str, context: d
     }
     store.execute(
         "INSERT INTO previews (id, tool, args, result, status, created_at) VALUES (?, ?, ?, ?, 'open', ?)",
-        (preview_id, tool.name, json.dumps(args), json.dumps(result), store.now().isoformat(timespec="minutes")),
+        (preview_id, tool.name, json.dumps(plan.resolved_args or args), json.dumps(result), store.now().isoformat(timespec="minutes")),
     )
     store.log(actor, f"{tool.name}:preview", {"args": args, "preview_id": preview_id})
     return result

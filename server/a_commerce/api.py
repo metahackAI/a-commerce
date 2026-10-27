@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from . import changesets
+from .harness import operator_models, run_operator
 from .db import Store
 from .seed import fresh_store
 from .tools.base import REGISTRY, ToolError, call
@@ -68,6 +69,20 @@ class ToolCall(BaseModel):
 def run_tool(name: str, body: ToolCall, x_shopper: str | None = Header(None)) -> Any:
     context = shopper(x_shopper) if x_shopper else None
     return call(store(), name, body.args, actor="agent", context=context)
+
+
+# -- operator chat --------------------------------------------------------------
+
+class OperatorRequest(BaseModel):
+    request: str
+    change_set_id: int | None = None
+
+
+@app.post("/bo/chat")
+def operator_chat(body: OperatorRequest) -> dict:
+    """One operator message in, agent steps and UI blocks out. Edits to a change set pass its id."""
+    worker, fallback = operator_models(store())
+    return run_operator(store(), body.request, worker, change_set_id=body.change_set_id, fallback=fallback)
 
 
 # -- change sets ----------------------------------------------------------------

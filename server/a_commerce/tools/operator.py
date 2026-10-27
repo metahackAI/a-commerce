@@ -173,7 +173,37 @@ class SetSalePricesIn(BaseModel):
     audience: Audience = Field(description="Who gets the sale price.", examples=["vip"])
     starts_at: datetime = Field(description="First minute of the sale.", examples=["2026-11-07T00:00"])
     ends_at: datetime = Field(description="Last minute of the sale.", examples=["2026-11-08T23:59"])
-    items: list[SaleItem] = Field(min_length=1, description="Products and their discount.")
+    category: str | None = Field(None, description="Put every product in this category on sale.", examples=["summer_outerwear"])
+    percent_off: float | None = Field(None, gt=0, lt=100, description="Discount for the category.", examples=[20])
+    min_stock: int | None = Field(None, ge=0, description="Leave out products with fewer units than this.", examples=[10])
+    overrides: list[SaleItem] = Field([], description="Products in the category that get a different discount.",
+                                      examples=[[{"product_id": "prd_overshirt", "percent_off": 15}]])
+    exclude: list[str] = Field([], description="Product ids to leave out.", examples=[["prd_chore_coat"]])
+    items: list[SaleItem] = Field([], description="Or list products one by one instead of a category.")
+
+    def resolve(self, store: Store) -> list[SaleItem]:
+        """Turn the category form into explicit items, so the preview shows exactly what will run."""
+        if self.items:
+            return self.items
+        if not (self.category and self.percent_off):
+            raise ToolError("no_products", "Give a category and percent_off, or a list of items.", "search_products")
+        rows = store.all("SELECT id FROM products WHERE category_id = ? AND status = 'live' ORDER BY rowid", (self.category,))
+        if not rows:
+            raise ToolError("unknown_category", f"No products in category {self.category}.", "search_products")
+        special = {o.product_id: o.percent_off for o in self.overrides}
+        unknown = set(special) - {r["id"] for r in rows}
+        if unknown:
+            raise ToolError("override_not_in_category", f"{', '.join(sorted(unknown))} is not in {self.category}.", "search_products")
+        items = []
+        for r in rows:
+            if r["id"] in self.exclude:
+                continue
+            if self.min_stock is not None:
+                stock = store.one("SELECT SUM(stock) AS n FROM variants WHERE product_id = ?", (r["id"],))["n"]
+                if stock < self.min_stock:
+                    continue
+            items.append(SaleItem(product_id=r["id"], percent_off=special.get(r["id"], self.percent_off)))
+        return items
 
 
 @write_tool("set_sale_prices",
@@ -184,6 +214,7 @@ class SetSalePrices:
     def plan(store: Store, args: SetSalePricesIn) -> Plan:
         if args.ends_at <= args.starts_at:
             raise ToolError("bad_period", "The sale ends before it starts.", "set_sale_prices")
+        args.items = args.resolve(store)
         products = {}
         for it in args.items:
             row = store.one("SELECT * FROM products WHERE id = ?", (it.product_id,))
@@ -236,12 +267,15 @@ class SetSalePrices:
                   f"Overlaps with {', '.join(clash)}" if clash else f"Checked {len(running)} running promotions",
                   None if not clash else "list_active_promotions"),
         ]
-        return Plan(rows, checks, "prices", f"Changes {len(rows)} prices",
-                    f"{args.name}: {len(rows)} products for {args.audience}, "
-                    f"{args.starts_at:%b %-d} – {args.ends_at:%b %-d}")
+        resolved = {k: v for k, v in args.model_dump(mode="json").items()
+                    if k in ("name", "audience", "starts_at", "ends_at", "items")}
+        return Plan(rows, checks, "prices", f"Changes {len(rows)} prices", resolved_args=resolved,
+                    summary=f"{args.name}: {len(rows)} products for {args.audience}, "
+                            f"{args.starts_at:%b %-d} – {args.ends_at:%b %-d}")
 
     @staticmethod
     def apply(store: Store, args: SetSalePricesIn) -> str:
+        args.items = args.resolve(store)
         pid = store.new_id("promo")
         store.execute("INSERT INTO promotions VALUES (?, ?, 'sale', ?, ?, ?, 'live', ?)",
                       (pid, args.name, args.audience, args.starts_at.isoformat(timespec="minutes"),
