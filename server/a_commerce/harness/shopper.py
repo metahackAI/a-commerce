@@ -56,6 +56,23 @@ SHOW_RETURN = {"type": "function", "function": {
     }},
 }}
 
+SHOW_FIT = {"type": "function", "function": {
+    "name": "show_fit_check",
+    "description": "Show which size to pick for each way the shopper might wear a product, compared with what they own.",
+    "parameters": {"type": "object", "required": ["product_id", "reply"], "properties": {
+        "product_id": {"type": "string"}, "layers": {"type": "array", "items": {"type": "string", "enum": ["hoodie", "sweater", "shirt"]}},
+        "reply": {"type": "string", "description": "One or two sentences to the shopper."}}},
+}}
+
+SHOW_GIFT = {"type": "function", "function": {
+    "name": "show_gift_picker",
+    "description": "Show gift ideas for someone else, with delivery by a date, wrap and a gift receipt. The shopper adds the address and places it.",
+    "parameters": {"type": "object", "required": ["product_ids", "reply"], "properties": {
+        "product_ids": {"type": "array", "items": {"type": "string"}}, "chosen": {"type": "string"}, "size": {"type": "string"},
+        "budget": {"type": "number"}, "by": {"type": "string", "description": "YYYY-MM-DD"},
+        "reply": {"type": "string", "description": "One or two sentences to the shopper."}}},
+}}
+
 SYSTEM = """You are the shopping assistant for Northwind, talking with {who}. Store time is {now}.
 What the store knows about this shopper: {profile}
 - Find products with the tools, then show them with show_products. Never write prices yourself.
@@ -67,10 +84,10 @@ What the store knows about this shopper: {profile}
 def run_shopper(store: Store, message: str, model: Model, context: dict, history: list[dict] | None = None) -> dict:
     profile = call(store, "get_my_profile", {}, actor="shopper-agent", context=context)
     tools = [REGISTRY[t.name].definition() for t in search(message, scope="shopper")]
-    for always in ("get_my_profile", "search_products", "compare_products", "update_my_preferences", "add_to_cart", "get_my_orders"):
+    for always in ("get_my_profile", "search_products", "compare_products", "update_my_preferences", "add_to_cart", "get_my_orders", "check_fit", "plan_gift"):
         if always not in [t["function"]["name"] for t in tools]:
             tools.append(REGISTRY[always].definition())
-    tools += [SHOW_PRODUCTS, SHOW_CART, SHOW_RETURN]
+    tools += [SHOW_PRODUCTS, SHOW_CART, SHOW_RETURN, SHOW_FIT, SHOW_GIFT]
     hist = "Earlier in this conversation: " + json.dumps(history[-6:]) if history else ""
     messages = [
         {"role": "system", "content": SYSTEM.format(who=profile.get("name") or "a first-time visitor",
@@ -104,6 +121,20 @@ def run_shopper(store: Store, message: str, model: Model, context: dict, history
                     blocks.append({"type": "ui", "ui": "return_options", "schema": 1, "block_id": f"ret_{opts['order']['id']}",
                                    "data": opts, "actions": [{"intent": "send_return_request", "label": "Send request", "by": "shopper"}]})
                     text = c.arguments.get("reply", text)
+                    out = {"ok": True}
+                elif c.name in ("show_fit_check", "show_gift_picker"):
+                    a = c.arguments
+                    if c.name == "show_fit_check":
+                        ui, data = "fit_check", call(store, "check_fit", {"product_id": a.get("product_id"), "layers": a.get("layers") or ["hoodie", "sweater"]},
+                                                     actor="harness", context=context)
+                    else:
+                        ui, data = "gift_picker", call(store, "plan_gift", {k: a[k] for k in ("product_ids", "chosen", "size", "budget", "by") if a.get(k)},
+                                                       actor="harness", context=context)
+                    if "error" in data:
+                        raise ToolError(data["error"]["code"], data["error"]["message"], data["error"]["next_tool"])
+                    blocks.append({"type": "ui", "ui": ui, "schema": 1, "block_id": ui, "data": data,
+                                   "actions": [{"intent": "place_gift_order" if ui == "gift_picker" else "add_to_cart", "by": "shopper"}]})
+                    text = a.get("reply", text)
                     out = {"ok": True}
                 elif c.name == "show_cart":
                     blocks.append(cart_block(store, context))

@@ -111,13 +111,29 @@ export type ReturnOptionsData = {
     | { kind: "refund"; title: string; amount: number; to: string; confirmed_by: string; money_back: string })[];
   send_back: { cost: string; pickup: string };
 };
+export type FitData = {
+  product: { product_id: string; name: string; color: string; fabric: string; price: number; exchange: string };
+  recommendations: { wearing: string; size: string; why: string }[];
+  columns: string[]; rows: { label: string; values: string[] }[];
+  reviews: { people: number; heights: string; true_to_size: number; snug: number; phrases: Record<string, number> } | null;
+  used: string[]; not_used: string[];
+};
+export type GiftData = {
+  picks: { product_id: string; name: string; price: Price; look: string | null; over_budget: boolean }[];
+  chosen: string; size: string | null;
+  options: { wrap: string; receipt: string; exchange: string };
+  delivery: { arrives: string; on_time: boolean; note: string | null };
+  address_note: string; total: number; total_detail: string;
+};
 export type FoBlock =
   | { type: "ui"; ui: "understood_chips"; data: { chips: Chip[] } }
   | { type: "ui"; ui: "compare_table"; why: string; data: CompareData }
   | { type: "ui"; ui: "look_gallery" | "product_list"; why: string; data: GalleryData }
   | { type: "ui"; ui: "cart"; data: CartData }
   | { type: "ui"; ui: "memory_note"; data: { memory_id: string; text: string } }
-  | { type: "ui"; ui: "return_options"; data: ReturnOptionsData };
+  | { type: "ui"; ui: "return_options"; data: ReturnOptionsData }
+  | { type: "ui"; ui: "fit_check"; data: FitData }
+  | { type: "ui"; ui: "gift_picker"; data: GiftData };
 export type FoEvent = AgentStep | FoBlock;
 export type Profile = { name: string | null; tier: string | null; preferences: { id: string; key: string; value: string; source: string }[] };
 
@@ -131,6 +147,12 @@ export const shop = {
     req<{ order_id: string; total: number; coupon: string | null }>("/orders", { method: "POST", headers: as(shopper), body: JSON.stringify({ order_preview_id }) }),
   sendReturn: (shopper: Shopper, body: { order_id: string; option: string; reason: string; photos: number }) =>
     req<{ return_request_id: string; status: string; next: string }>("/returns", { method: "POST", headers: as(shopper), body: JSON.stringify(body) }),
+  placeGift: (shopper: Shopper, body: { product_id: string; size: string; wrap: boolean; message: string; recipient: string; address: string }) =>
+    req<{ order_id: string; total: number }>("/gift-orders", { method: "POST", headers: as(shopper), body: JSON.stringify(body) }),
+  prepareOrder: (shopper: Shopper) =>
+    req<CartData>("/tools/prepare_order", { method: "POST", headers: as(shopper), body: JSON.stringify({ args: {} }) }),
+  addToCart: (shopper: Shopper, product_id: string, size: string) =>
+    req<CartData>("/tools/add_to_cart", { method: "POST", headers: as(shopper), body: JSON.stringify({ args: { product_id, size } }) }),
   undoMemory: (shopper: Shopper, id: string) =>
     req<{ ok: boolean }>(`/memories/${id}/undo`, { method: "POST", headers: as(shopper) }),
 };

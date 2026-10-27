@@ -62,3 +62,43 @@ test("Mina asks for bigger photos, keeps the same results, and can undo the memo
   await expect(memory).toContainText("Forgotten");
   await expect(page.getByTestId("profile")).toContainText("Nothing yet.");
 });
+
+test("a gift for Dad: the VIP price, the size, an address used once, nothing saved", async ({ page, request }) => {
+  await approveVipWeekend(request);
+  await page.goto("/fo?shopper=jamie");
+  await say(page, "A gift for my dad. He hikes a lot. Under $100, and it has to arrive by Nov 14.");
+  const gift = page.getByTestId("gift_picker");
+  await expect(gift).toContainText("Packable windbreaker");
+  await expect(gift).toContainText("$71.20");
+  await expect(gift).toContainText("Gift receipt, no prices shown");
+  await expect(gift.getByRole("button", { name: "Tell me the size first" })).toBeDisabled();
+  await say(page, "He's about my size, maybe a bit bigger.");
+  await expect(gift).toContainText("Chosen · L");
+  await gift.getByPlaceholder("Who it is for").fill("Dad");
+  await gift.getByPlaceholder("Their address").fill("48 Pine Rd, Lakeview");
+  await gift.getByRole("button", { name: "Place gift order · $76.20" }).click();
+  await expect(page.getByTestId("gift-placed")).toBeVisible();
+  await expect(page.getByTestId("profile")).not.toContainText("Pine");
+});
+
+test("fit check compares the overcoat with the windbreaker Jamie kept", async ({ page, request }) => {
+  await request.post(`${API}/demo/clock`, { data: { at: "2026-11-07T10:00" } });
+  const h = { "X-Shopper": "jamie" };
+  await request.post(`${API}/tools/add_to_cart`, { headers: h, data: { args: { product_id: "prd_windbreaker", size: "M" } } });
+  const order = await (await request.post(`${API}/tools/prepare_order`, { headers: h, data: { args: {} } })).json();
+  await request.post(`${API}/orders`, { headers: h, data: { order_preview_id: order.order_preview_id } });
+  await request.post(`${API}/demo/clock`, { data: { at: "2026-11-20T10:00" } });
+
+  await page.goto("/fo?shopper=jamie");
+  await say(page, "Will M fit in the wool overcoat? I want to wear it over a hoodie.");
+  const fit = page.getByTestId("fit_check");
+  await expect(fit).toContainText("Over a hoodie");
+  await expect(fit).toContainText("3 cm more in the chest than M");
+  await expect(fit).toContainText("Your windbreaker, M");
+  await expect(fit).toContainText("Not used: Height and weight");
+  await expect(page.getByTestId("memory")).toContainText("Remembered: you layer hoodies under coats");
+  await fit.getByRole("button", { name: "Add L · $289.00" }).click();
+  await expect(page.getByTestId("cart")).toContainText("Charcoal · L");
+  await page.getByTestId("cart").getByRole("button", { name: "Place order · $289.00" }).click();
+  await expect(page.getByTestId("placed")).toBeVisible();
+});

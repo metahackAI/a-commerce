@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { CartData, Chip, CompareData, GalleryData, Price } from "../api";
 import { usd } from "../api";
 
-const TONES = ["t-sand", "t-slate", "t-clay", "t-navy", "t-olive", "t-stone"];
+export const TONES = ["t-sand", "t-slate", "t-clay", "t-navy", "t-olive", "t-stone"];
 export const tone = (name: string) => TONES[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % TONES.length];
 
 const isPrice = (v: unknown): v is Price => typeof v === "object" && v !== null && "now" in v;

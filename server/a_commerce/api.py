@@ -15,6 +15,7 @@ from .harness import operator_models, run_operator, run_shopper, shopper_model
 from .db import Store
 from .seed import fresh_store
 from .tools.base import REGISTRY, ToolError, call
+from .tools.gift import place_gift_order
 from .tools.shopper import place_order, send_return_request, undo_memory
 
 app = FastAPI(title="A-Commerce")
@@ -176,6 +177,23 @@ class PlaceOrder(BaseModel):
 def post_order(body: PlaceOrder, x_shopper: str = Header(...)) -> dict:
     ctx = shopper(x_shopper)
     return guard(place_order, store(), body.order_preview_id, ctx["member_id"], ctx)
+
+
+class GiftOrder(BaseModel):
+    product_id: str
+    size: str
+    wrap: bool = True
+    message: str = ""
+    recipient: str
+    address: str
+
+
+@app.post("/gift-orders")
+def post_gift_order(body: GiftOrder, x_shopper: str = Header(...)) -> dict:
+    """Person-only. The shopper's Place gift order button; the address is used for this order only."""
+    ctx = shopper(x_shopper)
+    return guard(place_gift_order, store(), ctx["member_id"], ctx, body.product_id, body.size, body.wrap, body.message,
+                 body.recipient, body.address)
 
 
 class ReturnRequest(BaseModel):

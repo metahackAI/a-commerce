@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { AgentStep, CartData, Chip, FoBlock, Profile, ReturnOptionsData, Shopper } from "../api";
+import type { AgentStep, CartData, Chip, FitData, FoBlock, GiftData, Profile, ReturnOptionsData, Shopper } from "../api";
 import { api, shop } from "../api";
 import { Cart, Chips, CompareTable, Gallery, ReturnOptions } from "./blocks";
+import { FitCheck, GiftPicker } from "./FitGift";
 
 type Msg =
   | { role: "user"; text: string }
@@ -25,6 +26,9 @@ export function Storefront({ shopper }: { shopper: Shopper }) {
   const [placed, setPlaced] = useState<string | null>(null);
   const [ret, setRet] = useState<ReturnOptionsData | null>(null);
   const [retSent, setRetSent] = useState<string | null>(null);
+  const [fit, setFit] = useState<FitData | null>(null);
+  const [gift, setGift] = useState<GiftData | null>(null);
+  const [giftPlaced, setGiftPlaced] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -55,6 +59,9 @@ export function Storefront({ shopper }: { shopper: Shopper }) {
         if (b.ui === "compare_table" || b.ui === "look_gallery" || b.ui === "product_list") setMain(b);
         if (b.ui === "cart") { setCart(b.data); setPlaced(null); }
         if (b.ui === "return_options") setRet(b.data);
+        if (b.ui === "fit_check") { setFit(b.data); setGift(null); setMain(null); }
+        if (b.ui === "gift_picker") { setGift(b.data); setFit(null); setMain(null); }
+        if (b.ui === "compare_table" || b.ui === "look_gallery" || b.ui === "product_list") { setFit(null); setGift(null); }
       }
       setMsgs((m) => [...m, { role: "agent", text: step?.text ?? "", model: step?.model ?? "", memories }]);
       if (memories.length) refreshProfile();
@@ -152,7 +159,10 @@ export function Storefront({ shopper }: { shopper: Shopper }) {
           {main?.ui === "compare_table" && <CompareTable data={main.data} why={main.why} />}
           {(main?.ui === "look_gallery" || main?.ui === "product_list") && <Gallery data={main.data} why={main.why} big={main.ui === "look_gallery"} />}
           {ret && <ReturnOptions data={ret} sent={retSent} busy={busy} onSend={sendReturn} />}
-          {!main && !ret && <p className="mute">What you ask for appears here, laid out for you.</p>}
+          {fit && <FitCheck data={fit} onAdd={async (size) => { await shop.addToCart(shopper, fit.product.product_id, size); setCart(await shop.prepareOrder(shopper)); setPlaced(null); }} />}
+          {gift && <GiftPicker data={gift} busy={busy} placed={giftPlaced}
+                               onPlace={async (o) => { setBusy(true); try { setGiftPlaced((await shop.placeGift(shopper, o)).order_id); } finally { setBusy(false); } }} />}
+          {!main && !ret && !fit && !gift && <p className="mute">What you ask for appears here, laid out for you.</p>}
         </section>
 
         <aside className="cartp">

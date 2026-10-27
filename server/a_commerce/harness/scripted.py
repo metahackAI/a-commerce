@@ -211,7 +211,7 @@ class ScriptedShopper:
 
     def complete(self, messages: list[dict], tools: list[dict]) -> Reply:
         if any(m["role"] == "tool" for m in messages):
-            return Reply("", [], NAME, 0)
+            return Reply("", self._after_tools(messages), NAME, 0)
         system, text = messages[0]["content"], messages[1]["content"].lower()
         profile = json.loads(re.search(r"knows about this shopper: (\{.*?\})\n", system).group(1))
         prefs = {p["key"]: p["value"] for p in profile.get("preferences", [])}
@@ -220,6 +220,23 @@ class ScriptedShopper:
         shown = next((h["shown"] for h in reversed(history) if h.get("shown")), self.LIGHT_JACKETS)
         calls = self._calls(text, prefs, shown, profile)
         return Reply("", [ToolCallReq(f"s{i}", n, a) for i, (n, a) in enumerate(calls)], NAME, 0)
+
+    def _after_tools(self, messages: list[dict]) -> list[ToolCallReq]:
+        """Second step for the fit check: reply from what check_fit found, so it never claims an item the shopper lacks."""
+        called = [c["function"]["name"] for m in messages if m["role"] == "assistant" for c in m.get("tool_calls", [])]
+        if "check_fit" not in called or "show_fit_check" in called:
+            return []
+        fit = next(json.loads(m["content"]) for m in reversed(messages) if m["role"] == "tool" and "recommendations" in m["content"])
+        hoodie, other = fit["recommendations"][0], fit["recommendations"][-1]
+        asked_sweater = "sweater" in messages[1]["content"].lower()
+        if asked_sweater:
+            reply = f"Then {other['size']}. I put both on the right so you can see the difference."
+        else:
+            ref = f"about the size of your {fit['columns'][-1].split(',')[0].removeprefix('Your ')}, which you kept" if len(fit["columns"]) > 2 else "your usual size"
+            reply = (f"Probably not over a hoodie. {other['size']} is {ref}, but over a hoodie you'll want roughly "
+                     f"{hoodie['why'].split(' more')[0]} more in the chest. I'd go with {hoodie['size']}.")
+        return [ToolCallReq("fit_show", "show_fit_check", {"product_id": fit["product"]["product_id"],
+                                                          "layers": ["hoodie", "sweater"], "reply": reply})]
 
     def _chips(self, text: str, prefs: dict) -> list[dict]:
         chips = [{"label": "Light jacket", "source": "conversation"}, {"label": "Spring travel", "source": "conversation"}]
@@ -233,6 +250,21 @@ class ScriptedShopper:
 
     def _calls(self, text: str, prefs: dict, shown: list[str], profile: dict) -> list[tuple[str, dict]]:
         search = ("search_products", {"category": "summer_outerwear", "fields": ["name", "weight_g", "fabric", "stock"], "limit": 50})
+        if "fit" in text and "overcoat" in text or "just wear a sweater" in text:
+            calls = [("check_fit", {"product_id": "prd_overcoat", "layers": ["hoodie", "sweater"]})]
+            if "hoodie" in text:
+                calls.insert(0, ("update_my_preferences", {"add": [{"key": "layers", "value": "You layer hoodies under coats"}]}))
+            return calls
+        if "gift" in text:
+            return [("update_my_preferences", {"about_someone_else": True}),
+                    ("show_gift_picker", {"product_ids": ["prd_windbreaker", "prd_fleece", "prd_merino_tee"], "budget": 100, "by": "2026-11-14",
+                                          "reply": "Here are three that hikers keep using. I won't save any of this to your profile, "
+                                                   "since it's about your dad, not you."})]
+        if "my size" in text and "bigger" in text:
+            size = {"S": "M", "M": "L", "L": "XL"}.get(prefs.get("size", "M"), "L")
+            return [("show_gift_picker", {"product_ids": ["prd_windbreaker", "prd_fleece", "prd_merino_tee"], "chosen": "prd_windbreaker",
+                                          "size": size, "budget": 100, "by": "2026-11-14",
+                                          "reply": f"Then {size}. If it doesn't fit he can exchange it himself with the gift receipt, no need to involve you."})]
         if any(w in text for w in ("coming apart", "broke", "broken", "defect", "falling apart")):
             return [("get_my_orders", {}),
                     ("show_return_options", {"order_id": "#20402", "reason": "defect", "reply":

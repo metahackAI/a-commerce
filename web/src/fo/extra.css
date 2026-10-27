@@ -23,3 +23,6 @@
 .fo .opt b{font-weight:600}
 .fo .opt dl{display:grid;grid-template-columns:96px 1fr;gap:4px 8px;font-size:12.5px}
 .fo .opt dt{color:var(--mute)}
+.fo .grp{border:1px solid var(--line);border-radius:var(--r)}
+.fo .grp input:not([type]){border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit}
+.fo .opt .art{border-radius:8px}

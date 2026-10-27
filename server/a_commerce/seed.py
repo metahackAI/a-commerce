@@ -75,6 +75,7 @@ def seed(store: Store) -> None:
     _returns(store)
     _sales(store)
     _supplier_sheet(store)
+    _fit(store)
 
 
 def _products(store: Store) -> None:
@@ -282,3 +283,15 @@ def _supplier_sheet(store: Store) -> None:
                      "28-36" if cat == "PT" else "S-XL", mix, 2 if i == 17 else 1))
     store.executemany("INSERT INTO supplier_rows VALUES (?, ?, ?, ?, ?, ?, ?)",
                       [(SHEET, n, code, float(cost), sizes, mix, photos) for n, (code, cost, sizes, mix, photos) in enumerate(rows, start=1)])
+
+
+def _fit(store: Store) -> None:
+    """Flat measurements in cm (docs/plan.md §4.4) and the overcoat's review summary."""
+    store.executemany("INSERT INTO measurements VALUES (?, ?, ?, ?, ?, ?)", [
+        ("prd_overcoat", "S", 53, 44, 62.5, 96), ("prd_overcoat", "M", 56, 46, 64, 98),
+        ("prd_overcoat", "L", 59, 48, 65.5, 100), ("prd_overcoat", "XL", 62, 50, 67, 102),
+        ("prd_windbreaker", "S", 54, 45, 62.5, 69), ("prd_windbreaker", "M", 57, 47, 64, 71),
+        ("prd_windbreaker", "L", 60, 49, 65.5, 73), ("prd_windbreaker", "XL", 63, 51, 67, 75),
+    ])
+    store.execute("INSERT INTO review_summaries VALUES ('prd_overcoat', 41, '175–182 cm', 29, 12, ?)",
+                  (json.dumps({"size up for a hoodie": 9}),))

@@ -196,6 +196,16 @@ CREATE TABLE product_drafts (
   status TEXT NOT NULL
 );
 
+CREATE TABLE measurements (
+  product_id TEXT NOT NULL, size TEXT NOT NULL, chest REAL, shoulder REAL, sleeve REAL, length REAL,
+  PRIMARY KEY (product_id, size)
+);
+
+CREATE TABLE review_summaries (
+  product_id TEXT PRIMARY KEY, reviewers INTEGER NOT NULL, height_range TEXT NOT NULL,
+  true_to_size INTEGER NOT NULL, snug INTEGER NOT NULL, phrases TEXT NOT NULL
+);
+
 CREATE TABLE action_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   at TEXT NOT NULL,
