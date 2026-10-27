@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>A-Commerce · Back office</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="app.css"></head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="jk" viewBox="0 0 100 100"><path d="M36 12 50 21 64 12 85 24 92 62 80 64 77 42 76 90H24L23 42 20 64 8 62 15 24Z" fill="currentColor"/><path d="M50 21V90" stroke="#fff" stroke-opacity=".5" stroke-width="2"/></symbol></svg>
+<div class="app">
+
+<aside class="side">
+  <div class="win"><i></i><i></i><i></i></div>
+  <div class="brand"><span class="logo">A</span>A-Commerce</div>
+  <div class="store"><div>Northwind Apparel<small>Back office</small></div><span class="mute">&#8964;</span></div>
+  <button class="navbtn primary"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New task</button>
+  <button class="navbtn on"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Tasks</button>
+  <button class="navbtn"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg>Approvals<span class="badge">3</span></button>
+  <button class="navbtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Automations</button>
+  <button class="navbtn"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 10v10"/></svg>Catalog</button>
+  <button class="navbtn"><svg viewBox="0 0 24 24"><path d="M4 19h16M7 15l3-4 3 2 4-6"/></svg>Insights</button>
+  <button class="navbtn"><svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6z"/><path d="M9 11h6M9 15h6"/></svg>Activity log</button>
+  <div class="sect">Today</div>
+  <nav class="hist">
+    <a class="on">VIP weekend sale: summer outerwear</a>
+    <a>Approve 12 return requests over $200</a>
+    <a>Draft listings from supplier sheet</a>
+    <div class="sect" style="padding-left:10px">Earlier</div>
+    <a>Restock alerts for linen shirts</a>
+    <a>Why did checkout drop on Tuesday?</a>
+    <a>November main page plan</a>
+    <a>Fix missing size charts (18 products)</a>
+  </nav>
+  <div class="me"><span class="av">SJ</span><div>Son SeongJun<small>Merchandiser</small></div></div>
+</aside>
+
+<main class="main">
+  <div class="top"><h1>VIP weekend sale: summer outerwear</h1><span class="status">Waiting for your approval</span><button class="ghost sp">Share</button></div>
+  <div class="thread"><div class="col">
+
+    <div class="u">Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.</div>
+
+    <div class="a">
+      <div class="who"><span class="logo">A</span>A-Commerce</div>
+      <details class="steps" open>
+        <summary><b>7 tool calls</b> · Muse Glimmer 30B · nothing changed yet<span>3.8s</span></summary>
+        <div class="step"><span class="ck"></span><div>Found 42 active products in Outerwear / Summer<small><code>search_products</code> category=summer-outerwear, status=active</small></div><span class="t">0.4s</span></div>
+        <div class="step"><span class="ck"></span><div>VIP tier has 1,284 members<small><code>list_tiers</code> · <code>search_members</code> tier=vip</small></div><span class="t">0.3s</span></div>
+        <div class="step"><span class="ck"></span><div>Policy check passed: VIP discount limit is 30%, tier coupons will not stack<small><code>check_policy</code> rule=max_discount, coupon_stacking</small></div><span class="t">0.2s</span></div>
+        <div class="step"><span class="ck"></span><div>Prepared the promotion, coupon, and main page slot as a preview<small><code>create_promotion</code> preview=true · <code>issue_coupon</code> preview=true · <code>schedule_display</code> preview=true</small></div><span class="t">1.1s</span></div>
+        <div class="step"><span class="ck wait"></span><div>Waiting for approval: prices change on 42 products and a customer-facing banner goes live</div><span class="t"></span></div>
+      </details>
+      <p>Here is the plan. The sale runs <b>Sat Nov 1, 00:00 – Sun Nov 2, 23:59</b> for VIP members only. Two products have fewer than 10 units left; I kept them in, but you can drop them.</p>
+    </div>
+
+    <div class="block">
+      <div class="bh">42 products · 20% off for VIP<span class="k">product_table</span></div>
+      <table>
+        <tr><th>Product</th><th class="n">Stock</th><th class="n">Price</th><th class="n">VIP price</th></tr>
+        <tr><td><div class="prod"><span class="thumb" style="background:#ece7dd;color:#b9ab92"><svg><use href="#jk"/></svg></span>Linen blend field jacket</div></td><td class="n">86</td><td class="n">$128.00</td><td class="n">$102.40</td></tr>
+        <tr><td><div class="prod"><span class="thumb" style="background:#e3e8ec;color:#93a5b3"><svg><use href="#jk"/></svg></span>Packable windbreaker</div></td><td class="n">214</td><td class="n">$89.00</td><td class="n">$71.20</td></tr>
+        <tr><td><div class="prod"><span class="thumb" style="background:#e7ebe3;color:#9fae93"><svg><use href="#jk"/></svg></span>Cotton chore coat</div></td><td class="n low">7</td><td class="n">$149.00</td><td class="n">$119.20</td></tr>
+        <tr><td><div class="prod"><span class="thumb" style="background:#efe6e3;color:#c1a39a"><svg><use href="#jk"/></svg></span>Seersucker overshirt</div></td><td class="n">53</td><td class="n">$79.00</td><td class="n">$63.20</td></tr>
+        <tr><td><div class="prod"><span class="thumb" style="background:#e9e9e9;color:#a8a8a8"><svg><use href="#jk"/></svg></span>Light rain parka</div></td><td class="n low">4</td><td class="n">$169.00</td><td class="n">$135.20</td></tr>
+      </table>
+      <div class="more">Show 37 more</div>
+    </div>
+
+    <div class="block">
+      <div class="approve">
+        <h3>Approve this sale?</h3>
+        <ul>
+          <li><b>Prices</b>20% off 42 products, VIP members only</li>
+          <li><b>Coupon</b>VIPWEEKEND20, issued to 1,284 members, does not stack with tier coupons</li>
+          <li><b>Main page</b>Hero banner, Sat 00:00 – Sun 23:59</li>
+          <li><b>Notifications</b>None. Ask me if you want to email VIP members.</li>
+        </ul>
+        <div class="btns"><button class="btn dark">Approve and run</button><button class="btn">Remove low-stock items</button><button class="btn">Edit</button></div>
+        <div class="note">After running, I read everything back and check it against your request.</div>
+      </div>
+      <div class="more" style="display:flex;justify-content:space-between"><span>approval_card</span><span class="mono">preview_id pv_7f3a</span></div>
+    </div>
+
+  </div></div>
+
+  <div class="comp">
+    <div class="box">
+      <div class="ph">Ask A-Commerce to do something…</div>
+      <div class="bar">
+        <span class="pill"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Attach</span>
+        <span class="pill">Muse Glimmer 30B · Auto</span>
+        <span class="pill"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/></svg>Ask before changes</span>
+        <button class="send"><svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+      </div>
+    </div>
+    <div class="hint">Changes to prices, customers, and the storefront always need your approval.</div>
+  </div>
+</main>
+
+<aside class="panel">
+  <div class="ptop"><span class="tab on">Preview</span><span class="tab">Changes</span><span class="tab">Log</span><span class="x">&times;</span></div>
+  <div class="pbody">
+    <div>
+      <div class="lbl">Main page · as VIP members will see it</div>
+      <div class="frame">
+        <div class="fbar"><i></i><i></i><i></i><span style="margin-left:6px">northwind.example / home</span></div>
+        <div class="hero">
+          <div><small>VIP WEEKEND</small><h4>20% off summer outerwear</h4><span class="cta">Shop the sale</span></div>
+          <div class="img" style="color:#c7b9a0"><svg viewBox="0 0 100 100"><use href="#jk"/></svg></div>
+        </div>
+        <div class="mini">
+          <div style="background:#ece7dd;color:#b9ab92"><svg viewBox="0 0 100 100"><use href="#jk"/></svg></div>
+          <div style="background:#e3e8ec;color:#93a5b3"><svg viewBox="0 0 100 100"><use href="#jk"/></svg></div>
+          <div style="background:#e7ebe3;color:#9fae93"><svg viewBox="0 0 100 100"><use href="#jk"/></svg></div>
+          <div style="background:#efe6e3;color:#c1a39a"><svg viewBox="0 0 100 100"><use href="#jk"/></svg></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="lbl">Promotion</div>
+      <dl class="kv">
+        <dt>Name</dt><dd>VIP Weekend: Summer Outerwear</dd>
+        <dt>Who</dt><dd>VIP tier · 1,284 members</dd>
+        <dt>What</dt><dd>42 products · 20% off</dd>
+        <dt>When</dt><dd>Nov 1 00:00 – Nov 2 23:59</dd>
+        <dt>Stacking</dt><dd>Not with tier coupons</dd>
+        <dt>Policy</dt><dd class="yes">Within VIP limit (30%)</dd>
+      </dl>
+    </div>
+    <div>
+      <div class="lbl">What will change</div>
+      <div class="chg">
+        <div><span class="op">create</span>Promotion "VIP Weekend: Summer Outerwear"</div>
+        <div><span class="op">create</span>Coupon VIPWEEKEND20 for 1,284 members</div>
+        <div><span class="op">update</span>Sale price on 42 products (Nov 1–2)</div>
+        <div><span class="op">schedule</span>Main page hero slot, Nov 1–2</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+</div>
+</body></html>
