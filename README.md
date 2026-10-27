@@ -51,55 +51,58 @@ The principles we hold to:
 
 ## How we use Meta models
 
-> Proposed split. To be confirmed and measured during the hackathon.
+| Model | Where it runs | Role in A-Commerce | Status (Oct 28) |
+|---|---|---|---|
+| Muse Glimmer 30B | Open weights on a partner inference server | Worker: tool search, tool calls, routine requests | Wired (OpenAI-compatible client); waiting for keys to measure |
+| Muse Spark Open | Open weights on Baseten (`meta-models/muse-spark-open-1026`) | Planner: multi-step requests, revisions, takeover when the worker fails | Wired as the fallback; waiting for keys to measure |
+| Llama 3.2 3B | Open weights, on a laptop (Ollama) | Stand-in used to measure the tool layer before Muse keys arrived | Measured, see below |
+| Muse Image, SAM 3.1, Voice | Meta Model API | Product images, cut-outs, voice requests | Not started (mockups only) |
 
-| Model | Where it runs | What it does in A-Commerce |
-|---|---|---|
-| Muse Glimmer 30B | Open weights (self-hosted) | Main worker: tool search, tool calls, routine tasks |
-| Muse Spark | Meta Model API | Planning multi-step tasks and steps the small model fails |
-| Muse Image | Meta Model API | Product and banner images for listings and promotions |
-| SAM 3.1 | Meta Model API | Product image segmentation (cut-outs, thumbnails) |
-| Muse Voice Transcribe | Meta Model API | Voice requests (optional) |
+**Why open weights matter here:** the whole agent (worker and planner) can run on infrastructure the merchant controls, so catalog and customer data stay in-house, and a small worker keeps the cost per request low enough to put an agent behind every request.
 
-**Why Meta models matter here:** open weights let a merchant run the agent on its own infrastructure, keeping catalog and customer data in-house, and a small model keeps the cost per request low enough to put an agent behind every request.
+## How we know it works
 
-## How we will know it works
+Every claim below is a test or a command you can run. `make check` runs all of them except the ones that need a model.
 
-We measure on a fixed set of back-office and storefront tasks, not on hand-picked demos:
+| What | How it is checked |
+|---|---|
+| The VIP weekend story, end to end: request → change set v1 (4 of 6 checks) → "Drop the low-stock ones…" → v2 (6 of 6, 40 products, overshirt $67.15) → approve → every change read back → Jamie pays $71.20 on Saturday → undo together | `server/tests/test_scenario_vip_weekend.py`, `test_harness.py`, and in a real browser `web/e2e/back-office.spec.ts`, `storefront.spec.ts` |
+| Alex's defect return → the operator's review of 12 returns over $200 → one approval: 9 refunds ($2,463.00) and 3 messages, read back; refunds cannot be undone | `test_returns.py`, `web/e2e/returns.spec.ts` |
+| Agents never approve, apply, order, or send refunds; shoppers never see cost or operator tools | `test_scenario_vip_weekend.py::test_agent_cannot_apply_its_own_preview`, `test_storefront.py`, `test_returns.py` |
+| A reply that contradicts the change set ("the sale is now live") is replaced by facts | `test_grounding.py` (with replies a real 3B model gave) |
+| A real model does the demo request | `make try-model RUNS=3` (model in `.env`) |
+| Our tools vs a screen-shaped API, same model and tasks | `make compare` |
 
-- Task completion rate
-- Tool selection accuracy (right tool, right order)
-- Steps and model calls per task, and cost per task
-- Consistency across repeated runs
-- The same harness with Muse Glimmer vs. Muse Spark
+First measurements, with a stand-in model (details and limits in [eval/README.md](eval/README.md)):
 
-Numbers will be added here once measured.
+| Model | Demo request, first message | Our tools: tasks passed | Screen-shaped API: tasks passed |
+|---|---|---|---|
+| Llama 3.2 3B (local) | 3 of 3 runs right | 2 of 3 (20 of 21 criteria, 0 errors) | 0 of 3 (3 errors per task) |
+| Muse Glimmer 30B | pending keys | pending | pending |
+| Muse Spark Open | pending keys | pending | pending |
+
+These are early numbers: one run per task at temperature 0, tasks written by us, and a 3B stand-in. The 3B model still fails the revision step ("Drop the low-stock ones…"), which is the step designed for the planner.
 
 ## Architecture
 
 ```
-   Shopper (storefront chat)        Operator (back-office chat)
-                \                          /
-                 v                        v
-        +------------------------------------------+
-        |              Commerce harness            |
-        |  tool search · planner · executor        |
-        |  approval checkpoints · action log       |
-        |  UI component picker                     |
-        +----------------+-------------------------+
-     Meta models         |  tool calls
-  (Glimmer / Spark / ...)|
-                         v
-        +------------------------------------------+
-        |            Commerce tool layer           |
-        |  product · price · stock · display ·     |
-        |  promotion · coupon · order · member     |
-        +----------------+-------------------------+
-                         v
-              Commerce back-end services
+  web/  React                         Back office (layout A)        Storefront (/fo)
+        one component per UI block    change_set · refund_review    compare_table · look_gallery · cart · return_options
+                    │  person-only buttons: approve, undo, place order, send return
+                    ▼
+  server/  FastAPI  ───────────────────────────────────────────────────────────────────
+        harness/   tool search (words + consumes/produces graph) · operator and shopper agents
+                   · nudges and retries · replies checked against the change set · worker → planner handoff
+        changesets  previews grouped for review · approve · run · read back · undo together
+        tools/     plan_sale · set_sale_prices · create_coupon · schedule_banner · plan_return_review
+                   · refund_return · compare_products · add_to_cart · get_return_options · …   (A-Commerce tools)
+        facade.py  the same store behind a screen-shaped API, for the comparison
+        policy.yaml  business rules as data          SQLite + seed (docs/plan.md §4)
+                    ▲
+        models  OpenAI-compatible: Muse Glimmer (worker), Muse Spark Open (planner); scripted stand-in without keys
 ```
 
-Design details: [docs/design.md](docs/design.md). Research (what AI-native commerce means, who else is building it, with source captures): [docs/research.md](docs/research.md). UI mockups: [design/mockups](design/mockups), layout options and UI per intent: [design/options](design/options), storefront plan: [design/storefront](design/storefront).
+Design: [docs/design.md](docs/design.md) · Build plan and seed numbers: [docs/plan.md](docs/plan.md) · What works today: [docs/progress.md](docs/progress.md) · Research: [docs/research.md](docs/research.md) · Mockups: [design/](design)
 
 ## Getting started
 
@@ -108,22 +111,42 @@ Design details: [docs/design.md](docs/design.md). Research (what AI-native comme
 - Python 3.12+ and [uv](https://docs.astral.sh/uv/)
 - Node 22+
 
-### Run locally
+### Run it
 
 ```bash
-make setup   # install server dependencies
-make check   # tests, including the VIP weekend acceptance test
-make serve   # API on http://localhost:8000 (docs at /docs)
-make web     # back office on http://localhost:5173 (in a second terminal)
+make setup   # server and web dependencies, and Chromium for the browser tests
+make check   # server tests, web build, browser tests (same as CI)
+make demo    # API on :8000 and the app on http://localhost:5173
 ```
 
-Build status and what is proven by tests: [docs/progress.md](docs/progress.md).
+Without model keys the agents run a scripted stand-in that is labelled `scripted` on every step. To use real models, copy `.env.example` to `.env` and fill `WORKER_*` (Glimmer) and `PLANNER_*` (Spark Open), or point `WORKER_*` at any OpenAI-compatible server (for example Ollama).
+
+```bash
+make try-model RUNS=3   # the demo request through the model in .env, judged on 7 criteria
+make compare            # our tools vs the screen-shaped API, same model and tasks
+```
+
+### Walk through the demo
+
+The data sits at a fixed moment (Fri Nov 6, 11:00). The demo clock buttons in the back office move it.
+
+1. `/fo?shopper=alex` — "The sole on my chelsea boots is coming apart after a week." → "Refund, please." → Send refund request.
+2. `/` (back office) — "Check returns waiting over $200" → 12 requests, 9 refunds $2,463.00 → Approve 9 refunds and send 3 messages.
+3. Back office — click **Fri Nov 6, 11:02**, then the VIP weekend suggestion → v1 with 2 problems → "Drop the low-stock ones. Give the overshirt 15% instead." → v2, 6 of 6 → Approve and run → read back.
+4. Set the clock to Sat Nov 7 → `/fo?shopper=jamie` — ask for a light jacket → comparison table at the VIP price → "Which one packs smallest?" → "The windbreaker. Same size as last time." → Place order · $71.20.
+5. `/fo?shopper=mina` — the same question gets a list; "Less text. Just show me bigger photos." switches the layout and leaves one memory you can undo.
+
+Script for the 3-minute video: [docs/demo.md](docs/demo.md).
 
 ### Environment variables
 
 | Name | Description |
 |---|---|
-| `META_API_KEY` | Meta Model API key (never commit it) |
+| `WORKER_BASE_URL`, `WORKER_API_KEY`, `WORKER_MODEL` | Worker model (Muse Glimmer), any OpenAI-compatible endpoint |
+| `PLANNER_BASE_URL`, `PLANNER_API_KEY`, `PLANNER_MODEL` | Planner model (Muse Spark Open on Baseten) |
+| `META_API_KEY` | Meta Model API key (images, later) |
+
+Never commit `.env`.
 
 ## Demo
 
@@ -136,7 +159,8 @@ Everything in this repository was created between Oct 27 and Nov 4, 2026. The co
 
 | Date | What was built |
 |---|---|
-| Oct 27 | Repository created, project scope defined |
+| Oct 27 | Repository, research, design, UI mockups (layouts, intents, storefront) |
+| Oct 28 | Build plan; server with policy, seed, tools and change sets; harness with tool search and model client; back office and storefront web apps; browser tests and CI; first real-model runs (Llama 3.2 3B) and the fixes they led to; replies checked against change sets; returns flow; comparison with a screen-shaped API |
 
 ## References
 

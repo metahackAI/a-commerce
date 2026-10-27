@@ -31,8 +31,10 @@ def _previews(store: Store, preview_ids: list[str]) -> list[dict]:
 
 
 def create(store: Store, title: str, request: str, preview_ids: list[str]) -> int:
-    _previews(store, preview_ids)  # validates
-    cs_id = int(store.new_id("cs").split("_")[1])
+    previews = _previews(store, preview_ids)  # validates
+    # Refund reviews count in their own range, so the demo's sale is #1042 whichever task comes first.
+    seq = "csret" if any(p["tool"] in REFUND_TOOLS for p in previews) else "cs"
+    cs_id = int(store.new_id(seq).split("_")[1])
     now = store.now().isoformat(timespec="minutes")
     store.execute("INSERT INTO change_sets VALUES (?, ?, 'waiting_for_approval', 1, ?, ?, NULL, NULL, ?, ?)",
                   (cs_id, title, json.dumps([request]), json.dumps(preview_ids), now, now))

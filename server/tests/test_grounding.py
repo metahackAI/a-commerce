@@ -55,4 +55,4 @@ def test_refund_review_replies_are_checked(store):
         "It said refunds or messages went out, but nothing goes out until you approve.",
         "It said 11 refunds, but the policy allows 8.",
         "It said $3,000.00, which is not an amount in this review."]
-    assert summary(view).startswith("Change set #1042: 11 returns waiting. The policy allows 8 refunds ($2,151.00)")
+    assert summary(view).startswith("Change set #1031: 11 returns waiting. The policy allows 8 refunds ($2,151.00)")

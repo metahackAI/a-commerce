@@ -120,3 +120,13 @@ def test_alex_and_the_operator_through_the_agents():
     assert block["ui"] == "refund_review" and block["data"]["summary"]["refund"] == {"count": 9, "amount": 2463.00}
     live = client.post(f"/change-sets/{out['change_set_id']}/approve", json={"version": 1}).json()
     assert live["status"] == "live" and live["verification"]["all_match"]
+
+
+def test_the_sale_is_1042_even_after_the_returns_review(store):
+    from a_commerce.harness import ScriptedOperator, run_operator
+    _, view = review(store)
+    assert view["id"] == 1031
+    store.set_clock("2026-11-06T11:02")
+    out = run_operator(store, "Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.",
+                       ScriptedOperator(store))
+    assert out["change_set_id"] == 1042

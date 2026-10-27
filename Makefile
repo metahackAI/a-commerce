@@ -1,5 +1,5 @@
 # One entry point for people, coding agents, and CI.
-.PHONY: setup check test web-build e2e serve web try-model compare
+.PHONY: setup check test web-build e2e serve web demo try-model compare
 
 setup:
 	cd server && uv sync
@@ -25,6 +25,10 @@ serve:
 # Back office at http://localhost:5173 (needs make serve running).
 web:
 	cd web && npm run dev
+
+# Both at once: API on :8000, app on http://localhost:5173 (Ctrl-C stops both).
+demo:
+	$(MAKE) -j2 serve web
 
 # Run the demo request through the model in .env and judge the change set (exit 0 = demo works).
 try-model:

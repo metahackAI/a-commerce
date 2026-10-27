@@ -24,13 +24,14 @@ Run everything with `make check`: server tests, web build, and the browser test 
 | Returns (server) | Alex sees "New pair, same size" (6 in stock, arrives Tue Nov 10) or "Full refund" $312.00 to card 0937 confirmed by a person; only Alex's own Send creates the request. `plan_return_review` sorts the 12 waiting returns over $200 by policy: 9 refunds $2,463.00, 2 photo requests, 1 decline (#20290, day 39); checks 12 of 12 payments, 3 coupons, 11 of 12 in window, one repeat returner (#20431). One approval refunds and sends, reads each back; refunds cannot be undone | `test_returns.py` |
 | Returns on screen | Alex on `/fo?shopper=alex`: the agent shows `return_options` (new pair or full refund), "Refund, please." preselects the refund, Alex taps Send. The operator asks "Check returns waiting over $200": the agent calls `plan_return_review` and the `refund_review` block shows 12 requests, 9 · $2,463.00, the policy per row, 1 check to look at, and the three messages; one approval refunds and sends, then every order is read back | `e2e/returns.spec.ts`; `test_returns.py::test_alex_and_the_operator_through_the_agents` |
 | A2API vs screen-shaped API | Same model (Llama 3.2 3B), same 3 tasks, same harness: our tools pass 2/3 tasks (20/21 criteria, 0 errors); the screen-shaped facade passes 0/3 (3 errors a task: codes guessed as words, `E999`). The facade can do the task when driven by hand | `make compare`; `test_facade.py`; `eval/README.md` |
+| The whole demo, as the README tells it | Alex → returns review approved → VIP sale #1042 v1 → v2 → approved → Saturday, Jamie buys at $71.20 → Mina switches to photos, in one browser run through the UI. Refund reviews are numbered from #1031 so the sale is #1042 in any order | `web/e2e/full-demo.spec.ts`; `test_returns.py::test_the_sale_is_1042_*` |
 | HTTP | Tool definitions (every field described), shopper scope hides operator tools, change set and order over HTTP, action log | `test_api.py` |
 
 ## Not done yet (next loops, in order)
 
 1. **Run `make try-model RUNS=3` on Glimmer and Spark Open** as soon as keys exist. The 3B stand-in fails the revision; that step is meant for the planner.
 2. **More comparison tasks** written by someone who did not build the tools, and the same comparison on Glimmer and Spark Open.
-3. P1: task list (layout E), live demo deploy, README for judges, demo video script.
+3. P1: task list (layout E) and a live demo deploy (needs a hosting account from the team). README for judges and the video script are in `README.md` and `docs/demo.md`.
 
 ## Known gaps
 
