@@ -28,4 +28,4 @@ web:
 
 # Run the demo request through the model in .env and judge the change set (exit 0 = demo works).
 try-model:
-	cd server && set -a && [ -f ../.env ] && . ../.env; set +a; uv run python -m a_commerce.harness.acceptance
+	cd server && set -a && [ -f ../.env ] && . ../.env; set +a; uv run python -m a_commerce.harness.acceptance --runs $(or $(RUNS),1)

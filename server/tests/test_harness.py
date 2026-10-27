@@ -60,11 +60,12 @@ def test_the_agent_never_approves(store):
 def fake_server(script):
     """An OpenAI-compatible endpoint that replays tool calls, to test the real client end to end."""
     turns = iter(script)
+    last = [script[-1]]
 
     def handler(request):
         body = json.loads(request.content)
         assert body["model"] == "muse-glimmer-test" and body["tools"]
-        calls = next(turns)
+        calls = last[0] = next(turns, last[0])  # after the script, keep giving the last answer
         msg = {"role": "assistant", "content": calls if isinstance(calls, str) else None}
         if not isinstance(calls, str):
             msg["tool_calls"] = [{"id": f"c{i}", "type": "function",
@@ -99,4 +100,28 @@ def test_acceptance_judge_passes_with_the_scripted_stand_in(monkeypatch):
     for k in ("WORKER_BASE_URL", "PLANNER_BASE_URL"):
         monkeypatch.delenv(k, raising=False)
     from a_commerce.harness.acceptance import main
-    assert main() == 0
+    assert main([]) == 0
+
+
+def test_a_model_that_times_out_fails_cleanly_and_hands_over(store):
+    def slow(request):
+        raise httpx.ReadTimeout("timed out")
+    broken = OpenAICompatible("http://fake/v1", "k", "muse-glimmer-test", transport=httpx.MockTransport(slow))
+    out = run_operator(store, REQUEST_1, broken)
+    assert not out["ok"] and "ReadTimeout" in out["error"]
+    out = run_operator(store, REQUEST_1, broken, fallback=ScriptedOperator(store))
+    assert out["ok"] and out["events"][0]["type"] == "handoff"
+
+
+def test_plan_sale_makes_the_whole_change_set_in_one_call(store):
+    """What small models need: one business call, plain words, named period, product by name."""
+    from a_commerce import call
+    store.set_clock("2026-11-06T11:02")
+    out = call(store, "plan_sale", {"category": "summer outerwear", "percent_off": "20", "audience": "vip",
+                                    "period": "this_weekend", "on_main_page": "true", "leave_out_low_stock": True,
+                                    "overrides": '[{"product_id": "seersucker overshirt", "percent_off": 15}]'})
+    assert len(out["preview_ids"]) == 3 and out["products"] == 40 and all(c["passed"] for c in out["checks"])
+    cs = changesets.create(store, "VIP weekend sale: summer outerwear", REQUEST_1, out["preview_ids"])
+    from a_commerce.harness.acceptance import judge
+    assert all(ok for _, ok in judge(changesets.view(store, cs)))
+    assert changesets.view(store, cs)["groups"][1]["fields"]["Code"] == "VIPWEEKEND20"

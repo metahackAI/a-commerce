@@ -7,15 +7,17 @@ The agent can only preview writes. It bundles previews into a change set with th
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 
 from .. import changesets
 from ..db import Store
-from ..tools.base import REGISTRY, call
-from .models import Model, Reply
+from ..tools.base import REGISTRY, call, loose_json
+from .models import Model, ModelError, Reply, ToolCallReq
 from .search import search
 
-MAX_STEPS = 8
+MAX_STEPS = 10
+MAX_NUDGES = 2
 RESULT_CHARS = 6000
 
 PROPOSE = {
@@ -66,31 +68,54 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
     revision = ""
     if change_set_id is not None:
         view = changesets.view(store, change_set_id)
-        prior = [{"tool": p["tool"], "args": p["args"]} for p in _preview_args(store, change_set_id)]
+        prior = _preview_args(store, change_set_id)
+        asked = []
+        for p in prior:
+            if p["asked"] not in asked:
+                asked.append(p["asked"])
         revision = (f"You are revising change set #{change_set_id} v{view['version']} ({view['title']}). "
-                    f"Earlier requests: {json.dumps(view['request'])}. Its previews: {json.dumps(prior)}. "
-                    "Make new previews for the whole change set (all of them, changed or not) and propose them.")
+                    f"Earlier requests: {json.dumps(view['request'])}. It was made with these calls: {json.dumps(asked)}. "
+                    f"Its checks: {json.dumps([{'check': c['title'], 'passed': c['passed'], 'detail': c['detail'], **({'fix': c['fix']} if c.get('fix') else {})} for c in view['checks']])}. "
+                    f"Its previews: {json.dumps([{'tool': p['tool'], 'args': p['args']} for p in prior])}. "
+                    "Call the same tool again passing only what changes; the harness keeps every other argument. Then propose."
+                    + "".join(f"\nFailing check: {c['title']}. {c['fix']}" for c in view["checks"] if not c["passed"] and c.get("fix")))
     tools = _tools_for(request)
+    # In a revision a call to the same tool is a patch: unchanged arguments come from the earlier call.
+    patch_base = {a["tool"]: a["args"] for a in (asked if change_set_id is not None else [])}
     messages = [
         {"role": "system", "content": SYSTEM.format(store="Northwind Apparel", now=store.now().strftime("%a %b %-d %Y %H:%M"),
                                                    revision=revision)},
         {"role": "user", "content": request},
     ]
     step = Step(model.name)
-    proposal, errors = None, 0
+    proposal, errors, nudges, last_error, previews = None, 0, 0, None, []
     for _ in range(MAX_STEPS):
-        reply: Reply = model.complete(messages, tools)
+        try:
+            reply: Reply = model.complete(messages, tools)
+        except ModelError as e:
+            events = [_step_event(step, f"The model failed: {e}", read_only=True)]
+            return {"ok": False, "error": str(e), "events": events, "change_set_id": change_set_id}
         step.duration_ms += reply.duration_ms
         if not reply.tool_calls:
+            reply.tool_calls = calls_in_text(reply.text, {t["function"]["name"] for t in tools})
+        if not reply.tool_calls:
             text = reply.text
-            break
+            if proposal is not None or nudges >= MAX_NUDGES:
+                break
+            # Small models often stop to talk after an error or before proposing. Point at the next step once or twice.
+            nudges += 1
+            messages.append({"role": "assistant", "content": reply.text or ""})
+            messages.append({"role": "user", "content": _nudge(last_error, previews)})
+            continue
         messages.append({"role": "assistant", "content": reply.text or None, "tool_calls": [
             {"id": c.id, "type": "function", "function": {"name": c.name, "arguments": json.dumps(c.arguments)}}
             for c in reply.tool_calls]})
         for c in reply.tool_calls:
             step.tool_calls += 1
+            if c.name in patch_base:
+                c.arguments = {**patch_base[c.name], **{k: v for k, v in c.arguments.items() if v not in (None, "", "null")}}
             if c.name == "propose_change_set":
-                proposal = c.arguments
+                proposal = decode_strings(c.arguments)
                 out = {"ok": True}
             elif c.name not in REGISTRY:
                 out = {"error": {"code": "unknown_tool", "message": f"No tool {c.name}.", "next_tool": None}}
@@ -98,6 +123,10 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
                 out = call(store, c.name, c.arguments, actor=f"agent:{model.name}")
             if "error" in out:
                 errors += 1
+                last_error = (c.name, out["error"])
+            elif "preview_id" in out or "preview_ids" in out:
+                previews += [out["preview_id"]] if "preview_id" in out else out["preview_ids"]
+                last_error = None
             step.calls.append({"tool": c.name, "args": c.arguments, "error": out.get("error")})
             messages.append({"role": "tool", "tool_call_id": c.id, "content": compact(out)})
     else:
@@ -127,6 +156,39 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
     return {"ok": True, "events": events, "change_set_id": change_set_id}
 
 
+def calls_in_text(text: str, names: set[str]) -> list[ToolCallReq]:
+    """Some open models (Llama 3.x among them) write a tool call as JSON in the message instead of tool_calls."""
+    calls = []
+    for m in re.finditer(r"\{.*\}", text or "", re.S):
+        try:
+            obj = json.loads(m.group(0))
+        except ValueError:
+            continue
+        name = obj.get("name") or obj.get("function")
+        args = obj.get("parameters") or obj.get("arguments") or {}
+        if name in names and isinstance(args, dict):
+            calls.append(ToolCallReq(f"text_{len(calls)}", name, args))
+    return calls
+
+
+def decode_strings(args: dict) -> dict:
+    """Harness tools get the same leniency as commerce tools: '["pv_1"]' and "['pv_1']" are lists."""
+    out = {k: loose_json(v) for k, v in args.items()}
+    if isinstance(out.get("preview_ids"), str):
+        out["preview_ids"] = re.findall(r"pv_\d+", out["preview_ids"])
+    return out
+
+
+def _nudge(last_error: tuple[str, dict] | None, previews: list[str]) -> str:
+    if last_error:
+        name, err = last_error
+        return (f"{name} failed: {err['message']} Call {err.get('next_tool') or name} again with fixed arguments. "
+                "Nothing is applied until a person approves, so keep going.")
+    if previews:
+        return f"Call propose_change_set now with preview_ids {json.dumps(previews)} and a short reply for the operator."
+    return "Use the tools: preview each change (sale prices, coupon, banner as asked), then call propose_change_set."
+
+
 def compact(out: dict, limit: int = RESULT_CHARS) -> str:
     """Keep tool results small but always valid JSON: long lists keep their first rows plus the total."""
     text = json.dumps(out, default=str)
@@ -144,7 +206,7 @@ def compact(out: dict, limit: int = RESULT_CHARS) -> str:
 def _tools_for(request: str) -> list[dict]:
     picked = search(request, scope="operator")
     names = [t.name for t in picked]
-    for always in ("get_policy", "search_products"):
+    for always in ("plan_sale", "get_policy", "search_products"):
         if always not in names:
             names.append(always)
     return [REGISTRY[n].definition() for n in names] + [PROPOSE]
@@ -164,7 +226,8 @@ def _preview_args(store: Store, cs_id: int) -> list[dict]:
     cs = store.one("SELECT preview_ids FROM change_sets WHERE id = ?", (cs_id,))
     out = []
     for pid in json.loads(cs["preview_ids"]):
-        row = store.one("SELECT tool, args FROM previews WHERE id = ?", (pid,))
-        out.append({"tool": row["tool"], "args": json.loads(row["args"])})
+        row = store.one("SELECT tool, args, result FROM previews WHERE id = ?", (pid,))
+        asked = json.loads(row["result"]).get("asked") or {"tool": row["tool"], "args": json.loads(row["args"])}
+        out.append({"tool": row["tool"], "args": json.loads(row["args"]), "asked": asked})
     return out
 

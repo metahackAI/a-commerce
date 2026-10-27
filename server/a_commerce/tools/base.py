@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import inspect
 import json
 from dataclasses import dataclass, field
@@ -10,6 +11,7 @@ from typing import Any, Callable
 from pydantic import BaseModel, ValidationError
 
 from ..db import Store
+from .periods import PERIOD_HELP, resolve as resolve_period
 
 REF_PREFIX = "ref:"
 
@@ -30,6 +32,7 @@ class Check:
     title: str
     detail: str
     fix_tool: str | None = None
+    fix: str | None = None  # the argument that makes this check pass, in words a model can act on
 
 
 @dataclass
@@ -116,6 +119,7 @@ def call(store: Store, name: str, args: dict | None = None, *, actor: str = "age
     if tool is None:
         return ToolError("unknown_tool", f"There is no tool named {name}.", "search_tools").payload()
     try:
+        args = normalize(store, tool, args)
         if tool.kind in ("read", "instant"):
             parsed = _parse(tool, args)
             takes_context = "context" in inspect.signature(tool.run).parameters
@@ -140,11 +144,62 @@ def _parse(tool: Tool, args: dict) -> BaseModel:
         return tool.input.model_validate(args)
     except ValidationError as e:
         first = e.errors()[0]
+        field = str(first["loc"][0]) if first["loc"] else ""
         where = ".".join(str(p) for p in first["loc"])
-        raise ToolError("invalid_input", f"{tool.name}: {where} {first['msg']}.", tool.name) from None
+        spec = tool.input.model_json_schema().get("properties", {}).get(field, {})
+        hint = f" Example: {json.dumps(spec['examples'][0])}." if spec.get("examples") else ""
+        if field in ("starts_at", "ends_at") and "period" in tool.input.model_fields:
+            hint += f" {PERIOD_HELP}"
+        raise ToolError("invalid_input", f"{tool.name}: {where}: {first['msg']}.{hint}", tool.name) from None
 
 
-def make_preview(store: Store, tool: Tool, args: dict, *, actor: str, context: dict | None) -> dict:
+def loose_json(value):
+    """'20' → 20, '[]' → [], 'null' → None, and Python-style "['a']" → ['a']. Anything else is returned as given."""
+    if not isinstance(value, str):
+        return value
+    for parse in (json.loads, ast.literal_eval):
+        try:
+            decoded = parse(value)
+        except (ValueError, SyntaxError):
+            continue
+        if isinstance(decoded, str):
+            return value
+        if isinstance(decoded, list):  # double-encoded lists: '["{\"a\": 1}"]'
+            return [loose_json(x) for x in decoded]
+        return decoded
+    return value
+
+
+def normalize(store: Store, tool: Tool, args: dict) -> dict:
+    """Accept what small models actually send: "20" for 20, "[]" for [], "null" for nothing, a category's
+    display name for its id, and a named period instead of two dates. Everything else is still validated."""
+    fields = tool.input.model_fields
+    out = {}
+    for key, value in args.items():
+        if key in fields and fields[key].annotation is not str:
+            value = loose_json(value)
+            if isinstance(value, list):
+                value = [loose_json(x) for x in value]
+        if value is None or value == "":
+            continue
+        out[key] = value
+    if isinstance(out.get("category"), str):
+        wanted = out["category"].strip().lower()
+        row = store.one("SELECT id FROM categories WHERE id = ? OR lower(name) = ? OR id = ?",
+                        (wanted, wanted, wanted.replace(" ", "_")))
+        if row:
+            out["category"] = row["id"]
+    if "period" in out and "starts_at" in fields:
+        try:
+            out["starts_at"], out["ends_at"] = resolve_period(str(out.pop("period")), store.now())
+        except ValueError:
+            raise ToolError("invalid_input", f"{tool.name}: period {out['period']!r} is not known. {PERIOD_HELP}", tool.name) from None
+    return out
+
+
+def make_preview(store: Store, tool: Tool, args: dict, *, actor: str, context: dict | None = None,
+                 asked: dict | None = None) -> dict:
+    """`asked` is the call the agent made, kept so a revision can start from the intent, not the expanded rows."""
     parsed = _parse(tool, args)
     plan = tool.plan(store, parsed)
     needs_approval = plan.approval_kind is not None and plan.approval_kind in store.policy_value("approval_required_for")
@@ -157,6 +212,7 @@ def make_preview(store: Store, tool: Tool, args: dict, *, actor: str, context: d
         "checks": [c.__dict__ for c in plan.checks],
         "needs_approval": needs_approval,
         "approval_reason": plan.approval_reason if needs_approval else "",
+        "asked": asked or {"tool": tool.name, "args": args},
     }
     store.execute(
         "INSERT INTO previews (id, tool, args, result, status, created_at) VALUES (?, ?, ?, ?, 'open', ?)",

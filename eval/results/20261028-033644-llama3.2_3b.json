@@ -1,0 +1,69 @@
+[
+ {
+  "worker": "llama3.2:3b",
+  "fallback": null,
+  "seconds": 6.4,
+  "passed": false,
+  "criteria": [
+   [
+    "40 products on sale",
+    false
+   ],
+   [
+    "chore coat and rain parka left out",
+    false
+   ],
+   [
+    "overshirt at 15% = $67.15",
+    false
+   ],
+   [
+    "windbreaker at 20% = $71.20",
+    false
+   ],
+   [
+    "coupon to 1,284 VIP members",
+    false
+   ],
+   [
+    "hero banner for VIP Nov 7\u20138",
+    false
+   ],
+   [
+    "6 of 6 checks pass",
+    false
+   ]
+  ],
+  "steps": [
+   {
+    "type": "agent_step",
+    "model": "llama3.2:3b",
+    "tool_calls": 1,
+    "duration_ms": 6367,
+    "read_only": true,
+    "text": "I propose applying the sale prices with the following changes: \n- The sale starts at Friday, 12:00 AM, and ends at Sunday, 11:59 PM.\n- The category-wide override for summer outerwear is applied.\n- The sale is promoted on the main page.\n\nPlease approve the proposed change set.",
+    "calls": [
+     {
+      "tool": "set_sale_prices",
+      "args": {
+       "audience": "vip",
+       "percent_off": "20",
+       "name": "Weekend Sale",
+       "overrides": "[]",
+       "min_stock": "null",
+       "ends_at": "Sunday, 11:59 PM",
+       "starts_at": "Friday, 12:00 AM",
+       "category": "summer outerwear"
+      },
+      "error": {
+       "code": "invalid_input",
+       "message": "set_sale_prices: starts_at Input should be a valid datetime or date, invalid character in year.",
+       "next_tool": "set_sale_prices"
+      }
+     }
+    ]
+   }
+  ],
+  "error": "No change set proposed (1 tool errors)"
+ }
+]

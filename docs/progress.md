@@ -19,12 +19,14 @@ Run everything with `make check`: server tests, web build, and the browser test 
 | Back office web | Layout A at `make web`: conversation left, `change_set` block right (understood, checks, price group, coupon, left out, hero preview, after-approval). In Chromium: suggestion → v1 with 4 of 6 and Approve disabled → typed revision → v2 with 6 of 6, $67.15 and $71.20 → Approve → "Live · verified" with the read-back panel (40 of 40 prices, VIPWEEKEND20 to 1,284) → Jamie's price is $71.20 on Saturday → Undo all together → back to $89.00 | `web/e2e/back-office.spec.ts` (Playwright, in `make check` and CI) |
 | Shopper agent | The model picks the component (`compare_table`, `look_gallery`, `product_list`) and the products; the harness fills every price and spec from the tools, so no model-written price reaches the screen. Memories come back as `memory_note` blocks with Undo; shoppers never see cost or operator tools | `test_storefront.py` |
 | Storefront web | `/fo?shopper=jamie`: after the operator approves #1042, Jamie asks for a light jacket → comparison table (because Jamie compares specs) with $71.20 / $102.40 / $67.15 → "Which one packs smallest?" is remembered with Undo → "The windbreaker. Same size as last time." → cart $89.00 − $17.80, free shipping, $71.20 → Jamie taps Place order → #20432. Mina gets a list at list prices, says "bigger photos" → same products as a gallery, memory undone | `web/e2e/storefront.spec.ts` (Playwright) |
+| Real open model | Llama 3.2 3B (Meta open weights, local) gets the first message right in 3 of 3 runs: 42 products at 20%, coupon, VIP banner, low stock and the overshirt floor flagged. The revision is 0 of 3. Ten failure types found and fixed in tools and harness (`eval/README.md`) | `make try-model RUNS=3`; `test_harness.py::test_plan_sale_*`, `::test_a_model_that_times_out_*` |
 | HTTP | Tool definitions (every field described), shopper scope hides operator tools, change set and order over HTTP, action log | `test_api.py` |
 
 ## Not done yet (next loops, in order)
 
-1. **Run `make try-model` on Glimmer and Spark Open** as soon as keys exist; until then the harness runs the scripted stand-in, which is labelled "scripted" in every event.
-2. P1: returns (`return_options` → `refund_review`), Mina's layout switch, task list, evaluation against a screen-shaped facade.
+1. **Run `make try-model RUNS=3` on Glimmer and Spark Open** as soon as keys exist. The 3B stand-in fails the revision; that step is meant for the planner.
+2. **Check agent replies against the change set.** A small model's reply can claim what the change set does not do.
+3. P1: returns (`return_options` → `refund_review`), Mina's layout switch, task list, evaluation against a screen-shaped facade.
 
 ## Known gaps
 

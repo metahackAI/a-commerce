@@ -69,9 +69,9 @@ class ScriptedOperator:
     def _sale_args(self, system: str, request: str, revising: bool) -> dict | None:
         text = request.lower()
         if revising:
-            prior = json.loads(re.search(r"Its previews: (\[.*\])\. Make new", system).group(1))
+            prior = json.loads(re.search(r"Its previews: (\[.*\])\. Call the same", system).group(1))
             base = next(p["args"] for p in prior if p["tool"] == "set_sale_prices")
-            first = json.loads(re.search(r"Earlier requests: (\[.*?\])\. Its previews", system).group(1))[0].lower()
+            first = json.loads(re.search(r"Earlier requests: (\[.*?\])\. It was made", system).group(1))[0].lower()
             sale = self._parse(first, base["starts_at"], base["ends_at"])
             prev = {i["product_id"]: i["percent_off"] for i in base["items"]}
             overrides = {pid: pct for pid, pct in prev.items() if pct != sale["percent_off"]}

@@ -5,10 +5,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ..db import Store
 from .base import Check, Plan, ToolError, pending_ref, read_tool, write_tool
+from .periods import Period
 from .pricing import floor_price, price_for, promotion_state, sale_price
 
 AUDIENCE_LABEL = {"vip": "VIP", "gold": "Gold", "member": "member", "members": "member", "everyone": "store"}
@@ -57,7 +58,7 @@ def get_policy(store: Store, args: GetPolicyIn) -> dict:
 
 class SearchProductsIn(BaseModel):
     query: str | None = Field(None, description="Words to match in the product name or fabric.", examples=["windbreaker"])
-    category: str | None = Field(None, description="Category id.", examples=["summer_outerwear"])
+    category: str | None = Field(None, description="Category id or name.", examples=["summer_outerwear"])
     min_stock: int | None = Field(None, description="Only products with at least this many units in total.", examples=[10])
     max_stock: int | None = Field(None, description="Only products with at most this many units in total.", examples=[9])
     audience: Audience | None = Field(None, description="Also return the price this audience pays right now.", examples=["vip"])
@@ -121,6 +122,7 @@ def list_tiers(store: Store, args: NoInput) -> dict:
 
 
 class ListPromotionsIn(BaseModel):
+    period: Period | None = Field(None, description="A named period instead of dates.", examples=["this_weekend"])
     starts_at: datetime = Field(description="Start of the period to check.", examples=["2026-11-07T00:00"])
     ends_at: datetime = Field(description="End of the period to check.", examples=["2026-11-08T23:59"])
     audience: Audience | None = Field(None, description="Only promotions for this audience.", examples=["vip"])
@@ -147,6 +149,7 @@ def list_active_promotions(store: Store, args: ListPromotionsIn) -> dict:
 
 class ListSlotsIn(BaseModel):
     page: Literal["main"] = Field("main", description="Store page.", examples=["main"])
+    period: Period | None = Field(None, description="A named period instead of dates.", examples=["this_weekend"])
     starts_at: datetime = Field(description="Start of the period.", examples=["2026-11-07T00:00"])
     ends_at: datetime = Field(description="End of the period.", examples=["2026-11-08T23:59"])
 
@@ -167,22 +170,48 @@ def list_display_slots(store: Store, args: ListSlotsIn) -> dict:
 # -- writes ---------------------------------------------------------------
 
 class SaleItem(BaseModel):
-    product_id: str = Field(description="Product id.", examples=["prd_windbreaker"])
+    product_id: str = Field(description="Product id, or its name within the category.", examples=["prd_windbreaker"])
     percent_off: float = Field(gt=0, lt=100, description="Percent off the list price.", examples=[20])
+
+
+def loose_overrides(value):
+    """Accept {"overshirt": 15}, ["overshirt", {"percent_off": 15}] and [{"product_id": ..., "percent_off": ...}]."""
+    if isinstance(value, dict):
+        if "product_id" in value:
+            return [value]
+        return [{"product_id": k, "percent_off": v} for k, v in value.items()]
+    if isinstance(value, list):
+        out, pending = [], None
+        for x in value:
+            if isinstance(x, str):
+                pending = x
+            elif isinstance(x, dict) and "product_id" not in x and pending is not None:
+                out.append({"product_id": pending, **x})
+                pending = None
+            else:
+                out.append(x)
+        return out
+    return value
 
 
 class SetSalePricesIn(BaseModel):
     name: str = Field(description="Promotion name shoppers see next to the price.", examples=["VIP weekend"])
     audience: Audience = Field(description="Who gets the sale price.", examples=["vip"])
-    starts_at: datetime = Field(description="First minute of the sale.", examples=["2026-11-07T00:00"])
-    ends_at: datetime = Field(description="Last minute of the sale.", examples=["2026-11-08T23:59"])
-    category: str | None = Field(None, description="Put every product in this category on sale.", examples=["summer_outerwear"])
+    period: Period | None = Field(None, description="A named period instead of dates, e.g. this_weekend for Sat 00:00 – Sun 23:59.",
+                                  examples=["this_weekend"])
+    starts_at: datetime = Field(description="First minute of the sale (or use period).", examples=["2026-11-07T00:00"])
+    ends_at: datetime = Field(description="Last minute of the sale (or use period).", examples=["2026-11-08T23:59"])
+    category: str | None = Field(None, description="Put every product in this category on sale (id or name).", examples=["summer_outerwear"])
     percent_off: float | None = Field(None, gt=0, lt=100, description="Discount for the category.", examples=[20])
     min_stock: int | None = Field(None, ge=0, description="Leave out products with fewer units than this.", examples=[10])
     overrides: list[SaleItem] = Field([], description="Products in the category that get a different discount.",
                                       examples=[[{"product_id": "prd_overshirt", "percent_off": 15}]])
-    exclude: list[str] = Field([], description="Product ids to leave out.", examples=[["prd_chore_coat"]])
+    exclude: list[str] = Field([], description="Products to leave out, by id or name.", examples=[["prd_chore_coat"]])
+    leave_out_low_stock: bool = Field(False, description="Leave out products under the policy's minimum stock for sales.",
+                                      examples=[True])
     items: list[SaleItem] = Field([], description="Or list products one by one instead of a category.")
+
+    _overrides = field_validator("overrides", mode="before")(lambda cls, v: loose_overrides(v))
 
     def resolve(self, store: Store) -> list[SaleItem]:
         """Turn the category form into explicit items, so the preview shows exactly what will run."""
@@ -193,13 +222,13 @@ class SetSalePricesIn(BaseModel):
         rows = store.all("SELECT id FROM products WHERE category_id = ? AND status = 'live' ORDER BY rowid", (self.category,))
         if not rows:
             raise ToolError("unknown_category", f"No products in category {self.category}.", "search_products")
-        special = {o.product_id: o.percent_off for o in self.overrides}
-        unknown = set(special) - {r["id"] for r in rows}
-        if unknown:
-            raise ToolError("override_not_in_category", f"{', '.join(sorted(unknown))} is not in {self.category}.", "search_products")
+        special = {match_product(store, self.category, o.product_id): o.percent_off for o in self.overrides}
+        excluded = {match_product(store, self.category, x) for x in self.exclude}
+        if self.leave_out_low_stock and self.min_stock is None:
+            self.min_stock = store.policy_value("promo_min_stock")
         items = []
         for r in rows:
-            if r["id"] in self.exclude:
+            if r["id"] in excluded:
                 continue
             if self.min_stock is not None:
                 stock = store.one("SELECT SUM(stock) AS n FROM variants WHERE product_id = ?", (r["id"],))["n"]
@@ -207,6 +236,26 @@ class SetSalePricesIn(BaseModel):
                     continue
             items.append(SaleItem(product_id=r["id"], percent_off=special.get(r["id"], self.percent_off)))
         return items
+
+
+def max_pct_above_floor(row: dict) -> float:
+    """Largest whole-percent discount that keeps this product at or above its floor."""
+    pct = int(100 - row["floor"] * 100 / row["from"])
+    return max(pct, 0)
+
+
+def match_product(store: Store, category: str, ref: str) -> str:
+    """A product id, or a name a person would use ("overshirt", "Seersucker overshirt"), within one category."""
+    if store.one("SELECT 1 FROM products WHERE id = ? AND category_id = ?", (ref, category)):
+        return ref
+    rows = store.all("SELECT id, name FROM products WHERE category_id = ? AND lower(name) LIKE ?",
+                     (category, f"%{ref.strip().lower()}%"))
+    if len(rows) == 1:
+        return rows[0]["id"]
+    names = ", ".join(r["name"] for r in rows[:5])
+    raise ToolError("product_not_found" if not rows else "product_ambiguous",
+                    f"{ref!r} matches {len(rows)} products in {category}" + (f": {names}." if rows else ".") +
+                    " Use a fuller name or the product id.", "search_products")
 
 
 @write_tool("set_sale_prices",
@@ -260,12 +309,16 @@ class SetSalePrices:
                   "; ".join(below_floor) if below_floor else
                   (f"{', '.join(r['name'] for r in reduced)} at {reduced[0]['percent_off']:g}% to stay at cost + "
                    f"{store.policy_value('price_floor_markup')}%" if reduced else "Every sale price is at or above cost + 15%"),
-                  None if not below_floor else "set_sale_prices"),
+                  None if not below_floor else "set_sale_prices",
+                  None if not below_floor else "Give " + ", ".join(r["name"] for r in rows if r["to"] < r["floor"])
+                  + " a smaller discount with overrides (at most "
+                  + ", ".join(f"{max_pct_above_floor(r):g}%" for r in rows if r["to"] < r["floor"]) + "); keep percent_off for the rest."),
             Check("min_stock", not low_stock, "Enough stock",
                   f"Under {min_stock} units: {', '.join(low_stock)}" if low_stock else
                   (f"{len(left_out_low)} products under {min_stock} units excluded" if left_out_low else
                    f"Every product has {min_stock} or more units"),
-                  None if not low_stock else "set_sale_prices"),
+                  None if not low_stock else "set_sale_prices",
+                  None if not low_stock else "Pass leave_out_low_stock: true to leave them out."),
             Check("promotion_overlap", not clash, "No overlap with running promotions",
                   f"Overlaps with {', '.join(clash)}" if clash else f"Checked {len(running)} running promotions",
                   None if not clash else "list_active_promotions"),
@@ -336,8 +389,9 @@ class CreateCoupon:
 class ScheduleBannerIn(BaseModel):
     slot_id: str = Field(description="Slot id from list_display_slots.", examples=["slot_main_hero"])
     audience: Audience = Field(description="Who sees it; others keep what they see now.", examples=["vip"])
-    starts_at: datetime = Field(description="First minute shown.", examples=["2026-11-07T00:00"])
-    ends_at: datetime = Field(description="Last minute shown.", examples=["2026-11-08T23:59"])
+    period: Period | None = Field(None, description="A named period instead of dates.", examples=["this_weekend"])
+    starts_at: datetime = Field(description="First minute shown (or use period).", examples=["2026-11-07T00:00"])
+    ends_at: datetime = Field(description="Last minute shown (or use period).", examples=["2026-11-08T23:59"])
     eyebrow: str | None = Field(None, description="Small line above the headline.", examples=["VIP WEEKEND"])
     headline: str = Field(description="Main line.", examples=["20% off summer outerwear"])
     cta: str | None = Field(None, description="Button text.", examples=["Shop the sale"])
