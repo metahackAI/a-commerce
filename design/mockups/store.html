@@ -1,0 +1,139 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Northwind · Storefront</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="base.css">
+<style>
+body{display:flex;flex-direction:column;height:100vh}
+.sh{height:56px;flex:none;display:flex;align-items:center;gap:26px;padding:0 24px;border-bottom:1px solid var(--line)}
+.logo{font-weight:700;letter-spacing:.14em;font-size:14px}
+.sh nav{display:flex;gap:20px;font-size:13.5px;color:var(--ink2)}
+.sh nav .vip{color:var(--ink);font-weight:500}
+.sh .r{margin-left:auto;display:flex;align-items:center;gap:18px;font-size:13px;color:var(--ink2)}
+.sh .cart{display:flex;align-items:center;gap:6px;color:var(--ink)}
+.wrap{flex:1;display:grid;grid-template-columns:380px minmax(0,1fr) 320px;min-height:0}
+.conv{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.msgs{flex:1;overflow:auto;padding:22px 20px;display:flex;flex-direction:column;gap:16px}
+.u{align-self:flex-end;max-width:88%;background:var(--fill);border-radius:14px;padding:9px 13px}
+.who{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--mute);margin-bottom:6px}
+.who .mark{width:18px;height:18px;font-size:10px;border-radius:5px}
+.mem{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.mem b{font-weight:500;color:var(--mute);margin-left:auto}
+.cfoot{padding:12px 16px 16px}
+.canvas{overflow:auto;padding:22px 26px 30px;display:flex;flex-direction:column;gap:22px}
+.ua{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ua .l{font-size:12.5px;color:var(--mute);margin-right:4px}
+h2{font-size:15px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px}
+h2 span{font-size:12.5px;font-weight:400;color:var(--mute)}
+.cmp{border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.cmp table{table-layout:fixed}
+.cmp th,.cmp td{padding:10px 14px;border-bottom:1px solid var(--line2);font-size:13px;text-align:left;vertical-align:top}
+.cmp tr:last-child td{border-bottom:0}
+.cmp td:first-child,.cmp th:first-child{width:118px;color:var(--mute);font-size:12.5px}
+.cmp .best{background:#f8f7f3}
+.cmp th{font-weight:500}
+.cmp .art{height:124px;margin-bottom:10px}
+.cmp th b{display:block;font-weight:600;font-size:13.5px}
+.cmp th small{color:var(--mute);font-weight:400}
+.cmp .bmark{display:inline-block;font-size:11.5px;font-weight:500;border:1px solid var(--ink);border-radius:4px;padding:0 6px;margin-bottom:6px}
+.price b{font-weight:600}.price s{color:var(--mute);margin-left:6px}
+.price small{display:block;color:var(--mute);font-size:11.5px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.card .art{aspect-ratio:4/5;margin-bottom:8px}
+.card b{display:block;font-weight:500;font-size:13px}
+.card span{font-size:12.5px;color:var(--ink2)}
+.card small{display:block;font-size:12px;color:var(--mute)}
+.cartp{border-left:1px solid var(--line);padding:22px 20px;display:flex;flex-direction:column;gap:16px;overflow:auto}
+.cartp h3{font-size:14px;font-weight:600}
+.line{display:flex;gap:12px}
+.line .art{width:62px;height:74px;flex:none}
+.line b{font-weight:500;display:block}
+.line small{color:var(--mute);font-size:12.5px;display:block}
+.sum{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+.sum.tot{font-weight:600;font-size:15px;border-top:1px solid var(--line);margin-top:6px;padding-top:10px}
+.sum .g{color:var(--ok)}
+.lbl{font-size:12px;color:var(--mute);margin-bottom:3px}
+.wide{width:100%;justify-content:center;padding:11px;font-size:14px}
+.note{font-size:12px;color:var(--mute)}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<symbol id="field" viewBox="0 0 120 140"><path fill="currentColor" d="M42 14 60 24 78 14 100 26 110 94 96 97 92 54 91 130H29L28 54 24 97 10 94 20 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M42 14 51 32 60 24 69 32 78 14M60 24V130"/><rect x="36" y="58" width="16" height="15" rx="1.5"/><rect x="68" y="58" width="16" height="15" rx="1.5"/><rect x="35" y="92" width="18" height="18" rx="1.5"/><rect x="67" y="92" width="18" height="18" rx="1.5"/></g></symbol>
+<symbol id="wind" viewBox="0 0 120 140"><path fill="currentColor" d="M44 18Q60-2 76 18L100 28 110 94 96 97 92 56 91 126H29L28 56 24 97 10 94 20 28Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M48 22Q60 10 72 22M60 24V72M38 92H82L86 114H34Z"/><path d="M29 120H91" stroke-dasharray="3 3"/></g></symbol>
+<symbol id="shirt" viewBox="0 0 120 140"><path fill="currentColor" d="M44 14 60 22 76 14 98 26 106 70 94 73 91 52 90 126H30L29 52 26 73 14 70 22 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M44 14 53 34 60 22 67 34 76 14M60 26V126"/><rect x="67" y="44" width="14" height="14" rx="1.5"/></g><g fill="#000" fill-opacity=".18"><circle cx="63" cy="42" r="1.6"/><circle cx="63" cy="60" r="1.6"/><circle cx="63" cy="78" r="1.6"/><circle cx="63" cy="96" r="1.6"/><circle cx="63" cy="114" r="1.6"/></g></symbol>
+<symbol id="chore" viewBox="0 0 120 140"><path fill="currentColor" d="M42 14 60 24 78 14 100 26 110 96 96 99 92 54 92 134H28L28 54 24 99 10 96 20 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M42 14 49 38 60 24 71 38 78 14M60 24V134"/><rect x="66" y="48" width="15" height="15" rx="1.5"/><rect x="34" y="94" width="20" height="21" rx="1.5"/><rect x="66" y="94" width="20" height="21" rx="1.5"/></g></symbol>
+<symbol id="parka" viewBox="0 0 120 140"><path fill="currentColor" d="M42 18Q60-4 78 18L100 28 110 100 96 103 92 58 93 138H27L28 58 24 103 10 100 20 28Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M46 22Q60 6 74 22M60 24V138M28 84H92"/><path d="M36 98H52V112H36ZM68 98H84V112H68Z"/></g></symbol>
+</defs></svg>
+
+<header class="sh"><span class="logo">NORTHWIND</span>
+  <nav><span>New in</span><span>Men</span><span>Women</span><span class="vip">VIP weekend</span></nav>
+  <div class="r"><span>Orders</span><span>Jamie · VIP</span><span class="cart"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16l-1.5 12h-13z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>1</span></div>
+</header>
+<div class="wrap">
+<section class="conv">
+  <div class="msgs">
+    <div class="u">I need a light jacket for spring trips. Not too warm, and it has to fit in a carry-on.</div>
+    <div class="a"><div class="who"><span class="mark">N</span>Northwind</div>Here are a few in your size. I kept to natural fabrics like you usually do, plus one packable nylon that's hard to beat for a carry-on.</div>
+    <div class="u">Which one packs smallest? I hate bulky bags.</div>
+    <div class="a"><div class="who"><span class="mark">N</span>Northwind</div>Side by side on the right. The windbreaker folds into its own pocket and weighs 190 g. Of the natural fabrics, the field jacket is lightest.</div>
+    <div class="mem"><svg class="i" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-4 10.5V17h8v-3.5A6 6 0 0 0 12 3zM9 21h6"/></svg>Remembered: weight and packed size matter to you when traveling<b>Undo</b></div>
+    <div class="u">The windbreaker. Same size as last time.</div>
+    <div class="a"><div class="who"><span class="mark">N</span>Northwind</div>Added it in M, slate. Your VIP weekend price is applied. Take a look at the cart when you're ready.</div>
+  </div>
+  <div class="cfoot"><div class="composer">
+    <div class="ph" style="min-height:30px">Ask about fit, fabric, delivery, returns…</div>
+    <div class="cbar">
+      <span class="pill"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M20 16l-5-5-8 8"/></svg>Photo</span>
+      <span class="pill"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Voice</span>
+      <button class="send"><svg class="i" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div>
+  </div></div>
+</section>
+
+<main class="canvas">
+  <div class="ua"><span class="l">Looking for</span>
+    <span class="chip">Light jacket<span class="x">×</span></span><span class="chip">Spring travel<span class="x">×</span></span><span class="chip">Packs small<span class="x">×</span></span>
+    <span class="chip">Size M <small>your profile</small><span class="x">×</span></span><span class="chip">Natural fabrics <small>your profile</small><span class="x">×</span></span></div>
+
+  <div>
+    <h2>Packs smallest<span>3 compared · sorted by packed size</span></h2>
+    <div class="cmp" style="margin-top:10px"><table>
+      <tr><th></th>
+        <th class="best"><span class="bmark">Best for carry-on</span><div class="art t-slate"><svg><use href="#wind"/></svg></div><b>Packable windbreaker</b><small>Slate · recycled nylon</small></th>
+        <th><span class="bmark" style="visibility:hidden">.</span><div class="art t-sand"><svg><use href="#field"/></svg></div><b>Linen blend field jacket</b><small>Sand · linen, cotton</small></th>
+        <th><span class="bmark" style="visibility:hidden">.</span><div class="art t-clay"><svg><use href="#shirt"/></svg></div><b>Seersucker overshirt</b><small>Clay · cotton</small></th></tr>
+      <tr><td>Packed</td><td class="best">Into its own pocket, 14 × 18 cm</td><td>Folds flat</td><td>Folds flat</td></tr>
+      <tr><td>Weight, M</td><td class="best">190 g</td><td>340 g</td><td>360 g</td></tr>
+      <tr><td>Warmth</td><td class="best">Wind layer only</td><td>Light</td><td>Light</td></tr>
+      <tr><td>Light rain</td><td class="best">Yes</td><td>No</td><td>No</td></tr>
+      <tr><td>Your price</td><td class="best price"><b>$71.20</b><s>$89</s><small>VIP weekend, 20%</small></td><td class="price"><b>$102.40</b><s>$128</s><small>VIP weekend, 20%</small></td><td class="price"><b>$67.15</b><s>$79</s><small>VIP weekend, 15%</small></td></tr>
+      <tr><td></td><td class="best"><span class="tag ok">In your cart · M</span></td><td><button class="btn sm">Add M</button></td><td><button class="btn sm">Add M</button></td></tr>
+    </table></div>
+  </div>
+
+  <div>
+    <h2>Also fits what you asked<span>warmer or longer</span></h2>
+    <div class="grid" style="margin-top:10px">
+      <div class="card"><div class="art t-navy"><svg><use href="#field"/></svg></div><b>Cotton utility jacket</b><span>$94.40</span><small>480 g · folds flat</small></div>
+      <div class="card"><div class="art t-olive"><svg><use href="#chore"/></svg></div><b>Cotton chore coat</b><span>$149.00</span><small>620 g · 7 left</small></div>
+      <div class="card"><div class="art t-stone"><svg><use href="#parka"/></svg></div><b>Light rain parka</b><span>$169.00</span><small>420 g · rolls into hood</small></div>
+      <div class="card"><div class="art t-sand"><svg><use href="#shirt"/></svg></div><b>Linen camp overshirt</b><span>$70.40</span><small>300 g · folds flat</small></div>
+    </div>
+  </div>
+</main>
+
+<aside class="cartp">
+  <h3>Your cart</h3>
+  <div class="line"><span class="art t-slate"><svg><use href="#wind"/></svg></span><div><b>Packable windbreaker</b><small>Slate · M · 1</small><small>Same size as your last 2 orders</small></div></div>
+  <div>
+    <div class="sum"><span>Subtotal</span><span class="num">$89.00</span></div>
+    <div class="sum"><span>VIP weekend</span><span class="g num">−$17.80</span></div>
+    <div class="sum"><span>Shipping</span><span>Free</span></div>
+    <div class="sum tot"><span>Total</span><span class="num">$71.20</span></div>
+  </div>
+  <div><div class="lbl">Ship to</div><div style="font-size:13px">Home · 12 Harbor St, Apt 3<br><span class="mute">Arrives Tue, Nov 10</span></div></div>
+  <div><div class="lbl">Pay with</div><div style="font-size:13px">Card ending 4821</div></div>
+  <button class="btn dark wide">Place order · $71.20</button>
+  <div class="note">Northwind can prepare your order, but only you can place it.</div>
+  <div style="border-top:1px solid var(--line);padding-top:14px">
+    <div class="lbl" style="display:flex;justify-content:space-between"><span>What Northwind knows about you</span><span style="color:var(--ink)">Edit</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"><span class="chip">Size M</span><span class="chip">Natural fabrics</span><span class="chip">Compares specs</span><span class="chip">Travels light</span><span class="chip">VIP</span></div>
+  </div>
+</aside>
+</div></body></html>
