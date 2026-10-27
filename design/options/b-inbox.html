@@ -1,0 +1,103 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Option B · Inbox first</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="common.css">
+<style>
+.app{display:grid;grid-template-columns:232px 392px minmax(0,1fr);height:100vh}
+.list{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.lh{height:54px;flex:none;display:flex;align-items:center;gap:10px;padding:0 18px;border-bottom:1px solid var(--line2)}
+.lh b{font-size:14px;font-weight:600}
+.tabs{display:flex;gap:4px;padding:10px 12px;border-bottom:1px solid var(--line2)}
+.tabs span{font-size:12.5px;padding:3px 9px;border-radius:6px;color:var(--mute)}
+.tabs .on{background:var(--fill);color:var(--ink);font-weight:500}
+.grp{font-size:11.5px;color:var(--mute);padding:12px 18px 4px}
+.row{display:grid;grid-template-columns:16px 1fr auto;gap:2px 10px;padding:10px 18px;border-bottom:1px solid var(--line2);font-size:13.5px}
+.row.on{background:#f4f3ef}
+.row .st{margin-top:3px}
+.row small{grid-column:2/4;color:var(--mute);font-size:12px}
+.row time{color:var(--mute);font-size:12px}
+.src{font-size:11.5px;color:var(--ink2);border:1px solid var(--line);border-radius:5px;padding:0 5px;margin-right:6px;background:#fff}
+.det{display:flex;flex-direction:column;min-height:0}
+.dh{height:54px;flex:none;display:flex;align-items:center;gap:10px;padding:0 28px;border-bottom:1px solid var(--line2)}
+.dh .id{font-size:13px;color:var(--mute)} .dh h1{font-size:14.5px;font-weight:600}
+.dh .sp{margin-left:auto;display:flex;gap:8px}
+.db{flex:1;overflow:auto;padding:22px 28px;display:flex;flex-direction:column;gap:20px;max-width:900px}
+h2{font-size:12.5px;font-weight:500;color:var(--mute);margin-bottom:8px;display:flex}
+h2 .r{margin-left:auto;font-weight:400}
+.facts{display:grid;grid-template-columns:110px 1fr;gap:6px 14px;font-size:13.5px}
+.facts dt{color:var(--mute)}
+.chg{border:1px solid var(--line);border-radius:var(--r)}
+.chg div{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;padding:10px 14px;border-top:1px solid var(--line2);font-size:13.5px}
+.chg div:first-child{border-top:0}
+.op{font-family:var(--mono);font-size:11px;color:var(--ink2);border:1px solid var(--line);border-radius:4px;padding:0 5px;text-align:center}
+.chg span:last-child{color:var(--mute);font-size:12.5px}
+.thread{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:14px}
+.ev{display:grid;grid-template-columns:26px 1fr;gap:10px;font-size:13.5px}
+.ev .who{font-size:12.5px;color:var(--mute);margin-bottom:2px}
+.ev .who b{color:var(--ink);font-weight:600;margin-right:6px}
+.ev .mark{width:26px;height:26px}
+.sys{font-size:12.5px;color:var(--mute);display:flex;gap:8px;align-items:center;padding-left:36px}
+.reply{padding:12px 28px 18px;max-width:900px}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<symbol id="field" viewBox="0 0 120 140"><path fill="currentColor" d="M42 14 60 24 78 14 100 26 110 94 96 97 92 54 91 130H29L28 54 24 97 10 94 20 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M42 14 51 32 60 24 69 32 78 14M60 24V130"/><rect x="36" y="58" width="16" height="15" rx="1.5"/><rect x="68" y="58" width="16" height="15" rx="1.5"/><rect x="35" y="92" width="18" height="18" rx="1.5"/><rect x="67" y="92" width="18" height="18" rx="1.5"/></g></symbol>
+<symbol id="wind" viewBox="0 0 120 140"><path fill="currentColor" d="M44 18Q60-2 76 18L100 28 110 94 96 97 92 56 91 126H29L28 56 24 97 10 94 20 28Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M48 22Q60 10 72 22M60 24V72M38 92H82L86 114H34Z"/><path d="M29 120H91" stroke-dasharray="3 3"/></g></symbol>
+<symbol id="shirt" viewBox="0 0 120 140"><path fill="currentColor" d="M44 14 60 22 76 14 98 26 106 70 94 73 91 52 90 126H30L29 52 26 73 14 70 22 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M44 14 53 34 60 22 67 34 76 14M60 26V126"/><rect x="67" y="44" width="14" height="14" rx="1.5"/></g><g fill="#000" fill-opacity=".18"><circle cx="63" cy="42" r="1.6"/><circle cx="63" cy="60" r="1.6"/><circle cx="63" cy="78" r="1.6"/><circle cx="63" cy="96" r="1.6"/><circle cx="63" cy="114" r="1.6"/></g></symbol>
+<symbol id="chore" viewBox="0 0 120 140"><path fill="currentColor" d="M42 14 60 24 78 14 100 26 110 96 96 99 92 54 92 134H28L28 54 24 99 10 96 20 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M42 14 49 38 60 24 71 38 78 14M60 24V134"/><rect x="66" y="48" width="15" height="15" rx="1.5"/><rect x="34" y="94" width="20" height="21" rx="1.5"/><rect x="66" y="94" width="20" height="21" rx="1.5"/></g></symbol>
+<symbol id="parka" viewBox="0 0 120 140"><path fill="currentColor" d="M42 18Q60-4 78 18L100 28 110 100 96 103 92 58 93 138H27L28 58 24 103 10 100 20 28Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M46 22Q60 6 74 22M60 24V138M28 84H92"/><path d="M36 98H52V112H36ZM68 98H84V112H68Z"/></g></symbol>
+</defs></svg>
+
+<div class="app">
+<aside class="side">
+  <div class="win"><i></i><i></i><i></i></div>
+  <div class="storesw"><span class="mark">N</span><div><b>Northwind Apparel</b><small>Back office</small></div></div>
+  <button class="nav on"><svg class="i" viewBox="0 0 24 24"><path d="M4 13h4l2 3h4l2-3h4M5 5h14l1 8v6H4v-6z"/></svg>Inbox<span class="cnt">3</span></button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 8v8M8 6h4a4 4 0 0 1 4 4"/></svg>Change sets</button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Automations<span class="cnt">4</span></button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 10v10"/></svg>Catalog</button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c1-3 3.5-5 6-5s5 2 6 5M16 5a3 3 0 0 1 0 6M21 19c-.5-2-1.6-3.5-3-4.3"/></svg>Customers</button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/></svg>Policies</button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6z"/><path d="M9 11h6M9 15h6"/></svg>Activity</button>
+  <div class="sect">Open change sets</div>
+  <button class="nav"><span class="st need" style="width:12px;height:12px"></span>VIP weekend sale</button>
+  <button class="nav"><span class="st need" style="width:12px;height:12px"></span>Returns over $200</button>
+  <button class="nav"><span class="st need" style="width:12px;height:12px"></span>Linen shirt reorder</button>
+  <div class="me"><span class="av">SJ</span><div>Son SeongJun<small>Merchandiser</small></div></div>
+</aside>
+
+<section class="list">
+  <div class="lh"><b>Inbox</b><span class="mute" style="font-size:12.5px">Friday, Nov 6</span><button class="btn sm" style="margin-left:auto">New request <span class="kbd">C</span></button></div>
+  <div class="tabs"><span class="on">All 8</span><span>Needs you 3</span><span>Agent working 2</span><span>Done 3</span></div>
+  <div class="grp">Needs you</div>
+  <div class="row on"><span class="st need"></span><span>VIP weekend sale: summer outerwear</span><time>11:05</time><small><span class="src">You asked</span>v2 · 6 of 6 checks · 4 changes</small></div>
+  <div class="row"><span class="st need"></span><span>3 returns over $200 to approve</span><time>10:40</time><small><span class="src">Agent noticed</span>Refund policy asks for a person above $200</small></div>
+  <div class="row"><span class="st need"></span><span>Reorder linen shirts</span><time>09:12</time><small><span class="src">Agent noticed</span>9 days of stock left at this week's pace</small></div>
+  <div class="grp">Agent working</div>
+  <div class="row"><span class="st run"></span><span>List 12 new products from supplier photos</span><time>10:58</time><small><span class="src">You asked</span>8 of 12 drafted</small></div>
+  <div class="row"><span class="st run"></span><span>Daily price-floor check</span><time>11:00</time><small><span class="src">Automation</span>Reading 1,920 prices</small></div>
+  <div class="grp">Done today</div>
+  <div class="row"><span class="st done"></span><span>Sold-out badges on 6 products</span><time>08:31</time><small><span class="src">Automation</span>Read back, all match</small></div>
+  <div class="row"><span class="st done"></span><span>Answer 14 delivery questions</span><time>08:02</time><small><span class="src">Shopper agent</span>2 handed to you, both closed</small></div>
+</section>
+<section class="det">
+  <div class="dh"><span class="id">#1042 · v2</span><h1>VIP weekend sale: summer outerwear</h1><span class="tag warn">Needs your approval</span>
+    <div class="sp"><button class="btn">Open full change set</button><button class="btn dark">Approve and run</button></div></div>
+  <div class="db">
+    <div><h2>What will happen</h2>
+      <dl class="facts"><dt>Who</dt><dd>VIP tier, 1,284 members</dd><dt>Products</dt><dd>40 of 42 summer outerwear (2 low-stock left out)</dd><dt>Benefit</dt><dd>20% off; Seersucker overshirt 15% to stay above its price floor</dd><dt>When</dt><dd>Sat Nov 7 00:00 – Sun Nov 8 23:59</dd><dt>Where</dt><dd>Main page hero, shown to VIP only</dd></dl></div>
+    <div><h2>Changes<span class="r ok">6 of 6 checks passed</span></h2>
+      <div class="chg">
+        <div><span class="op">update</span><span>Sale prices on 40 products</span><span>$128.00 → $102.40 …</span></div>
+        <div><span class="op">create</span><span>Coupon VIPWEEKEND20 for 1,284 members</span><span>Auto-applies at checkout</span></div>
+        <div><span class="op">schedule</span><span>Main page hero, Nov 7–8</span><span>VIP only</span></div>
+        <div><span class="op">exclude</span><span>Chore coat, Rain parka</span><span>7 and 4 left</span></div>
+      </div></div>
+    <div class="thread">
+      <div class="ev"><span class="av">SJ</span><div><div class="who"><b>You</b>11:02</div>Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.</div></div>
+      <div class="ev"><span class="mark">A</span><div><div class="who"><b>Operator agent</b>11:02 · 9 tool calls · Muse Glimmer 30B</div>Two things need your call: 2 products have fewer than 10 left, and at 20% the overshirt goes below its price floor.</div></div>
+      <div class="ev"><span class="av">SJ</span><div><div class="who"><b>You</b>11:05</div>Drop the low-stock ones. Give the overshirt 15% instead.</div></div>
+      <div class="sys"><span class="st done" style="width:12px;height:12px"></span>Agent updated the change set to v2 · 11:05</div>
+    </div>
+  </div>
+  <div class="reply"><div class="composer"><div class="ph" style="min-height:24px">Reply to the agent about this item…</div><div class="cbar"><span class="pill">Muse Glimmer 30B · auto</span><button class="send"><svg class="i" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div></div></div>
+</section>
+</div></body></html>

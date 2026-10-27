@@ -1,0 +1,13 @@
+@import url("../mockups/base.css");
+.side.slim{width:56px;padding:10px 0;align-items:center;gap:4px}
+.side.slim .ico{width:36px;height:36px;border-radius:8px;display:grid;place-items:center;color:var(--ink2)}
+.side.slim .ico.on{background:#efeeea;color:var(--ink)}
+.kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--ink2);background:#fff}
+.diff{font-family:var(--mono);font-size:12px}
+.diff .add{color:var(--ok)} .diff .del{color:#b4372f}
+.p{display:flex;align-items:center;gap:10px}
+.p .art{width:32px;height:36px;border-radius:6px}
+.was{color:var(--mute);text-decoration:line-through;margin-right:6px}
+td,th{padding:8px 14px;border-bottom:1px solid var(--line2);font-size:13px;text-align:left}
+th{font-weight:500;color:var(--mute);font-size:12px}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}

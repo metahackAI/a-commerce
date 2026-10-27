@@ -1,0 +1,99 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Option C · Store canvas with suggestions</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="common.css">
+<style>
+.app{display:grid;grid-template-columns:56px minmax(0,1fr) 360px;height:100vh}
+.mid{display:flex;flex-direction:column;min-height:0;background:var(--fill2);position:relative}
+.bar{height:54px;flex:none;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid var(--line);background:#fff}
+.bar b{font-size:14px;font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;padding:2px;font-size:12.5px}
+.seg span{padding:2px 10px;border-radius:5px;color:var(--mute)}.seg .on{background:var(--fill);color:var(--ink);font-weight:500}
+.sw{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink2)}
+.sw i{width:28px;height:16px;border-radius:9px;background:var(--ink);position:relative}
+.sw i::after{content:"";position:absolute;right:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff}
+.canvas{flex:1;overflow:hidden;padding:22px 40px 100px;display:flex;justify-content:center}
+.page{width:860px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.ph{display:flex;align-items:center;gap:22px;padding:12px 22px;border-bottom:1px solid var(--line2);font-size:12.5px;color:var(--ink2)}
+.ph b{font-size:15px;letter-spacing:.02em;color:var(--ink);margin-right:10px}
+.ph .r{margin-left:auto;color:var(--mute)}
+.hero{display:grid;grid-template-columns:1fr 210px;gap:20px;align-items:center;padding:26px 30px;background:#f3f0e9;position:relative;outline:1.5px solid var(--ok);outline-offset:-6px}
+.hero small{font-size:11px;letter-spacing:.1em;color:var(--ink2)}
+.hero h3{font-size:28px;line-height:1.15;letter-spacing:-.02em;margin:6px 0 14px;font-weight:600}
+.hero i{font-style:normal;font-size:12.5px;background:var(--ink);color:#fff;border-radius:20px;padding:6px 14px}
+.hero .art{height:170px;background:#e8e2d6}
+.mk{position:absolute;width:20px;height:20px;border-radius:50%;background:var(--ok);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
+.flag{position:absolute;left:12px;top:-1px;transform:translateY(-50%);background:var(--ok);color:#fff;font-size:11px;padding:1px 8px;border-radius:4px}
+.sec{padding:18px 30px 6px;display:flex;align-items:baseline;gap:10px}
+.sec b{font-size:15px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:8px 30px 26px}
+.card{position:relative;font-size:13px}
+.card .art{height:150px;margin-bottom:8px}
+.card .nm{color:var(--ink)}
+.card .pr{margin-top:2px}
+.sug{color:var(--ok);font-weight:600;text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px}
+.card.out{opacity:.45}
+.card .note{font-size:11.5px;color:var(--warn)}
+.cmd{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);width:620px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:10px;font-size:14px;color:var(--mute)}
+.cmd .send{margin-left:auto}
+.rp{border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.rh{height:54px;flex:none;display:flex;align-items:center;gap:8px;padding:0 18px;border-bottom:1px solid var(--line2)}
+.rh b{font-size:14px;font-weight:600}
+.rb{flex:1;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px}
+.req{font-size:13px;color:var(--ink2);background:var(--fill);border-radius:10px;padding:9px 12px}
+.s{border:1px solid var(--line);border-radius:var(--r);padding:11px 12px;font-size:13px;display:grid;grid-template-columns:20px 1fr;gap:4px 10px}
+.s .mk{position:static}
+.s small{grid-column:2;color:var(--mute);font-size:12px}
+.s .act{grid-column:2;display:flex;gap:6px;margin-top:4px}
+.s.x .mk{background:var(--mute)}
+.rf{padding:12px 18px 16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.rf .ok2{font-size:12.5px;color:var(--ok)}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<symbol id="field" viewBox="0 0 120 140"><path fill="currentColor" d="M42 14 60 24 78 14 100 26 110 94 96 97 92 54 91 130H29L28 54 24 97 10 94 20 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M42 14 51 32 60 24 69 32 78 14M60 24V130"/><rect x="36" y="58" width="16" height="15" rx="1.5"/><rect x="68" y="58" width="16" height="15" rx="1.5"/><rect x="35" y="92" width="18" height="18" rx="1.5"/><rect x="67" y="92" width="18" height="18" rx="1.5"/></g></symbol>
+<symbol id="wind" viewBox="0 0 120 140"><path fill="currentColor" d="M44 18Q60-2 76 18L100 28 110 94 96 97 92 56 91 126H29L28 56 24 97 10 94 20 28Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M48 22Q60 10 72 22M60 24V72M38 92H82L86 114H34Z"/><path d="M29 120H91" stroke-dasharray="3 3"/></g></symbol>
+<symbol id="shirt" viewBox="0 0 120 140"><path fill="currentColor" d="M44 14 60 22 76 14 98 26 106 70 94 73 91 52 90 126H30L29 52 26 73 14 70 22 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M44 14 53 34 60 22 67 34 76 14M60 26V126"/><rect x="67" y="44" width="14" height="14" rx="1.5"/></g><g fill="#000" fill-opacity=".18"><circle cx="63" cy="42" r="1.6"/><circle cx="63" cy="60" r="1.6"/><circle cx="63" cy="78" r="1.6"/><circle cx="63" cy="96" r="1.6"/><circle cx="63" cy="114" r="1.6"/></g></symbol>
+<symbol id="chore" viewBox="0 0 120 140"><path fill="currentColor" d="M42 14 60 24 78 14 100 26 110 96 96 99 92 54 92 134H28L28 54 24 99 10 96 20 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M42 14 49 38 60 24 71 38 78 14M60 24V134"/><rect x="66" y="48" width="15" height="15" rx="1.5"/><rect x="34" y="94" width="20" height="21" rx="1.5"/><rect x="66" y="94" width="20" height="21" rx="1.5"/></g></symbol>
+<symbol id="parka" viewBox="0 0 120 140"><path fill="currentColor" d="M42 18Q60-4 78 18L100 28 110 100 96 103 92 58 93 138H27L28 58 24 103 10 100 20 28Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M46 22Q60 6 74 22M60 24V138M28 84H92"/><path d="M36 98H52V112H36ZM68 98H84V112H68Z"/></g></symbol>
+</defs></svg>
+
+<div class="app">
+<aside class="side slim">
+  <div class="mark" style="margin:6px 0 14px">N</div>
+  <span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M4 13h4l2 3h4l2-3h4M5 5h14l1 8v6H4v-6z"/></svg></span>
+  <span class="ico on"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg></span>
+  <span class="ico"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 10v10"/></svg></span>
+  <span class="ico"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c1-3 3.5-5 6-5s5 2 6 5"/></svg></span>
+  <span class="ico"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/></svg></span>
+  <span class="av" style="margin-top:auto;margin-bottom:6px">SJ</span>
+</aside>
+<section class="mid">
+  <div class="bar"><b>Store</b><span class="mute" style="font-size:12.5px">Main page</span>
+    <span style="margin-left:18px" class="seg"><span class="on">VIP member</span><span>Guest</span><span>New visitor</span></span>
+    <span class="seg"><span>Today</span><span class="on">Sat Nov 7</span></span>
+    <span class="sw" style="margin-left:auto"><i></i>Show suggestions</span></div>
+  <div class="canvas"><div class="page">
+    <div class="ph"><b>NORTHWIND</b>New in<span>Outerwear</span><span>Shirts</span><span>Sale</span><span class="r">Signed in as VIP · Bag 0</span></div>
+    <div class="hero"><span class="flag">Suggested · VIP only, Nov 7–8</span><span class="mk" style="right:14px;top:14px">3</span>
+      <div><small>VIP WEEKEND</small><h3>20% off summer outerwear</h3><i>Shop the sale</i></div><span class="art t-sand"><svg><use href="#field"/></svg></span></div>
+    <div class="sec"><b>Summer outerwear</b><span class="mute" style="font-size:12.5px">40 on sale for you this weekend</span></div>
+    <div class="grid">
+      <div class="card"><span class="mk" style="left:8px;top:8px">1</span><div class="art t-sand"><svg><use href="#field"/></svg></div><div class="nm">Linen blend field jacket</div><div class="pr num"><span class="was">$128.00</span><span class="sug">$102.40</span></div></div>
+      <div class="card"><span class="mk" style="left:8px;top:8px">1</span><div class="art t-slate"><svg><use href="#wind"/></svg></div><div class="nm">Packable windbreaker</div><div class="pr num"><span class="was">$89.00</span><span class="sug">$71.20</span></div></div>
+      <div class="card"><span class="mk" style="left:8px;top:8px">1</span><div class="art t-clay"><svg><use href="#shirt"/></svg></div><div class="nm">Seersucker overshirt</div><div class="pr num"><span class="was">$79.00</span><span class="sug">$67.15</span> <span class="mute" style="font-size:11.5px">15%</span></div></div>
+      <div class="card out"><div class="art t-olive"><svg><use href="#chore"/></svg></div><div class="nm">Chore coat</div><div class="pr num">$142.00</div><div class="note">Left out · 7 left</div></div>
+    </div>
+  </div></div>
+  <div class="cmd"><svg class="i" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/></svg>Ask for a change… e.g. “make the hero headline shorter”<span class="kbd">⌘K</span><button class="send"><svg class="i" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div>
+</section>
+<aside class="rp">
+  <div class="rh"><b>Suggestions</b><span class="mute" style="font-size:12.5px">Change set #1042 · v2</span></div>
+  <div class="rb">
+    <div class="req">“Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.”</div>
+    <div class="s"><span class="mk">1</span><div>Sale prices on 40 products</div><small>20%, overshirt 15% (price floor)</small><div class="act"><button class="btn sm">Accept</button><button class="btn sm">Reject</button><button class="btn sm">See all 40</button></div></div>
+    <div class="s"><span class="mk">2</span><div>Coupon VIPWEEKEND20</div><small>1,284 VIP members · not with tier coupons</small><div class="act"><button class="btn sm">Accept</button><button class="btn sm">Reject</button></div></div>
+    <div class="s"><span class="mk">3</span><div>Main page hero, Nov 7–8</div><small>VIP only; guests keep the current hero</small><div class="act"><button class="btn sm">Accept</button><button class="btn sm">Reject</button></div></div>
+    <div class="s x"><span class="mk">–</span><div>Left out: Chore coat, Rain parka</div><small>Fewer than 10 left</small></div>
+  </div>
+  <div class="rf"><span class="ok2">6 of 6 checks passed · read back after running</span><button class="btn dark" style="justify-content:center">Accept all and run</button><span class="mute" style="font-size:12px;text-align:center">Undo together until Nov 9, 23:59</span></div>
+</aside>
+</div></body></html>
