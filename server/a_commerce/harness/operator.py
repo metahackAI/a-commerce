@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from .. import changesets
 from ..db import Store
 from ..tools.base import REGISTRY, call, loose_json
+from .grounding import check_reply, summary
 from .models import Model, ModelError, Reply, ToolCallReq
 from .search import search
 
@@ -148,7 +149,12 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
     else:
         changesets.revise(store, change_set_id, request, ids)
     view = changesets.view(store, change_set_id)
-    events.append(_step_event(step, proposal.get("reply") or text, read_only=False))
+    said = proposal.get("reply") or text
+    corrections = check_reply(said, view)
+    event = _step_event(step, summary(view) if corrections or not said else said, read_only=False)
+    if corrections:
+        event["corrected"] = {"said": said, "issues": corrections}
+    events.append(event)
     events.append({"type": "ui", "ui": "change_set", "schema": 1, "block_id": f"cs_{change_set_id}_v{view['version']}",
                    "title": view["title"], "data": view,
                    "actions": [{"intent": "approve_change_set", "label": "Approve and run", "by": "operator",

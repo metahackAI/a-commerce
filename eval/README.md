@@ -1,7 +1,7 @@
 # Evaluation
 
 `make try-model RUNS=3` runs the demo's two operator messages through the model in `.env` and judges the change set
-(see `server/a_commerce/harness/acceptance.py`). Each run starts from a fresh seed; every tool call is saved in `results/` (kept: the first 3B run, 0 of 7, and the last, v1 3 of 3).
+(see `server/a_commerce/harness/acceptance.py`). Each run starts from a fresh seed; every tool call is saved in `results/` (kept: the first 3B run, 0 of 7; v1 3 of 3; and a run with replies corrected).
 
 ## Runs so far
 
@@ -31,5 +31,8 @@ The first run scored 0 of 7. Each failure below was fixed in the tool layer or h
 
 Still failing with 3B: the revision mixes sale-wide and per-product changes (sets 15% for everything, or misses
 low stock). That is the step design.md gives to the planner (Spark), so the next measurement is Glimmer and Spark Open.
-The 3B model's replies also claim things the change set does not do ("the sale is live"); the change set panel shows
-the facts, but replies should be checked against it (open item).
+The 3B model's replies also claimed things the change set did not do ("is now live", "dropped low-stock products").
+Since Oct 28 every reply is checked against the change set (`harness/grounding.py`): a contradicting reply is replaced
+by a summary built from the change set, and the operator sees what was corrected. On the 3B run in `results/` both
+false replies were caught; the corrected v2 summary ("42 products … at 15% off … 5 of 6 checks pass") shows the operator
+at once that the revision went wrong, where the model had said it went right.

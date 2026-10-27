@@ -27,7 +27,10 @@ export type ChangeSetView = {
   after_approval: { tools: string[]; undo_until: string | null };
   verification: { all_match: boolean; changes: { tool: string; matches: boolean; detail: string }[] } | null;
 };
-export type AgentStep = { type: "agent_step"; model: string; tool_calls: number; duration_ms: number; read_only: boolean; text: string };
+export type AgentStep = {
+  type: "agent_step"; model: string; tool_calls: number; duration_ms: number; read_only: boolean; text: string;
+  corrected?: { said: string; issues: string[] }; // the model's reply contradicted the change set; text is built from it instead
+};
 export type UiBlock = { type: "ui"; ui: string; block_id: string; title: string; data: ChangeSetView };
 export type Handoff = { type: "handoff"; from: string; to: string; reason: string };
 export type Event = AgentStep | UiBlock | Handoff;

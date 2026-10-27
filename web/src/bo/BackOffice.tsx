@@ -138,6 +138,13 @@ export function BackOffice() {
               <div key={i} className="a">
                 <div className="who"><span className="mark">A</span>Operator agent</div>
                 {m.step.text}
+                {m.step.corrected && (
+                  <details className="corrected" data-testid="corrected">
+                    <summary>Reply checked against the change set: {m.step.corrected.issues.length} correction{m.step.corrected.issues.length > 1 ? "s" : ""}</summary>
+                    <ul>{m.step.corrected.issues.map((x) => <li key={x}>{x}</li>)}</ul>
+                    <p className="mute">The model said: “{m.step.corrected.said}”</p>
+                  </details>
+                )}
                 <div className="calls"><span>{m.step.tool_calls} tool calls · {m.step.model}</span><span>{(m.step.duration_ms / 1000).toFixed(1)}s</span></div>
                 {m.ref && <div><span className="ref"><span className="st need" style={{ width: 11, height: 11 }} />Change set #{m.ref.id} · version {m.ref.version}</span></div>}
               </div>

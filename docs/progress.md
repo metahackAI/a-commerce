@@ -20,13 +20,13 @@ Run everything with `make check`: server tests, web build, and the browser test 
 | Shopper agent | The model picks the component (`compare_table`, `look_gallery`, `product_list`) and the products; the harness fills every price and spec from the tools, so no model-written price reaches the screen. Memories come back as `memory_note` blocks with Undo; shoppers never see cost or operator tools | `test_storefront.py` |
 | Storefront web | `/fo?shopper=jamie`: after the operator approves #1042, Jamie asks for a light jacket → comparison table (because Jamie compares specs) with $71.20 / $102.40 / $67.15 → "Which one packs smallest?" is remembered with Undo → "The windbreaker. Same size as last time." → cart $89.00 − $17.80, free shipping, $71.20 → Jamie taps Place order → #20432. Mina gets a list at list prices, says "bigger photos" → same products as a gallery, memory undone | `web/e2e/storefront.spec.ts` (Playwright) |
 | Real open model | Llama 3.2 3B (Meta open weights, local) gets the first message right in 3 of 3 runs: 42 products at 20%, coupon, VIP banner, low stock and the overshirt floor flagged. The revision is 0 of 3. Ten failure types found and fixed in tools and harness (`eval/README.md`) | `make try-model RUNS=3`; `test_harness.py::test_plan_sale_*`, `::test_a_model_that_times_out_*` |
+| Replies checked against the change set | Claims that it is live before approval, that low-stock products were left out when they were not, wrong product counts, wrong per-product rates, and "all checks pass" are caught; the operator sees a summary built from the change set and a note with the correction. Correct replies pass through unchanged | `test_grounding.py` (with the real 3B replies); `e2e/back-office.spec.ts` (note shown); real 3B run in `eval/results/` |
 | HTTP | Tool definitions (every field described), shopper scope hides operator tools, change set and order over HTTP, action log | `test_api.py` |
 
 ## Not done yet (next loops, in order)
 
 1. **Run `make try-model RUNS=3` on Glimmer and Spark Open** as soon as keys exist. The 3B stand-in fails the revision; that step is meant for the planner.
-2. **Check agent replies against the change set.** A small model's reply can claim what the change set does not do.
-3. P1: returns (`return_options` → `refund_review`), Mina's layout switch, task list, evaluation against a screen-shaped facade.
+2. P1: returns (`return_options` → `refund_review`), Mina's layout switch, task list, evaluation against a screen-shaped facade.
 
 ## Known gaps
 

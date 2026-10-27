@@ -48,3 +48,24 @@ test("operator builds, approves, verifies and undoes the VIP weekend sale", asyn
   await expect(status).toHaveText("Undone");
   expect(await price()).toEqual([89, 79]);
 });
+
+test("a reply that contradicts the change set is replaced and the correction is shown", async ({ page, request }) => {
+  // The model's words come from a real Llama 3.2 3B run; the change set comes from the real API.
+  await page.route("**/api/bo/chat", async (route) => {
+    const real = await (await route.fetch()).json();
+    real.events[0].text = "Change set #1042 v1 is ready for review. Nothing has changed in the store yet.";
+    real.events[0].corrected = {
+      said: "A 20% weekend sale on summer outerwear is now live for VIP members on the main page.",
+      issues: ["It said the change is live, but nothing changes until you approve."],
+    };
+    await route.fulfill({ json: real });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Run a 20% weekend sale/ }).click();
+  const note = page.getByTestId("corrected");
+  await expect(note).toContainText("Reply checked against the change set: 1 correction");
+  await note.locator("summary").click();
+  await expect(note).toContainText("It said the change is live, but nothing changes until you approve.");
+  await expect(page.getByText("Nothing has changed in the store yet.")).toBeVisible();
+  expect((await (await request.get(`${API}/change-sets/1042`)).json()).status).toBe("waiting_for_approval");
+});
