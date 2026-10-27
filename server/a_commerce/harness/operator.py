@@ -237,7 +237,7 @@ def _tools_for(request: str) -> list[dict]:
     picked = search(request, scope="operator")
     names = [t.name for t in picked]
     for always in ("plan_sale", "plan_return_review", "explain_sales_change", "create_reorder", "send_campaign",
-                   "set_back_in_stock_notice", "get_policy", "search_products"):
+                   "set_back_in_stock_notice", "read_supplier_sheet", "save_product_drafts", "get_policy", "search_products"):
         if always not in names:
             names.append(always)
     return [REGISTRY[n].definition() for n in names] + [PROPOSE]

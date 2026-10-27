@@ -31,3 +31,15 @@ def test_task_list_follows_the_store():
     assert not any(t["title"].endswith("return requests over $200") for t in items)
     row = next(t for t in items if t.get("change_set_id") == review["change_set_id"])
     assert row["diff"] == ["8 refunds · $2,151.00", "3 messages"] and row["checks"] == "3/4 checks"
+
+
+def test_every_kind_of_change_set_appears_in_the_task_list():
+    client.post("/demo/reset")
+    client.post("/demo/clock", json={"at": "2026-11-06T11:20"})
+    client.post("/bo/chat", json={"request": "List the 30 products in this supplier sheet."})
+    client.post("/bo/chat", json={"request": "Send the weekly email today"})
+    client.post("/bo/chat", json={"request": "Reorder M and L for the 3 products"})
+    titles = {t["title"]: t["diff"] for t in client.get("/bo/tasks").json()["items"] if t.get("change_set_id")}
+    assert titles["New products from supplier sheet"] == ["+26 drafts", "4 need you"]
+    assert titles["Send the weekly email"] == ["Today, 2026-11-06"]
+    assert titles["Reorder sold-out sizes"][0].startswith("Reorder ")

@@ -67,6 +67,7 @@ Every claim below is a test or a command you can run. `make check` runs all of t
 | What | How it is checked |
 |---|---|
 | The VIP weekend story, end to end: request → change set v1 (4 of 6 checks) → "Drop the low-stock ones…" → v2 (6 of 6, 40 products, overshirt $67.15) → approve → every change read back → Jamie pays $71.20 on Saturday → undo together | `server/tests/test_scenario_vip_weekend.py`, `test_harness.py`, and in a real browser `web/e2e/back-office.spec.ts`, `storefront.spec.ts` |
+| The four back-office intents from the mockups: change the store (`change_set`), decide on many cases (`refund_review`), answer a question (`sales_explainer`, with next steps that become change sets), and long work (`product_drafts`) | `test_scenario_vip_weekend.py`, `test_returns.py`, `test_insights.py`, `test_next_steps.py`, `test_drafts.py`, and in a browser `web/e2e/back-office.spec.ts` |
 | Alex's defect return → the operator's review of 12 returns over $200 → one approval: 9 refunds ($2,463.00) and 3 messages, read back; refunds cannot be undone | `test_returns.py`, `web/e2e/returns.spec.ts` |
 | Agents never approve, apply, order, or send refunds; shoppers never see cost or operator tools | `test_scenario_vip_weekend.py::test_agent_cannot_apply_its_own_preview`, `test_storefront.py`, `test_returns.py` |
 | A reply that contradicts the change set ("the sale is now live") is replaced by facts | `test_grounding.py` (with replies a real 3B model gave) |

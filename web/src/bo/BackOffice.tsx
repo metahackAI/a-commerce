@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AgentStep, AnyView, Event, Task } from "../api";
 import { api, ApiError } from "../api";
 import { ChangeSet } from "../blocks/ChangeSet";
+import { ProductDrafts } from "../blocks/ProductDrafts";
 import { RefundReview } from "../blocks/RefundReview";
 import type { SalesData } from "../blocks/SalesExplainer";
 import { SalesExplainer } from "../blocks/SalesExplainer";
@@ -14,6 +15,7 @@ type Msg =
 const SUGGESTION = "Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.";
 const SUGGESTION_RETURNS = "Check returns waiting over $200";
 const SUGGESTION_SALES = "Why did sales drop yesterday?";
+const SUGGESTION_SHEET = "List the 30 products in this supplier sheet. Use our usual pricing and write the descriptions in our tone.";
 const CLOCKS: [string, string][] = [["Fri Nov 6, 11:02", "2026-11-06T11:02"], ["Sat Nov 7, 10:00", "2026-11-07T10:00"], ["Tue Nov 10", "2026-11-10T09:00"]];
 
 const hhmm = (iso: string) => iso.slice(11, 16);
@@ -178,6 +180,7 @@ export function BackOffice() {
               <button className="chip" disabled={busy} onClick={() => send(SUGGESTION)}>{SUGGESTION}</button>
               <button className="chip" disabled={busy} onClick={() => send(SUGGESTION_RETURNS)}>{SUGGESTION_RETURNS}</button>
               <button className="chip" disabled={busy} onClick={() => send(SUGGESTION_SALES)}>{SUGGESTION_SALES}</button>
+              <button className="chip" disabled={busy} onClick={() => send(SUGGESTION_SHEET)}>New products from fw26_supplier.xlsx</button>
             </div>
             <div className="tl">
               {(["needs_you", "running", "done"] as const).map((k) => (
@@ -208,6 +211,7 @@ export function BackOffice() {
               <button className="chip" disabled={busy} onClick={() => send(SUGGESTION)}>{SUGGESTION}</button>
               <button className="chip" disabled={busy} onClick={() => send(SUGGESTION_RETURNS)}>{SUGGESTION_RETURNS}</button>
               <button className="chip" disabled={busy} onClick={() => send(SUGGESTION_SALES)}>{SUGGESTION_SALES}</button>
+              <button className="chip" disabled={busy} onClick={() => send(SUGGESTION_SHEET)}>New products from fw26_supplier.xlsx</button>
             </div>
           )}
           {msgs.map((m, i) =>
@@ -253,6 +257,10 @@ export function BackOffice() {
 
       {insight && !view ? (
         <SalesExplainer data={insight} busy={busy} onAsk={(r) => send(r)} />
+      ) : view?.kind === "product_drafts" ? (
+        <ProductDrafts view={view} busy={busy}
+          onApprove={() => act(() => api.approve(view.id, view.version), (v) => v.status === "live" ? "Saved the drafts and read them back." : "Saved, but the read-back found a mismatch.")}
+          onUndo={() => act(() => api.undo(view.id), () => "Removed the drafts.")} />
       ) : view?.kind === "refund_review" ? (
         <RefundReview view={view} busy={busy}
           onApprove={() => act(() => api.approve(view.id, view.version), (v) => v.status === "live"

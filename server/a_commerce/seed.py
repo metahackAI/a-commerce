@@ -74,6 +74,7 @@ def seed(store: Store) -> None:
     _orders(store)
     _returns(store)
     _sales(store)
+    _supplier_sheet(store)
 
 
 def _products(store: Store) -> None:
@@ -253,3 +254,31 @@ def _sales(store: Store) -> None:
         ("2026-10-29", "Weekly email", "sent", None, 1300.0),
         ("2026-11-05", "Weekly email", "not_sent", "List import failed Thu 08:00", 1300.0),
     ])
+
+
+SHEET = "fw26_supplier.xlsx"
+# The first six rows are the ones in design/options/intent-listing; the quilted liner's price follows the rule ($129).
+SUPPLIER_ROWS = [
+    ("FW26-OT-014 WOOL BLND OVRCT CHRCL", 96, "S-XL", "70% wool, 30% polyamide", 1),
+    ("FW26-KN-031 MERINO CRW NVY", 38, "XS-XL", "100% merino wool", 1),
+    ("FW26-SH-007 FLNL OVRSHT CHK", 30, "S-XL", "100% cotton flannel", 1),
+    ("FW26-OT-022 QLTD LNR JKT OLV", 52, "S-XL", None, 1),
+    ("FW26-PT-011 CRD TRSR SND", 34, "28-36", "98% cotton, 2% elastane", 2),
+    ("FW26-KN-044 LMBSWL CRDGN OAT", 44, "S-XL", "100% lambswool", 1),
+]
+GEN = [("OT", "WOOL BLND", "PEACOAT"), ("KN", "CSHMR", "CRW"), ("SH", "OXFRD", "SHRT"), ("PT", "WOOL", "TRSR"),
+       ("KN", "MERINO", "TRTLNK"), ("OT", "WXD COTN", "JKT")]
+GEN_COLORS = ["NVY", "BLK", "OLV", "RST", "SND", "CHRCL", "OAT", "BRWN"]
+GEN_COSTS = [88, 62, 28, 46, 36, 74, 40, 58]
+
+
+def _supplier_sheet(store: Store) -> None:
+    rows = list(SUPPLIER_ROWS)
+    for i in range(24):
+        cat, mat, kind = GEN[i % len(GEN)]
+        mix = None if i == 9 else {"WOOL BLND": "60% wool, 40% polyester", "CSHMR": "100% cashmere", "OXFRD": "100% cotton",
+                                   "WOOL": "100% wool", "MERINO": "100% merino wool", "WXD COTN": "100% waxed cotton"}[mat]
+        rows.append((f"FW26-{cat}-{100 + i:03d} {mat} {kind} {GEN_COLORS[i % len(GEN_COLORS)]}", GEN_COSTS[i % len(GEN_COSTS)],
+                     "28-36" if cat == "PT" else "S-XL", mix, 2 if i == 17 else 1))
+    store.executemany("INSERT INTO supplier_rows VALUES (?, ?, ?, ?, ?, ?, ?)",
+                      [(SHEET, n, code, float(cost), sizes, mix, photos) for n, (code, cost, sizes, mix, photos) in enumerate(rows, start=1)])

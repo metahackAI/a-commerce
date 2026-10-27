@@ -130,3 +130,16 @@ test("a next step from the answer becomes a change set: send the email, which ca
   await expect(page.getByTestId("verification")).toContainText("Weekly email sent 2026-11-06");
   await expect(cs.getByRole("button", { name: "Undo all together" })).toHaveCount(0);
 });
+
+test("a supplier sheet becomes 26 drafts and 4 rows that need a person; saved drafts stay off the store", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "New products from fw26_supplier.xlsx" }).click();
+  const drafts = page.getByTestId("product-drafts");
+  await expect(drafts).toContainText("30 rows");
+  await expect(drafts.getByRole("row", { name: /Wool blend overcoat, charcoal/ })).toContainText("$239.00");
+  await expect(drafts.getByRole("row", { name: /Quilted liner jacket, olive/ })).toContainText("Fill % missing in the sheet");
+  await expect(drafts.getByRole("row", { name: /Corduroy trousers, sand/ })).toContainText("Photo shows two items");
+  await drafts.getByRole("button", { name: "Save 26 ready as drafts" }).click();
+  await expect(drafts).toContainText("Saved · verified");
+  await expect(page.getByTestId("verification")).toContainText("26 drafts saved, not visible to shoppers");
+});

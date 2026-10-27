@@ -87,6 +87,18 @@ class ScriptedOperator:
     def _next_step(self, request: str, results: list[dict]):
         """The sales answer's next steps: reorder, send the email, back-in-stock notices."""
         text = request.lower()
+        if "supplier sheet" in text:
+            if not results:
+                return [("read_supplier_sheet", {})]
+            if len(results) == 1:
+                return [("save_product_drafts", {"only_ready": True})]
+            if len(results) == 2 and "preview_id" in results[1]:
+                r = results[0]
+                return [("propose_change_set", {"title": "New products from supplier sheet", "preview_ids": [results[1]["preview_id"]],
+                         "reply": f"The sheet uses short supplier codes, so I turned each row into a product name, category, sizes, "
+                                  f"and a price from your pricing rule. {r['needs_you']} rows need you: 2 are missing the fabric mix "
+                                  f"and 2 photos show more than one item."})]
+            return []
         if text.startswith("reorder"):
             call, title = ("create_reorder", {"from_stockouts": True}), "Reorder sold-out sizes"
         elif "send the weekly email" in text or "send the email" in text:

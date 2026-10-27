@@ -184,6 +184,18 @@ CREATE TABLE product_notices (
   id TEXT PRIMARY KEY, product_id TEXT NOT NULL, text TEXT NOT NULL, status TEXT NOT NULL
 );
 
+CREATE TABLE supplier_rows (
+  sheet TEXT NOT NULL, row_no INTEGER NOT NULL, code TEXT NOT NULL, cost REAL NOT NULL, sizes TEXT NOT NULL,
+  fabric_mix TEXT, photo_items INTEGER NOT NULL,
+  PRIMARY KEY (sheet, row_no)
+);
+
+CREATE TABLE product_drafts (
+  id TEXT PRIMARY KEY, sheet TEXT NOT NULL, row_no INTEGER NOT NULL, code TEXT NOT NULL, name TEXT NOT NULL,
+  category_id TEXT NOT NULL, price REAL NOT NULL, cost REAL NOT NULL, sizes TEXT NOT NULL, description TEXT NOT NULL,
+  status TEXT NOT NULL
+);
+
 CREATE TABLE action_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   at TEXT NOT NULL,

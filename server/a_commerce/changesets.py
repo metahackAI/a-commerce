@@ -16,7 +16,7 @@ from .tools.base import ToolError, commit, read_tool
 
 AUDIENCE_LABEL = {"vip": "VIP", "gold": "Gold", "member": "Member", "members": "Members", "everyone": "Everyone"}
 APPLY_ORDER = ["set_sale_prices", "create_coupon", "schedule_banner", "refund_return", "send_customer_message",
-               "create_reorder", "set_back_in_stock_notice", "send_campaign"]
+               "create_reorder", "set_back_in_stock_notice", "send_campaign", "save_product_drafts"]
 ACTION_TOOLS = {"create_reorder", "set_back_in_stock_notice", "send_campaign"}
 FINAL_TOOLS = {"refund_return": "Refunds have gone back to customers' cards", "send_campaign": "The email has gone out"}
 REFUND_TOOLS = {"refund_return", "send_customer_message"}
@@ -115,7 +115,8 @@ def undo(store: Store, cs_id: int, actor: str = "operator") -> dict:
     if cs["undo_until"] and store.now().isoformat(timespec="minutes") > cs["undo_until"]:
         raise ToolError("undo_expired", f"Change set #{cs_id} could be undone until {cs['undo_until']}.", None)
     table = {"set_sale_prices": "promotions", "create_coupon": "coupons", "schedule_banner": "displays",
-             "create_reorder": "purchase_orders", "set_back_in_stock_notice": "product_notices"}
+             "create_reorder": "purchase_orders", "set_back_in_stock_notice": "product_notices",
+             "save_product_drafts": "product_drafts"}
     for p in _previews(store, json.loads(cs["preview_ids"])):
         for cid in (p["committed_id"] or "").split(","):
             if cid:
@@ -180,6 +181,12 @@ def verify(store: Store, cs_id: int) -> dict:
             want = p["result"]["changes"][0]
             sent = store.one("SELECT 1 FROM campaign_sends WHERE name = ? AND day = ? AND status = 'sent'", (want["name"], want["day"]))
             results.append({"tool": p["tool"], "matches": bool(sent), "detail": f"{want['name']} sent {want['day']}"})
+        elif p["tool"] == "save_product_drafts":
+            ids = [i for i in p["committed_id"].split(",") if i]
+            want = p["result"]["changes"][0]["drafts"]
+            saved = [store.one("SELECT name, price FROM product_drafts WHERE id = ? AND status = 'draft'", (i,)) for i in ids]
+            ok = len(saved) == len(want) and all(s and s["name"] == w["name"] and s["price"] == w["price"] for s, w in zip(saved, want))
+            results.append({"tool": p["tool"], "matches": ok, "detail": f"{len(ids)} drafts saved, not visible to shoppers"})
         elif p["tool"] == "send_customer_message":
             m = store.one("SELECT kind, status FROM messages WHERE id = ?", (p["committed_id"],))
             want = p["result"]["changes"][0]
@@ -207,6 +214,8 @@ def view(store: Store, cs_id: int) -> dict:
         return refund_view(store, cs, previews)
     if all(p["tool"] in ACTION_TOOLS for p in previews):
         return action_view(store, cs, previews)
+    if any(p["tool"] == "save_product_drafts" for p in previews):
+        return drafts_view(store, cs, previews)
     by_tool = {p["tool"]: p for p in previews}
     groups, understood = [], []
     checks = [c for p in previews for c in p["result"]["checks"]]
@@ -324,5 +333,29 @@ def action_view(store: Store, cs, previews: list[dict]) -> dict:
         "checks_passed": sum(1 for c in checks if c["passed"]), "checks_total": len(checks), "groups": groups,
         "after_approval": {"tools": [t for t in APPLY_ORDER if any(p["tool"] == t for p in previews)] + ["verify_change_set"],
                            "undo_until": None, "final": final},
+        "verification": json.loads(cs["verification"]) if cs["verification"] else None,
+    }
+
+
+def drafts_view(store: Store, cs, previews: list[dict]) -> dict:
+    """The product_drafts block (design/options/intent-listing): supplier rows turned into drafts, and what needs a person."""
+    p = next(p for p in previews if p["tool"] == "save_product_drafts")
+    c = p["result"]["changes"][0]
+    items = c["drafts"] + c["left_out"]
+    items.sort(key=lambda d: d["row"])
+    rule = store.policy_value("pricing_rule")
+    checks = p["result"]["checks"]
+    return {
+        "kind": "product_drafts", "id": cs["id"], "version": cs["version"], "status": cs["status"], "title": cs["title"],
+        "request": json.loads(cs["requests"]), "sheet": c["sheet"], "rows": len(items), "ready": len(c["drafts"]),
+        "needs_you": len(c["left_out"]), "items": items,
+        "rules": [["Price", f"Cost × {rule['markup']:g}, ending in {rule['ending']}"],
+                  ["Floor", f"Never below cost + {store.policy_value('price_floor_markup')}%"],
+                  ["Tone", "Your style guide, 2 sentences + care line"],
+                  ["Category", f"Matched to your {store.one('SELECT COUNT(*) AS n FROM categories')['n']} categories"]],
+        "checks": checks, "checks_passed": sum(1 for x in checks if x["passed"]), "checks_total": len(checks),
+        "approve_label": f"Save {len(c['drafts'])} ready as drafts",
+        "after_approval": {"tools": ["save_product_drafts", "verify_change_set"], "undo_until": None,
+                           "text": "Drafts are not visible to shoppers. Publishing is a separate change set."},
         "verification": json.loads(cs["verification"]) if cs["verification"] else None,
     }

@@ -39,7 +39,15 @@ export type RefundView = {
   after_approval: { tools: string[]; undo_until: null; text: string };
   verification: ChangeSetView["verification"];
 };
-export type AnyView = (ChangeSetView & { kind?: undefined }) | RefundView;
+export type DraftRow = { row: number; code: string; name: string; category: string; cost: number; price: number; sizes: string;
+  status: "ready" | "needs_you"; problem: string | null };
+export type DraftsView = {
+  kind: "product_drafts"; id: number; version: number; status: ChangeSetView["status"]; title: string; request: string[];
+  sheet: string; rows: number; ready: number; needs_you: number; items: DraftRow[]; rules: [string, string][];
+  checks: Check[]; checks_passed: number; checks_total: number; approve_label: string;
+  after_approval: { tools: string[]; undo_until: null; text: string }; verification: ChangeSetView["verification"];
+};
+export type AnyView = (ChangeSetView & { kind?: undefined }) | RefundView | DraftsView;
 
 export type AgentStep = {
   type: "agent_step"; model: string; tool_calls: number; duration_ms: number; read_only: boolean; text: string;

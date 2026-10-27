@@ -31,3 +31,4 @@
 .bo .task.seeded{opacity:.75;cursor:default}
 .bo .back{margin-right:8px;color:var(--mute);font-size:15px}
 .bo td.n{white-space:nowrap}
+.bo button.more{width:100%;text-align:left}

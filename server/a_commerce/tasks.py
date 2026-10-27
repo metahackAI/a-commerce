@@ -35,12 +35,15 @@ def task_list(store: Store) -> dict:
     for row in store.all("SELECT id, created_at FROM change_sets ORDER BY updated_at DESC"):
         v = changesets.view(store, row["id"])
         requests = json.loads(store.one("SELECT requests FROM change_sets WHERE id = ?", (row["id"],))["requests"])
-        if v.get("kind") == "refund_review":
+        if v.get("kind") == "product_drafts":
+            diff = [f"+{v['ready']} drafts", f"{v['needs_you']} need you"]
+        elif v.get("kind") == "refund_review":
             s = v["summary"]
             diff = [f"{s['refund']['count']} refunds · ${s['refund']['amount']:,.2f}", f"{s['ask_for_photos'] + s['decline']} messages"]
         else:
             groups = {g["op"]: g for g in v["groups"]}
-            diff = [f"~{groups['update']['total_rows']} prices"] if "update" in groups else []
+            diff = [f"~{groups['update']['total_rows']} prices"] if "update" in groups else [g["summary"] for g in v["groups"] if g["op"] in ("send",)]
+            diff += [g["summary"] for g in v["groups"] if g["title"] in ("Purchase order", "Product pages")]
             diff += ["+1 coupon"] * ("create" in groups) + ["+1 banner"] * ("schedule" in groups)
             diff += [f"{len(groups['exclude']['rows'])} left out"] if "exclude" in groups else []
         label = {"waiting_for_approval": "Ready to review", "live": "Live · verified", "undone": "Undone",

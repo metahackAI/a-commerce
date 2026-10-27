@@ -26,6 +26,15 @@ def check_reply(text: str, view: dict) -> list[str]:
     """Contradictions between the reply and the change set, in words for the operator."""
     if view.get("kind") == "refund_review":
         return check_refund_reply(text, view)
+    if view.get("kind") == "product_drafts":
+        issues = []
+        if view["status"] != "live" and re.search(r"\b(published|now live|on the store|visible to shoppers)\b", text, re.I) \
+                and not re.search(r"not (be )?visible", text, re.I):
+            issues.append("It said the products are published, but these are drafts and nothing is saved until you approve.")
+        m = re.search(r"\b(\d{1,3})\s+(rows|drafts|products) (need|are missing)", text, re.I)
+        if m and int(m.group(1)) != view["needs_you"]:
+            issues.append(f"It said {m.group(1)} {m.group(2)} need you, but {view['needs_you']} do.")
+        return issues
     issues = []
     groups = {g["op"]: g for g in view["groups"]}
     rows = groups.get("update", {}).get("rows", [])
@@ -86,6 +95,10 @@ def summary(view: dict) -> str:
     """A reply built only from the change set."""
     if view.get("kind") == "refund_review":
         return refund_summary(view)
+    if view.get("kind") == "product_drafts":
+        need = [d for d in view["items"] if d["status"] == "needs_you"]
+        return (f"{view['rows']} rows from {view['sheet']}: {view['ready']} drafts ready, {view['needs_you']} need you ("
+                + "; ".join(f"row {d['row']}: {d['problem']}" for d in need) + "). Drafts are not visible to shoppers.")
     if not view["understood"]:  # next-step change sets: reorder, campaign, notices
         parts = [f"Change set #{view['id']} v{view['version']} is ready for review. Nothing has changed yet."]
         parts += [f"{g['title']}: {g['summary']}." for g in view["groups"]]
