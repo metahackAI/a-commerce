@@ -138,6 +138,27 @@ The data sits at a fixed moment (Fri Nov 6, 11:00). The demo clock buttons in th
 
 Script for the 3-minute video: [docs/demo.md](docs/demo.md).
 
+### Use the same tools from any MCP client
+
+Outside agents get the same tools and policies over MCP. The MCP server is a thin proxy over the running API (`make demo`),
+so what an outside agent proposes shows up in the back office task list for a person to approve. Approve, undo, place
+order and send return are not tools, here or anywhere.
+
+```json
+{
+  "mcpServers": {
+    "a-commerce-operator": {
+      "command": "uv",
+      "args": ["run", "--project", "/path/to/a-commerce/server", "python", "-m", "a_commerce.mcp_server", "--role", "operator"]
+    },
+    "a-commerce-shopper": {
+      "command": "uv",
+      "args": ["run", "--project", "/path/to/a-commerce/server", "python", "-m", "a_commerce.mcp_server", "--role", "shopper"]
+    }
+  }
+}
+```
+
 ### Environment variables
 
 | Name | Description |

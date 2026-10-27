@@ -24,6 +24,7 @@ SHOPPERS = {
     "jamie": {"shopper": True, "member_id": "mem_jamie", "tier": "vip"},
     "alex": {"shopper": True, "member_id": "mem_alex", "tier": "member"},
     "mina": {"shopper": True, "member_id": None, "tier": None, "guest_id": "mina"},
+    "outside": {"shopper": True, "member_id": None, "tier": None, "guest_id": "outside-agent"},  # MCP guests
 }
 
 _state: dict[str, Store] = {}
