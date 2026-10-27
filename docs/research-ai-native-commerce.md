@@ -59,15 +59,7 @@ Five properties, each with what we build:
 
 ## 5. Similar products and how we differ
 
-| Product | What it does | Difference from A-Commerce |
-|---|---|---|
-| OpenAI ACP / ChatGPT shopping | Open protocol (Apache-2.0) for agents to buy from merchants; product feeds into ChatGPT. Since Mar 2026 ChatGPT focuses on discovery and hands checkout to merchants | Shopper side, outside the store. Nothing about running the store |
-| Google UCP / Universal Cart | Shared cart and checkout across Search, Gemini, YouTube | Same: a channel for outside agents |
-| Shopify Sidekick | Assistant in the Shopify admin: proposals (Pulse), multi-step tasks with approval, skills, background work | Closest on the operator side, but sits on top of Shopify's admin screens and works only with Shopify |
-| Genstore (seed $10M, Sep 2025) | Merchants run a whole store by chat with a team of agents (design, product, launch, analytics); builds a store from a description | Closest pitch. Aimed at new small stores; nothing on large existing back-ends, change review, or measured tool use |
-| Saleor (Feb 2026) | Calls itself "the first fully open, end-to-end AI-native commerce stack": ACP entry, conversational storefront (Ink AI), config as files, AI skills | Open-source and agent-ready, but agents still call the regular GraphQL API; no operator agent or change sets |
-| Salesforce Agentforce Commerce, VTEX AI Workspace | Merchant, shopper, and buyer agents on enterprise platforms | Vendor-locked, closed models; agents layered on existing platforms |
-| Thesys C1 and other GenUI toolkits | Generative UI components for shopping agents | UI layer only |
+Full landscape by layer (channels, payments, platform MCP, operator agents, AI-built stores, interfaces, tool design): [landscape.md](landscape.md).
 
 Where A-Commerce is different:
 
