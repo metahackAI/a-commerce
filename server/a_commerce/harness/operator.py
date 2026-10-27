@@ -10,7 +10,7 @@ import json
 import re
 from dataclasses import dataclass, field
 
-from .. import changesets
+from .. import changesets, facade
 from ..db import Store
 from ..tools.base import REGISTRY, call, loose_json
 from .grounding import check_reply, summary
@@ -40,8 +40,7 @@ You change the store only through tools. Rules:
 - You cannot apply a preview. Bundle all previews with propose_change_set; a person approves it.
 - To link a write to another write's result before it exists, pass "ref:<preview_id>" (for example a coupon's promotion_id).
 - Follow the policies. If a check fails, say which and why in your reply; propose anyway so the person can decide.
-- Prefer category-wide arguments (category, percent_off, min_stock, overrides) over listing products one by one.
-- Reply in two or three plain sentences.
+{tool_tip}- Reply in two or three plain sentences.
 {revision}"""
 
 
@@ -54,18 +53,20 @@ class Step:
 
 
 def run_operator(store: Store, request: str, model: Model, *, change_set_id: int | None = None,
-                 fallback: Model | None = None) -> dict:
-    """Run one operator request. Returns {"events": [...], "change_set_id": int | None}."""
-    result = _attempt(store, request, model, change_set_id)
+                 fallback: Model | None = None, toolset: str = "a2api") -> dict:
+    """Run one operator request. Returns {"events": [...], "change_set_id": int | None}.
+
+    toolset="facade" gives the model the screen-shaped API instead (docs/design.md §7); everything else is the same."""
+    result = _attempt(store, request, model, change_set_id, toolset)
     if result["ok"] or fallback is None:
         return result
     # The worker could not finish; the planner takes the request over (design.md §5).
-    retry = _attempt(store, request, fallback, change_set_id)
+    retry = _attempt(store, request, fallback, change_set_id, toolset)
     retry["events"].insert(0, {"type": "handoff", "from": model.name, "to": fallback.name, "reason": result["error"]})
     return retry
 
 
-def _attempt(store: Store, request: str, model: Model, change_set_id: int | None) -> dict:
+def _attempt(store: Store, request: str, model: Model, change_set_id: int | None, toolset: str = "a2api") -> dict:
     revision = ""
     if change_set_id is not None:
         view = changesets.view(store, change_set_id)
@@ -80,12 +81,13 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
                     f"Its previews: {json.dumps([{'tool': p['tool'], 'args': p['args']} for p in prior])}. "
                     "Call the same tool again passing only what changes; the harness keeps every other argument. Then propose."
                     + "".join(f"\nFailing check: {c['title']}. {c['fix']}" for c in view["checks"] if not c["passed"] and c.get("fix")))
-    tools = _tools_for(request)
+    tools = facade.definitions() + [PROPOSE] if toolset == "facade" else _tools_for(request)
     # In a revision a call to the same tool is a patch: unchanged arguments come from the earlier call.
     patch_base = {a["tool"]: a["args"] for a in (asked if change_set_id is not None else [])}
     messages = [
         {"role": "system", "content": SYSTEM.format(store="Northwind Apparel", now=store.now().strftime("%a %b %-d %Y %H:%M"),
-                                                   revision=revision)},
+                                                   revision=revision, tool_tip="" if toolset == "facade" else
+                                                   "- Prefer category-wide arguments (category, percent_off, min_stock, overrides) over listing products one by one.\n")},
         {"role": "user", "content": request},
     ]
     step = Step(model.name)
@@ -118,17 +120,26 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
             if c.name == "propose_change_set":
                 proposal = decode_strings(c.arguments)
                 out = {"ok": True}
+            elif toolset == "facade":
+                out = facade.call(store, c.name, c.arguments)
             elif c.name not in REGISTRY:
                 out = {"error": {"code": "unknown_tool", "message": f"No tool {c.name}.", "next_tool": None}}
             else:
                 out = call(store, c.name, c.arguments, actor=f"agent:{model.name}")
+            if toolset == "facade" and out.get("resultCd", "0000") != "0000":
+                errors += 1
+                last_error = (c.name, {"message": out.get("resultMsg", ""), "next_tool": None})
+            elif toolset == "facade":
+                previews += [x for k in ("prmtNoList", "cpnNo", "bnrNo") for x in ([out[k]] if isinstance(out.get(k), str) else out.get(k, []))]
             if "error" in out:
                 errors += 1
                 last_error = (c.name, out["error"])
             elif "preview_id" in out or "preview_ids" in out:
                 previews += [out["preview_id"]] if "preview_id" in out else out["preview_ids"]
                 last_error = None
-            step.calls.append({"tool": c.name, "args": c.arguments, "error": out.get("error")})
+            err = out.get("error") or ({"code": out["resultCd"], "message": out.get("resultMsg", "")}
+                                       if toolset == "facade" and out.get("resultCd", "0000") != "0000" else None)
+            step.calls.append({"tool": c.name, "args": c.arguments, "error": err})
             messages.append({"role": "tool", "tool_call_id": c.id, "content": compact(out)})
     else:
         text = ""

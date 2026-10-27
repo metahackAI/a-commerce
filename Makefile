@@ -1,5 +1,5 @@
 # One entry point for people, coding agents, and CI.
-.PHONY: setup check test web-build e2e serve web try-model
+.PHONY: setup check test web-build e2e serve web try-model compare
 
 setup:
 	cd server && uv sync
@@ -29,3 +29,7 @@ web:
 # Run the demo request through the model in .env and judge the change set (exit 0 = demo works).
 try-model:
 	cd server && set -a && [ -f ../.env ] && . ../.env; set +a; uv run python -m a_commerce.harness.acceptance --runs $(or $(RUNS),1)
+
+# Same model, same tasks: A-Commerce tools vs the screen-shaped facade (docs/design.md §7).
+compare:
+	cd server && set -a && [ -f ../.env ] && . ../.env; set +a; uv run python -m a_commerce.harness.compare --runs $(or $(RUNS),1)

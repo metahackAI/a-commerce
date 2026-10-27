@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field, field_validator
 from ..db import Store
 from .base import REGISTRY, ToolError, make_preview, normalize, read_tool
 from .operator import Audience, SaleItem, loose_overrides
-from .periods import Period
+from .periods import PERIOD_HELP, Period
 
 LABEL = {"vip": "VIP", "gold": "Gold", "member": "Member", "members": "Member", "everyone": "Store"}
 
@@ -48,8 +48,12 @@ def plan_sale(store: Store, args: PlanSaleIn) -> dict:
         raise ToolError("no_period", "Give period (e.g. this_weekend) or both starts_at and ends_at.", "plan_sale")
     when = {"period": args.period} if args.period else {"starts_at": args.starts_at, "ends_at": args.ends_at}
     # call() has already turned a named period into dates; a Sat 00:00 – Sun 23:59 span is a weekend sale.
-    start = datetime.fromisoformat(args.starts_at) if args.starts_at else None
-    end = datetime.fromisoformat(args.ends_at) if args.ends_at else None
+    try:
+        start = datetime.fromisoformat(args.starts_at) if args.starts_at else None
+        end = datetime.fromisoformat(args.ends_at) if args.ends_at else None
+    except ValueError:
+        raise ToolError("invalid_input", f"plan_sale: starts_at and ends_at must look like 2026-11-07T00:00. {PERIOD_HELP}",
+                        "plan_sale") from None
     weekend = args.period in ("this_weekend", "next_weekend") or bool(
         start and end and start.weekday() == 5 and start.hour == 0 and (end - start).days == 1 and end.weekday() == 6)
     name = args.name.split(":")[0].strip() if args.name else f"{LABEL[args.audience]} {'weekend' if weekend else 'sale'}"

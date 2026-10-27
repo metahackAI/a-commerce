@@ -125,3 +125,15 @@ def test_plan_sale_makes_the_whole_change_set_in_one_call(store):
     from a_commerce.harness.acceptance import judge
     assert all(ok for _, ok in judge(changesets.view(store, cs)))
     assert changesets.view(store, cs)["groups"][1]["fields"]["Code"] == "VIPWEEKEND20"
+
+
+def test_a_period_name_in_a_date_field_and_bad_dates_never_crash(store):
+    from a_commerce import call
+    store.set_clock("2026-11-06T11:02")
+    out = call(store, "plan_sale", {"category": "summer outerwear", "percent_off": 10, "audience": "gold", "starts_at": "next_weekend"})
+    assert "error" not in out and out["products"] == 42
+    view = changesets.view(store, changesets.create(store, "x", "y", out["preview_ids"]))
+    assert {u["label"]: u["value"] for u in view["understood"]}["When"] == "Nov 14–15"
+    bad = call(store, "plan_sale", {"category": "summer outerwear", "percent_off": 10, "audience": "gold",
+                                    "starts_at": "next friday", "ends_at": "sunday"})
+    assert bad["error"]["code"] == "invalid_input" and "this_weekend" in bad["error"]["message"]

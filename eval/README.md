@@ -9,8 +9,33 @@
 |---|---|---|---|---|
 | Oct 28 | `scripted` stand-in | 3/3 | 3/3 | Rule-based, not a model. Proves the harness and judge only |
 | Oct 28 | Llama 3.2 3B (Ollama, this Mac) | **3/3** | 0/3 | Meta open weights as a small-model stand-in until Muse keys arrive |
-| — | Muse Glimmer 30B (partner server) | — | — | Needs keys |
+| — | Muse Glimmer 30B (partner server) | — | — | Needs keys; run `make try-model RUNS=3` and `make compare` |
 | — | Muse Spark Open (Baseten) | — | — | Needs keys |
+
+## A-Commerce tools vs a screen-shaped API (design.md §7)
+
+`make compare` gives the same model the same three tasks with one of two tool layers over the same store:
+our tools, or `server/a_commerce/facade.py`, a screen-shaped API we wrote to reproduce design.md §2 (grid reads with
+paging and a separate count call, abbreviations, codes such as `G01` and `T03`, bulk saves with `rowStatus`, a V2
+duplicate, `E999 System error`). `test_facade.py` shows the facade can do the demo task when driven by hand, so a
+failure on it is about its shape. Both layers get the same lenient argument decoding and the same harness.
+
+Tasks (Fri Nov 6 11:02): the demo request; "Give Gold members 10% off all summer outerwear next weekend. No banner.";
+"Put shirts on a 15% sale for everyone this weekend." Seven criteria each (proposed, all products, rate, audience,
+dates, coupon, banner).
+
+| Date | Model | Tool layer | Tasks passed | Criteria met | Calls / task | Errors / task |
+|---|---|---|---|---|---|---|
+| Oct 28 | Llama 3.2 3B (local) | **A-Commerce tools** | **2/3** | **20/21** | 2.0 | 0.0 |
+| Oct 28 | Llama 3.2 3B (local) | Screen-shaped facade | 0/3 | 0/3 | 3.0 | 3.0 |
+
+What happened on the facade: the model sent words where codes were needed (`"VIP members"` for `G01`, `"main page"`
+for `MAIN_HERO`), dates in its own format, and never got past `E999 System error`, so no change set was proposed.
+On our tools the one miss was "next weekend": the model passed `next_7_days`.
+
+Limits: one run per task at temperature 0 (repeated runs give the same answer); the tasks were written by us and our
+tools were tuned on the demo request earlier the same day; a 3B stand-in, not Glimmer. Re-run on Glimmer and Spark
+Open, with more tasks written by someone who did not build the tools, before putting numbers in the main README.
 
 ## What a 3B model taught us (Oct 28)
 

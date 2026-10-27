@@ -11,7 +11,7 @@ from typing import Any, Callable
 from pydantic import BaseModel, ValidationError
 
 from ..db import Store
-from .periods import PERIOD_HELP, resolve as resolve_period
+from .periods import PERIOD_HELP, PERIOD_NAMES, resolve as resolve_period
 
 REF_PREFIX = "ref:"
 
@@ -137,6 +137,10 @@ def call(store: Store, name: str, args: dict | None = None, *, actor: str = "age
     except ToolError as e:
         store.log(actor, name, {"args": args, "error": e.code})
         return e.payload()
+    except Exception as e:  # a bug in a tool must come back as an error the agent can read, never a crash
+        store.log(actor, name, {"args": args, "error": "internal_error", "detail": repr(e)[:200]})
+        return ToolError("internal_error", f"{name} could not handle these arguments ({type(e).__name__}). "
+                         "Check the field formats and try again.", name).payload()
 
 
 def _parse(tool: Tool, args: dict) -> BaseModel:
@@ -189,6 +193,11 @@ def normalize(store: Store, tool: Tool, args: dict) -> dict:
                         (wanted, wanted, wanted.replace(" ", "_")))
         if row:
             out["category"] = row["id"]
+    # A period name where a date belongs ("starts_at": "next_weekend") means that period.
+    for key in ("starts_at", "ends_at"):
+        if isinstance(out.get(key), str) and out[key] in PERIOD_NAMES and "period" not in out:
+            out["period"] = out.pop(key)
+            out.pop("ends_at" if key == "starts_at" else "starts_at", None)
     if "period" in out and "starts_at" in fields:
         try:
             out["starts_at"], out["ends_at"] = resolve_period(str(out.pop("period")), store.now())

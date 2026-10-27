@@ -1,0 +1,95 @@
+"""Same model, same tasks, two tool layers: A-Commerce tools vs the screen-shaped facade (docs/design.md §7).
+
+`make compare RUNS=1` with a model in .env. Tasks start from a fresh seed at Fri Nov 6 11:02. Two of the three tasks
+are not the demo sentence, so the result is not tuned to it. Results are printed and saved to eval/results.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+
+from .. import changesets
+from ..seed import fresh_store
+from . import operator_models, run_operator
+
+RESULTS = Path(__file__).resolve().parents[3] / "eval" / "results"
+
+TASKS = [
+    {"id": "vip_weekend", "request": "Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.",
+     "category": "summer_outerwear", "pct": "20%", "audience": "VIP tier", "when": "Nov 7–8", "coupon": True, "banner": True},
+    {"id": "gold_next_weekend", "request": "Give Gold members 10% off all summer outerwear next weekend. No banner.",
+     "category": "summer_outerwear", "pct": "10%", "audience": "Gold tier", "when": "Nov 14–15", "coupon": True, "banner": False},
+    {"id": "everyone_shirts", "request": "Put shirts on a 15% sale for everyone this weekend.",
+     "category": "shirts", "pct": "15%", "audience": "Everyone tier", "when": "Nov 7–8", "coupon": False, "banner": False},
+]
+
+
+def judge(store, view: dict | None, task: dict) -> list[tuple[str, bool]]:
+    if view is None:
+        return [("change set proposed", False)]
+    groups = {g["op"]: g for g in view.get("groups", [])}
+    rows = groups.get("update", {}).get("rows", [])
+    understood = {u["label"]: u for u in view.get("understood", [])}
+    n = store.one("SELECT COUNT(*) AS n FROM products WHERE category_id = ?", (task["category"],))["n"]
+    return [
+        ("change set proposed", True),
+        (f"all {n} products in {task['category']}", groups.get("update", {}).get("total_rows") == n),
+        (f"at {task['pct']}", bool(rows) and all(r["discount"] == task["pct"] for r in rows)),
+        (f"for {task['audience']}", understood.get("Who", {}).get("value") == task["audience"]),
+        (f"on {task['when']}", understood.get("When", {}).get("value") == task["when"]),
+        ("coupon " + ("prepared" if task["coupon"] else "not made"), ("create" in groups) == task["coupon"]),
+        ("banner " + ("prepared" if task["banner"] else "not made"), ("schedule" in groups) == task["banner"]),
+    ]
+
+
+def run(task: dict, toolset: str) -> dict:
+    store = fresh_store()
+    store.set_clock("2026-11-06T11:02")
+    worker, _ = operator_models(store)
+    start = time.monotonic()
+    out = run_operator(store, task["request"], worker, toolset=toolset)
+    view = changesets.view(store, out["change_set_id"]) if out.get("change_set_id") else None
+    criteria = judge(store, view, task)
+    step = next((e for e in out["events"] if e["type"] == "agent_step"), {})
+    return {"task": task["id"], "toolset": toolset, "model": worker.name, "passed": all(ok for _, ok in criteria),
+            "criteria": criteria, "tool_calls": step.get("tool_calls", 0),
+            "errors": sum(1 for c in step.get("calls", []) if c.get("error")),
+            "seconds": round(time.monotonic() - start, 1), "calls": step.get("calls", [])}
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--runs", type=int, default=1)
+    args = ap.parse_args(argv)
+    results = []
+    for toolset in ("a2api", "facade"):
+        for task in TASKS:
+            for _ in range(args.runs):
+                r = run(task, toolset)
+                results.append(r)
+                failed = [name for name, ok in r["criteria"] if not ok]
+                print(f"{toolset:7} {task['id']:18} {'PASS' if r['passed'] else 'FAIL'}  calls={r['tool_calls']:2} "
+                      f"errors={r['errors']}  {r['seconds']}s  {'; '.join(failed)}")
+    print()
+    print(f"{'tool layer':10} {'tasks passed':>13} {'criteria met':>13} {'calls/task':>11} {'errors/task':>12} {'s/task':>7}")
+    for toolset in ("a2api", "facade"):
+        rs = [r for r in results if r["toolset"] == toolset]
+        met = sum(ok for r in rs for _, ok in r["criteria"])
+        total = sum(len(r["criteria"]) for r in rs)
+        print(f"{toolset:10} {sum(r['passed'] for r in rs):>6}/{len(rs):<6} {met:>6}/{total:<6} "
+              f"{sum(r['tool_calls'] for r in rs) / len(rs):>11.1f} {sum(r['errors'] for r in rs) / len(rs):>12.1f} "
+              f"{sum(r['seconds'] for r in rs) / len(rs):>7.1f}")
+    if results and results[0]["model"] != "scripted":
+        RESULTS.mkdir(parents=True, exist_ok=True)
+        path = RESULTS / f"{time.strftime('%Y%m%d-%H%M%S')}-compare-{results[0]['model'].replace(':', '_').replace('/', '_')}.json"
+        path.write_text(json.dumps(results, indent=1, default=str))
+        print(f"saved {path.relative_to(RESULTS.parents[1])}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
