@@ -1,6 +1,6 @@
 # UI mockups v2 (Oct 27)
 
-Static HTML (open in a browser) with 1440×900 captures, and 390×844 for mobile. Background: [docs/research-ai-native-commerce.md](../../docs/research-ai-native-commerce.md).
+Static HTML (open in a browser) with 1440×900 captures, and 390×844 for mobile. Background: [docs/research.md](../../docs/research.md).
 
 The idea behind the screens: **the conversation is where you ask; the result is a piece of work you can review.** Every screen keeps the conversation on the left and the work on the right, in the back office and on the storefront.
 
