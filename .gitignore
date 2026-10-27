@@ -382,3 +382,7 @@ data/raw/
 # A-Commerce
 *.sqlite3
 node_modules/
+
+# Playwright
+web/test-results/
+web/playwright-report/

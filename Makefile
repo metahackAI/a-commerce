@@ -1,9 +1,9 @@
 # One entry point for people, coding agents, and CI.
-.PHONY: setup check test web-build serve web try-model
+.PHONY: setup check test web-build e2e serve web try-model
 
 setup:
 	cd server && uv sync
-	cd web && npm ci
+	cd web && npm ci && npx playwright install chromium
 
 test:
 	cd server && uv run pytest -q
@@ -11,8 +11,12 @@ test:
 web-build:
 	cd web && npm run build
 
+# The demo in a real browser (Playwright starts its own API and web server).
+e2e:
+	cd web && npx playwright test
+
 # Everything that must pass before a PR merges.
-check: test web-build
+check: test web-build e2e
 
 serve:
 	cd server && uv run uvicorn a_commerce.api:app --reload --port 8000
