@@ -16,12 +16,13 @@ Run everything with `make check` (CI runs the same on every PR).
 | Harness | Operator's words → tool search (6–9 of 16 tools, graph neighbours via consumes/produces) → reads → previews → change set #1042. v1 takes 9 tool calls and reports the two checks that need a decision; "Drop the low-stock ones. Give the overshirt 15% instead." makes v2 with 6 of 6 checks. The agent never approves or applies | `test_harness.py::test_request_to_v1_then_v2_from_words`, `::test_the_agent_never_approves` |
 | Real-model path | OpenAI-compatible client (Baseten / Fireworks / vLLM) drives the same loop; a worker that gives up hands the request to the planner | `test_harness.py::test_openai_compatible_client_*`, `::test_a_worker_that_gives_up_*` |
 | Definition of done | `make try-model` runs the two operator messages through the model in `.env` and judges the change set on 7 criteria (40 products, chore coat and parka out, $67.15, $71.20, 1,284 coupons, VIP hero Nov 7–8, 6 of 6 checks) | `test_harness.py::test_acceptance_judge_*` (scripted); real model: pending keys |
+| Back office web | Layout A at `make web`: conversation left, `change_set` block right (understood, checks, price group, coupon, left out, hero preview, after-approval). Checked in a browser on Oct 28: suggestion → v1 with 4 of 6 and Approve disabled → typed revision → v2 with 6 of 6 → Approve → "Live · verified" with the read-back panel (40 of 40 prices, VIPWEEKEND20 to 1,284, banner) → Undo all together | Manual browser run; `make check` builds and type-checks the web app |
 | HTTP | Tool definitions (every field described), shopper scope hides operator tools, change set and order over HTTP, action log | `test_api.py` |
 
 ## Not done yet (next loops, in order)
 
-1. **Back office web** (layout A + `change_set`) on `/bo/chat` and `/change-sets/{id}`.
-2. **Storefront web** and the shopper agent (`understood_chips`, `compare_table`, `cart`, `memory_note`).
+1. **Storefront web** and the shopper agent (`understood_chips`, `compare_table`, `cart`, `memory_note`).
+2. **Browser test in CI** (Playwright) for the back office flow, so the manual check above runs on every PR.
 3. **Run `make try-model` on Glimmer and Spark Open** as soon as keys exist; until then the harness runs the scripted stand-in, which is labelled "scripted" in every event.
 4. P1: returns (`return_options` → `refund_review`), Mina's layout switch, task list, evaluation against a screen-shaped facade.
 

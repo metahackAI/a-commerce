@@ -106,6 +106,7 @@ Design details: [docs/design.md](docs/design.md). Research (what AI-native comme
 ### Requirements
 
 - Python 3.12+ and [uv](https://docs.astral.sh/uv/)
+- Node 22+
 
 ### Run locally
 
@@ -113,6 +114,7 @@ Design details: [docs/design.md](docs/design.md). Research (what AI-native comme
 make setup   # install server dependencies
 make check   # tests, including the VIP weekend acceptance test
 make serve   # API on http://localhost:8000 (docs at /docs)
+make web     # back office on http://localhost:5173 (in a second terminal)
 ```
 
 Build status and what is proven by tests: [docs/progress.md](docs/progress.md).

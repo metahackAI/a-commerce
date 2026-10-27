@@ -1,0 +1,63 @@
+// Typed calls to the A-Commerce API (server/a_commerce/api.py). Vite proxies /api to :8000.
+
+export type Check = { rule: string; passed: boolean; title: string; detail: string };
+export type Row = { product_id?: string; name: string; stock?: number; discount?: string; note?: string | null; was?: number; now?: number };
+export type Group = {
+  op: "update" | "create" | "exclude" | "schedule";
+  title: string;
+  summary: string;
+  undo?: string;
+  columns?: string[];
+  rows?: Row[];
+  total_rows?: number;
+  fields?: Record<string, string>;
+  preview?: { audiences: string[]; date: string; eyebrow: string; headline: string; cta: string };
+};
+export type ChangeSetView = {
+  id: number;
+  version: number;
+  status: "waiting_for_approval" | "running" | "verifying" | "live" | "failed" | "undone";
+  title: string;
+  request: string[];
+  understood: { label: string; value: string; detail: string }[];
+  checks: Check[];
+  checks_passed: number;
+  checks_total: number;
+  groups: Group[];
+  after_approval: { tools: string[]; undo_until: string | null };
+  verification: { all_match: boolean; changes: { tool: string; matches: boolean; detail: string }[] } | null;
+};
+export type AgentStep = { type: "agent_step"; model: string; tool_calls: number; duration_ms: number; read_only: boolean; text: string };
+export type UiBlock = { type: "ui"; ui: string; block_id: string; title: string; data: ChangeSetView };
+export type Handoff = { type: "handoff"; from: string; to: string; reason: string };
+export type Event = AgentStep | UiBlock | Handoff;
+export type ChatResult = { ok: boolean; events: Event[]; change_set_id: number | null; error?: string };
+
+export class ApiError extends Error {
+  constructor(public code: string, message: string) {
+    super(message);
+  }
+}
+
+async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  const r = await fetch(`/api${path}`, { headers: { "content-type": "application/json" }, ...init });
+  const body = await r.json().catch(() => null);
+  if (!r.ok) {
+    const d = body?.detail;
+    throw new ApiError(d?.code ?? String(r.status), d?.message ?? (typeof d === "string" ? d : r.statusText));
+  }
+  return body as T;
+}
+
+const post = <T,>(path: string, body: unknown) => req<T>(path, { method: "POST", body: JSON.stringify(body) });
+
+export const api = {
+  health: () => req<{ ok: boolean; clock: string; tools: number }>("/health"),
+  setClock: (at: string) => post<{ clock: string }>("/demo/clock", { at }),
+  reset: () => post<{ clock: string }>("/demo/reset", {}),
+  operatorChat: (request: string, change_set_id: number | null) => post<ChatResult>("/bo/chat", { request, change_set_id }),
+  approve: (id: number, version: number) => post<ChangeSetView>(`/change-sets/${id}/approve`, { version }),
+  undo: (id: number) => post<ChangeSetView>(`/change-sets/${id}/undo`, {}),
+};
+
+export const usd = (n: number) => `$${n.toFixed(2)}`;
