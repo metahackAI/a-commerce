@@ -102,3 +102,21 @@ test("fit check compares the overcoat with the windbreaker Jamie kept", async ({
   await page.getByTestId("cart").getByRole("button", { name: "Place order · $289.00" }).click();
   await expect(page.getByTestId("placed")).toBeVisible();
 });
+
+test("on a phone, Mina gets the same flow and the page never scrolls sideways", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/fo?shopper=mina");
+  const noSideScroll = async () =>
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  await noSideScroll();
+  await page.getByRole("button", { name: /I need a light jacket for spring trips/ }).click();
+  await expect(page.getByTestId("product_list")).toContainText("Packable windbreaker");
+  await noSideScroll();
+  await say(page, "Less text. Just show me bigger photos.");
+  await expect(page.getByTestId("look_gallery")).toBeVisible();
+  await expect(page.getByTestId("memory")).toContainText("Remembered: photos over details");
+  await noSideScroll();
+  await say(page, "Compare them.");
+  await expect(page.getByTestId("compare_table")).toBeVisible();
+  await noSideScroll(); // the table scrolls inside its box, not the page
+});

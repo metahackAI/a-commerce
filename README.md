@@ -69,6 +69,7 @@ Every claim below is a test or a command you can run. `make check` runs all of t
 | The VIP weekend story, end to end: request → change set v1 (4 of 6 checks) → "Drop the low-stock ones…" → v2 (6 of 6, 40 products, overshirt $67.15) → approve → every change read back → Jamie pays $71.20 on Saturday → undo together | `server/tests/test_scenario_vip_weekend.py`, `test_harness.py`, and in a real browser `web/e2e/back-office.spec.ts`, `storefront.spec.ts` |
 | The four back-office intents from the mockups: change the store (`change_set`), decide on many cases (`refund_review`), answer a question (`sales_explainer`, with next steps that become change sets), and long work (`product_drafts`) | `test_scenario_vip_weekend.py`, `test_returns.py`, `test_insights.py`, `test_next_steps.py`, `test_drafts.py`, and in a browser `web/e2e/back-office.spec.ts` |
 | Alex's defect return → the operator's review of 12 returns over $200 → one approval: 9 refunds ($2,463.00) and 3 messages, read back; refunds cannot be undone | `test_returns.py`, `web/e2e/returns.spec.ts` |
+| Storefront intents: comparison or photos by shopper, cart at the operator's VIP price, returns, fit check against what the shopper kept, gifts that save nothing about the recipient; usable at phone width | `test_storefront.py`, `test_returns.py`, `test_fit_gift.py`, `web/e2e/storefront.spec.ts` |
 | Agents never approve, apply, order, or send refunds; shoppers never see cost or operator tools | `test_scenario_vip_weekend.py::test_agent_cannot_apply_its_own_preview`, `test_storefront.py`, `test_returns.py` |
 | A reply that contradicts the change set ("the sale is now live") is replaced by facts | `test_grounding.py` (with replies a real 3B model gave) |
 | A real model does the demo request | `make try-model RUNS=3` (model in `.env`) |
@@ -135,7 +136,14 @@ The data sits at a fixed moment (Fri Nov 6, 11:00). The demo clock buttons in th
 2. `/` (back office) — "Check returns waiting over $200" → 12 requests, 9 refunds $2,463.00 → Approve 9 refunds and send 3 messages.
 3. Back office — click **Fri Nov 6, 11:02**, then the VIP weekend suggestion → v1 with 2 problems → "Drop the low-stock ones. Give the overshirt 15% instead." → v2, 6 of 6 → Approve and run → read back.
 4. Set the clock to Sat Nov 7 → `/fo?shopper=jamie` — ask for a light jacket → comparison table at the VIP price → "Which one packs smallest?" → "The windbreaker. Same size as last time." → Place order · $71.20.
-5. `/fo?shopper=mina` — the same question gets a list; "Less text. Just show me bigger photos." switches the layout and leaves one memory you can undo.
+5. `/fo?shopper=mina` — the same question gets a list; "Less text. Just show me bigger photos." switches the layout and leaves one memory you can undo. Works at phone width too.
+
+More, each from the back office home or the storefront:
+
+- "Why did sales drop yesterday?" — a read-only answer whose numbers add up ($18,240 vs $22,900: −$2,700 stockouts, −$1,300 email not sent, −$660 unexplained); each next step ("Send the weekly email today") becomes a change set. The email cannot be unsent, so there is no Undo.
+- "New products from fw26_supplier.xlsx" — 30 supplier rows become 26 drafts and 4 rows that need a person; drafts stay off the store.
+- Jamie: "A gift for my dad. He hikes a lot. Under $100, and it has to arrive by Nov 14." — picks at Jamie's price, a gift receipt without prices; the address is typed once and never saved.
+- Jamie, after the windbreaker has arrived (clock Tue Nov 10 or later): "Will M fit in the wool overcoat? I want to wear it over a hoodie." — L over a hoodie, M over a sweater, compared with the windbreaker Jamie kept.
 
 Script for the 3-minute video: [docs/demo.md](docs/demo.md).
 

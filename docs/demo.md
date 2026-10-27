@@ -21,6 +21,11 @@ real one; otherwise it says `scripted` and the narration must not claim a model 
 | 2:35–2:50 | `eval/README.md` table | — | "Does the tool design matter? Same small open model, same tasks: on our tools it finished two of three; on a typical screen-shaped commerce API, zero. It guessed codes and got 'System error'." Say which model the numbers come from. |
 | 2:50–3:00 | Back office | The corrected-reply note, if recorded with a real model | "And when a small model says something the change set doesn't do, the operator sees the facts instead." Close on the change set. |
 
+## If there is time (or for a longer cut)
+
+- 15 s: "Why did sales drop yesterday?" — point at the three causes adding up to −$4,660, click **Send the weekly email today**, show "Cannot be undone" before approving. Line: "Answers come from the store's data, and every next step is still a change set."
+- 10 s: Jamie's gift for Dad — "Nothing about Dad is saved; the address is used for this order only."
+
 ## Lines to avoid
 
 - Speed or cost claims we have not measured.

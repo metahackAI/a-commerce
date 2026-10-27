@@ -26,3 +26,23 @@
 .fo .grp{border:1px solid var(--line);border-radius:var(--r)}
 .fo .grp input:not([type]){border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit}
 .fo .opt .art{border-radius:8px}
+
+/* Phone width (fo-mobile-adapt): one column — conversation, then what was asked for, then the cart. */
+@media (max-width: 760px) {
+  .fo { height: auto; min-height: 100vh; }
+  .fo .sh { height: auto; flex-wrap: wrap; gap: 8px 12px; padding: 10px 16px; }
+  .fo .sh nav { display: none; }
+  .fo .sh .r { margin-left: 0; flex-wrap: wrap; gap: 6px; width: 100%; }
+  .fo .wrap { display: flex; flex-direction: column; }
+  .fo .conv { border-right: 0; border-bottom: 1px solid var(--line); min-height: 0; }
+  .fo .msgs { max-height: 46vh; padding: 14px 16px; }
+  .fo .cfoot { padding: 10px 16px 14px; }
+  .fo .canvas { padding: 16px; overflow: visible; }
+  .fo .cartp { border-left: 0; border-top: 1px solid var(--line); padding: 16px; }
+  .fo .cmp { overflow-x: auto; }
+  .fo .cmp table { min-width: 520px; }
+  .fo .grid, .fo .grid.big { grid-template-columns: 1fr; }
+  .fo .grid.big .art { aspect-ratio: 4 / 3; }
+  .fo .opts, .fo .opts[style] { grid-template-columns: 1fr !important; }
+  .fo .ua { gap: 6px; }
+}
