@@ -1,0 +1,62 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Intent · Product drafts</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="intent.css"><style>
+.uil{font-family:var(--mono);font-size:11px;color:var(--mute);border:1px solid var(--line);border-radius:4px;padding:0 6px}
+.att{display:inline-flex;align-items:center;gap:7px;margin-top:6px;font-size:12.5px;border:1px solid var(--line);border-radius:8px;padding:5px 10px;background:#fff}
+.sum{display:grid;border:1px solid var(--line);border-radius:var(--r)}
+.sum>div{padding:11px 14px;border-left:1px solid var(--line2);font-size:13px}
+.sum>div:first-child{border-left:0}
+.sum small{display:block;font-size:11.5px;color:var(--mute);margin-bottom:3px}
+.sum b{font-weight:600;font-size:15px;display:block}
+.sum span{color:var(--ink2);font-size:12.5px}
+.foot{display:flex;gap:10px;align-items:center;border-top:1px solid var(--line);padding-top:16px;font-size:13px;color:var(--ink2)}
+.foot .sp{margin-left:auto;display:flex;gap:8px}
+.ro{font-size:12px;color:var(--ink2);border:1px solid var(--line);border-radius:6px;padding:1px 7px}
+.bar2{height:6px;border-radius:3px;background:var(--fill)}.bar2 i{display:block;height:100%;border-radius:3px;background:var(--ink)}</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<symbol id="field" viewBox="0 0 120 140"><path fill="currentColor" d="M42 14 60 24 78 14 100 26 110 94 96 97 92 54 91 130H29L28 54 24 97 10 94 20 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M42 14 51 32 60 24 69 32 78 14M60 24V130"/><rect x="36" y="58" width="16" height="15" rx="1.5"/><rect x="68" y="58" width="16" height="15" rx="1.5"/><rect x="35" y="92" width="18" height="18" rx="1.5"/><rect x="67" y="92" width="18" height="18" rx="1.5"/></g></symbol>
+<symbol id="wind" viewBox="0 0 120 140"><path fill="currentColor" d="M44 18Q60-2 76 18L100 28 110 94 96 97 92 56 91 126H29L28 56 24 97 10 94 20 28Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M48 22Q60 10 72 22M60 24V72M38 92H82L86 114H34Z"/><path d="M29 120H91" stroke-dasharray="3 3"/></g></symbol>
+<symbol id="shirt" viewBox="0 0 120 140"><path fill="currentColor" d="M44 14 60 22 76 14 98 26 106 70 94 73 91 52 90 126H30L29 52 26 73 14 70 22 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M44 14 53 34 60 22 67 34 76 14M60 26V126"/><rect x="67" y="44" width="14" height="14" rx="1.5"/></g><g fill="#000" fill-opacity=".18"><circle cx="63" cy="42" r="1.6"/><circle cx="63" cy="60" r="1.6"/><circle cx="63" cy="78" r="1.6"/><circle cx="63" cy="96" r="1.6"/><circle cx="63" cy="114" r="1.6"/></g></symbol>
+<symbol id="chore" viewBox="0 0 120 140"><path fill="currentColor" d="M42 14 60 24 78 14 100 26 110 96 96 99 92 54 92 134H28L28 54 24 99 10 96 20 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M42 14 49 38 60 24 71 38 78 14M60 24V134"/><rect x="66" y="48" width="15" height="15" rx="1.5"/><rect x="34" y="94" width="20" height="21" rx="1.5"/><rect x="66" y="94" width="20" height="21" rx="1.5"/></g></symbol>
+<symbol id="parka" viewBox="0 0 120 140"><path fill="currentColor" d="M42 18Q60-4 78 18L100 28 110 100 96 103 92 58 93 138H27L28 58 24 103 10 100 20 28Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M46 22Q60 6 74 22M60 24V138M28 84H92"/><path d="M36 98H52V112H36ZM68 98H84V112H68Z"/></g></symbol>
+</defs></svg>
+
+<div class="app">
+<aside class="side">
+  <div class="win"><i></i><i></i><i></i></div>
+  <div class="storesw"><span class="mark">N</span><div><b>Northwind Apparel</b><small>Back office</small></div></div>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><path d="M4 13h4l2 3h4l2-3h4M5 5h14l1 8v6H4v-6z"/></svg>Inbox<span class="cnt">3</span></button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 8v8M8 6h4a4 4 0 0 1 4 4"/></svg>Change sets</button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Automations<span class="cnt">4</span></button>
+  <button class="nav on"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 10v10"/></svg>Catalog</button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c1-3 3.5-5 6-5s5 2 6 5M16 5a3 3 0 0 1 0 6M21 19c-.5-2-1.6-3.5-3-4.3"/></svg>Customers</button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/></svg>Policies</button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6z"/><path d="M9 11h6M9 15h6"/></svg>Activity</button>
+  <div class="me"><span class="av">SJ</span><div>Son SeongJun<small>Merchandiser</small></div></div>
+</aside>
+
+<section class="conv">
+  <div class="ch">New products from supplier sheet</div>
+  <div class="msgs"><div class="u">List the 30 products in this supplier sheet. Use our usual pricing and write the descriptions in our tone.<div><span class="att"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>fw26_supplier.xlsx · 30 rows</span></div></div>
+<div class="ts">10:58</div>
+<div class="a"><div class="who"><span class="mark">A</span>Operator agent</div>Working on it. The sheet uses short supplier codes, so I'm turning each row into a product name, category, sizes, and a price from your pricing rule.<div class="calls"><svg class="i" viewBox="0 0 24 24"><path d="M14 7l3 3-3 3M10 17l-3-3 3-3"/></svg>41 tool calls so far<span>Muse Glimmer 30B</span></div></div>
+<div class="a"><div class="who"><span class="mark">A</span>Operator agent</div>4 rows need you: 2 are missing the fabric mix and 2 photos show more than one item. I'll keep going with the rest.</div>
+<div class="ts" style="text-align:left;margin-top:-8px">11:06</div></div>
+  <div class="cfoot"><div class="composer"><div class="ph" style="min-height:30px">Ask about these drafts…</div>
+    <div class="cbar"><span class="pill">Muse Glimmer 30B · auto</span><button class="send"><svg class="i" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div></div></div>
+</section>
+<section class="cs">
+  <div class="csh"><span class="id">18 of 30</span><h1>New products from supplier sheet</h1><span class="tag">Agent working</span><div class="sp"><span class="uil">UI: product_drafts</span></div></div>
+  <div class="body">
+<div><h2>Progress<span class="r">about 2 min left</span></h2>
+<div class="bar2"><i style="width:60%"></i></div>
+<div class="sum" style="grid-template-columns:repeat(4,1fr);margin-top:12px"><div><small>From the sheet</small><b>30 rows</b><span>fw26_supplier.xlsx</span></div><div><small>Ready</small><b>14</b><span>all fields filled</span></div><div><small>Needs you</small><b>4</b><span>missing or unclear</span></div><div><small>Still working</small><b>12</b><span>descriptions, sizes</span></div></div></div>
+<div><h2>Drafts<span class="r">supplier codes turned into names, prices from the pricing rule · show 24 more</span></h2>
+<div class="grp"><table><tr><th>Product</th><th class="n">Cost → price</th><th>Sizes</th><th>Status</th></tr><tr><td><div class="p"><span class="art t-stone"><svg><use href="#parka"/></svg></span><div>Wool blend overcoat, charcoal<div class="mono">FW26-OT-014 WOOL BLND OVRCT CHRCL</div></div></div></td><td class="n" style="white-space:nowrap"><span class="mute">$96 →</span> $239.00</td><td style="white-space:nowrap">S–XL</td><td><span class="st done" style="width:12px;height:12px;vertical-align:-1px;margin-right:6px"></span>Ready</td></tr><tr><td><div class="p"><span class="art t-navy"><svg><use href="#shirt"/></svg></span><div>Merino crew-neck sweater, navy<div class="mono">FW26-KN-031 MERINO CRW NVY</div></div></div></td><td class="n" style="white-space:nowrap"><span class="mute">$38 →</span> $99.00</td><td style="white-space:nowrap">XS–XL</td><td><span class="st done" style="width:12px;height:12px;vertical-align:-1px;margin-right:6px"></span>Ready</td></tr><tr><td><div class="p"><span class="art t-clay"><svg><use href="#shirt"/></svg></span><div>Flannel overshirt, check<div class="mono">FW26-SH-007 FLNL OVRSHT CHK</div></div></div></td><td class="n" style="white-space:nowrap"><span class="mute">$30 →</span> $79.00</td><td style="white-space:nowrap">S–XL</td><td><span class="st done" style="width:12px;height:12px;vertical-align:-1px;margin-right:6px"></span>Ready</td></tr><tr><td><div class="p"><span class="art t-olive"><svg><use href="#field"/></svg></span><div>Quilted liner jacket, olive<div class="mono">FW26-OT-022 QLTD LNR JKT OLV</div></div></div></td><td class="n" style="white-space:nowrap"><span class="mute">$52 →</span> $139.00</td><td style="white-space:nowrap">S–XL</td><td><span class="st need" style="width:12px;height:12px;vertical-align:-1px;margin-right:6px"></span>Fill % missing in the sheet</td></tr><tr><td><div class="p"><span class="art t-sand"><svg><use href="#chore"/></svg></span><div>Corduroy trousers, sand<div class="mono">FW26-PT-011 CRD TRSR SND</div></div></div></td><td class="n" style="white-space:nowrap"><span class="mute">$34 →</span> $89.00</td><td style="white-space:nowrap">28–36</td><td><span class="st need" style="width:12px;height:12px;vertical-align:-1px;margin-right:6px"></span>Photo shows two items, pick one</td></tr><tr><td><div class="p"><span class="art t-sand"><svg><use href="#shirt"/></svg></span><div>Lambswool cardigan, oatmeal<div class="mono">FW26-KN-044 LMBSWL CRDGN OAT</div></div></div></td><td class="n" style="white-space:nowrap"><span class="mute">$44 →</span> …</td><td style="white-space:nowrap">…</td><td><span class="st run" style="width:12px;height:12px;vertical-align:-1px;margin-right:6px"></span>Writing description</td></tr></table></div></div>
+<div class="two">
+<div class="grp"><div class="gh"><b>Rules used</b></div><dl class="kv"><dt>Price</dt><dd>Cost × 2.5, ending in 9</dd><dt>Floor</dt><dd>Never below cost + 15%</dd><dt>Tone</dt><dd>Your style guide, 2 sentences + care line</dd><dt>Category</dt><dd>Matched to your 24 categories</dd></dl></div>
+<div class="grp"><div class="gh"><b>Checks so far</b></div><dl class="kv"><dt class="ok">Passed</dt><dd>No duplicate SKUs in the catalog</dd><dt class="ok">Passed</dt><dd>All prices above the floor</dd><dt class="warn">4 open</dt><dd>Required fields: fabric, one photo per product</dd></dl></div>
+</div>
+<div class="foot"><span>Drafts are not visible to shoppers. Publishing is a separate change set.</span><div class="sp"><button class="btn">Pause</button><button class="btn dark">Save 14 ready as drafts</button></div></div></div>
+</section>
+</div></body></html>

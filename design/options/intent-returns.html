@@ -1,0 +1,65 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Intent · Returns review</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="intent.css"><style>
+.uil{font-family:var(--mono);font-size:11px;color:var(--mute);border:1px solid var(--line);border-radius:4px;padding:0 6px}
+.att{display:inline-flex;align-items:center;gap:7px;margin-top:6px;font-size:12.5px;border:1px solid var(--line);border-radius:8px;padding:5px 10px;background:#fff}
+.sum{display:grid;border:1px solid var(--line);border-radius:var(--r)}
+.sum>div{padding:11px 14px;border-left:1px solid var(--line2);font-size:13px}
+.sum>div:first-child{border-left:0}
+.sum small{display:block;font-size:11.5px;color:var(--mute);margin-bottom:3px}
+.sum b{font-weight:600;font-size:15px;display:block}
+.sum span{color:var(--ink2);font-size:12.5px}
+.foot{display:flex;gap:10px;align-items:center;border-top:1px solid var(--line);padding-top:16px;font-size:13px;color:var(--ink2)}
+.foot .sp{margin-left:auto;display:flex;gap:8px}
+.ro{font-size:12px;color:var(--ink2);border:1px solid var(--line);border-radius:6px;padding:1px 7px}
+.cs td{vertical-align:top}</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<symbol id="field" viewBox="0 0 120 140"><path fill="currentColor" d="M42 14 60 24 78 14 100 26 110 94 96 97 92 54 91 130H29L28 54 24 97 10 94 20 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M42 14 51 32 60 24 69 32 78 14M60 24V130"/><rect x="36" y="58" width="16" height="15" rx="1.5"/><rect x="68" y="58" width="16" height="15" rx="1.5"/><rect x="35" y="92" width="18" height="18" rx="1.5"/><rect x="67" y="92" width="18" height="18" rx="1.5"/></g></symbol>
+<symbol id="wind" viewBox="0 0 120 140"><path fill="currentColor" d="M44 18Q60-2 76 18L100 28 110 94 96 97 92 56 91 126H29L28 56 24 97 10 94 20 28Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M48 22Q60 10 72 22M60 24V72M38 92H82L86 114H34Z"/><path d="M29 120H91" stroke-dasharray="3 3"/></g></symbol>
+<symbol id="shirt" viewBox="0 0 120 140"><path fill="currentColor" d="M44 14 60 22 76 14 98 26 106 70 94 73 91 52 90 126H30L29 52 26 73 14 70 22 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M44 14 53 34 60 22 67 34 76 14M60 26V126"/><rect x="67" y="44" width="14" height="14" rx="1.5"/></g><g fill="#000" fill-opacity=".18"><circle cx="63" cy="42" r="1.6"/><circle cx="63" cy="60" r="1.6"/><circle cx="63" cy="78" r="1.6"/><circle cx="63" cy="96" r="1.6"/><circle cx="63" cy="114" r="1.6"/></g></symbol>
+<symbol id="chore" viewBox="0 0 120 140"><path fill="currentColor" d="M42 14 60 24 78 14 100 26 110 96 96 99 92 54 92 134H28L28 54 24 99 10 96 20 26Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M42 14 49 38 60 24 71 38 78 14M60 24V134"/><rect x="66" y="48" width="15" height="15" rx="1.5"/><rect x="34" y="94" width="20" height="21" rx="1.5"/><rect x="66" y="94" width="20" height="21" rx="1.5"/></g></symbol>
+<symbol id="parka" viewBox="0 0 120 140"><path fill="currentColor" d="M42 18Q60-4 78 18L100 28 110 100 96 103 92 58 93 138H27L28 58 24 103 10 100 20 28Z"/><g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.6"><path d="M46 22Q60 6 74 22M60 24V138M28 84H92"/><path d="M36 98H52V112H36ZM68 98H84V112H68Z"/></g></symbol>
+</defs></svg>
+
+<div class="app">
+<aside class="side">
+  <div class="win"><i></i><i></i><i></i></div>
+  <div class="storesw"><span class="mark">N</span><div><b>Northwind Apparel</b><small>Back office</small></div></div>
+  <button class="nav on"><svg class="i" viewBox="0 0 24 24"><path d="M4 13h4l2 3h4l2-3h4M5 5h14l1 8v6H4v-6z"/></svg>Inbox<span class="cnt">3</span></button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 8v8M8 6h4a4 4 0 0 1 4 4"/></svg>Change sets</button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Automations<span class="cnt">4</span></button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 10v10"/></svg>Catalog</button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c1-3 3.5-5 6-5s5 2 6 5M16 5a3 3 0 0 1 0 6M21 19c-.5-2-1.6-3.5-3-4.3"/></svg>Customers</button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/></svg>Policies</button>
+  <button class="nav"><svg class="i" viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6z"/><path d="M9 11h6M9 15h6"/></svg>Activity</button>
+  <div class="me"><span class="av">SJ</span><div>Son SeongJun<small>Merchandiser</small></div></div>
+</aside>
+
+<section class="conv">
+  <div class="ch">Returns over $200</div>
+  <div class="msgs"><div class="a"><div class="who"><span class="mark">A</span>Operator agent</div>12 return requests over $200 are waiting. The refund policy says a person approves refunds above $200, so I sorted them by what the policy says instead of refunding.<div class="calls"><svg class="i" viewBox="0 0 24 24"><path d="M14 7l3 3-3 3M10 17l-3-3 3-3"/></svg>14 tool calls · read only<span>Muse Glimmer 30B</span></div></div>
+<div class="ts" style="text-align:left;margin-top:-8px">10:40 · started by the agent</div>
+<div class="u">Why decline the cashmere sweater?</div><div class="ts">11:12</div>
+<div class="a"><div class="who"><span class="mark">A</span>Operator agent</div>It was delivered Sep 28, 39 days ago. The window is 30 days. I can offer store credit instead; that is outside the policy, so it would need your OK.</div>
+<div class="u">Keep the decline, but be kind in the message.</div><div class="ts">11:13</div>
+<div class="a"><div class="who"><span class="mark">A</span>Operator agent</div>Updated the decline note. You can read all three messages before they go out.</div></div>
+  <div class="cfoot"><div class="composer"><div class="ph" style="min-height:30px">Ask about these returns…</div>
+    <div class="cbar"><span class="pill">Muse Glimmer 30B · auto</span><button class="send"><svg class="i" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div></div></div>
+</section>
+<section class="cs">
+  <div class="csh"><span class="id">12 requests</span><h1>Returns over $200</h1><span class="tag warn">Needs your approval</span><div class="sp"><span class="uil">UI: refund_review</span></div></div>
+  <div class="body">
+<div><h2>What the agent found</h2>
+<div class="sum" style="grid-template-columns:repeat(4,1fr)"><div><small>Waiting</small><b>12 requests</b><span>all over $200</span></div><div><small>Refund</small><b>9 · $2,463.00</b><span>policy allows</span></div><div><small>Ask for photos</small><b>2</b><span>damage claims, no photo</span></div><div><small>Decline</small><b>1</b><span>outside 30 days</span></div></div></div>
+<div><h2>Requests<span class="r">sorted by what the policy says · show 6 more</span></h2>
+<div class="grp"><table><tr><th>Order</th><th>Item</th><th class="n">Amount</th><th>Reason</th><th>Suggested</th></tr><tr><td class="mono" style="color:var(--ink2)">#20402</td><td>Leather chelsea boots</td><td class="n">$312.00</td><td>Defect: sole coming apart<div class="mute" style="font-size:12px">2 photos · Day 6</div></td><td><span class="tag ok">Refund</span><div class="mute" style="font-size:12px">Defects are refunded in full, return shipping free</div></td></tr><tr><td class="mono" style="color:var(--ink2)">#20431</td><td>Wool overcoat</td><td class="n">$289.00</td><td>Color differs from photo<div class="mute" style="font-size:12px">1 photo · Day 4</div></td><td><span class="tag ok">Refund</span><div class="mute" style="font-size:12px">Within 30 days, unworn</div></td></tr><tr><td class="mono" style="color:var(--ink2)">#20418</td><td>Linen blend field jacket ×2</td><td class="n">$256.00</td><td>Too small<div class="mute" style="font-size:12px">Day 7</div></td><td><span class="tag ok">Refund</span><div class="mute" style="font-size:12px">Within 30 days, tags on</div></td></tr><tr><td class="mono" style="color:var(--ink2)">#20377</td><td>Field jacket + windbreaker</td><td class="n">$217.00</td><td>Changed mind<div class="mute" style="font-size:12px">Day 9</div></td><td><span class="tag ok">Refund</span><div class="mute" style="font-size:12px">Within 30 days; customer pays return shipping</div></td></tr><tr><td class="mono" style="color:var(--ink2)">#20366</td><td>Rain parka ×2</td><td class="n">$236.00</td><td>Arrived damaged<div class="mute" style="font-size:12px">None · Day 2</div></td><td><span class="tag warn">Ask for photos</span><div class="mute" style="font-size:12px">Damage claims need a photo</div></td></tr><tr><td class="mono" style="color:var(--ink2)">#20290</td><td>Cashmere sweater</td><td class="n">$248.00</td><td>Changed mind<div class="mute" style="font-size:12px">Day 39</div></td><td><span class="tag ">Decline</span><div class="mute" style="font-size:12px">Outside the 30-day window</div></td></tr></table></div></div>
+<div><h2>Checks<span class="r warn">1 to look at</span></h2>
+<div class="checks">
+<div><span class="st done"></span><div>Refunds go back to the original payment<small>12 of 12 payments can be refunded</small></div></div>
+<div><span class="st done"></span><div>Coupon discounts taken out of refunds<small>3 orders used a coupon</small></div></div>
+<div><span class="st done"></span><div>Return window<small>11 of 12 inside 30 days</small></div></div>
+<div><span class="st need"></span><div>Return history<small>One customer has 4 returns in 90 days (#20431)</small></div></div>
+</div></div>
+<div class="foot"><span>After approval: refund 9 · send 2 photo requests · send 1 decline note · read back each order</span><div class="sp"><button class="btn">Edit messages</button><button class="btn dark">Approve 9 refunds and send 3 messages</button></div></div></div>
+</section>
+</div></body></html>

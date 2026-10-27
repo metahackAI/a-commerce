@@ -18,6 +18,21 @@ Every option keeps the same parts: change set (interpretation, checks, grouped c
 
 Files: open the `.html` files in a browser; captures are 1440×900.
 
+## UI per intent
+
+The layouts above decide where things go. This part shows what goes in the work panel: the agent picks a component from a fixed library and fills it with data, so the screen changes with the task.
+
+![UI per intent](overview-intents.png)
+
+| Intent | Component | Screen | What is different |
+|---|---|---|---|
+| Change the store | `change_set` | [changeset](../mockups/changeset.png) | Interpretation, checks, grouped changes, preview, undo together |
+| Decide on many cases | `refund_review` | [intent-returns](intent-returns.png) | Started by the agent; 12 returns sorted by policy; one approval for the batch; messages read before sending |
+| Long work in progress | `product_drafts` | [intent-listing](intent-listing.png) | Live progress; supplier codes turned into names and prices from the pricing rule; rows that need a person; drafts are not published |
+| Answer a question | `sales_explainer` | [intent-insight](intent-insight.png) | Read only; estimated causes that add up to the gap, with the unexplained part shown; next steps become change sets |
+
+Numbers stay consistent with the other screens: the chore coat and rain parka are the low-stock products left out of the VIP sale, and the same two are out of M and L in the sales question. The component name is shown in the header (`UI: refund_review`) only for the mockups.
+
 ## Review notes (Oct 27)
 
 Fixed:
@@ -31,6 +46,5 @@ Fixed:
 
 Still open:
 
-- Every option shows the same change set. None yet shows the agent picking a different component for a different task (for example, a returns review or a product draft). That is the "UI per intent" claim and needs its own screen.
 - Times and tool counts (3.8s, 9 tool calls) are illustrative, not measured.
 - Shopper side (storefront) is only in the earlier mockups, not in these options.

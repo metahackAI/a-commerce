@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>A-Commerce · UI per intent</title><link rel="stylesheet" href="common.css">
+<style>
+body{padding:36px 40px;background:#fff}
+h1{font-size:22px;font-weight:600;letter-spacing:-.01em}
+.sub{color:var(--mute);margin:4px 0 24px;font-size:14px}
+.g{display:grid;grid-template-columns:repeat(2,1fr);gap:26px 22px}
+figure img{width:100%;border:1px solid var(--line);border-radius:8px;display:block}
+figcaption{margin-top:9px;font-size:13.5px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+figcaption b{font-weight:600}
+figcaption code{font-family:var(--mono);font-size:11.5px;color:var(--ink2);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+figcaption span{flex-basis:100%;color:var(--mute);font-size:12.5px}
+</style></head><body>
+<h1>Same app, a different component for each intent</h1>
+<div class="sub">The conversation stays on the left. On the right the agent picks a component from the store's library and fills it with data.</div>
+<div class="g">
+<figure><img src="../mockups/changeset.png"><figcaption><b>Change the store</b><code>change_set</code><span>“Run a 20% weekend sale…” · interpretation, checks, grouped changes, preview, approve, undo together</span></figcaption></figure>
+<figure><img src="intent-returns.png"><figcaption><b>Decide on many cases</b><code>refund_review</code><span>Started by the agent · 12 returns sorted by what the policy says, one approval for the batch, messages to read first</span></figcaption></figure>
+<figure><img src="intent-listing.png"><figcaption><b>Long work in progress</b><code>product_drafts</code><span>“List the 30 products in this sheet” · live progress, supplier codes into names, rows that need a person</span></figcaption></figure>
+<figure><img src="intent-insight.png"><figcaption><b>Answer a question</b><code>sales_explainer</code><span>“Why did sales drop yesterday?” · read only, estimated causes, next steps that become change sets</span></figcaption></figure>
+</div></body></html>
