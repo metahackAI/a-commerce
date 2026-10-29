@@ -6,12 +6,12 @@ Two measurements, both with the model in `.env` and a fresh seed per run:
   (`server/a_commerce/harness/acceptance.py`). Without a model configured it exits 2 instead of passing on the stand-in.
 - `make compare RUNS=3` gives the same model six tasks on two tool layers (below).
 
-When a model (not the scripted stand-in) ran, each command saves its runs to `results/` with each tool call. Since
-Oct 30 each file also records the endpoint, temperature and `max_tokens`. In a revision the saved arguments are the harness-merged ones (the model's patch over the earlier call), not
-exactly what the model sent. The model name in each file is the one the client sends (`WORKER_MODEL`), so the
-quantization is on record only when that is the served name (serve Glimmer as `nvidia/Muse-Glimmer-30B-NVFP4` and set
-`WORKER_MODEL` to it). Files made after Oct 30 also record the model the server says it ran (`served_model`) and the
-code commit.
+When a model (not the scripted stand-in) ran, each command saves its runs to `results/` with each tool call, the
+endpoint, temperature and `max_tokens`, the model the server says it ran (`served_model`), and the code commit
+(`+dirty` if files had changed since it). In a revision the saved arguments are the harness-merged ones (the model's
+patch over the earlier call), not exactly what the model sent. The model name in each file is the one the client sends
+(`WORKER_MODEL`), so the quantization is on record only when that is the served name (serve Glimmer as
+`nvidia/Muse-Glimmer-30B-NVFP4` and set `WORKER_MODEL` to it).
 
 **No Muse model has run yet.** Everything below is Llama 3.2 3B (Meta open weights; Ollama's `llama3.2:3b`, 3.2B
 parameters, Q4_K_M quantization) on one Mac, used as a small-model stand-in.
@@ -22,7 +22,7 @@ parameters, Q4_K_M quantization) on one Mac, used as a small-model stand-in.
 |---|---|---|---|---|
 | Oct 28 | `scripted` stand-in | 3/3 | 3/3 | Rule-based, not a model. Shows the harness and the judge work |
 | Oct 28 | Llama 3.2 3B, temperature 0 | right | wrong | The three runs were identical, so this is one result, not 3/3 |
-| Oct 30 | Llama 3.2 3B, temperature 0.7, after the judges' fixes | 2/3 | 0/3 | `results/20261030-034621-llama3.2_3b.json` |
+| Oct 30 | Llama 3.2 3B, temperature 0.7, commit `b9b8a70` | 0/3 | 0/3 | `results/20261030-042131-llama3.2_3b.json` |
 | — | Muse Glimmer (`nvidia/Muse-Glimmer-30B-NVFP4`, vLLM on the team's 5090) | — | — | Not run yet |
 | — | Muse Spark Open (Baseten) | — | — | Not run yet |
 
@@ -59,30 +59,29 @@ The two arms differ in more than API shape. Report them as separate factors (a2a
 
 | Date | Model, sampling | Tool layer | Tasks passed | Criteria met | Calls / task | Errors / task |
 |---|---|---|---|---|---|---|
-| Oct 30 | Llama 3.2 3B, temperature 0.7, 3 runs per task | **A-Commerce tools** | **2/18** | **26/108** | 2.9 | 1.9 |
-| Oct 30 | Llama 3.2 3B, temperature 0.7, 3 runs per task | Screen-shaped facade | 0/18 | 0/108 | 2.8 | 2.6 |
-| Oct 30 | Llama 3.2 3B, temperature 0, 1 run per task | **A-Commerce tools** | **1/6** | **6/36** | 5.5 | 3.8 |
+| Oct 30 | Llama 3.2 3B, temperature 0.7, 3 runs per task | **A-Commerce tools** | **1/18** | **46/108** | 3.8 | 2.2 |
+| Oct 30 | Llama 3.2 3B, temperature 0.7, 3 runs per task | Screen-shaped facade | 0/18 | 0/108 | 3.1 | 2.8 |
+| Oct 30 | Llama 3.2 3B, temperature 0, 1 run per task | **A-Commerce tools** | **1/6** | **11/36** | 5.5 | 3.5 |
 | Oct 30 | Llama 3.2 3B, temperature 0, 1 run per task | Screen-shaped facade | 0/6 | 0/36 | 3.3 | 3.2 |
 
-Files: `results/20261030-034118-compare-llama3.2_3b.json` (temperature 0.7) and
-`results/20261030-034520-compare-llama3.2_3b.json` (temperature 0).
+Files, all made at commit `b9b8a70` with no uncommitted changes: `results/20261030-041619-compare-llama3.2_3b.json`
+(temperature 0.7) and `results/20261030-042051-compare-llama3.2_3b.json` (temperature 0).
 
-**What this shows, and what it does not.** The facade side is stable: across every facade task run on Oct 30 the
-model never called a read tool (`getCodeList`, `getPrdGridList`). It wrote saves with codes it made up (product
-`SNW001`, promotion type `CTG001`, dates such as `20261231 000000`), got `E999`, and proposed no change set. So this
-model does not look codes up before writing; the result does not say what a model that does would manage. The
-A-Commerce side is not stable. An earlier run the same day, on code with a list-decoding bug that could only hurt the
-A-Commerce side, scored 4/18 at temperature 0.7 (`results/20261030-030852-…`, removed with that bug but kept in commit `d7742a4`), against 2/18 here. With a 3B model and 3 runs per task, the spread
-between runs is as large as the A-Commerce result itself. These numbers do not yet show that the tool design makes a
-small model succeed; they show only that this 3B model fails on the facade. All three A-Commerce passes on Oct 30 are
-the two shirts tasks, and the shirts category has one product in the seed.
+**What this shows, and what it does not.** The facade side is stable: in every facade task run on Oct 30 the model
+never called a read tool (`getCodeList`, `getPrdGridList`). It wrote saves with codes it made up (product `SNW001`,
+promotion type `CTG001`, dates such as `20261231 000000`), got `E999`, and proposed no change set. So this model does
+not look codes up before writing; the result does not say what a model that does would manage. On the A-Commerce
+tools the model often gets parts right (46 of 108 criteria) but rarely finishes a task: the most common failed
+criterion is "change set proposed" (9 of 18 runs). Whole-task passes are not stable. Two earlier runs the same day,
+on code with bugs since fixed (list decoding, then "null" in text fields), gave 4/18 and 2/18 at temperature 0.7; their
+files were replaced and are kept in commits `d7742a4` and `28d94ae`. With a 3B model and 3 runs per task, the spread
+between runs is as large as the A-Commerce task result itself. These numbers do not yet show that the tool design makes
+a small model finish tasks; they show that this 3B model gets nowhere on the facade and partway on the A-Commerce tools.
 
-What happened on the A-Commerce tools at temperature 0.7: the most common errors were a missing period (6 of 35),
-`set_sale_prices` without a name, and a made-up `ref:` id. The most common failed criterion was "change set proposed"
-(13 of 18 runs). The demo request passed none of its 3 runs. We did not tune the tools on these results, because the
-same person wrote the tools and the tasks. These runs were measured before "null" in text fields was treated as
-missing; the model sent `"category": "null"` in the shirts tasks, but no saved outcome depended on it (each such call
-failed on another argument as well).
+What happened on the A-Commerce tools at temperature 0.7: the most common errors were `plan_sale` without
+`percent_off` (8 of 39), a missing period (4) and a missing category (4). The one pass was "Give Gold members 10% off
+all summer outerwear next weekend. No banner."; the demo request passed none of its 3 runs. We did not tune the tools
+on these results, because the same person wrote the tools and the tasks.
 
 Limits: a 3B stand-in, not Glimmer; tasks written by the tool author; one machine; too few runs to separate the
 A-Commerce result from run-to-run noise. Before any number goes into the

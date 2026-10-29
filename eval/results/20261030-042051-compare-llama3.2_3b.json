@@ -6,8 +6,10 @@
   "settings": {
    "endpoint": "localhost",
    "temperature": 0.0,
-   "max_tokens": 1500
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
   },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
   "passed": false,
   "criteria": [
    [
@@ -37,7 +39,7 @@
   ],
   "tool_calls": 3,
   "errors": 3,
-  "seconds": 15.6,
+  "seconds": 17.8,
   "calls": [
    {
     "tool": "plan_sale",
@@ -57,11 +59,11 @@
    {
     "tool": "plan_sale",
     "args": {
-     "on_main_page": "true",
-     "overrides": "[{\"percent_off\": 20, \"product_id\": \"prd_windbreaker\"}]",
      "percent_off": "20",
      "audience": "vip",
-     "category": "summer outerwear"
+     "category": "summer outerwear",
+     "on_main_page": "true",
+     "overrides": "[{\"percent_off\": 20, \"product_id\": \"prd_windbreaker\"}]"
     },
     "error": {
      "code": "no_period",
@@ -72,6 +74,7 @@
    {
     "tool": "plan_sale",
     "args": {
+     "period": "this_weekend",
      "audience": "vip",
      "category": "summer outerwear",
      "on_main_page": "true",
@@ -80,8 +83,7 @@
        "percent_off": 20,
        "product_id": "prd_windbreaker"
       }
-     ],
-     "period": "this_weekend"
+     ]
     },
     "error": {
      "code": "invalid_input",
@@ -98,8 +100,10 @@
   "settings": {
    "endpoint": "localhost",
    "temperature": 0.0,
-   "max_tokens": 1500
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
   },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
   "passed": false,
   "criteria": [
    [
@@ -129,16 +133,16 @@
   ],
   "tool_calls": 9,
   "errors": 7,
-  "seconds": 42.2,
+  "seconds": 47.5,
   "calls": [
    {
     "tool": "plan_sale",
     "args": {
-     "category": "summer outerwear",
      "percent_off": "10",
      "audience": "gold",
      "ends_at": "next_7_days",
-     "overrides": "[\"summer outerwear\"]"
+     "overrides": "[\"summer outerwear\"]",
+     "category": "summer outerwear"
     },
     "error": {
      "code": "invalid_input",
@@ -166,12 +170,12 @@
    {
     "tool": "plan_sale",
     "args": {
+     "audience": "gold",
      "category": "summer outerwear",
      "ends_at": "next_7_days",
      "exclude": [
       "overshirt"
-     ],
-     "audience": "gold"
+     ]
     },
     "error": {
      "code": "invalid_input",
@@ -221,9 +225,9 @@
    {
     "tool": "search_products",
     "args": {
-     "fields": "['id', 'name']",
      "limit": "100",
-     "q": "overshirt"
+     "q": "overshirt",
+     "fields": "['id', 'name']"
     },
     "error": null
    },
@@ -293,6 +297,7 @@
    {
     "tool": "plan_sale",
     "args": {
+     "audience": "gold",
      "category": "summer outerwear",
      "ends_at": "next_7_days",
      "percent_off": 20,
@@ -345,8 +350,7 @@
       "prd_linen_shirt",
       "prd_fleece",
       "prd_merino_tee"
-     ],
-     "audience": "gold"
+     ]
     },
     "error": {
      "code": "product_not_found",
@@ -363,13 +367,15 @@
   "settings": {
    "endpoint": "localhost",
    "temperature": 0.0,
-   "max_tokens": 1500
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
   },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
   "passed": false,
   "criteria": [
    [
     "change set proposed",
-    false
+    true
    ],
    [
     "1 products in shirts",
@@ -377,76 +383,69 @@
    ],
    [
     "at 15%",
-    false
+    true
    ],
    [
     "for Everyone tier",
-    false
+    true
    ],
    [
     "on Nov 7\u20138",
-    false
+    true
    ],
    [
     "banner not made",
-    false
+    true
    ]
   ],
   "tool_calls": 3,
-  "errors": 3,
-  "seconds": 14.9,
+  "errors": 1,
+  "seconds": 14.3,
   "calls": [
    {
     "tool": "plan_sale",
     "args": {
-     "exclude": "null",
-     "on_main_page": "null",
      "percent_off": "15",
-     "name": "null",
+     "audience": "everyone",
+     "ends_at": "this_weekend",
      "overrides": "null",
-     "leave_out_low_stock": "null",
+     "exclude": "null",
      "min_stock": "null",
      "category": "null",
-     "audience": "everyone",
-     "ends_at": "this_weekend"
-    },
-    "error": {
-     "code": "unknown_category",
-     "message": "No products in category null.",
-     "next_tool": "search_products"
-    }
-   },
-   {
-    "tool": "search_products",
-    "args": {
-     "offset": "0",
-     "audience": "everyone",
-     "category": "null",
-     "fields": "id,name",
-     "query": "shirt",
-     "limit": "1000"
+     "name": "null",
+     "leave_out_low_stock": "null",
+     "on_main_page": "null"
     },
     "error": {
      "code": "invalid_input",
-     "message": "search_products: fields: Input should be a valid list. Example: [\"name\", \"price\", \"stock\"].",
-     "next_tool": "search_products"
+     "message": "plan_sale: category: Field required. Example: \"summer outerwear\".",
+     "next_tool": "plan_sale"
     }
    },
    {
-    "tool": "search_products",
+    "tool": "plan_sale",
     "args": {
-     "offset": "0",
-     "query": "shirt",
      "audience": "everyone",
-     "category": "null",
-     "fields": "['name', 'price']",
-     "limit": "1000"
+     "category": "summer outerwear",
+     "ends_at": "this_weekend",
+     "exclude": "null",
+     "leave_out_low_stock": "null",
+     "min_stock": "null",
+     "name": "null",
+     "on_main_page": "null",
+     "overrides": "null",
+     "percent_off": "15"
     },
-    "error": {
-     "code": "invalid_input",
-     "message": "search_products: limit: Input should be less than or equal to 100. Example: 20.",
-     "next_tool": "search_products"
-    }
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": "['pv_1']",
+     "reply": "A 15% sale for all shirts this weekend, categorized under summer outerwear. However, the minimum stock check failed due to low quantities of the Cotton chore coat and Light rain parka. To resolve this, I propose leaving these items out of the sale to avoid running low.",
+     "title": "VIP weekend sale: summer outerwear"
+    },
+    "error": null
    }
   ]
  },
@@ -457,8 +456,10 @@
   "settings": {
    "endpoint": "localhost",
    "temperature": 0.0,
-   "max_tokens": 1500
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
   },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
   "passed": false,
   "criteria": [
    [
@@ -488,7 +489,7 @@
   ],
   "tool_calls": 6,
   "errors": 3,
-  "seconds": 14.1,
+  "seconds": 16.1,
   "calls": [
    {
     "tool": "plan_sale",
@@ -569,8 +570,10 @@
   "settings": {
    "endpoint": "localhost",
    "temperature": 0.0,
-   "max_tokens": 1500
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
   },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
   "passed": true,
   "criteria": [
    [
@@ -600,18 +603,18 @@
   ],
   "tool_calls": 5,
   "errors": 3,
-  "seconds": 17.1,
+  "seconds": 19.3,
   "calls": [
    {
     "tool": "plan_sale",
     "args": {
-     "overrides": "[\"prd_shirt\"]",
-     "category": "shirts",
-     "percent_off": "10",
      "audience": "gold",
      "period": "tomorrow",
      "ends_at": "23:59",
-     "name": "Gold members: 10% off shirts tomorrow only"
+     "name": "Gold members: 10% off shirts tomorrow only",
+     "overrides": "[\"prd_shirt\"]",
+     "category": "shirts",
+     "percent_off": "10"
     },
     "error": {
      "code": "invalid_input",
@@ -661,7 +664,6 @@
    {
     "tool": "plan_sale",
     "args": {
-     "percent_off": 10,
      "audience": "gold",
      "category": "shirts",
      "starts_at": "tomorrow",
@@ -672,7 +674,8 @@
        "percent_off": 10,
        "product_id": "shirt"
       }
-     ]
+     ],
+     "percent_off": 10
     },
     "error": null
    },
@@ -694,8 +697,10 @@
   "settings": {
    "endpoint": "localhost",
    "temperature": 0.0,
-   "max_tokens": 1500
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
   },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
   "passed": false,
   "criteria": [
    [
@@ -725,19 +730,19 @@
   ],
   "tool_calls": 7,
   "errors": 4,
-  "seconds": 22.0,
+  "seconds": 25.1,
   "calls": [
    {
     "tool": "set_sale_prices",
     "args": {
-     "audience": "everyone",
      "name": "VIP weekend sale: summer outerwear",
      "on_main_page": "true",
      "ends_at": "2026-11-14T23:59:59Z",
      "overrides": "[]",
      "preview": "true",
      "category": "summer outerwear",
-     "percent_off": "10"
+     "percent_off": "10",
+     "audience": "everyone"
     },
     "error": {
      "code": "invalid_input",
@@ -812,20 +817,20 @@
    {
     "tool": "list_display_slots",
     "args": {
-     "starts_at": "2026-11-06T00:00:00Z",
      "ends_at": "2026-11-14T23:59:59Z",
      "page": "main",
-     "period": "next_weekend"
+     "period": "next_weekend",
+     "starts_at": "2026-11-06T00:00:00Z"
     },
     "error": null
    },
    {
     "tool": "list_display_slots",
     "args": {
-     "ends_at": "2026-11-14T23:59:59Z",
      "page": "main",
      "period": "next_weekend",
-     "starts_at": "2026-11-06T00:00:00Z"
+     "starts_at": "2026-11-06T00:00:00Z",
+     "ends_at": "2026-11-14T23:59:59Z"
     },
     "error": null
    }
@@ -838,8 +843,10 @@
   "settings": {
    "endpoint": "localhost",
    "temperature": 0.0,
-   "max_tokens": 1500
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
   },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
   "passed": false,
   "criteria": [
    [
@@ -869,7 +876,7 @@
   ],
   "tool_calls": 0,
   "errors": 0,
-  "seconds": 69.7,
+  "seconds": 78.2,
   "calls": []
  },
  {
@@ -879,8 +886,10 @@
   "settings": {
    "endpoint": "localhost",
    "temperature": 0.0,
-   "max_tokens": 1500
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
   },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
   "passed": false,
   "criteria": [
    [
@@ -910,7 +919,7 @@
   ],
   "tool_calls": 3,
   "errors": 3,
-  "seconds": 10.0,
+  "seconds": 11.3,
   "calls": [
    {
     "tool": "savePrmtList",
@@ -975,8 +984,10 @@
   "settings": {
    "endpoint": "localhost",
    "temperature": 0.0,
-   "max_tokens": 1500
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
   },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
   "passed": false,
   "criteria": [
    [
@@ -1006,7 +1017,7 @@
   ],
   "tool_calls": 2,
   "errors": 2,
-  "seconds": 8.3,
+  "seconds": 9.4,
   "calls": [
    {
     "tool": "savePrmtListV2",
@@ -1052,8 +1063,10 @@
   "settings": {
    "endpoint": "localhost",
    "temperature": 0.0,
-   "max_tokens": 1500
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
   },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
   "passed": false,
   "criteria": [
    [
@@ -1083,7 +1096,7 @@
   ],
   "tool_calls": 1,
   "errors": 0,
-  "seconds": 1.7,
+  "seconds": 2.0,
   "calls": [
    {
     "tool": "propose_change_set",
@@ -1105,8 +1118,10 @@
   "settings": {
    "endpoint": "localhost",
    "temperature": 0.0,
-   "max_tokens": 1500
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
   },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
   "passed": false,
   "criteria": [
    [
@@ -1136,7 +1151,7 @@
   ],
   "tool_calls": 5,
   "errors": 5,
-  "seconds": 9.6,
+  "seconds": 10.8,
   "calls": [
    {
     "tool": "saveCpnIssue",
@@ -1189,10 +1204,10 @@
    {
     "tool": "saveCpnIssue",
     "args": {
+     "autoApplyYn": "N",
      "cpnCd": "GOLD10",
      "prmtNo": "",
-     "tgtMbrGrdCd": "MBR_GRD_GOLD",
-     "autoApplyYn": "N"
+     "tgtMbrGrdCd": "MBR_GRD_GOLD"
     },
     "error": {
      "code": "E999",
@@ -1208,8 +1223,10 @@
   "settings": {
    "endpoint": "localhost",
    "temperature": 0.0,
-   "max_tokens": 1500
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
   },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
   "passed": false,
   "criteria": [
    [
@@ -1239,7 +1256,7 @@
   ],
   "tool_calls": 9,
   "errors": 9,
-  "seconds": 16.4,
+  "seconds": 18.2,
   "calls": [
    {
     "tool": "savePrmtList",

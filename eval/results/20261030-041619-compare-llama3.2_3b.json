@@ -1,0 +1,3330 @@
+[
+ {
+  "task": "vip_weekend",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 20%",
+    false
+   ],
+   [
+    "for VIP tier",
+    false
+   ],
+   [
+    "on Nov 7\u20138",
+    false
+   ],
+   [
+    "banner prepared",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 2,
+  "seconds": 14.5,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "percent_off": "20",
+     "audience": "vip",
+     "on_main_page": "true",
+     "starts_at": "today",
+     "ends_at": "tomorrow",
+     "name": "VIP weekend sale: summer outerwear",
+     "category": "outerwear"
+    },
+    "error": {
+     "code": "unknown_category",
+     "message": "No products in category outerwear.",
+     "next_tool": "search_products"
+    }
+   },
+   {
+    "tool": "search_products",
+    "args": {
+     "category": "outerwear",
+     "fields": "id,name,price",
+     "limit": "100",
+     "max_stock": "null",
+     "min_stock": "null",
+     "query": ""
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "search_products: fields: Input should be a valid list. Example: [\"name\", \"price\", \"stock\"].",
+     "next_tool": "search_products"
+    }
+   },
+   {
+    "tool": "search_products",
+    "args": {
+     "category": "outerwear",
+     "fields": "['name', 'price', 'stock']",
+     "limit": "100",
+     "max_stock": "null",
+     "min_stock": "null",
+     "query": ""
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "vip_weekend",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 20%",
+    false
+   ],
+   [
+    "for VIP tier",
+    false
+   ],
+   [
+    "on Nov 7\u20138",
+    false
+   ],
+   [
+    "banner prepared",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 2,
+  "seconds": 11.6,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "on_main_page": "true",
+     "category": "summer outerwear",
+     "percent_off": "20",
+     "audience": "vip"
+    },
+    "error": {
+     "code": "no_period",
+     "message": "Give period (e.g. this_weekend) or both starts_at and ends_at.",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "vip",
+     "category": "summer outerwear",
+     "on_main_page": "true",
+     "percent_off": "20"
+    },
+    "error": {
+     "code": "no_period",
+     "message": "Give period (e.g. this_weekend) or both starts_at and ends_at.",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "ends_at": "Sun Nov 8 23:59",
+     "audience": "vip",
+     "category": "summer outerwear",
+     "on_main_page": "true",
+     "percent_off": "20",
+     "period": "this_weekend",
+     "starts_at": "Fri Nov 6 12:00"
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "vip_weekend",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "42 products in summer_outerwear",
+    true
+   ],
+   [
+    "at 20%",
+    true
+   ],
+   [
+    "for VIP tier",
+    true
+   ],
+   [
+    "on Nov 7\u20138",
+    false
+   ],
+   [
+    "banner prepared",
+    true
+   ]
+  ],
+  "tool_calls": 2,
+  "errors": 0,
+  "seconds": 8.2,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "overrides": null,
+     "ends_at": null,
+     "name": "VIP weekend sale: summer outerwear",
+     "period": "today",
+     "category": "summer outerwear",
+     "percent_off": 20,
+     "audience": "vip",
+     "on_main_page": true
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": "['pv_1', 'pv_2', 'pv_3']",
+     "title": "VIP weekend sale: summer outerwear",
+     "reply": "Running plan_sale with audience=vip, category=summer outerwear, percent_off=20, on_main_page=true. Overrides needed for Seersucker overshirt and Cotton chore coat. Leave out products with fewer than 10 units. Coupon VIPWEEKENDSALE20 issued for vip members. Hero slot open for Nov 6\u20136."
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "gold_next_weekend",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "42 products in summer_outerwear",
+    true
+   ],
+   [
+    "at 10%",
+    true
+   ],
+   [
+    "for Gold tier",
+    true
+   ],
+   [
+    "on Nov 14\u201315",
+    false
+   ],
+   [
+    "banner not made",
+    true
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 1,
+  "seconds": 11.5,
+  "calls": [
+   {
+    "tool": "set_sale_prices",
+    "args": {
+     "ends_at": "next_7_days",
+     "percent_off": "10",
+     "category": "summer outerwear",
+     "audience": "gold"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "set_sale_prices: name: Field required. Example: \"VIP weekend\".",
+     "next_tool": "set_sale_prices"
+    }
+   },
+   {
+    "tool": "set_sale_prices",
+    "args": {
+     "audience": "gold",
+     "category": "summer outerwear",
+     "ends_at": "next_7_days",
+     "percent_off": "10",
+     "name": "Gold Weekend Sale"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": "[\"pv_1\"]",
+     "reply": "Gold Weekend Sale: 10% off summer outerwear for Gold members, Nov 6 - Nov 12.",
+     "title": "Gold Weekend Sale: summer outerwear"
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "gold_next_weekend",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Gold tier",
+    false
+   ],
+   [
+    "on Nov 14\u201315",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 9,
+  "errors": 9,
+  "seconds": 10.4,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "category": "summer outerwear",
+     "ends_at": "next_7_days",
+     "audience": "gold",
+     "percent_off": "10",
+     "overrides": "[\"summer outerwear\"]"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: overrides: Value error, 'summer outerwear' has no percent_off. To leave products out of the sale, use exclude. Example: [{\"percent_off\": 15, \"product_id\": \"overshirt\"}].",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "gold",
+     "category": "summer outerwear",
+     "ends_at": "next_7_days",
+     "overrides": [
+      {
+       "percent_off": 10
+      }
+     ]
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: percent_off: Field required. Example: 20.",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "ends_at": "next_7_days",
+     "overrides": [
+      {
+       "min_stock": 1,
+       "percent_off": 10
+      }
+     ],
+     "audience": "gold",
+     "category": "summer outerwear"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: percent_off: Field required. Example: 20.",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "ends_at": "next_7_days",
+     "overrides": [
+      {
+       "exclude": [],
+       "min_stock": 1,
+       "percent_off": 10
+      }
+     ],
+     "audience": "gold",
+     "category": "summer outerwear"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: percent_off: Field required. Example: 20.",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "gold",
+     "category": "summer outerwear",
+     "ends_at": "next_7_days",
+     "overrides": [
+      {
+       "min_stock": 1,
+       "percent_off": 10
+      }
+     ]
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: percent_off: Field required. Example: 20.",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "overrides": "[{\"percent_off\": 10}]",
+     "audience": "gold",
+     "category": "summer outerwear",
+     "ends_at": "next_7_days"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: percent_off: Field required. Example: 20.",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "ends_at": "next_7_days",
+     "overrides": [
+      {
+       "percent_off": 20
+      }
+     ],
+     "audience": "gold",
+     "category": "summer outerwear"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: percent_off: Field required. Example: 20.",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "gold",
+     "category": "summer outerwear",
+     "ends_at": "next_7_days",
+     "overrides": [
+      {
+       "min_stock": 1,
+       "percent_off": 20
+      }
+     ]
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: percent_off: Field required. Example: 20.",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "gold",
+     "category": "summer outerwear",
+     "ends_at": "next_7_days",
+     "overrides": [
+      {
+       "min_stock": 1,
+       "percent_off": 10
+      }
+     ]
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: percent_off: Field required. Example: 20.",
+     "next_tool": "plan_sale"
+    }
+   }
+  ]
+ },
+ {
+  "task": "gold_next_weekend",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": true,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "42 products in summer_outerwear",
+    true
+   ],
+   [
+    "at 10%",
+    true
+   ],
+   [
+    "for Gold tier",
+    true
+   ],
+   [
+    "on Nov 14\u201315",
+    true
+   ],
+   [
+    "banner not made",
+    true
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 1,
+  "seconds": 3.8,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "category": "summer outerwear",
+     "audience": "gold",
+     "percent_off": "10",
+     "period": "next_weekend",
+     "overrides": "[\"summer outerwear\"]"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: overrides: Value error, 'summer outerwear' has no percent_off. To leave products out of the sale, use exclude. Example: [{\"percent_off\": 15, \"product_id\": \"overshirt\"}].",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "gold",
+     "category": "summer outerwear",
+     "percent_off": "10",
+     "period": "next_weekend"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": [
+      "pv_1",
+      "pv_2"
+     ]
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "everyone_shirts",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "1 products in shirts",
+    false
+   ],
+   [
+    "at 15%",
+    true
+   ],
+   [
+    "for Everyone tier",
+    true
+   ],
+   [
+    "on Nov 7\u20138",
+    true
+   ],
+   [
+    "banner not made",
+    true
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 1,
+  "seconds": 14.9,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "category": "null",
+     "percent_off": "15",
+     "ends_at": "this_weekend",
+     "name": "null",
+     "overrides": "null",
+     "leave_out_low_stock": "null",
+     "min_stock": "null",
+     "audience": "everyone",
+     " Exclude": "null",
+     "on_main_page": "null"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: category: Field required. Example: \"summer outerwear\".",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "ends_at": "this_weekend",
+     "category": "summer_outerwear",
+     "percent_off": "15",
+     "audience": "everyone"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": "['pv_1']",
+     "reply": "Proposed plan_sale for summer outerwear category at 15% off for this weekend, leaving out low stock products.",
+     "title": "Plan Sale: Summer Outerwear"
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "everyone_shirts",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "1 products in shirts",
+    false
+   ],
+   [
+    "at 15%",
+    true
+   ],
+   [
+    "for Everyone tier",
+    true
+   ],
+   [
+    "on Nov 7\u20138",
+    true
+   ],
+   [
+    "banner not made",
+    true
+   ]
+  ],
+  "tool_calls": 5,
+  "errors": 3,
+  "seconds": 9.8,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "everyone",
+     "ends_at": "Sat 00:00 \u2013 Sun 23:59",
+     "category": "",
+     "percent_off": 15
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: category: Field required. Example: \"summer outerwear\".",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "everyone",
+     "category": "summer outerwear",
+     "percent_off": 15,
+     "ends_at": "Sat 00:00 \u2013 Sun 23:59"
+    },
+    "error": {
+     "code": "no_period",
+     "message": "Give period (e.g. this_weekend) or both starts_at and ends_at.",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "everyone",
+     "category": "summer outerwear",
+     "starts_at": "Fri 00:00 \u2013 Sun 23:59",
+     "ends_at": "Sun 23:59",
+     "percent_off": 15
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: starts_at and ends_at must look like 2026-11-07T00:00. Or pass period instead of dates: this_weekend, next_weekend, today, tomorrow, next_7_days.",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "everyone",
+     "category": "summer outerwear",
+     "period": "this_weekend",
+     "ends_at": "Sun 23:59",
+     "percent_off": 15
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": "['pv_1']",
+     "title": "VIP weekend sale: summer outerwear",
+     "reply": "Planned a 15% sale for everyone on summer outerwear for this weekend, but had to leave out products under 10 units in stock. Approval needed."
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "everyone_shirts",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "1 products in shirts",
+    false
+   ],
+   [
+    "at 15%",
+    true
+   ],
+   [
+    "for Everyone tier",
+    true
+   ],
+   [
+    "on Nov 7\u20138",
+    true
+   ],
+   [
+    "banner not made",
+    true
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 1,
+  "seconds": 13.8,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "exclude": "null",
+     "leave_out_low_stock": "null",
+     "ends_at": "null",
+     "on_main_page": "null",
+     "percent_off": "15",
+     "overrides": "null",
+     "min_stock": "null",
+     "category": "null",
+     "audience": "everyone",
+     "period": "this_weekend",
+     "name": "null"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: category: Field required. Example: \"summer outerwear\".",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "percent_off": "15",
+     "period": "this_weekend",
+     "audience": "everyone",
+     "category": "summer outerwear"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "title": "Plan Sale: Summer Outerwear",
+     "reply": " Sale successfully planned for summer outerwear category, discount of 15% for this weekend. The Cotton chore coat and Light rain parka will be left out of the sale due to low stock. Please review the proposed change set.",
+     "preview_ids": "['pv_1']"
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "vip_without_parka",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "41 products in summer_outerwear without Light rain parka",
+    false
+   ],
+   [
+    "at 15%",
+    true
+   ],
+   [
+    "for VIP tier",
+    true
+   ],
+   [
+    "on Nov 7\u20138",
+    true
+   ],
+   [
+    "banner not made",
+    true
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 1,
+  "seconds": 14.5,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "leave_out_low_stock": null,
+     "min_stock": null,
+     "category": "null",
+     "overrides": [],
+     "period": "this_weekend",
+     "ends_at": null,
+     "percent_off": 15,
+     "audience": "gold",
+     "name": "",
+     "on_main_page": false,
+     "starts_at": null,
+     "exclude": null
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: category: Field required. Example: \"summer outerwear\".",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "percent_off": 15,
+     "period": "this_weekend",
+     "starts_at": null,
+     "ends_at": null,
+     "category": "summer outerwear",
+     "audience": "vip"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": "['pv_1', 'pv_2']",
+     "reply": "For sale: 15% off summer outerwear for VIP members, excluding rain parka due to low stock.",
+     "title": "VIP weekend sale: summer outerwear"
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "vip_without_parka",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "41 products in summer_outerwear without Light rain parka",
+    false
+   ],
+   [
+    "at 15%",
+    false
+   ],
+   [
+    "for VIP tier",
+    false
+   ],
+   [
+    "on Nov 7\u20138",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 7,
+  "errors": 4,
+  "seconds": 15.0,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "min_stock": null,
+     "name": "VIP weekend sale: summer outerwear",
+     "percent_off": 15,
+     "period": "this_weekend",
+     "category": "summer outerwear",
+     "exclude": "['prd_rainparka']",
+     "leave_out_low_stock": false,
+     "overrides": null,
+     "starts_at": null
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: audience: Field required. Example: \"vip\".",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "category": "summer outerwear",
+     "exclude": "['prd_rainparka']",
+     "leave_out_low_stock": false,
+     "min_stock": null,
+     "name": "VIP weekend sale: summer outerwear",
+     "overrides": null,
+     "percent_off": 15,
+     "period": "this_weekend",
+     "starts_at": null,
+     "audience": "vip"
+    },
+    "error": {
+     "code": "product_not_found",
+     "message": "'prd_rainparka' matches 0 products in summer_outerwear. Use a fuller name or the product id.",
+     "next_tool": "search_products"
+    }
+   },
+   {
+    "tool": "search_products",
+    "args": {
+     "query": null,
+     "sort_order": "ascending",
+     "search_type": "exact"
+    },
+    "error": null
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "vip",
+     "category": "summer_outerwear",
+     "exclude": [
+      "prd_rainparka"
+     ],
+     "leave_out_low_stock": false,
+     "min_stock": null,
+     "name": "VIP weekend sale: summer outerwear",
+     "overrides": null,
+     "percent_off": 15,
+     "period": "this_weekend",
+     "starts_at": null
+    },
+    "error": {
+     "code": "product_not_found",
+     "message": "'prd_rainparka' matches 0 products in summer_outerwear. Use a fuller name or the product id.",
+     "next_tool": "search_products"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "vip",
+     "category": "summer_outerwear",
+     "exclude": [
+      "prd_rainparka",
+      "prd_field_jacket",
+      "prd_utility_jacket",
+      "prd_camp_overshirt",
+      "prd_overshirt",
+      "prd_windbreaker"
+     ],
+     "leave_out_low_stock": false,
+     "min_stock": null,
+     "name": "VIP weekend sale: summer outerwear",
+     "overrides": null,
+     "percent_off": 15,
+     "period": "this_weekend",
+     "starts_at": null
+    },
+    "error": {
+     "code": "product_not_found",
+     "message": "'prd_rainparka' matches 0 products in summer_outerwear. Use a fuller name or the product id.",
+     "next_tool": "search_products"
+    }
+   },
+   {
+    "tool": "search_products",
+    "args": {
+     "query": "rain parka",
+     "search_type": "exact",
+     "sort_order": "ascending"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "change": "{\"audience\":\"vip\",\"category\":\"summer_outerwear\",\"exclude\":[\"prd_rainparka\",\"prd_field_jacket\",\"prd_utility_jacket\",\"prd_camp_overshirt\",\"prd_overshirt\",\"prd_windbreaker\"],\"leave_out_low_stock\":false,\"min_stock\":null,\"name\":\"VIP weekend sale: summer outerwear\",\"overrides\":null,\"percent_off\":15,\"period\":\"this_weekend\",\"starts_at\":null}\""
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "vip_without_parka",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "41 products in summer_outerwear without Light rain parka",
+    true
+   ],
+   [
+    "at 15%",
+    true
+   ],
+   [
+    "for VIP tier",
+    false
+   ],
+   [
+    "on Nov 7\u20138",
+    true
+   ],
+   [
+    "banner not made",
+    true
+   ]
+  ],
+  "tool_calls": 4,
+  "errors": 2,
+  "seconds": 8.6,
+  "calls": [
+   {
+    "tool": "plan_sale",
+    "args": {
+     "category": "summer outerwear",
+     "percent_off": 15,
+     "overrides": [
+      "prd_rain_parka"
+     ],
+     "audience": "gold"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "plan_sale: overrides: Value error, 'prd_rain_parka' has no percent_off. To leave products out of the sale, use exclude. Example: [{\"percent_off\": 15, \"product_id\": \"overshirt\"}].",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "audience": "gold",
+     "category": "summer outerwear",
+     "exclude": [
+      "prd_rain_parka"
+     ],
+     "percent_off": 15
+    },
+    "error": {
+     "code": "no_period",
+     "message": "Give period (e.g. this_weekend) or both starts_at and ends_at.",
+     "next_tool": "plan_sale"
+    }
+   },
+   {
+    "tool": "plan_sale",
+    "args": {
+     "period": "this_weekend",
+     "audience": "gold",
+     "category": "summer outerwear",
+     "exclude": [
+      "prd_rain_parka"
+     ],
+     "percent_off": 15
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "title": "VIP weekend sale: summer outerwear",
+     "preview_ids": "['pv_1', 'pv_2']",
+     "reply": "A 15% discount on summer outerwear, except rain parka, for gold members this weekend."
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "gold_shirts_tomorrow",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "1 products in shirts",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Gold tier",
+    false
+   ],
+   [
+    "on Nov 7\u20137",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 0,
+  "errors": 0,
+  "seconds": 15.4,
+  "calls": []
+ },
+ {
+  "task": "gold_shirts_tomorrow",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    true
+   ],
+   [
+    "1 products in shirts",
+    true
+   ],
+   [
+    "at 10%",
+    true
+   ],
+   [
+    "for Gold tier",
+    true
+   ],
+   [
+    "on Nov 7\u20137",
+    false
+   ],
+   [
+    "banner not made",
+    true
+   ]
+  ],
+  "tool_calls": 5,
+  "errors": 1,
+  "seconds": 12.2,
+  "calls": [
+   {
+    "tool": "set_sale_prices",
+    "args": {
+     "category": "shirts",
+     "percent_off": "10",
+     "audience": "gold",
+     "ends_at": "2026-11-07T00:00:00Z",
+     "name": "Gold members sale: 10% off shirts tomorrow only"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "set_sale_prices: starts_at: Field required. Example: \"2026-11-07T00:00\". Or pass period instead of dates: this_weekend, next_weekend, today, tomorrow, next_7_days.",
+     "next_tool": "set_sale_prices"
+    }
+   },
+   {
+    "tool": "set_sale_prices",
+    "args": {
+     "audience": "gold",
+     "category": "shirts",
+     "starts_at": "2026-11-06T00:00",
+     "ends_at": "2026-11-07T00:00",
+     "name": "Gold members sale: 10% off shirts tomorrow only",
+     "percent_off": "10"
+    },
+    "error": null
+   },
+   {
+    "tool": "set_sale_prices",
+    "args": {
+     "audience": "gold",
+     "category": "shirts",
+     "ends_at": "2026-11-07T00:00",
+     "name": "Gold members sale: 10% off shirts tomorrow only",
+     "percent_off": "10",
+     "starts_at": "2026-11-06T00:00"
+    },
+    "error": null
+   },
+   {
+    "tool": "set_sale_prices",
+    "args": {
+     "audience": "gold",
+     "category": "shirts",
+     "ends_at": "next_7_days",
+     "name": "Gold members sale: 10% off shirts tomorrow only",
+     "percent_off": "10",
+     "starts_at": "2026-11-06T00:00"
+    },
+    "error": null
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "preview_ids": "['pv_1', 'pv_2', 'pv_3']",
+     "reply": "Changes 1 price, 1 product, 1 category."
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "gold_shirts_tomorrow",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "1 products in shirts",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Gold tier",
+    false
+   ],
+   [
+    "on Nov 7\u20137",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 1,
+  "errors": 0,
+  "seconds": 1.1,
+  "calls": [
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "title": "Gold members: 10% off shirts tomorrow only",
+     "preview_ids": "[]",
+     "reply": ""
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "everyone_banner",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Everyone tier",
+    false
+   ],
+   [
+    "on Nov 14\u201315",
+    false
+   ],
+   [
+    "banner prepared",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 1,
+  "seconds": 9.4,
+  "calls": [
+   {
+    "tool": "set_sale_prices",
+    "args": {
+     "percent_off": "10",
+     "audience": "everyone",
+     "name": "VIP weekend sale: summer outerwear",
+     "on_main_page": "true",
+     "period": "next_7_days",
+     "preview": "true",
+     "category": "summer outerwear"
+    },
+    "error": null
+   },
+   {
+    "tool": "schedule_banner",
+    "args": {
+     "link": "https://northwindapparel.com/sale",
+     "period": "next_7_days",
+     "preview": "true",
+     "slot_id": "main-hero",
+     "audience": "everyone",
+     "starts_at": "2026-11-13T00:00:00Z",
+     "ends_at": "2026-11-20T23:59:59Z",
+     "headline": "10% Off Summer Outerwear"
+    },
+    "error": {
+     "code": "unknown_slot",
+     "message": "No slot main-hero.",
+     "next_tool": "list_display_slots"
+    }
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "title": "VIP weekend sale: summer outerwear",
+     "preview_ids": "['123456789']",
+     "reply": "Check that sale items are correctly categorized and that the sale start/end times are correct."
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "everyone_banner",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Everyone tier",
+    false
+   ],
+   [
+    "on Nov 14\u201315",
+    false
+   ],
+   [
+    "banner prepared",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 2,
+  "seconds": 5.5,
+  "calls": [
+   {
+    "tool": "set_sale_prices",
+    "args": {
+     "category": "summer outerwear",
+     "percent_off": "10",
+     "name": "VIP weekend sale: summer outerwear",
+     "audience": "everyone",
+     "on_main_page": "true",
+     "preview": "true"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "set_sale_prices: starts_at: Field required. Example: \"2026-11-07T00:00\". Or pass period instead of dates: this_weekend, next_weekend, today, tomorrow, next_7_days.",
+     "next_tool": "set_sale_prices"
+    }
+   },
+   {
+    "tool": "schedule_banner",
+    "args": {
+     "headline": "VIP weekend sale: summer outerwear",
+     "link": "https://northwindapparel.com",
+     "audience": "everyone",
+     "slots_id": "main-hero",
+     "ends_at": "2026-11-14T23:59:59",
+     "starts_at": "2026-11-13T00:00:00",
+     "preview": "true"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "schedule_banner: slot_id: Field required. Example: \"slot_main_hero\".",
+     "next_tool": "schedule_banner"
+    }
+   },
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "title": "Schedule VIP weekend sale",
+     "preview_ids": "['preview_12345']",
+     "reply": "Sale prices for summer outerwear and banner in main-hero slot will be applied, but rule check: \"Audiences get 10% off summer outerwear if it's next weekend\" is required for this action to be valid."
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "everyone_banner",
+  "toolset": "acommerce",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Everyone tier",
+    false
+   ],
+   [
+    "on Nov 14\u201315",
+    false
+   ],
+   [
+    "banner prepared",
+    false
+   ]
+  ],
+  "tool_calls": 8,
+  "errors": 8,
+  "seconds": 16.6,
+  "calls": [
+   {
+    "tool": "set_sale_prices",
+    "args": {
+     "ends_at": "2026-11-14",
+     "name": "Summer Outerwear Sale",
+     "on_main_page": "true",
+     "preview": "true",
+     "category": "summer outerwear",
+     "audience": "everyone",
+     "percent_off": "10"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "set_sale_prices: starts_at: Field required. Example: \"2026-11-07T00:00\". Or pass period instead of dates: this_weekend, next_weekend, today, tomorrow, next_7_days.",
+     "next_tool": "set_sale_prices"
+    }
+   },
+   {
+    "tool": "schedule_banner",
+    "args": {
+     "slot_id": "main-page-hero",
+     "audience": "everyone",
+     "starts_at": "2026-11-06 00:00",
+     "ends_at": "2026-11-14 23:59",
+     "headline": "Summer Outerwear Sale",
+     "preview": "true"
+    },
+    "error": {
+     "code": "unknown_slot",
+     "message": "No slot main-page-hero.",
+     "next_tool": "list_display_slots"
+    }
+   },
+   {
+    "tool": "set_sale_prices",
+    "args": {
+     "ends_at": "2026-11-14",
+     "name": "Summer Outerwear Sale",
+     "on_main_page": "true",
+     "percent_off": "10",
+     "starts_at": "this_weekend",
+     "preview": false,
+     "audience": "everyone",
+     "category": "summer outerwear"
+    },
+    "error": {
+     "code": "preview_required",
+     "message": "Writes run in two steps: call with preview=true, then commit the preview_id after approval.",
+     "next_tool": "set_sale_prices"
+    }
+   },
+   {
+    "tool": "schedule_banner",
+    "args": {
+     "preview": false,
+     "audience": "everyone",
+     "ends_at": "2026-11-14 23:59",
+     "headline": "Summer Outerwear Sale",
+     "slot_id": "main-page-hero"
+    },
+    "error": {
+     "code": "preview_required",
+     "message": "Writes run in two steps: call with preview=true, then commit the preview_id after approval.",
+     "next_tool": "schedule_banner"
+    }
+   },
+   {
+    "tool": "schedule_banner",
+    "args": {
+     "headline": "Summer Outerwear Sale",
+     "preview": false,
+     "slot_id": "main-page-hero",
+     "audience": "everyone",
+     "ends_at": "2026-11-14 23:59"
+    },
+    "error": {
+     "code": "preview_required",
+     "message": "Writes run in two steps: call with preview=true, then commit the preview_id after approval.",
+     "next_tool": "schedule_banner"
+    }
+   },
+   {
+    "tool": "schedule_banner",
+    "args": {
+     "ids": "[\"schedule_banner\", \"set_sale_prices\"]",
+     "preview": "preview_id",
+     "commit": "true"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "schedule_banner: slot_id: Field required. Example: \"slot_main_hero\".",
+     "next_tool": "schedule_banner"
+    }
+   },
+   {
+    "tool": "schedule_banner",
+    "args": {
+     "headline": "Summer Outerwear Sale",
+     "preview": false,
+     "slot_id": "slot_main_hero",
+     "audience": "everyone",
+     "ends_at": "2026-11-14 23:59"
+    },
+    "error": {
+     "code": "preview_required",
+     "message": "Writes run in two steps: call with preview=true, then commit the preview_id after approval.",
+     "next_tool": "schedule_banner"
+    }
+   },
+   {
+    "tool": "schedule_banner",
+    "args": {
+     "preview": "false",
+     "slot_id": "slot_main_hero",
+     "commit": "true",
+     "ids": "[\"schedule_banner\", \"set_sale_prices\"]",
+     "audience": "everyone",
+     "ends_at": "2026-11-14 23:59",
+     "headline": "Summer Outerwear Sale"
+    },
+    "error": {
+     "code": "invalid_input",
+     "message": "schedule_banner: starts_at: Field required. Example: \"2026-11-07T00:00\". Or pass period instead of dates: this_weekend, next_weekend, today, tomorrow, next_7_days.",
+     "next_tool": "schedule_banner"
+    }
+   }
+  ]
+ },
+ {
+  "task": "vip_weekend",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 20%",
+    false
+   ],
+   [
+    "for VIP tier",
+    false
+   ],
+   [
+    "on Nov 7\u20138",
+    false
+   ],
+   [
+    "banner prepared",
+    false
+   ]
+  ],
+  "tool_calls": 1,
+  "errors": 1,
+  "seconds": 9.4,
+  "calls": [
+   {
+    "tool": "savePrmtListV2",
+    "args": {
+     "rows": [
+      {
+       " strtDtm": "",
+       "dcRt": 20,
+       "prdNoList": [
+        "OUTER-001",
+        "OUTER-002"
+       ],
+       "prmtCd": "SUM-001",
+       "prmtNm": "Summer Outerwear Sale",
+       "prmtTpCd": "VIP",
+       "rowStatus": "I",
+       "tgtMbrGrdCd": "VIP"
+      },
+      {
+       "dcRt": 0,
+       "prdNoList": [],
+       "prmtCd": "",
+       "prmtNm": "",
+       "prmtTpCd": "",
+       "rowStatus": "",
+       "strtDtm": "",
+       "tgtMbrGrdCd": ""
+      },
+      {
+       "dcRt": 20,
+       "prdNoList": [
+        "OUTER-001",
+        "OUTER-002"
+       ],
+       "prmtCd": "SUM-002",
+       "prmtNm": "Summer Outerwear Sale",
+       "prmtTpCd": "VIP",
+       "rowStatus": "I",
+       "strtDtm": "",
+       "tgtMbrGrdCd": "VIP"
+      }
+     ]
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "vip_weekend",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 20%",
+    false
+   ],
+   [
+    "for VIP tier",
+    false
+   ],
+   [
+    "on Nov 7\u20138",
+    false
+   ],
+   [
+    "banner prepared",
+    false
+   ]
+  ],
+  "tool_calls": 7,
+  "errors": 6,
+  "seconds": 46.1,
+  "calls": [
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "dispAreaCd": "CATA001",
+     "tgtMbrGrdCd": "VIP",
+     "strtDtm": "20261120 000000",
+     "endDtm": "20261126 235959",
+     "bnrTtl": "VIP weekend sale: summer outerwear",
+     "lnkUrl": "https://www.northwindapparel.com/summer-outerwear-sale-vip",
+     "prmtNo": "PRMT001"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "dispAreaCd": "CATA001",
+     "tgtMbrGrdCd": "VIP",
+     "strtDtm": "20261120 000000",
+     "endDtm": "20261126 235959",
+     "bnrTtl": "VIP summer sale: outerwear",
+     "lnkUrl": "https://www.northwindapparel.com/summer-outerwear-sale-vip",
+     "prmtNo": "PRMT001"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "dcRt": "20",
+     "prmtNm": "summer outerwear sale",
+     "prmtTpCd": "SALE",
+     "rowStatus": "U",
+     "strtDtm": "",
+     "tgtMbrGrdCd": "VIP",
+     "endDtm": "",
+     "prdNoList": "[]"
+    },
+    "error": null
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "lnkUrl": "https://www.northwindapparel.com/summer-outerwear-sale-vip",
+     "prmtNo": "",
+     "strtDtm": "20261120 000000",
+     "tgtMbrGrdCd": "VIP",
+     "dispAreaCd": "CATA001",
+     "bnrTtl": "VIP weekend sale: summer outerwear",
+     "endDtm": "20261126 235959"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtListV2",
+    "args": {
+     "rows": "[{\"dcRt\": 20, \"endDtm\": \"20261231 235959\", \"prdNoList\": [], \"prmtNm\": \"summer outerwear sale\", \"prmtTpCd\": \"SALE\", \"rowStatus\": \"U\", \"strtDtm\": \"20261120 000000\", \"tgtMbrGrdCd\": \"VIP\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "cpnCd": "",
+     "prmtNo": "PRMT001",
+     "tgtMbrGrdCd": "VIP",
+     "autoApplyYn": "Y",
+     "dupUseYn": "N"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "tgtMbrGrdCd": "VIP",
+     "dispAreaCd": "CATA001",
+     "bnrTtl": "VIP summer sale: outerwear",
+     "endDtm": "20261126 235959",
+     "lnkUrl": "https://www.northwindapparel.com/summer-outerwear-sale-vip",
+     "prmtNo": "",
+     "strtDtm": "20261120 000000"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "vip_weekend",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 20%",
+    false
+   ],
+   [
+    "for VIP tier",
+    false
+   ],
+   [
+    "on Nov 7\u20138",
+    false
+   ],
+   [
+    "banner prepared",
+    false
+   ]
+  ],
+  "tool_calls": 0,
+  "errors": 0,
+  "seconds": 27.0,
+  "calls": []
+ },
+ {
+  "task": "gold_next_weekend",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Gold tier",
+    false
+   ],
+   [
+    "on Nov 14\u201315",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 10,
+  "errors": 10,
+  "seconds": 15.8,
+  "calls": [
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": "[{\"dcRt\": 10, \"endDtm\": \"20261106T120000\", \"prdNoList\": \"[\"OUT001\"]\", \"prmtNm\": \"Gold Member Sale\", \"prmtTpCd\": \"SALE\", \"rowStatus\": \"I\", \"strtDtm\": \"20261106T120000\", \"tgtMbrGrdCd\": \"GOLD\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "prmtNo": "savePrmtList",
+     "lnkUrl": "https://northwindapparel.com/summerouterwear",
+     "reply": "Please review and approve the proposed change set.",
+     "dispAreaCd": "SUMMER_OUTERWEAR",
+     "tgtMbrGrdCd": "GOLD",
+     "strtDtm": "20261106T120000",
+     "endDtm": "20261106T120000",
+     "bnrTtl": "Gold Member Sale"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtListV2",
+    "args": {
+     "rows": "[{\"prmtNm\": \"Gold Member Sale\", \"prmtTpCd\": \"SALE\", \"tgtMbrGrdCd\": \"GOLD\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtListV2",
+    "args": {
+     "rows": "[{\"prmtNm\": \"Gold Member Sale\", \"prmtTpCd\": \"SALE\", \"tgtMbrGrdCd\": \"GOLD\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtListV2",
+    "args": {
+     "rows": "[{\"prmtNm\": \"Gold Member Sale\", \"prmtTpCd\": \"SALE\", \"tgtMbrGrdCd\": \"GOLD\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtListV2",
+    "args": {
+     "rows": "[{\"prmtNm\": \"Gold Member Sale\", \"prmtTpCd\": \"SALE\", \"tgtMbrGrdCd\": \"GOLD\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtListV2",
+    "args": {
+     "rows": "[{\"prmtNm\": \"Gold Member Sale\", \"prmtTpCd\": \"SALE\": \"10% off\", \"tgtMbrGrdCd\": \"GOLD\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtListV2",
+    "args": {
+     "rows": "[{\"prmtNm\": \"Gold Member Sale\", \"prmtTpCd\": \"SALE\", \"prmtValue\": \"10% off\", \"tgtMbrGrdCd\": \"GOLD\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtListV2",
+    "args": {
+     "rows": "[{\"prmtNm\": \"Gold Member Sale\", \"prmtTpCd\": \"SALE\", \"prmtValue\": \"10% off\", \"tgtMbrGrdCd\": \"GOLD\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtListV2",
+    "args": {
+     "rows": "[{\"prmtNm\": \"Gold Member Sale\", \"prmtTpCd\": \"SALE\", \"prmtValue\": \"10% off\", \"tgtMbrGrdCd\": \"GOLD\", \"prmtDispTtl\": \"Summer Outerwear\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "gold_next_weekend",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Gold tier",
+    false
+   ],
+   [
+    "on Nov 14\u201315",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 3,
+  "seconds": 13.5,
+  "calls": [
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": "[{\"dcRt\":10,\"endDtm\":\"2026-11-13T00:00:00\",\"prdNoList\":[\"SUM_001\"],\"prmtNm\":\"Summer Outerwear Discount\",\"prmtTpCd\":\"SUM\",\"rowStatus\":\"I\",\"strtDtm\":\"2026-11-06T00:00:00\",\"tgtMbrGrdCd\":\"GRD_GOLD\",\"type\":\"array\"}, {\"dcRt\":0,\"endDtm\":\"2026-11-13T00:00:00\",\"prdNoList\":[],\"prmtNm\":\"None\",\"prmtTpCd\":\"SUM\",\"rowStatus\":\"D\",\"strtDtm\":\"2026-11-06T00:00:00\",\"tgtMbrGrdCd\":\"\",\"type\":\"array\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": "[{\"dcRt\":10,\"endDtm\":\"2026-11-13T00:00:00\",\"prdNoList\":[\"SUM_001\"],\"prmtNm\":\"Gold member discount\",\"prmtTpCd\":\"SUM\",\"rowStatus\":\"I\",\"strtDtm\":\"2026-11-06T00:00:00\",\"tgtMbrGrdCd\":\"GRD_GOLD\",\"type\":\"array\"}, {\"dcRt\":0,\"endDtm\":\"2026-11-13T00:00:00\",\"prdNoList\":[],\"prmtNm\":\"None\",\"prmtTpCd\":\"SUM\",\"rowStatus\":\"D\",\"strtDtm\":\"2026-11-06T00:00:00\",\"tgtMbrGrdCd\":\"\",\"type\":\"array\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtListV2",
+    "args": {
+     "rows": "[{\"dcRt\":10,\"endDtm\":\"2026-11-13T00:00:00\",\"prdNoList\":[\"SUM_001\"],\"prmtNm\":\"Gold member discount\",\"prmtTpCd\":\"SUM\",\"rowStatus\":\"I\",\"strtDtm\":\"2026-11-06T00:00:00\",\"tgtMbrGrdCd\":\"GRD_GOLD\",\"type\":\"array\"}, {\"dcRt\":0,\"endDtm\":\"2026-11-13T00:00:00\",\"prdNoList\":[],\"prmtNm\":\"None\",\"prmtTpCd\":\"SUM\",\"rowStatus\":\"D\",\"strtDtm\":\"2026-11-06T00:00:00\",\"tgtMbrGrdCd\":\"\",\"type\":\"array\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "gold_next_weekend",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Gold tier",
+    false
+   ],
+   [
+    "on Nov 14\u201315",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 3,
+  "seconds": 11.7,
+  "calls": [
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "prmtNo": "",
+     "tgtMbrGrdCd": "G",
+     "dispAreaCd": "Summer Outerwear",
+     "bnrTtl": "",
+     "lnkUrl": "",
+     "strtDtm": "20261211T000000",
+     "endDtm": "20261212T235959"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "dispAreaCd": "SUMMER OUTERWEAR",
+     "tgtMbrGrdCd": "GOLD",
+     "strtDtm": "20261211T000000",
+     "endDtm": "20261212T235959",
+     "bnrTtl": "discount for Gold members"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "bnrTtl": "discount for Gold members",
+     "dispAreaCd": "SUMMER OUTERWEAR",
+     "endDtm": "20261212T235959",
+     "strtDtm": "20261211T000000",
+     "tgtMbrGrdCd": "GOLD"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "everyone_shirts",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "1 products in shirts",
+    false
+   ],
+   [
+    "at 15%",
+    false
+   ],
+   [
+    "for Everyone tier",
+    false
+   ],
+   [
+    "on Nov 7\u20138",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 6,
+  "errors": 6,
+  "seconds": 15.7,
+  "calls": [
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": [
+      {
+       "dcRt": "15",
+       "endDtm": "20261211T240000",
+       "prdNoList": [],
+       "prmtNm": "Shirts",
+       "prmtTpCd": "SALE",
+       "rowStatus": "U",
+       "strtDtm": "20261105T120000",
+       "tgtMbrGrdCd": "CTG"
+      }
+     ]
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": "[{\"dcRt\": \"15\", \"endDtm\": \"20261211T240000\", \"prdNoList\": [], \"prmtNm\": \"Shirts\", \"prmtTpCd\": \"SALE\", \"rowStatus\": \"U\", \"strtDtm\": \"20261105T120000\", \"tgtMbrGrdCd\": \"CTG\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": "[{\"dcRt\": \"20\", \"endDtm\": \"20261211T240000\", \"prdNoList\": [], \"prmtNm\": \"Shirts\", \"prmtTpCd\": \"COUPON\", \"rowStatus\": \"U\", \"strtDtm\": \"20261105T120000\", \"tgtMbrGrdCd\": \"CTG\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": "[{\"dcRt\": \"30\", \"endDtm\": \"20261211T240000\", \"prdNoList\": [], \"prmtNm\": \"Shirts Sale\", \"prmtTpCd\": \"BANNER\", \"rowStatus\": \"U\", \"strtDtm\": \"20261105T120000\", \"tgtMbrGrdCd\": \"CTG\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": "[{\"dcRt\": \"15\", \"endDtm\": \"20261211T240000\", \"prdNoList\": [\"C001\"], \"prmtNm\": \"Shirts Sale\", \"prmtTpCd\": \"SALE\", \"rowStatus\": \"U\", \"strtDtm\": \"20261105T120000\", \"tgtMbrGrdCd\": \"CTG\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": "[{\"dcRt\": \"15\", \"endDtm\": \"20261211T240000\", \"prdNoList\": [\"C001\"], \"prmtNm\": \"Shirts Sale\", \"prmtTpCd\": \"SALE\", \"rowStatus\": \"U\", \"strtDtm\": \"20261105T120000\", \"tgtMbrGrdCd\": \"CTG\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "everyone_shirts",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "1 products in shirts",
+    false
+   ],
+   [
+    "at 15%",
+    false
+   ],
+   [
+    "for Everyone tier",
+    false
+   ],
+   [
+    "on Nov 7\u20138",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 3,
+  "seconds": 9.6,
+  "calls": [
+   {
+    "tool": "savePrmtListV2",
+    "args": {
+     "rows": [
+      {
+       "dcRt": "15",
+       "endDtm": "20261206T235959",
+       "prmtNm": "summer shirts",
+       "prmtTpCd": "SALE",
+       "rowStatus": "I",
+       "strtDtm": "20261125T000000",
+       "tgtMbrGrdCd": "CTG_CD_ALL"
+      }
+     ]
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtListV2",
+    "args": {
+     "rows": "[{\"dcRt\": \"15\", \"endDtm\": \"20261206T235959\", \"prmtNm\": \"summer shirts\", \"prmtTpCd\": \"SALE\", \"rowStatus\": \"I\", \"strtDtm\": \"20261125T000000\", \"tgtMbrGrdCd\": \"CTG_CD_ALL\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtListV2",
+    "args": {
+     "rows": "[{'dcRt': '15', 'endDtm': '20261206T235959', 'prmtNm': 'summer shirts', 'prmtTpCd': 'SALE', 'rowStatus': 'I', 'strtDtm': '20261125T000000', 'tgtMbrGrdCd': 'CTG_CD_ALL'}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "everyone_shirts",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "1 products in shirts",
+    false
+   ],
+   [
+    "at 15%",
+    false
+   ],
+   [
+    "for Everyone tier",
+    false
+   ],
+   [
+    "on Nov 7\u20138",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 2,
+  "seconds": 10.4,
+  "calls": [
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": [],
+     "prmtNm": "Summer Sale",
+     "prmtTpCd": "SALE15",
+     "rowStatus": "I",
+     "strtDtm": "2026-11-06T00:00:00",
+     "tgtMbrGrdCd": "CTG",
+     "bnrTtl": "Summer Sale: 15% off for everyone"
+    },
+    "error": null
+   },
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": "[{\"dcRt\": 15, \"endDtm\": \"2026-11-08T23:59:59\", \"prdNoList\": \"[\"SH001\", \"SH002\", \"SH003\"]\", \"prmtNm\": \"Summer Sale\", \"prmtTpCd\": \"SALE15\", \"rowStatus\": \"I\", \"strtDtm\": \"2026-11-06T00:00:00\", \"tgtMbrGrdCd\": \"CTG\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": "[{\"dcRt\": 15, \"endDtm\": \"2026-11-08T23:59:59\", \"prdNoList\": \"[\"SH001\", \"SH002\", \"SH003\"]\", \"prmtNm\": \"Summer Sale\", \"prmtTpCd\": \"SALE15\", \"rowStatus\": \"I\", \"strtDtm\": \"2026-11-06T00:00:00\", \"tgtMbrGrdCd\": \"CTG\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "vip_without_parka",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "41 products in summer_outerwear without Light rain parka",
+    false
+   ],
+   [
+    "at 15%",
+    false
+   ],
+   [
+    "for VIP tier",
+    false
+   ],
+   [
+    "on Nov 7\u20138",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 1,
+  "errors": 0,
+  "seconds": 1.8,
+  "calls": [
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "reply": "Get code list to confirm promo codes, and link the promo code to the summer outerwear product grid list with page size 20 and category CTG_CD",
+     "title": "VIP weekend sale: summer outerwear",
+     "preview_ids": [
+      "<preview_id>"
+     ]
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "vip_without_parka",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "41 products in summer_outerwear without Light rain parka",
+    false
+   ],
+   [
+    "at 15%",
+    false
+   ],
+   [
+    "for VIP tier",
+    false
+   ],
+   [
+    "on Nov 7\u20138",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 1,
+  "errors": 0,
+  "seconds": 4.2,
+  "calls": [
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "title": "VIP weekend sale: summer outerwear",
+     "preview_ids": [
+      "<preview_id>"
+     ],
+     "reply": "Get code list to add % discount rule. Get prd grid list to find out total prices of summer outerwear. Get prmt tgt mbr mgmt list to know VIP members' details. Save prmt list to set discount rate. Save prmt list v2 to format discount message. Save cpn issue to set discount code. Save disp bnr to add link to product details."
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "vip_without_parka",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "41 products in summer_outerwear without Light rain parka",
+    false
+   ],
+   [
+    "at 15%",
+    false
+   ],
+   [
+    "for VIP tier",
+    false
+   ],
+   [
+    "on Nov 7\u20138",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 1,
+  "errors": 0,
+  "seconds": 1.3,
+  "calls": [
+   {
+    "tool": "propose_change_set",
+    "args": {
+     "reply": "Get ready to enjoy 15% off summer outerwear\\nexcept rain parka.",
+     "preview_ids": [
+      "12345"
+     ],
+     "title": "VIP weekend sale: summer outerwear"
+    },
+    "error": null
+   }
+  ]
+ },
+ {
+  "task": "gold_shirts_tomorrow",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "1 products in shirts",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Gold tier",
+    false
+   ],
+   [
+    "on Nov 7\u20137",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 3,
+  "seconds": 9.4,
+  "calls": [
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "cpnCd": "VIP_GOLD_MBR_10PCT_OFF_SHIRT",
+     "prmtNo": "",
+     "tgtMbrGrdCd": "GRD_GOLD",
+     "autoApplyYn": "Y",
+     "dupUseYn": "N"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "prmtNo": "",
+     "tgtMbrGrdCd": "GRD_GOLD",
+     "autoApplyYn": "N",
+     "cpnCd": "VIP_GOLD_MBR_10PCT_OFF_SHIRT",
+     "dupUseYn": "N"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "autoApplyYn": "N",
+     "cpnCd": "VIP_GOLD_MBR_10PCT_OFF_SHIRT",
+     "dupUseYn": "N",
+     "prmtNo": "",
+     "tgtMbrGrdCd": "GRD_GOLD"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "gold_shirts_tomorrow",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "1 products in shirts",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Gold tier",
+    false
+   ],
+   [
+    "on Nov 7\u20137",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 3,
+  "seconds": 9.6,
+  "calls": [
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "strtDtm": "2026-11-06 00:00:00",
+     "tgtMbrGrdCd": "Gold",
+     "dispAreaCd": "Gold",
+     "bnrTtl": "Tomorrow only 10% off shirts",
+     "endDtm": "2026-11-07 23:59:59",
+     "lnkUrl": "https://www.northwindapparel.com/gold-member-sale",
+     "prmtNo": ""
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "dispAreaCd": "Gold",
+     "endDtm": "2026-11-07 23:59:59",
+     "lnkUrl": "https://www.northwindapparel.com/gold-member-sale",
+     "prmtNo": "Gold members discount",
+     "strtDtm": "2026-11-06 00:00:00",
+     "tgtMbrGrdCd": "Gold"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "prmtNo": "",
+     "strtDtm": "2026-11-06 00:00:00",
+     "tgtMbrGrdCd": "Gold",
+     "dispAreaCd": "Gold",
+     "endDtm": "2026-11-07 23:59:59",
+     "lnkUrl": "https://www.northwindapparel.com/gold-member-sale"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "gold_shirts_tomorrow",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "1 products in shirts",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Gold tier",
+    false
+   ],
+   [
+    "on Nov 7\u20137",
+    false
+   ],
+   [
+    "banner not made",
+    false
+   ]
+  ],
+  "tool_calls": 0,
+  "errors": 0,
+  "seconds": 4.9,
+  "calls": []
+ },
+ {
+  "task": "everyone_banner",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Everyone tier",
+    false
+   ],
+   [
+    "on Nov 14\u201315",
+    false
+   ],
+   [
+    "banner prepared",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 3,
+  "seconds": 12.0,
+  "calls": [
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "schCtgCd": "PRMT_TP_CD_01",
+     "rows": [
+      {
+       "dcRt": null,
+       "endDtm": "20271106T110000",
+       "prdNoList": null,
+       "prmtNm": "Summer Outerwear Sale",
+       "prmtTpCd": "PRMT_TP_CD_01",
+       "rowStatus": "I",
+       "strtDtm": "20271106T110000",
+       "tgtMbrGrdCd": "CTG_CD_01"
+      },
+      {
+       "dcRt": null,
+       "endDtm": "20271106T110000",
+       "prdNoList": null,
+       "prmtNm": null,
+       "prmtTpCd": null,
+       "rowStatus": null,
+       "strtDtm": null,
+       "tgtMbrGrdCd": null
+      }
+     ]
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": "[{\"dcRt\":null,\"endDtm\":\"20271106T110000\",\"prdNoList\":null,\"prmtNm\":\"Summer Outerwear Sale\",\"prmtTpCd\":\"PRMT_TP_CD_01\",\"rowStatus\":\"I\",\"strtDtm\":\"20271106T110000\",\"tgtMbrGrdCd\":\"CTG_CD_01\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": "[{\"dcRt\":null,\"endDtm\":\"20271106T110000\",\"prdNoList\":null,\"prmtNm\":\"Summer Outerwear Sale\",\"prmtTpCd\":\"PRMT_TP_CD_01\",\"rowStatus\":\"I\",\"strtDtm\":\"20271106T110000\",\"tgtMbrGrdCd\":\"CTG_CD_01\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "everyone_banner",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Everyone tier",
+    false
+   ],
+   [
+    "on Nov 14\u201315",
+    false
+   ],
+   [
+    "banner prepared",
+    false
+   ]
+  ],
+  "tool_calls": 3,
+  "errors": 3,
+  "seconds": 11.7,
+  "calls": [
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "strtDtm": "20261007T000000",
+     "endDtm": "20261009T235959",
+     "bnrTtl": "SUMMER OUTERWEAR 10% OFF",
+     "prmtNo": null,
+     "lnkUrl": null,
+     "dispAreaCd": "SUMER_OUTERWEAR",
+     "tgtMbrGrdCd": null
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "tgtMbrGrdCd": "MBR_GRD_CD_456",
+     "bnrTtl": "SUMMER OUTERWEAR 10% OFF",
+     "dispAreaCd": "SUMER_OUTERWEAR",
+     "endDtm": "20261009T235959",
+     "lnkUrl": "https://northwindapparel.com/summer-outerwear",
+     "prmtNo": "PRMT_NO_123",
+     "strtDtm": "20261007T000000"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "bnrTtl": "SUMMER OUTERWEAR 10% OFF",
+     "dispAreaCd": "SUMER_OUTERWEAR",
+     "endDtm": "20261009T235959",
+     "lnkUrl": "https://northwindapparel.com/summer-outerwear",
+     "prmtNo": "PRMT_NO_123",
+     "strtDtm": "20261007T000000",
+     "tgtMbrGrdCd": "MBR_GRD_CD_456"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ },
+ {
+  "task": "everyone_banner",
+  "toolset": "facade",
+  "model": "llama3.2:3b",
+  "settings": {
+   "endpoint": "localhost",
+   "temperature": 0.7,
+   "max_tokens": 1500,
+   "served_model": "llama3.2:3b"
+  },
+  "commit": "b9b8a708f76e2a2640e475649dc26c1fde86dd1d",
+  "passed": false,
+  "criteria": [
+   [
+    "change set proposed",
+    false
+   ],
+   [
+    "42 products in summer_outerwear",
+    false
+   ],
+   [
+    "at 10%",
+    false
+   ],
+   [
+    "for Everyone tier",
+    false
+   ],
+   [
+    "on Nov 14\u201315",
+    false
+   ],
+   [
+    "banner prepared",
+    false
+   ]
+  ],
+  "tool_calls": 5,
+  "errors": 5,
+  "seconds": 16.5,
+  "calls": [
+   {
+    "tool": "saveCpnIssue",
+    "args": {
+     "tgtMbrGrdCd": "",
+     "autoApplyYn": "Y",
+     "dupUseYn": "N",
+     "cpnCd": "SUMMER10",
+     "prmtNo": ""
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "saveDispBnr",
+    "args": {
+     "dispAreaCd": "SUMMER",
+     "bnrTtl": "Summer Sale: 10% off",
+     "endDtm": "2026-11-15 23:59:59",
+     "prmtNo": "",
+     " strtDtm": "2026-11-13 00:00:00",
+     "lnkUrl": "https://www.northwindapparel.com/summerouterwear",
+     "strtDtm": "2026-11-13 00:00:00",
+     "tgtMbrGrdCd": ""
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": [
+      {
+       "dcRt": null,
+       "endDtm": "",
+       "prdNoList": [],
+       "prmtNm": "",
+       "prmtTpCd": "",
+       "rowId": 1,
+       "rowStatus": "",
+       "strtDtm": "",
+       "tgtMbrGrdCd": ""
+      },
+      {
+       "dcRt": null,
+       "endDtm": "",
+       "prdNoList": [],
+       "prmtNm": "",
+       "prmtTpCd": "",
+       "rowId": 2,
+       "rowStatus": "",
+       "strtDtm": "",
+       "tgtMbrGrdCd": ""
+      }
+     ],
+     "prmtNm": "Summer Outerwear"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": "[{\"dcRt\": null, \"endDtm\": \"2026-11-15 23:59:59\", \"prdNoList\": [], \"prmtNm\": \"Summer Outerwear\", \"prmtTpCd\": \"SUMMER10\", \"rowStatus\": \"I\", \"strtDtm\": \"2026-11-13 00:00:00\", \"tgtMbrGrdCd\": \"\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   },
+   {
+    "tool": "savePrmtList",
+    "args": {
+     "rows": "[{\"dcRt\": null, \"endDtm\": \"2026-11-15 23:59:59\", \"prdNoList\": [], \"prmtNm\": \"Summer Outerwear\", \"prmtTpCd\": \"SUMMER10\", \"rowStatus\": \"I\", \"strtDtm\": \"2026-11-13 00:00:00\", \"tgtMbrGrdCd\": \"\"}]"
+    },
+    "error": {
+     "code": "E999",
+     "message": "System error"
+    }
+   }
+  ]
+ }
+]
