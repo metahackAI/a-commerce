@@ -5,9 +5,9 @@ description: How a change gets into a-commerce. Build on a branch, collect evide
 
 # Judge gate
 
-This is the change gate proposed in `docs/direction.md` ("Change gate"). It applies once the team approves that file's pull request. Follow the steps in order.
+This is the change gate proposed in `docs/direction.md` ("Change gate", Proposed 7). It applies once the pull request that adds that file is merged with an `Approved by …` line under Proposed 7. Follow the steps in order.
 
-1. **Branch.** `git fetch origin && git switch -c <kind>/<name> origin/main`. One change per branch, about 400 lines; do not build on unmerged branches. While the stacked pull requests #2–#20 are not merged, follow the interim rule in "Change gate" step 1 of `docs/direction.md`.
+1. **Branch.** `git fetch origin && git switch -c <kind>/<name> origin/main`. One change per branch, about 400 lines; do not build on unmerged branches. Until `core/judged` is merged, follow the interim rule in "Change gate" step 1 of `docs/direction.md`.
 2. **Stay in your chunk.** Read "Decided" and "Proposed" in `docs/direction.md`; a Proposed item with an `Approved by …` line binds like a Decided one. If the change crosses an approved chunk boundary (Proposed 3) or touches the a2api repository, stop and ask the people who own that work.
 3. **Collect evidence.**
    - Code: `cd server && uv run pytest -q`, and the browser tests if screens changed. The judge runs the server tests again itself.
@@ -24,4 +24,4 @@ This is the change gate proposed in `docs/direction.md` ("Change gate"). It appl
    - REVISE: make the required changes, collect the evidence again, and ask a new judge with the new head.
    - REJECT: stop and report the verdict to the person you work for.
    - APPROVE: push exactly the approved head SHA and open the pull request with `.github/pull_request_template.md`. Paste every verdict block in full. Any later push needs a new verdict.
-6. **A person merges.** The merger is not the person who ran the authoring agent, and checks that the head SHA is the approved one, the criteria ref is allowed, and the verdict's base is still current (`docs/direction.md`, "Change gate" step 5). Changes to "Decided" also need approval from the people they affect, and changes to `judge.md`, this skill, the pull request template or the AGENTS.md pointer from all four, in the pull request. Agents never merge and never push to main.
+6. **A person merges.** The merger is not the person who ran the authoring agent, and makes the checks in `docs/direction.md` "Change gate" step 5: approved head SHA, allowed criteria SHA, criteria files unchanged on main, current base, and `Approved by` lines that match approvals given in the pull request. If an item is to become binding, the people named approve it in the pull request first; the author adds the `Approved by` line as the last commit before the final verdict. Changes to "Decided" also need approval from the people they affect, and changes to `judge.md`, this skill, the pull request template or the AGENTS.md pointer from all four, in the pull request. Agents never merge and never push to main.
