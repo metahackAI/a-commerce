@@ -16,6 +16,7 @@ from .tools.base import REGISTRY, ToolError, loose_json, make_preview, normalize
 PAGE_MAX = 20
 GRADES = {"G00": "everyone", "G01": "vip", "G02": "gold", "G03": "member"}
 PROMO_TYPES = {"T01": "Amount off", "T02": "Free shipping", "T03": "Rate off", "T04": "Bundle", "T05": "Coupon"}
+DISP_AREAS = {"MAIN_HERO": "Main hero banner"}
 
 
 def _ctg_codes(store: Store) -> dict[str, str]:
@@ -46,6 +47,8 @@ def get_code_list(store: Store, a: dict) -> dict:
         return {"resultCd": "0000", "list": [{"cd": c, "cdNm": v.upper()} for c, v in GRADES.items()]}
     if grp == "PRMT_TP":
         return {"resultCd": "0000", "list": [{"cd": c, "cdNm": v} for c, v in PROMO_TYPES.items()]}
+    if grp == "DISP_AREA":
+        return {"resultCd": "0000", "list": [{"cd": c, "cdNm": v} for c, v in DISP_AREAS.items()]}
     return {"resultCd": "E100", "resultMsg": "Invalid parameter"}
 
 
@@ -118,22 +121,36 @@ def _fn(name: str, desc: str, props: dict, required: list[str]) -> dict:
                                              "parameters": {"type": "object", "properties": props, "required": required}}}
 
 
-S, N = {"type": "string"}, {"type": "number"}
+def s(desc: str) -> dict:
+    return {"type": "string", "description": desc}
+
+
+def n(desc: str) -> dict:
+    return {"type": "number", "description": desc}
+
+
+DTM = "yyyyMMddHHmmss"
 TOOLS = {
-    "getCodeList": (get_code_list, _fn("getCodeList", "Get code list", {"grpCd": S}, ["grpCd"])),
+    "getCodeList": (get_code_list, _fn("getCodeList", "Get code list",
+                                       {"grpCd": s("CTG(category) / MBR_GRD(member grade) / PRMT_TP(prmt type) / DISP_AREA(disp area)")},
+                                       ["grpCd"])),
     "getPrdGridList": (get_prd_grid_list, _fn("getPrdGridList", "Get prd grid list (POST)",
-                                              {"schCtgCd": S, "pageNo": N, "pageSize": N}, ["pageNo"])),
-    "getPrdGridListCount": (get_prd_grid_list_count, _fn("getPrdGridListCount", "Get prd grid list count", {"schCtgCd": S}, [])),
+                                              {"schCtgCd": s("CTG cd"), "pageNo": n("page no"), "pageSize": n("page size, max 20")},
+                                              ["pageNo"])),
+    "getPrdGridListCount": (get_prd_grid_list_count, _fn("getPrdGridListCount", "Get prd grid list count",
+                                                         {"schCtgCd": s("CTG cd")}, [])),
     "getPrmtTgtMbrMgmtList": (get_prmt_tgt_mbr_mgmt_list, _fn("getPrmtTgtMbrMgmtList", "Get prmt tgt mbr mgmt list", {}, [])),
     "savePrmtList": (save_prmt_list, _fn("savePrmtList", "Save prmt list", {"rows": {"type": "array", "items": {"type": "object", "properties": {
-        "rowStatus": S, "prmtNm": S, "prmtTpCd": S, "dcRt": N, "tgtMbrGrdCd": S, "strtDtm": S, "endDtm": S,
-        "prdNoList": {"type": "array", "items": S}}}}}, ["rows"])),
+        "rowStatus": s("I:insert U:update D:delete"), "prmtNm": s("prmt nm"), "prmtTpCd": s("PRMT_TP cd"), "dcRt": n("dc rate (%)"),
+        "tgtMbrGrdCd": s("MBR_GRD cd"), "strtDtm": s(DTM), "endDtm": s(DTM),
+        "prdNoList": {"type": "array", "items": {"type": "string"}, "description": "prdNo list"}}}}}, ["rows"])),
     "savePrmtListV2": (save_prmt_list, _fn("savePrmtListV2", "Save prmt list v2", {"rows": {"type": "array", "items": {"type": "object"}}}, ["rows"])),
     "saveCpnIssue": (save_cpn_issue, _fn("saveCpnIssue", "Save cpn issue", {
-        "cpnCd": S, "prmtNo": S, "tgtMbrGrdCd": S, "autoApplyYn": S, "dupUseYn": S}, ["cpnCd", "prmtNo", "tgtMbrGrdCd"])),
+        "cpnCd": s("cpn cd"), "prmtNo": s("prmt no (savePrmtList)"), "tgtMbrGrdCd": s("MBR_GRD cd"), "autoApplyYn": s("Y/N"),
+        "dupUseYn": s("Y/N")}, ["cpnCd", "prmtNo", "tgtMbrGrdCd"])),
     "saveDispBnr": (save_disp_bnr, _fn("saveDispBnr", "Save disp bnr", {
-        "dispAreaCd": S, "tgtMbrGrdCd": S, "strtDtm": S, "endDtm": S, "bnrTtl": S, "lnkUrl": S, "prmtNo": S},
-        ["dispAreaCd", "tgtMbrGrdCd", "strtDtm", "endDtm", "bnrTtl"])),
+        "dispAreaCd": s("DISP_AREA cd"), "tgtMbrGrdCd": s("MBR_GRD cd"), "strtDtm": s(DTM), "endDtm": s(DTM), "bnrTtl": s("bnr ttl"),
+        "lnkUrl": s("lnk url"), "prmtNo": s("prmt no (savePrmtList)")}, ["dispAreaCd", "tgtMbrGrdCd", "strtDtm", "endDtm", "bnrTtl"])),
 }
 
 

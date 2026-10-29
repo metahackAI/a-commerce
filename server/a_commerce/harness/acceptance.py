@@ -68,7 +68,7 @@ def run_once() -> dict:
     results = judge(view)
     v1_passed = all(ok for _, ok in v1)
     steps = [e for r in (first, second) if r for e in r["events"] if e["type"] in ("agent_step", "handoff")]
-    return {"worker": worker.name, "fallback": fallback.name if fallback else None, "seconds": round(time.monotonic() - start, 1),
+    return {"worker": worker.name, "settings": getattr(worker, "settings", {}), "fallback": fallback.name if fallback else None, "seconds": round(time.monotonic() - start, 1),
             "passed": all(ok for _, ok in results), "v1_passed": v1_passed, "criteria": v1 + results, "steps": steps,
             "error": None if first["ok"] else first.get("error")}
 

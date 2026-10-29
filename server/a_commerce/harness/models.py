@@ -44,14 +44,17 @@ class OpenAICompatible:
     """Baseten, Fireworks, Modal (vLLM), or any server that speaks /chat/completions with tools."""
 
     def __init__(self, base_url: str, api_key: str, model: str, *, timeout: float = 120, max_tokens: int = 1500,
-                 transport=None):
+                 temperature: float = 0, transport=None):
         self.name = model
         self.max_tokens = max_tokens  # small models sometimes never stop; cap every reply
+        self.temperature = temperature
+        # Recorded with every result file, so a run can be traced to its endpoint and sampling.
+        self.settings = {"endpoint": httpx.URL(base_url).host, "temperature": temperature, "max_tokens": max_tokens}
         self.client = httpx.Client(base_url=base_url.rstrip("/"), timeout=timeout, transport=transport,
                                    headers={"Authorization": f"Bearer {api_key}"})
 
     def complete(self, messages: list[dict], tools: list[dict]) -> Reply:
-        body = {"model": self.name, "messages": messages, "temperature": 0, "max_tokens": self.max_tokens}
+        body = {"model": self.name, "messages": messages, "temperature": self.temperature, "max_tokens": self.max_tokens}
         if tools:
             body["tools"] = [{"type": "function", "function": t["function"]} for t in tools]
             body["tool_choice"] = "auto"
@@ -80,5 +83,6 @@ def from_env(role: str) -> Model | None:
     """role is WORKER or PLANNER. Returns None when that model is not configured."""
     url, key, model = (os.environ.get(f"{role}_{k}") for k in ("BASE_URL", "API_KEY", "MODEL"))
     if url and key and model:
-        return OpenAICompatible(url, key, model)
+        return OpenAICompatible(url, key, model, temperature=float(os.environ.get(f"{role}_TEMPERATURE") or 0),
+                                max_tokens=int(os.environ.get(f"{role}_MAX_TOKENS") or 1500))
     return None

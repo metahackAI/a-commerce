@@ -53,7 +53,7 @@ class Step:
 
 
 def run_operator(store: Store, request: str, model: Model, *, change_set_id: int | None = None,
-                 fallback: Model | None = None, toolset: str = "a2api") -> dict:
+                 fallback: Model | None = None, toolset: str = "acommerce") -> dict:
     """Run one operator request. Returns {"events": [...], "change_set_id": int | None}.
 
     toolset="facade" gives the model the screen-shaped API instead (docs/design.md §7); everything else is the same."""
@@ -66,7 +66,7 @@ def run_operator(store: Store, request: str, model: Model, *, change_set_id: int
     return retry
 
 
-def _attempt(store: Store, request: str, model: Model, change_set_id: int | None, toolset: str = "a2api") -> dict:
+def _attempt(store: Store, request: str, model: Model, change_set_id: int | None, toolset: str = "acommerce") -> dict:
     revision = ""
     if change_set_id is not None:
         view = changesets.view(store, change_set_id)
@@ -131,6 +131,7 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
                 last_error = (c.name, {"message": out.get("resultMsg", ""), "next_tool": None})
             elif toolset == "facade":
                 previews += [x for k in ("prmtNoList", "cpnNo", "bnrNo") for x in ([out[k]] if isinstance(out.get(k), str) else out.get(k, []))]
+                last_error = None
             if "error" in out:
                 errors += 1
                 last_error = (c.name, out["error"])
