@@ -6,13 +6,13 @@ Two measurements, both with the model in `.env` and a fresh seed per run:
   (`server/a_commerce/harness/acceptance.py`). Without a model configured it exits 2 instead of passing on the stand-in.
 - `make compare RUNS=3` gives the same model six tasks on two tool layers (below).
 
-Every run is saved in `results/` with each tool call. Since Oct 30 each file also records the endpoint, temperature and
-`max_tokens`. In a revision the saved arguments are the harness-merged ones (the model's patch over the earlier call), not
+When a model (not the scripted stand-in) ran, each command saves its runs to `results/` with each tool call. Since
+Oct 30 each file also records the endpoint, temperature and `max_tokens`. In a revision the saved arguments are the harness-merged ones (the model's patch over the earlier call), not
 exactly what the model sent. The model name is recorded as the server reports it, so serve Glimmer as
 `nvidia/Muse-Glimmer-30B-NVFP4` to keep the quantization on record.
 
-**No Muse model has run yet.** Everything below is Llama 3.2 3B (Meta open weights) on Ollama on one Mac, used as a
-small-model stand-in.
+**No Muse model has run yet.** Everything below is Llama 3.2 3B (Meta open weights; Ollama's `llama3.2:3b`, 3.2B
+parameters, Q4_K_M quantization) on one Mac, used as a small-model stand-in.
 
 ## Demo request (`make try-model`)
 
@@ -25,7 +25,8 @@ small-model stand-in.
 | — | Muse Spark Open (Baseten) | — | — | Not run yet |
 
 The Oct 28 temperature-0 result does not reproduce: on Oct 30 the same code (`eb0e51f`) with the same model and the
-same Ollama build made a different first call and failed. A single temperature-0 run is not evidence.
+same Ollama build made a different first call and failed (a two-run spot check of the demo task, not saved to
+`results/`). A single temperature-0 run is not evidence.
 
 ## A-Commerce tools vs a screen-shaped API (design.md §7)
 
@@ -49,6 +50,8 @@ The two arms differ in more than API shape. Report them as separate factors (a2a
   `propose_change_set` for the demo request); the facade arm sees all 8 facade tools.
 - **Composition:** A-Commerce has `plan_sale`, one call that previews the sale, coupon and banner. The facade has no
   composite call.
+- **Shared prompt:** both arms' system prompt mentions rule checks and `ref:<preview_id>`, which only the A-Commerce
+  tools have.
 - **Input repair:** both arms decode JSON-like strings. The A-Commerce tools also repair period names and category
   names; the facade does not.
 
@@ -90,7 +93,9 @@ facade 0/3 and 0/6. An independent review on Oct 30 found three problems:
 ## What a 3B model taught us (Oct 28)
 
 The first run scored 0 of 7. Each failure below was addressed in the tool layer or harness, not by prompting harder.
-Only the first run (0 of 7) and the last run were saved, so most rows have no saved run behind them.
+Three Oct 28 runs were saved: `20261028-033644` (the first, 0 of 7), `20261028-035650` and `20261028-040349`. The first
+shows the first two rows; the later two show the revision that still fails and the false replies. **The other eight
+rows have no saved run behind them.**
 
 | Failure | Fix |
 |---|---|

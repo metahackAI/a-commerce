@@ -81,6 +81,24 @@ def test_text_fields_stay_text_and_odd_strings_do_not_crash(store):
     assert "error" in call(store, "set_sale_prices", {"name": "x", "audience": "vip", "percent_off": "{[1]: 2}"})
 
 
+def test_lists_sent_as_strings_are_still_lists(store):
+    out = call(store, "plan_sale", {"audience": "vip", "category": "summer_outerwear", "percent_off": 15,
+                                    "period": "this_weekend", "exclude": '["rain parka"]'})
+    assert out["summary"][0].startswith("VIP weekend: 41 products"), out["summary"]
+    assert "error" not in call(store, "plan_sale", {"audience": "vip", "category": "summer_outerwear", "percent_off": 15,
+                                                     "period": "this_weekend", "exclude": "null"})
+
+
+def test_a_used_preview_cannot_go_into_a_new_change_set(store):
+    store.set_clock("2026-11-06T11:05")
+    out = call(store, "plan_sale", {"audience": "vip", "category": "summer_outerwear", "percent_off": 20,
+                                    "period": "this_weekend", "leave_out_low_stock": True})
+    store.execute("UPDATE previews SET status = 'discarded' WHERE id = ?", (out["preview_ids"][0],))
+    with pytest.raises(ToolError) as e:
+        changesets.create(store, "y", "y", out["preview_ids"][:1])
+    assert e.value.payload()["error"]["code"] == "preview_not_open"
+
+
 def test_plan_sale_says_it_prepares_previews_and_who_asked(store):
     assert REGISTRY["plan_sale"].definition()["x-kind"] == "prepare"
     call(store, "plan_sale", {"audience": "vip", "category": "summer_outerwear", "percent_off": 20,

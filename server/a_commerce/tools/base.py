@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import types
 import typing
 import json
 from dataclasses import dataclass, field
@@ -218,11 +219,13 @@ def normalize(store: Store, tool: Tool, args: dict) -> dict:
 
 
 def _is_text(annotation) -> bool:
-    """str and str | None fields keep what the model sent: a product query "2026" is text, not a number."""
+    """str and str | None fields keep what the model sent: a product query "2026" is text, not a number.
+    Lists of strings are not text: '["rain parka"]' is still decoded to a list."""
     if annotation is str:
         return True
-    args = typing.get_args(annotation)
-    return bool(args) and all(a in (str, type(None)) for a in args)
+    if typing.get_origin(annotation) not in (typing.Union, types.UnionType):
+        return False
+    return all(a in (str, type(None)) for a in typing.get_args(annotation))
 
 
 def make_preview(store: Store, tool: Tool, args: dict, *, actor: str, context: dict | None = None,

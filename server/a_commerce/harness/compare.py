@@ -26,7 +26,8 @@ TASKS = [
      "category": "summer_outerwear", "pct": "10%", "audience": "Gold tier", "when": "Nov 14–15", "banner": False},
     {"id": "everyone_shirts", "request": "Put shirts on a 15% sale for everyone this weekend.",
      "category": "shirts", "pct": "15%", "audience": "Everyone tier", "when": "Nov 7–8", "banner": False},
-    # Added Oct 28 after the first comparison, so they were not used to tune the tools.
+    # Added Oct 28 after the first comparison. They are not held out: vip_without_parka then led to a tool change
+    # (overrides without a rate became an error, eb0e51f).
     {"id": "vip_without_parka", "request": "VIP members get 15% off summer outerwear this weekend, except the rain parka.",
      "category": "summer_outerwear", "pct": "15%", "audience": "VIP tier", "when": "Nov 7–8", "banner": False,
      "count": 41, "left_out": ["Light rain parka"]},

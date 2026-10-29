@@ -121,7 +121,7 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
                 proposal = decode_strings(c.arguments)
                 out = {"ok": True}
             elif toolset == "facade":
-                out = facade.call(store, c.name, c.arguments)
+                out = facade.call(store, c.name, c.arguments, actor=f"agent:{model.name}")
             elif c.name not in REGISTRY:
                 out = {"error": {"code": "unknown_tool", "message": f"No tool {c.name}.", "next_tool": None}}
             else:

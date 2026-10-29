@@ -40,7 +40,8 @@ def check_reply(text: str, view: dict) -> list[str]:
     if "min_stock" in failing and any(EXCLUDED.search(s) for s in stated):
         issues.append("It said low-stock products are left out, but they are still in this version.")
     total = groups.get("update", {}).get("total_rows")
-    for m in COUNT.finditer(text):
+    said = " ".join(stated)
+    for m in COUNT.finditer(said):
         n = int(m.group(1))
         if total is not None and n != total:
             issues.append(f"It said {n} {m.group(2).split()[0].lower()}, but the change set has {total}.")
@@ -53,11 +54,11 @@ def check_reply(text: str, view: dict) -> list[str]:
         unique = last_words.count(short) == 1
         names = [r["name"]] + ([short] if unique or (r["discount"] != main_rate and r.get("note")) else [])
         for name in names:
-            m = re.search(rf"\b{re.escape(name)}\b[^.%]{{0,30}}?(\d{{1,2}})\s*%", text, re.I)
+            m = re.search(rf"\b{re.escape(name)}\b[^.%]{{0,30}}?(\d{{1,2}})\s*%", said, re.I)
             if m and f"{m.group(1)}%" != r["discount"]:
                 issues.append(f"It said the {short} is at {m.group(1)}%, but it is at {r['discount']}.")
                 break
-    m = CHECKS.search(text)
+    m = CHECKS.search(said)
     if m and (int(m.group(1)) != view["checks_total"] or failing):
         issues.append(f"It said all checks pass, but {view['checks_passed']} of {view['checks_total']} do.")
     return issues

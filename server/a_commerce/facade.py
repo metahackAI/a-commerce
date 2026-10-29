@@ -85,7 +85,7 @@ def save_prmt_list(store: Store, a: dict) -> dict:
             items = [{"product_id": prd[p], "percent_off": float(row["dcRt"])} for p in row["prdNoList"]]
             args = {"name": row["prmtNm"], "audience": GRADES[row["tgtMbrGrdCd"]], "starts_at": _dtm(row["strtDtm"]),
                     "ends_at": _dtm(row["endDtm"]), "items": items}
-            pv = make_preview(store, REGISTRY["set_sale_prices"], normalize(store, REGISTRY["set_sale_prices"], args), actor="agent")
+            pv = make_preview(store, REGISTRY["set_sale_prices"], normalize(store, REGISTRY["set_sale_prices"], args), actor=a.get("_actor", "agent"))
         except (KeyError, TypeError, ValueError, ToolError) as e:
             return _fail(e)
         out.append(pv["preview_id"])  # no rule checks come back: the screen API never had them
@@ -96,7 +96,7 @@ def save_cpn_issue(store: Store, a: dict) -> dict:
     try:
         args = {"code": a["cpnCd"], "promotion_id": f"ref:{a['prmtNo']}", "audience": GRADES[a["tgtMbrGrdCd"]],
                 "auto_apply": a.get("autoApplyYn", "Y") == "Y", "stacking": "no_tier_coupons" if a.get("dupUseYn", "N") == "N" else "stacks"}
-        pv = make_preview(store, REGISTRY["create_coupon"], normalize(store, REGISTRY["create_coupon"], args), actor="agent")
+        pv = make_preview(store, REGISTRY["create_coupon"], normalize(store, REGISTRY["create_coupon"], args), actor=a.get("_actor", "agent"))
     except (KeyError, TypeError, ValueError, ToolError) as e:
         return _fail(e)
     return {"resultCd": "0000", "cpnNo": pv["preview_id"]}
@@ -110,7 +110,7 @@ def save_disp_bnr(store: Store, a: dict) -> dict:
                 "ends_at": _dtm(a["endDtm"]), "headline": a["bnrTtl"], "link": a.get("lnkUrl")}
         if a.get("prmtNo"):
             args["promotion_id"] = f"ref:{a['prmtNo']}"
-        pv = make_preview(store, REGISTRY["schedule_banner"], normalize(store, REGISTRY["schedule_banner"], args), actor="agent")
+        pv = make_preview(store, REGISTRY["schedule_banner"], normalize(store, REGISTRY["schedule_banner"], args), actor=a.get("_actor", "agent"))
     except (KeyError, TypeError, ValueError, ToolError) as e:
         return _fail(e)
     return {"resultCd": "0000", "bnrNo": pv["preview_id"]}
@@ -158,12 +158,12 @@ def definitions() -> list[dict]:
     return [d for _, d in TOOLS.values()]
 
 
-def call(store: Store, name: str, args: dict) -> dict:
+def call(store: Store, name: str, args: dict, actor: str = "agent") -> dict:
     if name not in TOOLS:
         return {"resultCd": "E404", "resultMsg": "Not found"}
     try:
         # Same leniency as the A-Commerce tools, so the comparison is about the API's shape, not string parsing.
-        return TOOLS[name][0](store, {k: loose_json(v) for k, v in (args or {}).items()})
+        return TOOLS[name][0](store, {**{k: loose_json(v) for k, v in (args or {}).items()}, "_actor": actor})
     except ToolError:
         return {"resultCd": "E100", "resultMsg": "Invalid parameter"}
     except Exception:  # the legacy API answers everything else the same way
