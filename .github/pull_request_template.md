@@ -1,15 +1,19 @@
 ## What and why
 
-<!-- Which decided item in docs/direction.md this serves. -->
+<!-- Which item in docs/direction.md this serves ("Decided" or an approved "Proposed" item). -->
 
 ## Five questions
 
 1. **Need**:
 2. **a2api** (duplicates, needs porting, or conflicts?):
 3. **Side effects** (dependencies, shared files, other chunks):
-4. **Evidence** (commands and output; real-model runs or "not run on a real model"):
+4. **Evidence** (commands and output; real-model runs with model name and quantization, or "not run on a real model"; "docs only"):
 5. **Rules** (hackathon-only code, no secrets, no reference names):
 
-## Judge verdict
+## Judge verdicts
 
-<!-- Paste the judge agent's VERDICT line, summary, and any required changes and how they were handled. -->
+<!-- Every run, oldest first: VERDICT, BASE and HEAD SHAs, and how required changes were handled. -->
+
+Approved head SHA:
+
+<!-- The merger checks that this equals the pull request's head before merging, and is not the person who ran the authoring agent. Changes to "Decided", judge.md or the judge-gate skill also need the named people's approval here. -->

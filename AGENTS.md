@@ -2,7 +2,7 @@
 
 Read `docs/design.md` before writing code. It defines the tool design rules, domain scope, harness, and UI protocol.
 
-Read `docs/direction.md` before starting any change. It says what the team decided, which chunk owns what, and how a change gets in: every change goes through the judge agent (`.claude/agents/judge.md`) before it becomes a pull request. Follow `.claude/skills/judge-gate/SKILL.md`.
+Read `docs/direction.md` before starting any change. It separates what the team decided from what is only proposed, and describes the change gate: a fresh judge agent (`.claude/agents/judge.md`) reviews each change before it becomes a pull request. Follow `.claude/skills/judge-gate/SKILL.md`.
 
 ## Hackathon rules that affect code
 
