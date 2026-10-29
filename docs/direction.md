@@ -12,11 +12,12 @@ Status: draft for team approval, Oct 30. "Decided" holds only what the team's Oc
    | 2. A2API library + backend connection | Haesoo, Haryeom | Connect a2api and the a-commerce server. Legacy API conversion demo. Add write support to a2api: preview, change set, person approval. |
    | 4. Front end, desktop, demo | Seongjun | Polish screens. Tauri desktop wrapper. Live demo deploy. Video, README, X post, submission. |
 
-2. **Model.** Source: team message, Oct 30. `nvidia/Muse-Glimmer-30B-NVFP4` on the team's RTX 5090, port-forwarded as an API.
+2. **Model.** Source: team message, Oct 30. `nvidia/Muse-Glimmer-30B-NVFP4` on a 5090, port-forwarded as an API.
 3. **Prize eligibility.** Source: Cerebral Valley's answer in the hackathon Discord, Oct 30. A quantized Muse Glimmer served on our own hardware counts as an eligible open-weight model. The demo and README must say how and where the model is used, and we add provenance that judges can review without our GPU, such as run logs showing the model name and quantization, screen captures, and sample outputs.
-4. **Rules.** Source: [AGENTS.md](../AGENTS.md). Only code written during the hackathon, no secrets, no names from reference material.
+Background that is not a new decision:
 
-Background that is not a new decision: the goal in [design.md §1](design.md) is to show that "a small open-weight model (Muse Glimmer) can find the right tools, chain them, and finish back-office and storefront tasks", and that "the same tasks fail or cost much more when the same model faces a typical screen-shaped commerce API".
+- The goal in [design.md §1](design.md) is to show that "a small open-weight model (Muse Glimmer) can find the right tools, chain them, and finish back-office and storefront tasks", and that "the same tasks fail or cost much more when the same model faces a typical screen-shaped commerce API".
+- The rules in [AGENTS.md](../AGENTS.md) still apply: only code written during the hackathon, no secrets, no names from reference material.
 
 ## Facts this work depends on
 
@@ -35,11 +36,11 @@ a-commerce, as it is in the stacked pull requests #2–#20 (main holds only docs
 - Agents call tools from the registry in `server/a_commerce/tools/base.py`. The HTTP API exposes them as `POST /tools/{name}`, which enabled a2api capabilities cannot call.
 - The harness repairs loose model input inside the backend tools (`normalize` in `tools/base.py`). Through a2api, strict validation would reject that input before the repair runs.
 - `server/pyproject.toml` pins `mcp>=1.10,<2` (from #14). It cannot share an environment with a2api's MCP extra.
-- The comparison harness (from #11) names a-commerce's own tool registry `"a2api"` (`harness/operator.py`, `harness/compare.py`, and `"toolset": "a2api"` in `eval/results/*compare*.json`). No a2api library code ran in those results. The label must be renamed before chunk 2 adds a real a2api layer, and results must not be presented as a2api runs.
+- The comparison harness (from #11) names a-commerce's own tool registry `"a2api"` (`harness/operator.py`, `harness/compare.py`, `"toolset": "a2api"` in `eval/results/*compare*.json`, and the "A2API vs screen-shaped API" row of `docs/progress.md` on #11–#20). No a2api library code ran in those results. The label must be renamed before chunk 2 adds a real a2api layer, and results must not be presented as a2api runs.
 
 ## Proposed
 
-Each item needs approval from the people named, in the pull request that adds or changes it.
+Each item needs approval from the people named, in the pull request that adds or changes it. "All" means all four.
 
 1. **Positioning** (all): a2api is the protocol and runtime; a-commerce is the first proof, in commerce, and the repository we submit. From the Oct 29 decision document; not in the Oct 30 message.
 2. **Serving** (chunk 1): vLLM with the model card's tool and reasoning parsers for Glimmer; Muse Spark Open on Baseten (`meta-models/muse-spark-open-1026`, plan.md §2) as planner and fallback when keys arrive.
@@ -53,12 +54,17 @@ Each item needs approval from the people named, in the pull request that adds or
 
 Proposed by Donguk on Oct 30. It applies once the team approves this file's pull request. Steps for coding agents are in [.claude/skills/judge-gate/SKILL.md](../.claude/skills/judge-gate/SKILL.md).
 
-1. **Branch from main.** One change per branch, about 400 lines, no stacking on unmerged branches.
-   - Pull requests #2–#20 are already stacked. Each one is judged against its parent, as the pull request shows it. #2–#8 and the evaluation commits of #11 and #15 then enter main as one pull request. That pull request carries those verdicts, plus fix commits for every required change, judged as their own change. The stacking and size rules do not apply to this one pull request. A rejected pull request does not enter. The others stay parked under the tag `prototype-v0` and come back, if needed, as new judged changes.
-   - Until that pull request is merged, new code work may start from its branch. Its own pull request opens only after that base is merged, and it targets main.
+1. **Branch from main.** One change per branch, about 400 lines (lockfiles and `eval/results/` files do not count), no stacking on unmerged branches.
+   - **Stacked pull requests #2–#20.** This rule narrows Decided 1 ("review and merge #2–#20"), so it needs explicit approval in this pull request from Seongjun and Donguk (chunk 1), and from Seongjun for the chunk 4 screens and README.
+     - Each of #2–#20 is judged with the code diff `parent...child` and the criteria from this pull request: its head until it merges, then `origin/main`.
+     - #2–#8 and the single commits of #11 and #15 (evaluation plus tool changes) enter main as one combined pull request, with fix commits for every required change.
+     - The combined pull request gets one final verdict with base `origin/main` and head at its tip. That verdict covers the cherry-picked commits, their conflict resolutions and the fixes, and its head SHA is the one the merger checks.
+     - A REJECT on one of #2–#8 ends the combined set just before it.
+     - The other pull requests are closed by chunk 1 after this rule is approved. The tag `prototype-v0` on the #20 tip (`6950b8f`) keeps their code. They come back, if needed, as new judged changes.
+   - Until the combined pull request is merged, new code work may start from its branch. Its own pull request opens only after that base is merged, and it targets main.
 2. **Evidence.** Server tests (`cd server && uv run pytest -q`) for code. Docs-only changes need no tests; say so. When agent behaviour changes, a run on Glimmer, or name the model that ran, with a results file that records the model name and quantization. If no model ran, write "not run on a real model".
-3. **Judge.** A fresh-context agent follows [.claude/agents/judge.md](../.claude/agents/judge.md) as it is on the base branch. It is not a forked agent that shares the author's context. It gets the refs and the evidence, not the author's reasons.
-4. **Verdict per commit.** Each verdict names the base and head SHAs. Any push after APPROVE needs a new verdict. The pull request lists every verdict run, including REVISE and REJECT.
+3. **Judge.** A fresh-context agent follows [.claude/agents/judge.md](../.claude/agents/judge.md) as it is on `origin/main`, not the author's copy. It is not a forked agent that shares the author's context. It gets the refs and the evidence, not the author's reasons.
+4. **Verdict per commit.** Each verdict names the base and head SHAs. Any push after APPROVE needs a new verdict. The pull request pastes every verdict block in full, including REVISE and REJECT.
 5. **Pull request after APPROVE only.** A person merges after checking that the pull request's head SHA is the approved one. The merger is not the person who ran the authoring agent. Agents never merge and never push to main.
-6. **Rule changes.** Changes to "Decided", to `judge.md` or to the judge-gate skill need explicit approval from the people named, not only the judge's verdict.
+6. **Rule changes.** Changes to "Decided" need explicit approval from the people the change affects. Changes to `judge.md` or the judge-gate skill need approval from all four. The judge's verdict alone is not enough.
 7. **Enforcement.** Until someone enables branch protection on main (pull request plus one approval), the gate works only if everyone follows it.

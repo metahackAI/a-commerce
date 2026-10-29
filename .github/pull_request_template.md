@@ -12,8 +12,8 @@
 
 ## Judge verdicts
 
-<!-- Every run, oldest first: VERDICT, BASE and HEAD SHAs, and how required changes were handled. -->
+<!-- Every verdict block in full, oldest first (VERDICT, BASE and HEAD SHAs included), and how required changes were handled. -->
 
 Approved head SHA:
 
-<!-- The merger checks that this equals the pull request's head before merging, and is not the person who ran the authoring agent. Changes to "Decided", judge.md or the judge-gate skill also need the named people's approval here. -->
+<!-- The merger checks that this equals the pull request's head before merging, and is not the person who ran the authoring agent. Changes to "Decided" also need approval here from the people they affect; changes to judge.md or the judge-gate skill from all four. -->
