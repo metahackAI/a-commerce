@@ -16,4 +16,6 @@
 
 Approved head SHA:
 
-<!-- The merger checks that this equals the pull request's head before merging, and is not the person who ran the authoring agent. Changes to "Decided" also need approval here from the people they affect; changes to judge.md or the judge-gate skill from all four. -->
+Criteria ref and SHA:
+
+<!-- The merger is not the person who ran the authoring agent. Before merging, the merger checks: the approved SHA equals the pull request's head; the criteria ref is origin/main or the exception in docs/direction.md "Change gate" step 3; the verdict's base is still origin/main, or main moved only in files this change does not touch. Changes to "Decided" also need approval here from the people they affect; changes to judge.md, the judge-gate skill, this template or the AGENTS.md pointer from all four. -->
