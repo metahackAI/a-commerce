@@ -1,4 +1,8 @@
-"""Replies are checked against the change set. The false replies below are what Llama 3.2 3B actually said (Oct 28)."""
+"""Replies are checked against the change set.
+
+The first two false replies below are what Llama 3.2 3B said on Oct 28 (eval/results/). The count and
+"all checks pass" claims were never seen from a real model; those sentences are written by hand.
+"""
 
 from a_commerce import call, changesets
 from a_commerce.harness import ScriptedOperator, run_operator
@@ -27,6 +31,24 @@ def test_real_false_replies_are_caught(store):
         "It said the overshirt is at 15%, but it is at 20%."]
     assert check_reply("Changes 40 prices. All 6 checks pass.", view) == [
         "It said 40 prices, but the change set has 42.", "It said all checks pass, but 4 of 6 do."]
+
+
+def test_questions_offers_and_negations_are_not_flagged(store):
+    view = v1_view(store)
+    for said in ("The coupon VIPWEEKEND20 is applied automatically at checkout.",
+                 "Nothing is live until you approve.",
+                 "Should I exclude the low-stock products?",
+                 "Two products are low-stock; I can drop them if you want."):
+        assert check_reply(said, view) == [], said
+
+
+def test_the_main_rate_comes_from_the_change_set(store):
+    store.set_clock("2026-11-06T11:02")
+    out = call(store, "plan_sale", {"category": "summer_outerwear", "percent_off": 25, "audience": "gold",
+                                    "period": "this_weekend", "overrides": [{"product_id": "Seersucker overshirt", "percent_off": 10}]})
+    view = changesets.view(store, changesets.create(store, "Gold sale", "x", out["preview_ids"]))
+    assert check_reply("The Seersucker overshirt is at 10%, everything else at 25%.", view) == []
+    assert check_reply("The Seersucker overshirt is at 25%.", view) == ["It said the overshirt is at 25%, but it is at 10%."]
 
 
 def test_true_replies_pass_through(store):

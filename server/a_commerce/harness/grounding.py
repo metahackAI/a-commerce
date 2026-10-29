@@ -8,9 +8,19 @@ built from the change set instead, plus a note of what was corrected.
 from __future__ import annotations
 
 import re
+from collections import Counter
 
-LIVE = re.compile(r"\b(is|are|now|went|gone|been)\s+(now\s+)?(live|active|running|published|launched|applied)\b"
+LIVE = re.compile(r"\b(is|are|now|went|gone|been)\s+(now\s+)?(live|active|running|published|launched)\b"
                   r"|\bhas been (applied|published|launched|activated|scheduled and is live)\b", re.I)
+# Sentences that ask, offer, describe what happens later, or deny are not claims about the change set's state.
+NOT_A_CLAIM = re.compile(r"\?\s*$|^\s*(should|shall|would|could|can|do|does|want|if)\b|\b(if|once|until|after|when) you\b"
+                         r"|\bI can\b|\bwant me to\b|\bnot\b|n't\b|\bnothing\b|\bnever\b|\bno longer\b"
+                         r"|\bautomatically\b|\bat checkout\b", re.I)
+
+
+def claims(text: str) -> list[str]:
+    """The reply's sentences that state something as done."""
+    return [s for s in re.split(r"(?<=[.!?])\s+|\n+", text or "") if s.strip() and not NOT_A_CLAIM.search(s)]
 EXCLUDED = re.compile(r"(exclud\w*|dropp?\w*|remov\w*|left out|leave out|leaving out)[^.]{0,60}(low[- ]stock|fewer than|less than \d+)"
                       r"|(low[- ]stock)[^.]{0,60}(exclud\w*|dropp?\w*|remov\w*|left out)", re.I)
 # Only claims about the size of the sale ("40 prices", "40 products now"), not "2 products have fewer than 10 left".
@@ -24,9 +34,10 @@ def check_reply(text: str, view: dict) -> list[str]:
     groups = {g["op"]: g for g in view["groups"]}
     rows = groups.get("update", {}).get("rows", [])
     failing = {c["rule"] for c in view["checks"] if not c["passed"]}
-    if view["status"] != "live" and LIVE.search(text):
+    stated = claims(text)
+    if view["status"] != "live" and any(LIVE.search(s) for s in stated):
         issues.append("It said the change is live, but nothing changes until you approve.")
-    if "min_stock" in failing and EXCLUDED.search(text):
+    if "min_stock" in failing and any(EXCLUDED.search(s) for s in stated):
         issues.append("It said low-stock products are left out, but they are still in this version.")
     total = groups.get("update", {}).get("total_rows")
     for m in COUNT.finditer(text):
@@ -36,9 +47,11 @@ def check_reply(text: str, view: dict) -> list[str]:
             break
     # A product named in the reply: full name first; a last word ("overshirt") only if one product has it.
     last_words = [r["name"].split()[-1].lower() for r in rows]
+    main_rate = Counter(r["discount"] for r in rows).most_common(1)[0][0] if rows else None
     for r in rows:
         short = r["name"].split()[-1].lower()
-        names = [r["name"]] + ([short] if last_words.count(short) == 1 or r["discount"] != "20%" and r.get("note") else [])
+        unique = last_words.count(short) == 1
+        names = [r["name"]] + ([short] if unique or (r["discount"] != main_rate and r.get("note")) else [])
         for name in names:
             m = re.search(rf"\b{re.escape(name)}\b[^.%]{{0,30}}?(\d{{1,2}})\s*%", text, re.I)
             if m and f"{m.group(1)}%" != r["discount"]:
