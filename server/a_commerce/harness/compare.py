@@ -16,6 +16,7 @@ from pathlib import Path
 from .. import changesets
 from ..seed import fresh_store
 from . import operator_models, run_operator
+from .acceptance import code_commit
 
 RESULTS = Path(__file__).resolve().parents[3] / "eval" / "results"
 
@@ -72,6 +73,7 @@ def run(task: dict, toolset: str) -> dict:
     criteria = judge(store, view, task)
     step = next((e for e in out["events"] if e["type"] == "agent_step"), {})
     return {"task": task["id"], "toolset": toolset, "model": worker.name, "settings": getattr(worker, "settings", {}),
+            "commit": code_commit(),
             "passed": all(ok for _, ok in criteria),
             "criteria": criteria, "tool_calls": step.get("tool_calls", 0),
             "errors": sum(1 for c in step.get("calls", []) if c.get("error")),

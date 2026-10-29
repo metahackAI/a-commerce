@@ -8,8 +8,10 @@ Two measurements, both with the model in `.env` and a fresh seed per run:
 
 When a model (not the scripted stand-in) ran, each command saves its runs to `results/` with each tool call. Since
 Oct 30 each file also records the endpoint, temperature and `max_tokens`. In a revision the saved arguments are the harness-merged ones (the model's patch over the earlier call), not
-exactly what the model sent. The model name is recorded as the server reports it, so serve Glimmer as
-`nvidia/Muse-Glimmer-30B-NVFP4` to keep the quantization on record.
+exactly what the model sent. The model name in each file is the one the client sends (`WORKER_MODEL`), so the
+quantization is on record only when that is the served name (serve Glimmer as `nvidia/Muse-Glimmer-30B-NVFP4` and set
+`WORKER_MODEL` to it). Files made after Oct 30 also record the model the server says it ran (`served_model`) and the
+code commit.
 
 **No Muse model has run yet.** Everything below is Llama 3.2 3B (Meta open weights; Ollama's `llama3.2:3b`, 3.2B
 parameters, Q4_K_M quantization) on one Mac, used as a small-model stand-in.
@@ -72,12 +74,15 @@ model does not look codes up before writing; the result does not say what a mode
 A-Commerce side is not stable. An earlier run the same day, on code with a list-decoding bug that could only hurt the
 A-Commerce side, scored 4/18 at temperature 0.7 (`results/20261030-030852-…`, removed with that bug but kept in commit `d7742a4`), against 2/18 here. With a 3B model and 3 runs per task, the spread
 between runs is as large as the A-Commerce result itself. These numbers do not yet show that the tool design makes a
-small model succeed; they show only that this 3B model fails on the facade.
+small model succeed; they show only that this 3B model fails on the facade. All three A-Commerce passes on Oct 30 are
+the two shirts tasks, and the shirts category has one product in the seed.
 
 What happened on the A-Commerce tools at temperature 0.7: the most common errors were a missing period (6 of 35),
 `set_sale_prices` without a name, and a made-up `ref:` id. The most common failed criterion was "change set proposed"
 (13 of 18 runs). The demo request passed none of its 3 runs. We did not tune the tools on these results, because the
-same person wrote the tools and the tasks.
+same person wrote the tools and the tasks. These runs were measured before "null" in text fields was treated as
+missing; the model sent `"category": "null"` in the shirts tasks, but no saved outcome depended on it (each such call
+failed on another argument as well).
 
 Limits: a 3B stand-in, not Glimmer; tasks written by the tool author; one machine; too few runs to separate the
 A-Commerce result from run-to-run noise. Before any number goes into the
@@ -99,7 +104,7 @@ facade 0/3 and 0/6. An independent review on Oct 30 found three problems:
 
 The first run scored 0 of 7. Each failure below was addressed in the tool layer or harness, not by prompting harder.
 Three Oct 28 runs were saved: `20261028-033644` (the first, 0 of 7), `20261028-035650` and `20261028-040349`. The first
-shows the first two rows; the later two show the revision that still fails and the false replies. **The other eight
+shows the first four rows; the later two show the revision that still fails and the false replies. **The other six
 rows have no saved run behind them.**
 
 | Failure | Fix |

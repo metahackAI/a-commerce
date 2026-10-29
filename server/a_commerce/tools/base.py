@@ -186,8 +186,9 @@ def loose_json(value):
 
 
 def normalize(store: Store, tool: Tool, args: dict) -> dict:
-    """Accept what small models actually send: "20" for 20, "[]" for [], "null" for nothing, a category's
-    display name for its id, and a named period instead of two dates. Everything else is still validated."""
+    """Accept what small models actually send: "20" for 20, "[]" for [], "null" for nothing (in any field, text
+    fields too), a category's display name for its id, and a named period instead of two dates. Everything else is
+    still validated."""
     fields = tool.input.model_fields
     out = {}
     for key, value in args.items():
@@ -195,7 +196,7 @@ def normalize(store: Store, tool: Tool, args: dict) -> dict:
             value = loose_json(value)
             if isinstance(value, list):
                 value = [loose_json(x) for x in value]
-        if value is None or value == "":
+        if value is None or value == "" or (isinstance(value, str) and value.strip().lower() == "null"):
             continue
         out[key] = value
     if isinstance(out.get("category"), str):

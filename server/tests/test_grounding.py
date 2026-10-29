@@ -48,6 +48,8 @@ def test_questions_and_negations_about_counts_rates_and_checks_are_not_flagged(s
                  "The Seersucker overshirt is not at 15%; it stays at 20%.",
                  "If you want, I can give the Seersucker overshirt 15%.",
                  "Do you want 40 products on sale instead of 42?",
+                 "If you want, I can put 40 products on sale.",
+                 "Do all 6 checks pass?",
                  "It doesn't change 40 prices; it changes 42.",
                  "Not all 6 checks pass yet.",
                  "Once you fix the floor, all 6 checks pass."):

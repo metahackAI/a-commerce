@@ -81,6 +81,14 @@ def test_text_fields_stay_text_and_odd_strings_do_not_crash(store):
     assert "error" in call(store, "set_sale_prices", {"name": "x", "audience": "vip", "percent_off": "{[1]: 2}"})
 
 
+def test_null_as_text_means_nothing(store):
+    total = store.one("SELECT COUNT(*) AS n FROM products")["n"]
+    assert call(store, "search_products", {"category": "null", "limit": 100})["total"] == total
+    out = call(store, "plan_sale", {"name": "null", "audience": "vip", "category": "summer_outerwear", "percent_off": 10,
+                                    "period": "this_weekend"})
+    assert out["summary"][0].startswith("VIP weekend:"), out["summary"]
+
+
 def test_lists_sent_as_strings_are_still_lists(store):
     out = call(store, "plan_sale", {"audience": "vip", "category": "summer_outerwear", "percent_off": 15,
                                     "period": "this_weekend", "exclude": '["rain parka"]'})

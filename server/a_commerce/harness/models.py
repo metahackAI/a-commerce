@@ -64,6 +64,8 @@ class OpenAICompatible:
             r.raise_for_status()
             data = r.json()
             msg = data["choices"][0]["message"]
+            if isinstance(data.get("model"), str):
+                self.settings["served_model"] = data["model"]  # what the server says it ran
         except (httpx.HTTPError, KeyError, ValueError) as e:
             raise ModelError(f"{self.name}: {type(e).__name__}: {str(e)[:200]}") from e
         calls = []

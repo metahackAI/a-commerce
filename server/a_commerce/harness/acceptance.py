@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -53,6 +54,15 @@ def judge_v1(view: dict | None) -> list[tuple[str, bool]]:
     ]
 
 
+def code_commit() -> str | None:
+    """The commit the harness ran from, recorded with every result file."""
+    try:
+        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=Path(__file__).parent, capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout.strip() or None
+
+
 def run_once() -> dict:
     store = fresh_store()
     worker, fallback = operator_models(store)
@@ -68,7 +78,8 @@ def run_once() -> dict:
     results = judge(view)
     v1_passed = all(ok for _, ok in v1)
     steps = [e for r in (first, second) if r for e in r["events"] if e["type"] in ("agent_step", "handoff")]
-    return {"worker": worker.name, "settings": getattr(worker, "settings", {}), "fallback": fallback.name if fallback else None, "seconds": round(time.monotonic() - start, 1),
+    return {"worker": worker.name, "settings": getattr(worker, "settings", {}), "commit": code_commit(),
+            "fallback": fallback.name if fallback else None, "seconds": round(time.monotonic() - start, 1),
             "passed": all(ok for _, ok in results), "v1_passed": v1_passed, "criteria": v1 + results, "steps": steps,
             "error": None if first["ok"] else first.get("error")}
 
