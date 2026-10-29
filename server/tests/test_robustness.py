@@ -50,6 +50,18 @@ def test_checks_run_again_at_commit(store):
     assert e.value.payload()["error"]["code"] == "check_failed"
 
 
+def test_a_coupon_for_all_members_counts_all_members(store):
+    store.set_clock("2026-11-06T11:05")
+    total = store.one("SELECT COUNT(*) AS n FROM members")["n"]
+    for audience in ("members", "everyone"):
+        sale = call(store, "set_sale_prices", {"name": "x", "audience": audience, "starts_at": "2026-11-07T00:00",
+                                               "ends_at": "2026-11-08T23:59",
+                                               "items": [{"product_id": "prd_windbreaker", "percent_off": 10}]})
+        coupon = call(store, "create_coupon", {"code": f"ALL{audience.upper()}", "promotion_id": f"ref:{sale['preview_id']}",
+                                               "audience": audience})
+        assert coupon["changes"][0]["issued_to"] == total, audience
+
+
 def test_a_category_form_that_matches_nothing_says_so(store):
     out = call(store, "set_sale_prices", {"name": "x", "audience": "vip", "starts_at": "2026-11-07T00:00",
                                           "ends_at": "2026-11-08T23:59", "category": "summer_outerwear",

@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from .db import Store
 from .tools.base import ToolError, commit, read_tool
+from .tools.operator import audience_members
 
 AUDIENCE_LABEL = {"vip": "VIP", "gold": "Gold", "member": "Member", "members": "Members", "everyone": "Everyone"}
 APPLY_ORDER = ["set_sale_prices", "create_coupon", "schedule_banner"]
@@ -183,7 +184,7 @@ def view(store: Store, cs_id: int) -> dict:
     if sale:
         a, rows = sale["args"], sale["result"]["changes"]
         start, end = datetime.fromisoformat(a["starts_at"]), datetime.fromisoformat(a["ends_at"])
-        members = store.one("SELECT COUNT(*) AS n FROM members WHERE tier_id = ?", (a["audience"],))["n"]
+        members = audience_members(store, a["audience"])
         categories = sorted({store.one("SELECT category_id FROM products WHERE id = ?", (r["id"],))["category_id"] for r in rows})
         in_cats = store.all(f"SELECT id, name FROM products WHERE category_id IN ({','.join('?' * len(categories))})", categories)
         chosen = {r["id"] for r in rows}

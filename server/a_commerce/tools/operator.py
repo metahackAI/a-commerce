@@ -245,6 +245,13 @@ class SetSalePricesIn(BaseModel):
         return items
 
 
+def audience_members(store: Store, audience: str) -> int:
+    """Members a coupon reaches: one tier, or every member for "members" and "everyone" (coupons go to members only)."""
+    if audience in ("members", "everyone"):
+        return store.one("SELECT COUNT(*) AS n FROM members")["n"]
+    return store.one("SELECT COUNT(*) AS n FROM members WHERE tier_id = ?", (audience,))["n"]
+
+
 def max_pct_above_floor(row: dict) -> float:
     """Largest whole-percent discount that keeps this product at or above its floor."""
     pct = int(100 - row["floor"] * 100 / row["from"])
@@ -371,7 +378,7 @@ class CreateCoupon:
         ref = pending_ref(store, args.promotion_id)
         if ref is None and not store.one("SELECT 1 FROM promotions WHERE id = ?", (args.promotion_id,)):
             raise ToolError("unknown_promotion", f"No promotion {args.promotion_id}.", "set_sale_prices")
-        members = store.one("SELECT COUNT(*) AS n FROM members WHERE tier_id = ?", (args.audience,))["n"]
+        members = audience_members(store, args.audience)
         allowed = store.policy_value("member_benefits_per_order")
         ok = args.stacking == "no_tier_coupons" or allowed > 1
         change = {"op": "create", "entity": "coupon", "code": args.code, "audience": args.audience,
@@ -387,7 +394,7 @@ class CreateCoupon:
     @staticmethod
     def apply(store: Store, args: CreateCouponIn) -> str:
         cid = store.new_id("coupon")
-        members = store.one("SELECT COUNT(*) AS n FROM members WHERE tier_id = ?", (args.audience,))["n"]
+        members = audience_members(store, args.audience)
         store.execute("INSERT INTO coupons VALUES (?, ?, ?, ?, ?, ?, ?, 'live')",
                       (cid, args.code, args.promotion_id, args.audience, int(args.auto_apply), args.stacking, members))
         return cid
