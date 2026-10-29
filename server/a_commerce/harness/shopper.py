@@ -1,8 +1,8 @@
 """Shopper agent: a message in, UI blocks out (docs/plan.md §5.5, design/storefront).
 
 The model decides *which* component to show and *which* products go in it, through the harness tools below.
-The harness fills every price, stock count and spec from the commerce tools, so a model can never put a
-made-up price on the screen. Orders are never placed here; the shopper taps Place order.
+The harness fills every price, stock count and spec inside the blocks from the commerce tools. The reply sentence
+is the model's own and is not checked against prices. Orders are never placed here; the shopper taps Place order.
 """
 
 from __future__ import annotations

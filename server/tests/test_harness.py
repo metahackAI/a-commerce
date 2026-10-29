@@ -1,7 +1,7 @@
-"""The harness turns the operator's words into change set #1042, with no hand-written tool calls.
+"""The harness turns the operator's words into change set #1042.
 
-Runs with the scripted stand-in (no model key needed) and with a fake OpenAI-compatible server to
-prove the real-model path speaks the protocol.
+The agent here is the scripted stand-in, a hand-written rule plan (no model key needed), or a fake OpenAI-compatible
+server that replays fixed calls to show the client speaks the protocol. Neither is a model run; those are in eval/.
 """
 
 import json

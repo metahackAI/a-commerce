@@ -26,7 +26,8 @@ serve:
 web:
 	cd web && npm run dev
 
-# Run the demo request through the model in .env and judge the change set (exit 0 = demo works).
+# Run the demo request through the model in .env and judge the change set.
+# Exit 0: every run passed. 1: a run failed. 2: no model configured (the scripted stand-in is not a model run).
 try-model:
 	cd server && set -a && [ -f ../.env ] && . ../.env; set +a; uv run python -m a_commerce.harness.acceptance --runs $(or $(RUNS),1)
 

@@ -35,6 +35,21 @@ def test_a_guest_can_place_the_order_the_agent_prepared():
     assert r.status_code == 200, r.text
 
 
+def test_checks_run_again_at_commit(store):
+    """A preview whose checks passed is refused at approval if the store changed underneath it."""
+    from a_commerce.tools.base import commit
+
+    store.set_clock("2026-11-06T11:05")
+    pv = call(store, "set_sale_prices", {"name": "VIP weekend", "audience": "vip", "starts_at": "2026-11-07T00:00",
+                                         "ends_at": "2026-11-08T23:59",
+                                         "items": [{"product_id": "prd_windbreaker", "percent_off": 20}]})
+    assert all(c["passed"] for c in pv["checks"])
+    store.execute("UPDATE variants SET stock = 0 WHERE product_id = 'prd_windbreaker'")
+    with pytest.raises(ToolError) as e:
+        commit(store, pv["preview_id"], actor="executor")
+    assert e.value.payload()["error"]["code"] == "check_failed"
+
+
 def test_a_category_form_that_matches_nothing_says_so(store):
     out = call(store, "set_sale_prices", {"name": "x", "audience": "vip", "starts_at": "2026-11-07T00:00",
                                           "ends_at": "2026-11-08T23:59", "category": "summer_outerwear",
