@@ -65,6 +65,8 @@ class OpenAICompatible:
             raise ModelError(f"{self.name}: {type(e).__name__}: {str(e)[:200]}") from e
         calls = []
         for c in msg.get("tool_calls") or []:
+            if not isinstance(c, dict) or not isinstance(c.get("function"), dict) or not isinstance(c["function"].get("name"), str):
+                raise ModelError(f"{self.name}: malformed tool call {str(c)[:200]}")
             raw = c["function"].get("arguments") or "{}"
             try:
                 args = json.loads(raw) if isinstance(raw, str) else raw

@@ -239,6 +239,9 @@ class SetSalePricesIn(BaseModel):
                 if stock < self.min_stock:
                     continue
             items.append(SaleItem(product_id=r["id"], percent_off=special.get(r["id"], self.percent_off)))
+        if not items:
+            raise ToolError("no_products", f"No product in {self.category} is left after exclude and min_stock.",
+                            "search_products")
         return items
 
 

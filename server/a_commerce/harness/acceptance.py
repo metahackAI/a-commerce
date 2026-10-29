@@ -76,7 +76,12 @@ def run_once() -> dict:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", type=int, default=1)
+    ap.add_argument("--allow-scripted", action="store_true", help="Run the rule-based stand-in (tests only; not a model run).")
     args = ap.parse_args(argv)
+    if operator_models(fresh_store())[0].name == "scripted" and not args.allow_scripted:
+        print("No model configured (WORKER_* or PLANNER_* in .env), so only the scripted stand-in could run. "
+              "That is not a model run. Set a model, or pass --allow-scripted to test the judge.")
+        return 2
     runs = []
     for i in range(args.runs):
         r = run_once()

@@ -11,7 +11,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 
 from ..db import Store
-from .base import REGISTRY, ToolError, make_preview, normalize, read_tool
+from .base import REGISTRY, ToolError, make_preview, normalize, prepare_tool
 from .operator import Audience, SaleItem, loose_overrides
 from .periods import PERIOD_HELP, Period
 
@@ -38,11 +38,11 @@ class PlanSaleIn(BaseModel):
     _overrides = field_validator("overrides", mode="before")(lambda cls, v: loose_overrides(v))
 
 
-@read_tool("plan_sale",
+@prepare_tool("plan_sale",
            "Prepare a whole sale in one call: sale prices for an audience over a period, the coupon that records it at "
            "checkout, and optionally a main-page banner. Returns previews and rule checks; nothing changes until a person approves.",
            PlanSaleIn, consumes=["tier"], produces=["preview_id[]"])
-def plan_sale(store: Store, args: PlanSaleIn) -> dict:
+def plan_sale(store: Store, args: PlanSaleIn, actor: str = "agent") -> dict:
     asked = {"tool": "plan_sale", "args": args.model_dump(mode="json", exclude_defaults=True)}
     if not (args.period or (args.starts_at and args.ends_at)):
         raise ToolError("no_period", "Give period (e.g. this_weekend) or both starts_at and ends_at.", "plan_sale")
@@ -62,7 +62,7 @@ def plan_sale(store: Store, args: PlanSaleIn) -> dict:
 
     def preview(tool: str, raw: dict) -> dict:
         t = REGISTRY[tool]
-        made.append(make_preview(store, t, normalize(store, t, raw), actor="agent", asked=asked))
+        made.append(make_preview(store, t, normalize(store, t, raw), actor=actor, asked=asked))
         return made[-1]
 
     try:

@@ -29,8 +29,18 @@ def _previews(store: Store, preview_ids: list[str]) -> list[dict]:
     return out
 
 
+def changeable(store: Store, preview_ids: list[str]) -> None:
+    """A change set holds open previews of the writes it knows how to apply, and nothing else."""
+    for p in _previews(store, preview_ids):
+        if p["tool"] not in APPLY_ORDER:
+            raise ToolError("not_a_change", f"{p['id']} is a {p['tool']} preview; a change set holds only "
+                                            f"{', '.join(APPLY_ORDER)} previews.", None)
+        if p["status"] != "open":
+            raise ToolError("preview_not_open", f"{p['id']} is {p['status']}; make a new preview.", None)
+
+
 def create(store: Store, title: str, request: str, preview_ids: list[str]) -> int:
-    _previews(store, preview_ids)  # validates
+    changeable(store, preview_ids)
     cs_id = int(store.new_id("cs").split("_")[1])
     now = store.now().isoformat(timespec="minutes")
     store.execute("INSERT INTO change_sets VALUES (?, ?, 'waiting_for_approval', 1, ?, ?, NULL, NULL, ?, ?)",
@@ -43,6 +53,7 @@ def revise(store: Store, cs_id: int, request: str, preview_ids: list[str]) -> in
     cs = _get(store, cs_id)
     if cs["status"] != "waiting_for_approval":
         raise ToolError("not_editable", f"Change set #{cs_id} is {cs['status']} and can no longer be edited.", None)
+    changeable(store, preview_ids)
     for old in json.loads(cs["preview_ids"]):
         if old not in preview_ids:
             store.execute("UPDATE previews SET status = 'discarded' WHERE id = ? AND status = 'open'", (old,))

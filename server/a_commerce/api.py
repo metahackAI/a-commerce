@@ -168,7 +168,7 @@ class PlaceOrder(BaseModel):
 @app.post("/orders")
 def post_order(body: PlaceOrder, x_shopper: str = Header(...)) -> dict:
     ctx = shopper(x_shopper)
-    return guard(place_order, store(), body.order_preview_id, ctx["member_id"], ctx)
+    return guard(place_order, store(), body.order_preview_id, ctx["member_id"] or f"guest:{ctx['guest_id']}", ctx)
 
 
 @app.post("/memories/{memory_id}/undo")

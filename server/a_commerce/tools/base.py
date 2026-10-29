@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import typing
 import json
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -50,7 +51,7 @@ class Plan:
 @dataclass
 class Tool:
     name: str
-    kind: str  # read | instant (small, undoable shopper actions) | write (preview, then approval)
+    kind: str  # read | instant (small, undoable shopper actions) | prepare (makes previews only) | write (preview, then approval)
     description: str
     input: type[BaseModel]
     consumes: list[str]
@@ -101,6 +102,14 @@ def instant_tool(name: str, description: str, input: type[BaseModel], consumes=(
     return wrap
 
 
+def prepare_tool(name: str, description: str, input: type[BaseModel], consumes=(), produces=(), scope="operator"):
+    """Runs several write previews at once. It changes nothing a shopper sees; a person approves the previews."""
+    def wrap(fn):
+        register(Tool(name, "prepare", description, input, list(consumes), list(produces), run=fn, scope=scope))
+        return fn
+    return wrap
+
+
 def write_tool(name: str, description: str, input: type[BaseModel], consumes=(), produces=(), scope="operator"):
     """Decorates a class with static `plan(store, args)` and `apply(store, args)`."""
     def wrap(cls):
@@ -120,10 +129,11 @@ def call(store: Store, name: str, args: dict | None = None, *, actor: str = "age
         return ToolError("unknown_tool", f"There is no tool named {name}.", "search_tools").payload()
     try:
         args = normalize(store, tool, args)
-        if tool.kind in ("read", "instant"):
+        if tool.kind in ("read", "instant", "prepare"):
             parsed = _parse(tool, args)
-            takes_context = "context" in inspect.signature(tool.run).parameters
-            result = tool.run(store, parsed, **({"context": context} if takes_context else {}))
+            takes = inspect.signature(tool.run).parameters
+            result = tool.run(store, parsed, **({"context": context} if "context" in takes else {}),
+                              **({"actor": actor} if "actor" in takes else {}))
             store.log(actor, name, {"args": args})
             return result
         preview_id = args.pop("preview_id", None)
@@ -164,7 +174,7 @@ def loose_json(value):
     for parse in (json.loads, ast.literal_eval):
         try:
             decoded = parse(value)
-        except (ValueError, SyntaxError):
+        except Exception:  # noqa: BLE001 - anything unparseable stays as the model sent it
             continue
         if isinstance(decoded, str):
             return value
@@ -180,7 +190,7 @@ def normalize(store: Store, tool: Tool, args: dict) -> dict:
     fields = tool.input.model_fields
     out = {}
     for key, value in args.items():
-        if key in fields and fields[key].annotation is not str:
+        if key in fields and not _is_text(fields[key].annotation):
             value = loose_json(value)
             if isinstance(value, list):
                 value = [loose_json(x) for x in value]
@@ -199,11 +209,20 @@ def normalize(store: Store, tool: Tool, args: dict) -> dict:
             out["period"] = out.pop(key)
             out.pop("ends_at" if key == "starts_at" else "starts_at", None)
     if "period" in out and "starts_at" in fields:
+        period = str(out.pop("period"))
         try:
-            out["starts_at"], out["ends_at"] = resolve_period(str(out.pop("period")), store.now())
+            out["starts_at"], out["ends_at"] = resolve_period(period, store.now())
         except ValueError:
-            raise ToolError("invalid_input", f"{tool.name}: period {out['period']!r} is not known. {PERIOD_HELP}", tool.name) from None
+            raise ToolError("invalid_input", f"{tool.name}: period {period!r} is not known. {PERIOD_HELP}", tool.name) from None
     return out
+
+
+def _is_text(annotation) -> bool:
+    """str and str | None fields keep what the model sent: a product query "2026" is text, not a number."""
+    if annotation is str:
+        return True
+    args = typing.get_args(annotation)
+    return bool(args) and all(a in (str, type(None)) for a in args)
 
 
 def make_preview(store: Store, tool: Tool, args: dict, *, actor: str, context: dict | None = None,

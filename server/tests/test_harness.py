@@ -100,7 +100,8 @@ def test_acceptance_judge_passes_with_the_scripted_stand_in(monkeypatch):
     for k in ("WORKER_BASE_URL", "PLANNER_BASE_URL"):
         monkeypatch.delenv(k, raising=False)
     from a_commerce.harness.acceptance import main
-    assert main([]) == 0
+    assert main([]) == 2  # without a model it refuses to report a pass
+    assert main(["--allow-scripted"]) == 0
 
 
 def test_a_model_that_times_out_fails_cleanly_and_hands_over(store):

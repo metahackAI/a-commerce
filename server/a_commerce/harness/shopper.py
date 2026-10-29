@@ -97,6 +97,9 @@ def run_shopper(store: Store, message: str, model: Model, context: dict, history
                     out = {"error": {"code": "unknown_tool", "message": f"No shopper tool {c.name}.", "next_tool": None}}
             except ToolError as e:
                 out = e.payload()
+            except Exception as e:  # noqa: BLE001 - one bad call must not end the shopper's request
+                out = {"error": {"code": "internal_error", "message": f"{c.name} failed ({type(e).__name__}). Check the arguments.",
+                                 "next_tool": c.name}}
             messages.append({"role": "tool", "tool_call_id": c.id, "content": compact(out)})
     step = {"type": "agent_step", "model": model.name, "tool_calls": tool_calls, "duration_ms": duration,
             "read_only": False, "text": text}
@@ -104,8 +107,13 @@ def run_shopper(store: Store, message: str, model: Model, context: dict, history
 
 
 def products_blocks(store: Store, context: dict, args: dict) -> list[dict]:
-    ids = args.get("product_ids", [])[:4]
+    ids = args.get("product_ids") if isinstance(args.get("product_ids"), list) else []
+    ids = ids[:4]
     view = args.get("view", "product_list")
+    if view not in VIEW_WHY:
+        raise ToolError("invalid_input", f"show_products: view must be one of {', '.join(VIEW_WHY)}.", "show_products")
+    if not ids:
+        raise ToolError("invalid_input", "show_products: give 2 to 4 product_ids from search_products.", "search_products")
     chips = {"type": "ui", "ui": "understood_chips", "schema": 1, "block_id": "chips",
              "data": {"chips": args.get("chips", [])}, "actions": [{"intent": "remove_chip", "label": "×", "by": "shopper"}]}
     if view == "compare_table":

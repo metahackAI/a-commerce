@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from .. import changesets, facade
 from ..db import Store
-from ..tools.base import REGISTRY, call, loose_json
+from ..tools.base import REGISTRY, ToolError, call, loose_json
 from .grounding import check_reply, summary
 from .models import Model, ModelError, Reply, ToolCallReq
 from .search import search
@@ -155,10 +155,15 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
         return {"ok": False, "error": "Proposed change set had no valid previews",
                 "events": [_step_event(step, "I couldn't build any previews for this.", read_only=True)],
                 "change_set_id": change_set_id}
-    if change_set_id is None:
-        change_set_id = changesets.create(store, proposal.get("title") or request[:60], request, ids)
-    else:
-        changesets.revise(store, change_set_id, request, ids)
+    try:
+        if change_set_id is None:
+            change_set_id = changesets.create(store, proposal.get("title") or request[:60], request, ids)
+        else:
+            changesets.revise(store, change_set_id, request, ids)
+    except ToolError as e:
+        return {"ok": False, "error": e.payload()["error"]["message"],
+                "events": [_step_event(step, "I couldn't put this together as a change set.", read_only=True)],
+                "change_set_id": change_set_id}
     view = changesets.view(store, change_set_id)
     said = proposal.get("reply") or text
     corrections = check_reply(said, view)
@@ -175,15 +180,21 @@ def _attempt(store: Store, request: str, model: Model, change_set_id: int | None
 
 def calls_in_text(text: str, names: set[str]) -> list[ToolCallReq]:
     """Some open models (Llama 3.x among them) write a tool call as JSON in the message instead of tool_calls."""
-    calls = []
-    for m in re.finditer(r"\{.*\}", text or "", re.S):
+    calls, text, decoder = [], text or "", json.JSONDecoder()
+    start = text.find("{")
+    while start != -1:
         try:
-            obj = json.loads(m.group(0))
+            obj, end = decoder.raw_decode(text, start)
         except ValueError:
+            start = text.find("{", start + 1)
             continue
-        name = obj.get("name") or obj.get("function")
-        args = obj.get("parameters") or obj.get("arguments") or {}
-        if name in names and isinstance(args, dict):
+        start = text.find("{", end)
+        if not isinstance(obj, dict):
+            continue
+        fn = obj["function"] if isinstance(obj.get("function"), dict) else obj
+        name = fn.get("name") if isinstance(fn.get("name"), str) else obj.get("function")
+        args = loose_json(fn.get("parameters") or fn.get("arguments") or {})
+        if isinstance(name, str) and name in names and isinstance(args, dict):
             calls.append(ToolCallReq(f"text_{len(calls)}", name, args))
     return calls
 
@@ -235,8 +246,8 @@ def _step_event(step: Step, text: str, *, read_only: bool) -> dict:
 
 
 def _is_open_preview(store: Store, preview_id: str) -> bool:
-    row = store.one("SELECT status FROM previews WHERE id = ?", (preview_id,))
-    return row is not None and row["status"] == "open"
+    row = store.one("SELECT status, tool FROM previews WHERE id = ?", (preview_id,))
+    return row is not None and row["status"] == "open" and row["tool"] in changesets.APPLY_ORDER
 
 
 def _preview_args(store: Store, cs_id: int) -> list[dict]:
