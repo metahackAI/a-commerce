@@ -55,12 +55,15 @@ def judge_v1(view: dict | None) -> list[tuple[str, bool]]:
 
 
 def code_commit() -> str | None:
-    """The commit the harness ran from, recorded with every result file."""
+    """The commit the harness ran from, recorded with every result file; "+dirty" when files were changed after it."""
     try:
-        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=Path(__file__).parent, capture_output=True, text=True, timeout=5)
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=Path(__file__).parent, capture_output=True, text=True, timeout=5)
+        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=Path(__file__).parent,
+                               capture_output=True, text=True, timeout=5)
     except (OSError, subprocess.SubprocessError):
         return None
-    return out.stdout.strip() or None
+    sha = head.stdout.strip()
+    return (sha + ("+dirty" if dirty.stdout.strip() else "")) if sha else None
 
 
 def run_once() -> dict:

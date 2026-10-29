@@ -195,7 +195,7 @@ def normalize(store: Store, tool: Tool, args: dict) -> dict:
         if key in fields and not _is_text(fields[key].annotation):
             value = loose_json(value)
             if isinstance(value, list):
-                value = [loose_json(x) for x in value]
+                value = [x for x in (loose_json(x) for x in value) if x is not None]
         if value is None or value == "" or (isinstance(value, str) and value.strip().lower() == "null"):
             continue
         out[key] = value

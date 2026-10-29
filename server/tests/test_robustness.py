@@ -95,6 +95,9 @@ def test_lists_sent_as_strings_are_still_lists(store):
     assert out["summary"][0].startswith("VIP weekend: 41 products"), out["summary"]
     assert "error" not in call(store, "plan_sale", {"audience": "vip", "category": "summer_outerwear", "percent_off": 15,
                                                      "period": "this_weekend", "exclude": "null"})
+    out = call(store, "plan_sale", {"audience": "vip", "category": "summer_outerwear", "percent_off": 15,
+                                    "period": "this_weekend", "exclude": ["null"]})
+    assert out["summary"][0].startswith("VIP weekend: 42 products"), out["summary"]
 
 
 def test_a_used_preview_cannot_go_into_a_new_change_set(store):
