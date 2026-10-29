@@ -1,6 +1,6 @@
 # Direction
 
-Status: draft for team approval, Oct 30. "Decided" holds only what the team's Oct 30 message and the organizers' prize answer say, with their sources. Everything else is proposed until the people named next to it approve it (see "Proposed"). Changes to "Decided" need the approval of the people the change affects, in the pull request.
+Status: draft for team approval, Oct 30. "Decided" holds only what the team's Oct 30 message and the organizers' prize answer say, with their sources. Everything else is proposed until the people named next to it approve it (see "Proposed").
 
 ## Decided
 
@@ -39,7 +39,7 @@ a-commerce, as it is in the stacked pull requests #2–#20 (main holds only docs
 - Agents call tools from the registry in `server/a_commerce/tools/base.py`. The HTTP API exposes them as `POST /tools/{name}`, which enabled a2api capabilities cannot call.
 - The tool-call layer repairs loose model input for every caller (`normalize`, called from `call()` in `tools/base.py`). Through a2api, strict validation would reject that input before the repair runs.
 - `server/pyproject.toml` pins `mcp>=1.10,<2` (from #14). It cannot share an environment with a2api's MCP extra.
-- The comparison harness (from #11) names a-commerce's own tool registry `"a2api"` (`harness/operator.py`, `harness/compare.py`, `"toolset": "a2api"` in `eval/results/*compare*.json`, and the "A2API vs screen-shaped API" row of `docs/progress.md` on #11–#20). No a2api library code ran in those results. `core/judged` renames the label to `acommerce`.
+- The comparison harness (from #11) names a-commerce's own tool registry `"a2api"` (`harness/operator.py`, `harness/compare.py`, `"toolset": "a2api"` in `eval/results/*compare*.json`, and the "A2API vs screen-shaped API" row of `docs/progress.md` on #11–#20). No a2api library code ran in those results. `core/judged` renames the label to `acommerce` in code and new results; the older result files keep `"toolset": "a2api"`, and its `eval/README.md` explains that.
 - Result files record the model name the client sends (`WORKER_MODEL`, `harness/models.py`), not what the server reports. The quantization is on record only if that configured name is the served name, which vLLM requires anyway.
 
 ## Proposed
@@ -69,19 +69,25 @@ Proposed by Donguk on Oct 30. Steps for coding agents are in [.claude/skills/jud
    **The stacked pull requests #2–#20** are handled once, as follows.
 
    - **Judged:** #2–#8, each against its parent (`parent...child`), and the single commits of #11 and #15 (evaluation plus tool changes), each against its parent (#10 and #14). These are the server, harness, screens, real-model fixes and evaluation that Decided 1 and 3 build on. #14 was judged too.
-   - **Not judged, closed:** #9, #10, #13 and #16–#19 add intents and screens beyond the demo (see Proposed 5). #12 and #20 update the README, the demo script, a full-demo browser test and the mobile layout around that closed work (#12 also touches the returns seed and change sets); chunk 4 redoes the README, demo and mobile work on `core/judged`. Also closed: #14 (REJECT).
+   - **Not judged, closed:** #9, #10, #13 and #16–#19 add intents and screens beyond the demo (see Proposed 5). #12 and #20 update the README, the demo script, a full-demo browser test and the mobile layout around that closed work (#12 also touches the returns seed and change sets); chunk 4 redoes the README, demo and mobile work on `core/judged`.
+   - **Judged and rejected, closed:** #14.
    - **Combined pull request:** branch `core/judged`, base `main`. It holds #2–#8, the commits of #11 and #15 if their verdicts allow it, and fix commits for every required change. A REJECT on #11 or #15 leaves that commit out; REVISE means its fixes go in as fix commits. A REJECT on one of #2–#8 ends the set just before it; #11 and #15 then go in only if they apply to the shorter set with no conflict in code (conflicts only in `docs/progress.md` or `README.md` are resolved by keeping the base text). The ~400-line rule does not apply to this pull request.
-   - **Final verdict:** one verdict on `core/judged`, base `origin/main`, head at its tip. It covers the cherry-picked commits, their conflict resolutions and the fixes. Its head SHA is the one the merger checks. The `core/judged` pull request pastes in full the verdicts on #2–#8, #11, #14 and #15 and the final verdict, since their own pull requests are closed.
+   - **Final verdict:** one verdict on `core/judged`, base `origin/main`, head at its tip. It covers the cherry-picked commits, their conflict resolutions and the fixes. Its head SHA is the one the merger checks. The `core/judged` pull request pastes in full the verdicts on #2–#8, #11, #14 and #15 and the final verdict, since their own pull requests are closed. The gate's pull request merges before `core/judged`.
    - **Tag first:** before any of #2–#20 is closed, Donguk creates and pushes the tag `prototype-v0` at the #20 tip (`6950b8f`), so the closed work stays retrievable. Closed work comes back only as new judged changes.
    - Until `core/judged` is merged, new code work may start from it. Its own pull request opens only after that base is merged, and it targets main.
 2. **Evidence.** For code, the server tests (`cd server && uv run pytest -q`); the judge runs them itself. Docs-only changes need no tests; say so. When agent behaviour changes, a run on Glimmer, or name the model that ran, with a results file that records the model name and quantization. If no model ran, write "not run on a real model".
 3. **Judge.** A fresh-context agent, not a fork that shares the author's context, follows `.claude/agents/judge.md` as it is on `origin/main`. If the author's branch changes that file, use a general agent given `git show origin/main:.claude/agents/judge.md`. The judge gets the refs and the evidence, not the author's reasons.
-   - **Criteria:** the judge reads the criteria and `judge.md` from `origin/main`. The only exception: before this file is on main, the pull request that adds it, the judgments of #2–#20 and the final verdict on `core/judged` read them from the `process/judge-gate` commit that the gate's own final APPROVE verdict names as HEAD. A verdict taken under any other `process/judge-gate` commit is redone. Verdicts taken under that commit stay valid after the gate is on main, as long as main's criteria files are unchanged from it. Every verdict names its criteria ref and SHA.
+   - **Criteria:** the judge reads the criteria and `judge.md` from `origin/main`. The only exceptions, before this file is on main:
+     - The pull request that adds this file is judged with the criteria at the head under review; only its last APPROVE counts.
+     - The final verdict on `core/judged` reads them from the `process/judge-gate` commit that the gate's last APPROVE names as HEAD. A final verdict taken under any other commit is redone. The verdicts on the individual stacked pull requests are review input for the fix commits and may predate that commit, because the final verdict covers the whole combined change.
+     - Verdicts taken under the exception commit stay valid after the gate is on main, as long as main's criteria files have the same content.
+
+     Every verdict names its criteria ref and SHA.
 4. **Verdict per commit.** Each verdict names the base, head and criteria SHAs. Any push after APPROVE needs a new verdict. The pull request pastes every verdict block in full, including REVISE and REJECT.
 5. **Pull request after APPROVE only.** A person merges after checking these things:
    - The pull request's head SHA is the approved one.
    - The criteria ref and SHA are `origin/main`, or the exception commit in step 3.
-   - `docs/direction.md`, `docs/design.md`, `AGENTS.md` and `.claude/agents/judge.md` on main are unchanged since that criteria SHA.
+   - `docs/direction.md`, `docs/design.md`, `AGENTS.md` and `.claude/agents/judge.md` on main have the same content as at the criteria SHA (`git diff <criteria SHA> origin/main -- <those files>` prints nothing). For the pull request that adds this file, check instead that `docs/design.md` and `AGENTS.md` on main are unchanged since the verdict's base.
    - The verdict's base is still `origin/main`, or main has moved only in files the change does not touch.
    - Every `Approved by` line the change adds matches approvals given in the pull request (see "Proposed").
 
