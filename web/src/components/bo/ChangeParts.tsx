@@ -12,7 +12,7 @@ import {Token} from '@astryxdesign/core/Token';
 import {Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow} from '@astryxdesign/core/Table';
 
 import {useAiTarget} from '@/ai/useAiTarget';
-import {value, words} from '@/app/bo/_lib/format';
+import {ruleName, value, words} from '@/app/bo/_lib/format';
 import {entityHref, withParams} from '@/app/bo/_lib/links';
 import type {Change, Check} from '@/app/bo/_lib/types';
 
@@ -27,7 +27,7 @@ export type ItemCheck = Check & {subject?: string};
 function CheckRow({check, ids, blockId, intents}: {check: ItemCheck; ids: Record<string, string>; blockId?: string; intents?: string[]}) {
   const t = useAiTarget({
     kind: 'check_row',
-    label: `${words(check.rule)} · ${check.passed ? 'passed' : 'failed'}${check.subject ? ` · ${check.subject}` : ''}${check.detail ? ` · ${check.detail}` : ''}`,
+    label: `${ruleName(check.rule)} · ${check.passed ? 'passed' : 'failed'}${check.subject ? ` · ${check.subject}` : ''}${check.detail ? ` · ${check.detail}` : ''}`,
     ids: {rule: check.rule, ...ids},
     term: 'acom:Check',
     blockId,
@@ -39,7 +39,7 @@ function CheckRow({check, ids, blockId, intents}: {check: ItemCheck; ids: Record
         <VStack gap={0.5}>
           <HStack gap={2} vAlign="center" wrap="wrap">
             <Link href={withParams('/bo/policies', {key: check.rule})} color="primary">
-              {words(check.rule)}
+              {ruleName(check.rule)}
             </Link>
             <Text type="supporting" color="secondary">
               {check.rule}
@@ -58,7 +58,7 @@ function CheckRow({check, ids, blockId, intents}: {check: ItemCheck; ids: Record
           <SuggestedIntents intents={intents} target={t} />
         </VStack>
       </StackItem>
-      <AskButton target={t} label={words(check.rule)} />
+      <AskButton target={t} label={ruleName(check.rule)} />
     </HStack>
   );
 }
@@ -67,7 +67,7 @@ function CheckRow({check, ids, blockId, intents}: {check: ItemCheck; ids: Record
 function PassedGroup({rule, checks, ids, blockId}: {rule: string; checks: ItemCheck[]; ids: Record<string, string>; blockId?: string}) {
   const t = useAiTarget({
     kind: 'check_row',
-    label: `${words(rule)} · ${checks.length} of ${checks.length} passed`,
+    label: `${ruleName(rule)} · ${checks.length} of ${checks.length} passed`,
     ids: {rule, ...ids},
     term: 'acom:Check',
     blockId,
@@ -80,7 +80,7 @@ function PassedGroup({rule, checks, ids, blockId}: {rule: string; checks: ItemCh
         <VStack gap={0.5}>
           <HStack gap={2} vAlign="center" wrap="wrap">
             <Link href={withParams('/bo/policies', {key: rule})} color="primary">
-              {words(rule)}
+              {ruleName(rule)}
             </Link>
             <Text type="supporting" color="secondary">
               {`${rule} · ${checks.length} of ${checks.length} passed`}
@@ -98,7 +98,7 @@ function PassedGroup({rule, checks, ids, blockId}: {rule: string; checks: ItemCh
           ) : null}
         </VStack>
       </StackItem>
-      <AskButton target={t} label={words(rule)} />
+      <AskButton target={t} label={ruleName(rule)} />
     </HStack>
   );
 }
@@ -173,10 +173,17 @@ function withCurrency(side: unknown, currency: string | undefined): unknown {
   return o;
 }
 
+/** A side without the id the "What" column already shows. */
+function withoutSubject(side: unknown, subject: string): unknown {
+  if (!side || typeof side !== 'object' || Array.isArray(side)) return side;
+  return Object.fromEntries(Object.entries(side as Record<string, unknown>).filter(([k, v]) => !(k.endsWith('_id') && v === subject)));
+}
+
 /** Before and after as text, without the fields both sides share. */
 export function beforeAfter(c: Change, currency?: string): {from: string; to: string} {
-  const from = withCurrency(c.from, currency);
-  const to = withCurrency(c.to, currency);
+  const subject = changeSubject(c);
+  const from = withoutSubject(withCurrency(c.from, currency), subject);
+  const to = withoutSubject(withCurrency(c.to, currency), subject);
   if (from && to && typeof from === 'object' && typeof to === 'object' && !Array.isArray(from) && !Array.isArray(to)) {
     const f = {...(from as Record<string, unknown>)};
     const t = {...(to as Record<string, unknown>)};

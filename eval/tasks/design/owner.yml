@@ -21,8 +21,6 @@
       - "two are still working: the over-$200 returns review (task_returns_1106) and the size chart check (task_size_charts)"
       - "two finished this morning: below-cost prices raised to the floor (cs_1040, undo until Nov 7 23:59) and the Fall layers banner (cs_1039, live since 10:00)"
     must_not_call: []
-  gaps:
-    - "data: cs_1041 says 3 sizes, 240 units but has no items, and there is no purchase order tool to put them in."
   notes: >
     The operator home answers this without a model. The task checks that the agent ranks what needs
     a person first instead of listing everything.
@@ -45,8 +43,6 @@
       - "08:31 the watcher's change set raised 4 products to the price floor (9 set_price calls, verified 08:31:30); it was made by the watcher (sys_watcher) and no person approved it"
       - "09:35 adm_sj approved the home banner swap to Fall layers; scheduled and verified 09:35–09:36"
     must_not_call: []
-  gaps:
-    - "data: action log rows carry change_set_id = null, so the log cannot be joined to its change set; the agent has to match by time."
 
 - id: b3-why-sales-dropped
   job: owner

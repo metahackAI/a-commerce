@@ -55,6 +55,11 @@ thresholds:
         - { field: new_product, op: eq, value: true }
     requires: human_approval
     approver_role: catalog_admin
+  reorder_spend:
+    applies_to: [create_reorder]
+    when: { field: reorder_cost, op: gt, value: { value: 1000.00, currency: USD } }   # 원가 합계 $1,000.00 초과 재주문은 사람 승인
+    requires: human_approval
+    approver_role: merchandiser
   bulk_catalog_change:
     applies_to: [import_products, batch_import]
     when: always

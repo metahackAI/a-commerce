@@ -46,6 +46,12 @@ export interface ProductViewProps {
   initialEdit?: EditorTab | null;
 }
 
+/** A brand's or category's name from the lists the page loaded, or the id when it is not there. */
+function nameIn(list: {id: string; name: string}[] | undefined, id: string | null | undefined): string {
+  if (!id) return '—';
+  return list?.find(x => x.id === id)?.name ?? id;
+}
+
 export function ProductView(p: ProductViewProps) {
   const session = useBoSession();
   const canWrite = session?.scopes.includes('tools:write:catalog') ?? false;
@@ -59,6 +65,7 @@ export function ProductView(p: ProductViewProps) {
 
   // Inventory rows carry stock; the product's variant list carries size and color. Shown together.
   const options = new Map<string, Variant>((product?.has_variant ?? p.group?.has_variant ?? []).map(v => [v.variant_id, v]));
+  const reorders = p.inventory?.reorders ?? [];
   const variants: InvVariant[] = p.inventory
     ? p.inventory.variants.map(v => ({...options.get(v.variant_id), ...v}))
     : [...options.values()];
@@ -86,8 +93,8 @@ export function ProductView(p: ProductViewProps) {
       }
       panel={
         <MetadataList title="Catalog">
-          <MetadataListItem label="Brand">{product?.brand_id ?? p.group?.brand_id ?? '—'}</MetadataListItem>
-          <MetadataListItem label="Category">{product?.category_id ?? p.group?.category_id ?? '—'}</MetadataListItem>
+          <MetadataListItem label="Brand">{nameIn(p.brands, product?.brand_id ?? p.group?.brand_id)}</MetadataListItem>
+          <MetadataListItem label="Category">{nameIn(p.categories, product?.category_id ?? p.group?.category_id)}</MetadataListItem>
           <MetadataListItem label="Options">{(product?.varies_by ?? p.group?.varies_by ?? []).map(words).join(', ') || '—'}</MetadataListItem>
           <MetadataListItem label="Approval">{words(p.group?.approval_status ?? product?.approval_status)}</MetadataListItem>
           <MetadataListItem label="Pending changes">{p.group?.pending_changes?.length ? value(p.group.pending_changes) : 'None'}</MetadataListItem>
@@ -161,6 +168,22 @@ export function ProductView(p: ProductViewProps) {
                 {count(product.inventory_level)}
               </Text>
             </TargetFact>
+            {reorders.length > 0 ? (
+              <TargetFact
+                label="On order"
+                target={{
+                  kind: 'reorder',
+                  label: `${name} on order: ${reorders.map(r => `${count(r.total_units)} arriving ${dateTime(r.expected_arrival_until)}`).join('; ')}`,
+                  ids: {reorder_id: reorders[0].id, ...ids},
+                  term: 'acom:Reorder',
+                }}>
+                <VStack gap={0}>
+                  {reorders.map(r => (
+                    <Text key={r.id} hasTabularNumbers>{`${count(r.total_units)} arriving by ${dateTime(r.expected_arrival_until)}`}</Text>
+                  ))}
+                </VStack>
+              </TargetFact>
+            ) : null}
           </MetadataList>
         </PageSection>
       ) : null}
@@ -194,14 +217,15 @@ export function ProductView(p: ProductViewProps) {
             },
             {header: 'Stock', cell: v => <Figure>{count(v.inventory_level)}</Figure>},
             {header: 'Safety stock', cell: v => <Figure muted>{count(v['acom:safety_stock'])}</Figure>},
+            ...(reorders.length > 0 ? [{header: 'On order', cell: (v: InvVariant) => <Figure muted={!v.on_order}>{count(v.on_order ?? 0)}</Figure>}] : []),
             {header: 'Availability', cell: v => <StateToken state={v.availability} />},
             {
               header: 'Edit',
               cell: v => (
-                <HStack gap={1}>
+                <VStack gap={1} hAlign="start">
                   <Button label="Price" size="sm" onClick={() => setEditing({variant: v, mode: 'price'})} />
                   <Button label="Stock" size="sm" onClick={() => setEditing({variant: v, mode: 'stock'})} />
-                </HStack>
+                </VStack>
               ),
             },
           ]}

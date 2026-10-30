@@ -28,6 +28,7 @@ pub mod read;
 use acom_contract::{DynOp, ErrorClass, ErrorCode, Registry, ToolError};
 use acom_core::enums::ActionStatus;
 use acom_store::{Cx, TxCx};
+use rust_decimal::Decimal;
 use serde_json::{Value, json};
 
 pub use change_set::{ItemRef, NewChangeSet};
@@ -84,6 +85,30 @@ pub(crate) fn irreversible(cx: &Cx, tool: &str) -> bool {
         .and_then(|p| p.pointer("/change_set/irreversible"))
         .and_then(Value::as_array)
         .is_some_and(|list| list.iter().any(|t| t.as_str() == Some(tool)))
+}
+
+/// Whether a fresh preview's changes say the same as the stored ones. Numbers are equal by value,
+/// so a price stored as `26.00` and read back from a seed file as `26.0` is the same price; with
+/// `arbitrary_precision`, `serde_json` would compare their text.
+pub(crate) fn same_changes(a: &Value, b: &Value) -> bool {
+    match (a, b) {
+        (Value::Number(x), Value::Number(y)) => {
+            x == y
+                || matches!(
+                    (x.to_string().parse::<Decimal>(), y.to_string().parse::<Decimal>()),
+                    (Ok(x), Ok(y)) if x == y
+                )
+        }
+        (Value::Array(x), Value::Array(y)) => {
+            x.len() == y.len() && x.iter().zip(y).all(|(x, y)| same_changes(x, y))
+        }
+        (Value::Object(x), Value::Object(y)) => {
+            x.len() == y.len()
+                && x.iter()
+                    .all(|(k, v)| y.get(k).is_some_and(|w| same_changes(v, w)))
+        }
+        _ => a == b,
+    }
 }
 
 /// The record a completed write is about: the entity of its first change and the id it produced.
@@ -154,4 +179,26 @@ pub async fn log_action(tx: &mut TxCx, e: LogEntry<'_>) -> Result<(), ToolError>
     .await
     .map_err(db_err)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn changes_compare_numbers_by_value() {
+        let stored: Value =
+            serde_json::from_str(r#"[{"to": {"price": 26.00, "units": 240}}]"#).unwrap();
+        let seeded: Value =
+            serde_json::from_str(r#"[{"to": {"price": 26.0, "units": 240}}]"#).unwrap();
+        let raised: Value =
+            serde_json::from_str(r#"[{"to": {"price": 26.5, "units": 240}}]"#).unwrap();
+        let more: Value =
+            serde_json::from_str(r#"[{"to": {"price": 26.00, "units": 240, "note": null}}]"#)
+                .unwrap();
+        assert_ne!(stored, seeded, "serde_json compares the text");
+        assert!(same_changes(&stored, &seeded));
+        assert!(!same_changes(&stored, &raised));
+        assert!(!same_changes(&stored, &more));
+    }
 }

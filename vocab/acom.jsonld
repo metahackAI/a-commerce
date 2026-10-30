@@ -243,6 +243,15 @@
       "rdfs:comment": "Money paid back to a shopper for a claim. Used as additionalType on a MoneyTransfer."
     },
     {
+      "@id": "acom:Reorder",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Reorder",
+      "rdfs:subClassOf": {
+        "@id": "schema:Order"
+      },
+      "rdfs:comment": "stock the store orders from its supplier for one product; id prefix ro_. API: reorder."
+    },
+    {
       "@id": "acom:ReviewVote",
       "@type": "rdfs:Class",
       "rdfs:label": "ReviewVote",

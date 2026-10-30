@@ -1898,6 +1898,182 @@
   },
   {
     "schema": "catalog",
+    "table": "reorder",
+    "kind": "table",
+    "term": "schema:Order/acom:Reorder",
+    "description": "stock the store orders from its supplier for one product; id prefix ro_. API: reorder.",
+    "id_prefix": "ro",
+    "api_name": "reorder",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "reorder id (ro_ prefix, API reorder_id)."
+      },
+      {
+        "name": "product_group_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:orderedItem",
+        "description": "the product the reorder is for (prd_ id, API product_id); its items name the variants.",
+        "references": "catalog.product_group"
+      },
+      {
+        "name": "order_status",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:orderStatus",
+        "description": "processing once ordered, in_transit when the supplier sends it, delivered when received, cancelled when called off before that. values: order_status",
+        "values": [
+          "payment_due",
+          "processing",
+          "in_transit",
+          "delivered",
+          "returned",
+          "cancelled",
+          "problem"
+        ],
+        "values_list": "order_status"
+      },
+      {
+        "name": "order_date",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:orderDate",
+        "description": "when the store placed the reorder (store clock)."
+      },
+      {
+        "name": "expected_arrival_until",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:expectedArrivalUntil",
+        "description": "the end of the day the stock is expected (order date + reorder.lead_time_days)."
+      },
+      {
+        "name": "total_payment_due_value",
+        "type": "numeric(12,2)",
+        "nullable": false,
+        "term": "schema:totalPaymentDue",
+        "description": "what the store owes the supplier: the sum of each item's quantity times its unit cost."
+      },
+      {
+        "name": "total_payment_due_currency",
+        "type": "char(3)",
+        "nullable": false,
+        "term": "schema:priceCurrency",
+        "description": "currency of total_payment_due_value (ISO 4217)."
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:description",
+        "description": "a note for the supplier or why it was ordered; NULL when none."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was written."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
+    "table": "reorder_item",
+    "kind": "table",
+    "term": "schema:OrderItem",
+    "description": "one variant of a reorder and how many of it. API: reorder_item.",
+    "api_name": "reorder_item",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "reorder_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "the reorder this item belongs to (ro_ id).",
+        "references": "catalog.reorder"
+      },
+      {
+        "name": "position",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "the item's place in the reorder, from 1."
+      },
+      {
+        "name": "product_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:orderedItem",
+        "description": "the variant ordered (var_ id, API variant_id).",
+        "references": "catalog.product"
+      },
+      {
+        "name": "order_quantity",
+        "type": "integer",
+        "nullable": false,
+        "term": "schema:orderQuantity",
+        "description": "how many units of the variant are ordered."
+      },
+      {
+        "name": "price",
+        "type": "numeric(12,2)",
+        "nullable": false,
+        "term": "schema:price",
+        "description": "what the store pays the supplier for one unit: the variant's cost when it was ordered."
+      },
+      {
+        "name": "price_currency",
+        "type": "char(3)",
+        "nullable": false,
+        "term": "schema:priceCurrency",
+        "description": "currency of price (ISO 4217)."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was written."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
     "table": "review",
     "kind": "table",
     "term": "schema:Review",

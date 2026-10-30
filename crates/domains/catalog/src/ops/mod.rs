@@ -11,6 +11,7 @@ pub mod moderate;
 pub mod offer;
 pub mod product;
 pub mod product_group;
+pub mod reorder;
 pub mod review;
 pub mod safety;
 pub mod schedule;

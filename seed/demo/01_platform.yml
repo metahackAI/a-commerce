@@ -160,13 +160,14 @@ tables:
       id: cs_1041
       number: 1041
       title: "Reorder linen shirt: 3 sizes, 240 units"
-      change_set_state: drafting
+      change_set_state: waiting_for_approval
       request_text: [Linen shirt sells out in about 4 days. Draft a reorder for the sizes that will run out.]
       interpretation: [{slot: products, text: "Linen shirt, White, S M L", value: {product_id: prd_linen_shirt, sizes: [S, M, L]}}, {slot: other, text: "240 units: S 70, M 90, L 80", value: {quantities: {S: 70, M: 90, L: 80}}}]
       conversation_id: conv_linen_reorder
       created_by: sys_watcher
       created_at: "2026-11-06T09:12:00-05:00"
       agent_name: muse-glimmer-30b
+      submitted_at: "2026-11-06T09:14:00-05:00"
       approved_by: null
       undo_until: null
   platform.preview:
@@ -373,6 +374,25 @@ tables:
       preview_state: committed
       committed_at: "2026-11-06T08:31:19-05:00"
       result: {ok: true, id: off_hiking_socks_l_grey, undo: {by: person, target: cs_1040, until: "2026-11-07T23:59:00-05:00"}}
+    - tenant_id: store_northwind
+      id: pv_linen_reorder
+      operation: catalog.reorder.create
+      instrument: create_reorder
+      input: {"lines": [{"variant_id": "var_linen_shirt_s_white", "order_quantity": 70}, {"variant_id": "var_linen_shirt_m_white", "order_quantity": 90}, {"variant_id": "var_linen_shirt_l_white", "order_quantity": 80}], "product_id": "prd_linen_shirt", "description": "Sells out in about 4 days at the current rate: S, M and L run out first."}
+      input_hash: "sha256:1d6079fe6a5d509de7ffab312e17946f"
+      plan: {"name": "Linen shirt", "lines": [{"size": "S", "color": "White", "unit_cost": {"value": 26.0, "currency": "USD"}, "variant_id": "var_linen_shirt_s_white", "order_quantity": 70}, {"size": "M", "color": "White", "unit_cost": {"value": 26.0, "currency": "USD"}, "variant_id": "var_linen_shirt_m_white", "order_quantity": 90}, {"size": "L", "color": "White", "unit_cost": {"value": 26.0, "currency": "USD"}, "variant_id": "var_linen_shirt_l_white", "order_quantity": 80}], "total": {"value": 6240.0, "currency": "USD"}, "product_id": "prd_linen_shirt", "description": "Sells out in about 4 days at the current rate: S, M and L run out first.", "expected_arrival_until": "2026-11-14T04:59:00Z"}
+      changes: [{"id": null, "op": "create", "to": {"name": "Linen shirt", "product_id": "prd_linen_shirt", "total_units": 240, "total_payment_due": {"value": 6240.0, "currency": "USD"}, "expected_arrival_until": "2026-11-13T23:59:00-05:00"}, "note": "Sells out in about 4 days at the current rate: S, M and L run out first.", "entity": "reorder"}, {"id": null, "op": "create", "to": {"size": "S", "color": "White", "price": 26.0, "variant_id": "var_linen_shirt_s_white", "order_quantity": 70, "price_currency": "USD"}, "entity": "reorder_item"}, {"id": null, "op": "create", "to": {"size": "M", "color": "White", "price": 26.0, "variant_id": "var_linen_shirt_m_white", "order_quantity": 90, "price_currency": "USD"}, "entity": "reorder_item"}, {"id": null, "op": "create", "to": {"size": "L", "color": "White", "price": 26.0, "variant_id": "var_linen_shirt_l_white", "order_quantity": 80, "price_currency": "USD"}, "entity": "reorder_item"}]
+      checks: [{"rule": "reorder.max_units_per_line", "detail": "Every line is at most 500 units", "passed": true, "fix_tool": null}, {"rule": "reorder.variant_orderable", "detail": "3 sizes can be ordered", "passed": true, "fix_tool": null}]
+      needs_approval: true
+      approval_reason: "Reorder cost over $1000.00"
+      basis: [{"id": "prd_linen_shirt", "entity": "catalog.product_group", "version": 1}]
+      policy_version: 7752352e4845
+      actor_kind: system
+      agent_id: sys_watcher
+      agent_name: muse-glimmer-30b
+      request_id: req_linen_reorder_01
+      change_set_id: cs_1041
+      preview_state: open
   platform.change_set_item:
     - {tenant_id: store_northwind, change_set_id: cs_1039, position: 1, preview_id: pv_fall_layers, depends_on: [], result_id: dsp_fall_layers, verification: {matched: true, checked: 1, mismatches: []}}
     - {tenant_id: store_northwind, change_set_id: cs_1040, position: 1, preview_id: pv_floor_breton_tee_xs_navy_stripe, depends_on: [], result_id: off_breton_tee_xs_navy_stripe, verification: {matched: true, checked: 1, mismatches: []}}
@@ -384,6 +404,7 @@ tables:
     - {tenant_id: store_northwind, change_set_id: cs_1040, position: 7, preview_id: pv_floor_ribbed_beanie_charcoal, depends_on: [], result_id: off_ribbed_beanie_charcoal, verification: {matched: true, checked: 1, mismatches: []}}
     - {tenant_id: store_northwind, change_set_id: cs_1040, position: 8, preview_id: pv_floor_hiking_socks_m_grey, depends_on: [], result_id: off_hiking_socks_m_grey, verification: {matched: true, checked: 1, mismatches: []}}
     - {tenant_id: store_northwind, change_set_id: cs_1040, position: 9, preview_id: pv_floor_hiking_socks_l_grey, depends_on: [], result_id: off_hiking_socks_l_grey, verification: {matched: true, checked: 1, mismatches: []}}
+    - {tenant_id: store_northwind, change_set_id: cs_1041, position: 1, preview_id: pv_linen_reorder, depends_on: [], result_id: null, verification: null}
   platform.change_set_event:
     - tenant_id: store_northwind
       change_set_id: cs_1039
@@ -504,6 +525,34 @@ tables:
       to_state: drafting
       start_time: "2026-11-06T09:12:00-05:00"
       end_time: "2026-11-06T09:12:00-05:00"
+      change_set_version: 1
+    - tenant_id: store_northwind
+      change_set_id: cs_1041
+      position: 2
+      action_type: AddAction
+      action_status: completed
+      agent_id: sys_watcher
+      agent_name: muse-glimmer-30b
+      instrument: AddAction
+      from_state: drafting
+      to_state: drafting
+      result: {position: 1, preview_id: pv_linen_reorder}
+      start_time: "2026-11-06T09:13:00-05:00"
+      end_time: "2026-11-06T09:13:00-05:00"
+      request_id: req_linen_reorder_01
+      change_set_version: 1
+    - tenant_id: store_northwind
+      change_set_id: cs_1041
+      position: 3
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_watcher
+      agent_name: muse-glimmer-30b
+      instrument: SendAction
+      from_state: drafting
+      to_state: waiting_for_approval
+      start_time: "2026-11-06T09:14:00-05:00"
+      end_time: "2026-11-06T09:14:00-05:00"
       change_set_version: 1
   platform.action_log:
     - tenant_id: store_northwind

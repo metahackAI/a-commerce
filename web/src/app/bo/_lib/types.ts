@@ -341,7 +341,10 @@ export interface Product {
 export interface Inventory {
   product_id: string;
   inventory_level: number;
-  variants: (Variant & {'acom:safety_stock'?: number; 'acom:managed'?: boolean})[];
+  /** `on_order`: units in reorders not received yet; not sellable until they are. */
+  variants: (Variant & {'acom:safety_stock'?: number; 'acom:managed'?: boolean; on_order?: number})[];
+  /** Reorders not received yet, soonest first. */
+  reorders?: {id: string; order_status: string; total_units: number; expected_arrival_until: string}[];
 }
 
 /** `get_price_breakdown`. */

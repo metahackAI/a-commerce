@@ -138,23 +138,37 @@ async fn event(
     )
     .await?;
     if matches!(to, ChangeSetState::Live | ChangeSetState::Rejected) {
-        close_tasks(tx, cs).await?;
+        close_tasks(tx, cs, to).await?;
     }
     Ok(())
 }
 
-/// A task is done once its change set is live or rejected (docs/api/platform.md#task).
-async fn close_tasks(tx: &mut TxCx, cs: &str) -> Result<(), ToolError> {
+/// A task is done once its change set is live or rejected (docs/api/platform.md#task); its
+/// summary then says how the set ended instead of what was being drafted.
+async fn close_tasks(tx: &mut TxCx, cs: &str, to: ChangeSetState) -> Result<(), ToolError> {
     let now = tx.clock.now();
+    let (number, title): (i32, String) = sqlx::query_as(
+        "SELECT number, title FROM platform.change_set WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(cs)
+    .fetch_one(&mut *tx.tx)
+    .await
+    .map_err(db_err)?;
+    let summary = match to {
+        ChangeSetState::Live => format!("#{number} ran: {title}"),
+        _ => format!("#{number} was rejected: {title}"),
+    };
     let closed: Vec<String> = sqlx::query_scalar(
         "UPDATE platform.task SET task_state = 'done', end_time = $3, updated_at = $3,
-           version = version + 1
+           summary = $4, version = version + 1
          WHERE tenant_id = $1 AND change_set_id = $2 AND task_state IN ('needs_you', 'working')
          RETURNING id",
     )
     .bind(tx.tenant.as_str())
     .bind(cs)
     .bind(now)
+    .bind(&summary)
     .fetch_all(&mut *tx.tx)
     .await
     .map_err(db_err)?;
@@ -995,7 +1009,7 @@ pub async fn approve(
             let again = op(registry, &item.instrument)?
                 .preview(&runner, item.input.clone())
                 .await?;
-            if json!(again.inner.changes) != item.changes {
+            if !crate::same_changes(&json!(again.inner.changes), &item.changes) {
                 return back_to_drafting(
                     cx,
                     cs,

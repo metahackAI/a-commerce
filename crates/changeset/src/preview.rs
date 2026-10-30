@@ -317,7 +317,7 @@ pub(crate) async fn still_right(
     }
     let op = op(registry, &p.instrument)?;
     let again = op.preview(cx, p.input.clone()).await?;
-    if json!(again.inner.changes) != p.changes {
+    if !crate::same_changes(&json!(again.inner.changes), &p.changes) {
         return Err(ToolError::new(
             ErrorCode::ESTIMATE_CHANGED,
             "The store changed since this preview. Preview the change again to see the new result.",
