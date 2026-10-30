@@ -21,43 +21,51 @@ A-Commerce의 웹은 **화면 하나하나가 AI와 함께 움직이는 화면**
 
 ## 2. 구조
 
+`✓`는 지금 있는 파일, 나머지는 M4에서 추가합니다.
+
 ```
 web/
-├── app/                              # Next.js App Router
-│   ├── (storefront)/                 # /  쇼퍼
-│   │   ├── page.tsx                  # 대화 + 캔버스 (F1, F2, F6)
-│   │   ├── products/[productId]/     # 상품 페이지 (JSON-LD, fit_check 진입)
-│   │   ├── cart/  orders/  orders/[orderId]/
-│   │   └── layout.tsx                # 헤더(등급 표시, 장바구니), AiProvider(surface="fo")
-│   ├── bo/                           # 운영자
-│   │   ├── page.tsx                  # 홈: task_list + 대화 (B5)
-│   │   ├── change-sets/[changeSetId]/  # change_set 블록 단독 (B1)
-│   │   ├── returns/  insights/  products/drafts/
-│   │   └── layout.tsx                # 사이드바, AiProvider(surface="bo")
-│   └── layout.tsx
-├── src/
-│   ├── contract/                     # 생성물: tools.ts, blocks.ts, enums.ts, errors.ts (수정 금지)
-│   ├── ai/                           # AI 층 (§3)
-│   │   ├── AiProvider.tsx            # 대화, 턴 보내기, 요소 등록부, 화면 명령 처리
-│   │   ├── useAiTarget.ts            # 요소 등록 훅
-│   │   ├── AskAbout.tsx              # "이것에 대해 묻기" 진입점
-│   │   ├── SuggestedIntents.tsx      # 요소별 추천 말
-│   │   ├── NaturalInput.tsx          # 자연어를 받는 입력 칸
-│   │   ├── stream.ts                 # SSE 클라이언트(이어 받기)
-│   │   ├── commands.ts               # ui.command 실행(강조·스크롤·열기)
-│   │   └── page-tools.ts             # 브라우저 에이전트용 페이지 툴 등록(선택, §3.5)
-│   ├── blocks/                       # ui 이름 하나 = 컴포넌트 하나 + registry.ts (Astryx 부품으로 구성)
-│   ├── components/                   # Money, Price, Chip, CheckRow, ChangeRow, PersonButton, StepTrail ... (Astryx 부품 + useAiTarget)
-│   ├── theme.css                     # Astryx theme-neutral 위의 우리 CSS 변수 (모양은 여기서만 바꿈)
-│   ├── lib/gateway.ts                # fetch(쿠키 세션, CSRF, Idempotency-Key, 에러 → ToolError)
-│   └── jsonld/                       # 상품·제안의 schema.org JSON-LD
-├── fixtures/                         # 블록 픽스처 (scenarios.md 숫자)
-└── tests/                            # 컴포넌트 테스트
+├── AGENTS.md                         ✓ Astryx가 설치한 코딩 에이전트 안내(`astryx init`)
+├── next.config.ts                    ✓ standalone 출력(컨테이너: infra/docker/web.Dockerfile)
+└── src/
+    ├── app/                          # Next.js App Router
+    │   ├── layout.tsx                ✓ Astryx CSS(reset → components), Providers
+    │   ├── providers.tsx             ✓ Astryx Theme + LinkProvider(next/link)
+    │   ├── healthz/route.ts          ✓ 컨테이너·Kubernetes 헬스 체크
+    │   ├── (storefront)/             # /  쇼퍼
+    │   │   ├── layout.tsx            ✓ AppShell + TopNav, AiProvider(surface="fo")
+    │   │   ├── page.tsx              ✓ Workspace (F1, F2, F6)
+    │   │   └── products/[productId]/  cart/  orders/   (상품 페이지는 JSON-LD 포함)
+    │   └── bo/                       # 운영자
+    │       ├── layout.tsx            ✓ AppShell + SideNav, AiProvider(surface="bo")
+    │       ├── page.tsx              ✓ Workspace (홈: task_list + 대화, B5)
+    │       └── change-sets/[changeSetId]/  returns/  insights/  products/drafts/
+    ├── astryx-themes.ts              ✓ 생성물(`astryx theme add neutral`), 수정 금지
+    ├── theme/                        ✓ 우리 테마를 만들 때의 출발점(theme.template.ts)과 방법
+    ├── ai/                           # AI 층 (§3)
+    │   ├── AiProvider.tsx            ✓ 대화 상태, 턴 보내기, 고른 요소, 요소 등록부, ui.command
+    │   ├── useAiTarget.ts            ✓ 요소 등록(ref, data-acom-*, ask)
+    │   ├── stream.ts                 ✓ SSE 클라이언트(조각난 이벤트 처리)
+    │   ├── types.ts                  ✓ 채팅 계약 타입(M4부터 contract/에서 생성)
+    │   └── AskAbout.tsx  SuggestedIntents.tsx  NaturalInput.tsx  page-tools.ts
+    ├── components/
+    │   ├── workspace/Workspace.tsx   ✓ 대화 + 캔버스 (Astryx `ai-chat` 템플릿에서 시작)
+    │   ├── PersonButton.tsx          ✓ 사람의 결정 (Astryx Button + AlertDialog)
+    │   └── Money, Price, Chip, CheckRow, ChangeRow, StepTrail ...
+    ├── blocks/                       # ui 이름 하나 = 컴포넌트 하나 + registry.ts
+    ├── contract/                     # 생성물: tools.ts, blocks.ts, enums.ts, errors.ts (수정 금지)
+    ├── lib/gateway.ts                # 서버 컴포넌트의 API 호출(ACOM_GATEWAY_INTERNAL_URL)
+    └── jsonld/                       # 상품·제안의 schema.org JSON-LD
 ```
 
+- **Meta 라이브러리를 먼저.** 화면은 Astryx 템플릿에서 시작하고(`npm run astryx -- build "<화면 설명>"`가 템플릿과 블록을 골라 줌), 부품은 Astryx 컴포넌트를 씁니다(173종, `npm run astryx -- search "<무엇>"`). 대화 화면은 Astryx `Chat` 계열(`ChatLayout`, `ChatMessageList`, `ChatComposer`, 툴 호출 표시)을 그대로 씁니다. 우리가 만드는 것은 데이터와 AI 층뿐입니다.
+- **고치기(커스텀)는 단계대로.** 컴포넌트 props → 테마 토큰 → `className` → `swizzle`(소스를 가져와 고침, 이유를 커밋에 적음). `:root` 덮어쓰기와 하드코딩한 색·크기는 쓰지 않습니다.
+- **참고.** Astryx의 템플릿·블록 예제(`npm run astryx -- template <이름>`)와 문서(`npm run astryx -- docs <주제>`)를 먼저 봅니다.
+- **점검.** 넘기기 전에 `npm run astryx -- doctor --built src`. 지금 남은 경고는 둘입니다.
+  - `Workspace`의 레이아웃 스타일: Astryx `ai-chat` 템플릿이 쓰는 컨테이너 쿼리를 그대로 가져온 것입니다.
+  - Neutral 테마 글꼴(Figtree): 외부 글꼴 서비스에서 불러옵니다. M4에서 자체 호스팅으로 옮깁니다.
 - 서버 컴포넌트는 페이지의 첫 데이터를 게이트웨이 REST(`/api/v1/...`, 읽기 툴)에서 가져옵니다. 대화와 블록 갱신은 클라이언트 컴포넌트가 SSE로 받습니다.
-- 모양은 Astryx `theme-neutral` 위에 우리 테마 파일(`theme.css`)의 CSS 변수로만 바꿉니다. 시안(`design/`)의 색·간격은 이 변수로 옮깁니다. 운영자 페이지는 Astryx 템플릿에서 시작합니다([../frontend-ui.md](../frontend-ui.md) §3–§4).
-- **층 나누기:** Astryx 부품은 모양과 접근성, 우리 컴포넌트는 데이터와 AI 층(`useAiTarget`, 추천 말, `PersonButton`)을 맡습니다. Astryx 부품을 바꾸거나(swizzle) 다른 라이브러리로 갈아타도(Mantine 대안, 같은 문서 §5) AI 층과 블록 계약은 그대로입니다.
+- **층 나누기:** Astryx 부품은 모양과 접근성, 우리 컴포넌트는 데이터와 AI 층(`useAiTarget`, 추천 말, `PersonButton`)을 맡습니다. Astryx 부품을 바꾸거나(swizzle) 다른 라이브러리로 갈아타도(Mantine 대안, [../frontend-ui.md](../frontend-ui.md) §5) AI 층과 블록 계약은 그대로입니다.
 
 ## 3. AI 층
 

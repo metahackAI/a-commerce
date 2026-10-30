@@ -1,0 +1,33 @@
+{
+  "name": "acom-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A-Commerce web: back office (/bo) and storefront (/), Next.js on Meta Astryx with an AI layer on every element.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "typecheck": "tsc --noEmit",
+    "astryx": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs"
+  },
+  "dependencies": {
+    "@astryxdesign/core": "0.7.4",
+    "@astryxdesign/theme-neutral": "0.7.4",
+    "@heroicons/react": "2.2.0",
+    "@stylexjs/stylex": "0.19.1",
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@astryxdesign/cli": "0.7.4",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "5.9.3"
+  }
+}

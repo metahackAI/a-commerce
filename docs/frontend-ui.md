@@ -54,6 +54,8 @@ Add the CLI as a script so that people and agents call it the same way:
 
 `npm run astryx -- component --list`, `npm run astryx -- template --list`, `npm run astryx -- search "<query>"`.
 
+In this repository the setup is done (`web/`): versions are pinned, the CSS is imported in `src/app/layout.tsx`, and the theme is wired the Astryx way with `npm run astryx -- theme add neutral`, which generates `src/astryx-themes.ts` used by `src/app/providers.tsx`. `npm run astryx -- init --features agents,theme` also wrote `web/AGENTS.md` (the Astryx guide for coding agents) and the theme template. How the AI layer sits on top: [frontend/README.md](frontend/README.md).
+
 ## 4. Rules
 
 - **One UI block, one component.** Each UI block in [api/chat.md](api/chat.md) §3 is one React component under `web/`, built from Astryx parts. The agent picks blocks; it never writes markup.
