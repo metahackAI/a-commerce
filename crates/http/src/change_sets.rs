@@ -5,6 +5,7 @@
 
 use std::sync::Arc;
 
+use acom_changeset::change_set::RequestUpdate;
 use acom_changeset::{ItemRef, NewChangeSet, change_set};
 use acom_contract::{ErrorCode, ToolError};
 use axum::Router;
@@ -12,7 +13,7 @@ use axum::body::Bytes;
 use axum::extract::{Path, State};
 use axum::http::HeaderMap;
 use axum::response::{IntoResponse, Response};
-use axum::routing::{delete, get, post};
+use axum::routing::{delete, get, patch, post};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
@@ -23,6 +24,10 @@ use crate::{Api, ApiError, Caller};
 pub(crate) fn routes() -> Router<Arc<Api>> {
     Router::new()
         .route("/v1/platform/change-sets", post(create))
+        .route(
+            "/v1/platform/change-sets/{change_set_id}",
+            patch(update_request),
+        )
         .route(
             "/v1/platform/change-sets/{change_set_id}/items",
             post(add_item).put(replace_items),
@@ -88,6 +93,23 @@ async fn create(State(api): State<Arc<Api>>, caller: Caller, body: Bytes) -> Res
             let new: NewChangeSet = parse(&body)?;
             let cx = api.cx(&caller).await?;
             Ok(change_set::create(&cx, new).await?)
+        }
+        .await,
+    )
+}
+
+async fn update_request(
+    State(api): State<Arc<Api>>,
+    caller: Caller,
+    Path(cs): Path<String>,
+    body: Bytes,
+) -> Response {
+    done(
+        async {
+            caller.require("changeset:draft")?;
+            let update: RequestUpdate = parse(&body)?;
+            let cx = api.cx(&caller).await?;
+            Ok(change_set::update_request(&cx, &cs, update).await?)
         }
         .await,
     )

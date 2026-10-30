@@ -230,6 +230,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 | 엔드포인트 | 본문 | 응답 | 에러 |
 |---|---|---|---|
 | `POST /v1/platform/change-sets` | `{title, request_text, interpretation[], conversation_id}` | `{id, number, version: 1, state: "drafting"}` | `invalid_input` |
+| `PATCH /v1/platform/change-sets/{id}` | `{title?, append_request_text?, interpretation?[]}` — 대화로 고친 요청: 문장을 `request_text`에 덧붙이고 해석을 바꿈. 항목은 아래 교체로 | `{id, version, state, item_count}` | `change_set_not_found`, `invalid_state`(끝 상태·실행 중) |
 | `POST /v1/platform/change-sets/{id}/items` | `{preview_id, depends_on?: [preview_id]}` | `{id, version, state, item_count}` | `change_set_not_found`, `preview_not_found`, `preview_expired`, `invalid_state`(끝 상태·실행 중), `already_exists`(같은 프리뷰) |
 | `PUT /v1/platform/change-sets/{id}/items` | `{items: [{preview_id, depends_on?}]}` — 대화로 고친 항목 전체로 교체 | `{id, version, state: "drafting", superseded: [preview_id]}` | `change_set_not_found`, `preview_not_found`, `preview_expired`, `invalid_state` |
 | `DELETE /v1/platform/change-sets/{id}/items/{preview_id}` | — | `{id, version, state, item_count}` | `change_set_not_found`, `preview_not_found`, `invalid_state` |

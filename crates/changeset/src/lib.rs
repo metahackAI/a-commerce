@@ -63,6 +63,12 @@ pub(crate) fn irreversible(cx: &Cx, tool: &str) -> bool {
         .is_some_and(|list| list.iter().any(|t| t.as_str() == Some(tool)))
 }
 
+/// The record a completed write is about: the entity of its first change and the id it produced.
+pub(crate) fn main_object<'a>(changes: &'a Value, id: &'a str) -> Option<(&'a str, &'a str)> {
+    let entity = changes.as_array()?.first()?.get("entity")?.as_str()?;
+    (!id.is_empty()).then_some((entity, id))
+}
+
 /// One action-log row (schema.org `Action`).
 #[derive(Debug)]
 pub struct LogEntry<'a> {

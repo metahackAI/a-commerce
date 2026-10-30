@@ -521,6 +521,74 @@ pub async fn replace_items(cx: &Cx, cs: &str, items: Vec<ItemRef>) -> Result<Val
     Ok(json!({"id": cs, "version": out["version"], "state": "drafting", "superseded": superseded}))
 }
 
+/// `PATCH /v1/platform/change-sets/{id}`: what the person asked, as it grows by talking. A
+/// correction ("Drop the low-stock ones.") joins the request text and the interpretation is
+/// replaced; the items change through `replace_items`, which carries the version.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RequestUpdate {
+    #[serde(default)]
+    pub title: Option<String>,
+    /// One more sentence from the person, appended to `request_text`.
+    #[serde(default)]
+    pub append_request_text: Option<String>,
+    #[serde(default)]
+    pub interpretation: Option<Vec<Value>>,
+}
+
+pub async fn update_request(cx: &Cx, cs: &str, update: RequestUpdate) -> Result<Value, ToolError> {
+    let mut tx = cx.begin().await.map_err(ToolError::from)?;
+    let head = lock(&mut tx, cs).await?;
+    let state = head.state();
+    if !matches!(
+        state,
+        ChangeSetState::Drafting | ChangeSetState::WaitingForApproval
+    ) {
+        return Err(invalid_state(cs, state, "its request can no longer change"));
+    }
+    let title = update
+        .title
+        .as_deref()
+        .map(str::trim)
+        .filter(|t| !t.is_empty());
+    let sentence = update
+        .append_request_text
+        .as_deref()
+        .map(str::trim)
+        .filter(|t| !t.is_empty());
+    sqlx::query(
+        "UPDATE platform.change_set SET
+           title = coalesce($3, title),
+           request_text = CASE WHEN $4::text IS NULL THEN request_text
+                               ELSE array_append(request_text, $4) END,
+           interpretation = coalesce($5, interpretation),
+           updated_at = now()
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(cx.tenant.as_str())
+    .bind(cs)
+    .bind(title)
+    .bind(sentence)
+    .bind(update.interpretation.map(Value::Array))
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db_err)?;
+    event(
+        &mut tx,
+        cs,
+        ActionType::UPDATE.0,
+        ActionStatus::Completed,
+        Some(state),
+        state,
+        Some(json!({"request_updated": true})),
+        None,
+    )
+    .await?;
+    let out = summary(&mut tx, cs).await?;
+    tx.commit().await.map_err(ToolError::from)?;
+    Ok(out)
+}
+
 /// `POST /v1/platform/change-sets/{id}/submit {version}`.
 pub async fn submit(cx: &Cx, cs: &str, version: i32) -> Result<Value, ToolError> {
     let mut tx = cx.begin().await.map_err(ToolError::from)?;
@@ -1179,6 +1247,7 @@ async fn run_item(
     log_action(
         &mut tx,
         LogEntry {
+            object: crate::main_object(&item.changes, &done.id),
             result: Some(json!({"id": done.id, "produced": done.produced})),
             change_set_id: Some(cs),
             preview_id: Some(&item.preview_id),

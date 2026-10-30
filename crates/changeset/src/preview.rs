@@ -413,6 +413,7 @@ pub async fn commit(
     log_action(
         &mut tx,
         LogEntry {
+            object: crate::main_object(&p.changes, &done.id),
             result: Some(json!({"id": done.id, "produced": done.produced})),
             preview_id: Some(preview_id),
             ..LogEntry::new(meta.action_type.0, ActionStatus::Completed, meta.tool)

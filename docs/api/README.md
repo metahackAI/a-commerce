@@ -104,6 +104,7 @@ a-commerce API
 | 엔드포인트 | 본문 | 결과 |
 |---|---|---|
 | `POST /v1/platform/change-sets` | `{title, request_text, interpretation[], conversation_id}` | `{id, number, version: 1, state: "drafting"}` |
+| `PATCH /v1/platform/change-sets/{id}` | `{title?, append_request_text?, interpretation?[]}` | 요청 문장 덧붙이기·해석 교체(대화로 고침) |
 | `POST /v1/platform/change-sets/{id}/items` | `{preview_id, depends_on?: [preview_id]}` | 항목 붙이기 |
 | `PUT /v1/platform/change-sets/{id}/items` | `{items: [{preview_id, depends_on?}]}` | 항목 교체(대화로 고침). `version+1`, `drafting` |
 | `DELETE /v1/platform/change-sets/{id}/items/{preview_id}` | — | 항목 빼기 |
@@ -170,7 +171,7 @@ a-commerce API
 
 ## 4. 전체 오퍼레이션 인덱스
 
-툴 **287개**(R 130 · W 117 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 5개(§2.2). **굵게** 표시한 28개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
+툴 **287개**(R 130 · W 117 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 6개(§2.2). **굵게** 표시한 28개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
 
 ### Offer
 
