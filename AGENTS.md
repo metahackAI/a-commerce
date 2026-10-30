@@ -37,3 +37,8 @@ The whole server side is one Cargo workspace: `crates/` (libraries), `services/`
 - `core`, `contract`, and `policy` do no I/O. Domain crates call each other only through exported service traits, never each other's tables. The agent crate never depends on a domain crate.
 - The agent can preview and draft change sets; it can never approve, run an approved change set, or call a person-only endpoint.
 - Before pushing: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`.
+
+## Front end (Next.js)
+
+- Components come from Meta Astryx (`@astryxdesign/*`). Read `docs/frontend-ui.md` first. Look up components and templates with `npm run astryx -- search "<query>"` before writing your own.
+- One UI block from `docs/api/chat.md` §3 is one component. The look lives in our theme (CSS custom properties); no gradients, glows, decorative shadows, colored side bars, or sparkle icons.
