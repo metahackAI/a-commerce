@@ -13,6 +13,20 @@ tool_search:
   max_candidates: 8
   # Added to a tool's score (as a share of it) when its domain is one of the agent's home domains.
   home_domain_boost: 0.5
+  # Words people say that the tools name differently. Word matching has no sense of meaning
+  # (embeddings are the next layer), so each word on the left adds the words on the right to
+  # the query: "Will M fit?" also looks for measurements, reviews and past orders.
+  related_words:
+    fit: [measurements, reviews, orders]
+    fits: [measurements, reviews, orders]
+    hoodie: [fit]
+    sweater: [fit]
+    gift: [find, products, price, gift, recipient]
+    dad: [gift]
+    mom: [gift]
+    photos: [remember, shown]
+    text: [remember, shown]
+    decline: [message, evaluate]
 
 router:
   # Below this the surface's default agent (or the conversation's last agent) takes the turn.

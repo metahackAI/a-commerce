@@ -141,7 +141,11 @@ pub fn results_of(data: &Value) -> Value {
                 row
             })
             .collect(),
-        _ => items_of(data),
+        // A gift picker's picks are products too.
+        _ => match data.get("picks") {
+            Some(Value::Array(picks)) => picks.clone(),
+            _ => items_of(data),
+        },
     };
     json!({"items": items, "total": items.len()})
 }

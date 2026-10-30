@@ -42,6 +42,10 @@ impl ChatSurface {
 pub struct ToolScope {
     pub domains: Vec<String>,
     pub kinds: Vec<ToolKind>,
+    /// Tools always among the candidates, whatever the words (the shopper's product search
+    /// and profile): word matching cannot know that "a light jacket" means searching.
+    #[serde(default)]
+    pub always: Vec<String>,
 }
 
 /// Model aliases from `agents/models.yml`.
@@ -138,12 +142,16 @@ pub struct Limits {
     pub seconds: u64,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ToolSearchConfig {
     pub min_candidates: usize,
     pub max_candidates: usize,
     pub home_domain_boost: f64,
+    /// Words people say that tools name differently ("fit" → measurements, reviews): each
+    /// word adds its related words to the query. Data, not code; embeddings come later.
+    #[serde(default)]
+    pub related_words: BTreeMap<String, Vec<String>>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]

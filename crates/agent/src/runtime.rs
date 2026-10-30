@@ -928,10 +928,12 @@ impl<'r> Turn<'r> {
                 None,
             )
             .await;
-        let pinned: Vec<String> = self
+        let mut pinned: Vec<String> = self
             .open_change_set()
             .map(|c| c.items.iter().map(|i| i.tool.clone()).collect())
             .unwrap_or_default();
+        // The agent's own core reads are always at hand (`tool_scope.always`).
+        pinned.extend(self.profile.tool_scope.always.iter().cloned());
         let pinned: Vec<&str> = pinned.iter().map(String::as_str).collect();
         let mut query = self.text.clone();
         for c in &self.request.context {
@@ -2381,7 +2383,10 @@ impl<'r> Turn<'r> {
                 .and_then(|r| shop::return_options(r.output.as_ref()?, &r.input)),
             "compare_table" | "look_gallery" | "product_list" => {
                 let facts = self.profile_facts();
-                let first_visit = self.ctx.is_first_turn() && facts.is_empty();
+                // A first visit: a guest with no history yet. A signed-in shopper has a record.
+                let first_visit = self.principal.customer_id().is_none()
+                    && self.ctx.is_first_turn()
+                    && facts.is_empty();
                 let said = self.layout_words();
                 let rule = shop::layout(&self.profile.layout_rules, &said, &facts, first_visit);
                 let ui = rule
@@ -2453,10 +2458,17 @@ impl<'r> Turn<'r> {
             .filter(|r| r.kind == ToolKind::Read)
             .map(|r| json!({"tool": r.tool, "result": compact(r.output.as_ref().unwrap_or(&Value::Null))}))
             .collect();
+        // A block's summary (a review's counts and refund total) is what the reply may cite.
         let blocks: Vec<Value> = self
             .blocks
             .iter()
-            .map(|b| json!({"ui": b.ui, "title": b.title}))
+            .map(|b| {
+                let mut v = json!({"ui": b.ui, "title": b.title});
+                if let Some(s) = b.data.get("summary").filter(|s| s.is_object()) {
+                    v["summary"] = s.clone();
+                }
+                v
+            })
             .collect();
         json!({"request": self.text, "change_set": cs, "reads": reads, "blocks_shown": blocks,
                "problems": self.problems,
@@ -2696,3 +2708,6 @@ fn sentences(text: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod scenes;

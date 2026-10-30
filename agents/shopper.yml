@@ -8,6 +8,8 @@ home_domains: [search, catalog, sales]
 tool_scope:
   domains: [search, catalog, merchandising, promotion, sales, fulfillment, customer]
   kinds: [read, write]
+  # Always among the candidates: finding products and knowing who is asking.
+  always: [search_products, get_my_profile]
 blocks: [compare_table, look_gallery, product_list, cart, checkout_card, return_options, order_detail, memory_note, fit_check, gift_picker, looking_for, profile_card]
 models: {worker: glimmer, planner: spark}
 instructions: shopper.md
