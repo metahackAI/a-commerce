@@ -98,6 +98,8 @@ export interface ChangeSet {
   approved_by?: string | null;
   approved_at?: string | null;
   verification?: {state: string; matched: number; total: number} | null;
+  /** State changes, oldest first, with who made each (`agent_id`, `agent_name`). */
+  history?: {agent_id?: string | null; agent_name?: string | null; to?: string | null; time?: string | null}[];
 }
 
 /** One row of `search_change_sets`. */

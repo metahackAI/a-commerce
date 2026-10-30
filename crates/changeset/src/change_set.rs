@@ -203,8 +203,8 @@ pub async fn create(cx: &Cx, new: NewChangeSet) -> Result<Value, ToolError> {
     let id = format!("cs_{number}");
     sqlx::query(
         "INSERT INTO platform.change_set (tenant_id, id, number, title, change_set_state,
-           request_text, interpretation, conversation_id, created_by, agent_name)
-         VALUES ($1,$2,$3,$4,'drafting',$5,$6,$7,$8,$9)",
+           request_text, interpretation, conversation_id, created_by, agent_name, created_at)
+         VALUES ($1,$2,$3,$4,'drafting',$5,$6,$7,$8,$9,$10)",
     )
     .bind(cx.tenant.as_str())
     .bind(&id)
@@ -215,6 +215,8 @@ pub async fn create(cx: &Cx, new: NewChangeSet) -> Result<Value, ToolError> {
     .bind(new.conversation_id.as_deref())
     .bind(&cx.principal.subject)
     .bind(cx.principal.name.as_deref())
+    // On the store clock, like every other time of the change set (the demo clock in demo mode).
+    .bind(cx.clock.now())
     .execute(&mut *tx.tx)
     .await
     .map_err(db_err)?;
