@@ -48,6 +48,9 @@ fn reply_schema() -> Value {
                                    "description": "Two or three plain sentences for the person."}}})
 }
 
+/// What a turn says when no model answers at all: the pages still work without the assistant.
+const MODEL_DOWN: &str = "The assistant's model is not answering right now, so I can't do this yet. Everything on the pages still works; please try again in a few minutes.";
+
 /// What the planner is told when its plan has no steps.
 const EMPTY_PLAN: &str = "The plan has no steps, so the answer would come from nothing. \
 The person asked about the store: plan at least one read from the tools listed (search, list or get) \
@@ -792,6 +795,8 @@ impl<'r> Turn<'r> {
         step: Option<String>,
     ) -> Result<(Value, String), Stop> {
         let mut last = String::from("no model answered");
+        // Whether every model tried was down (silent, unreachable, failing), not just wrong.
+        let mut all_down = true;
         for model in self.models_for(prefer) {
             if self.usage.len() as u32 >= self.limits.model_calls {
                 return Err(Stop(format!(
@@ -813,6 +818,7 @@ impl<'r> Turn<'r> {
                 .unwrap_or(Err(LlmError::Timeout(left.as_secs())));
             let ms = t.elapsed().as_millis() as u64;
             let mut record = UsageRecord::new(model.info(), purpose, started_at, ms, &res);
+            all_down &= res.as_ref().err().is_some_and(LlmError::is_down);
             let parsed = res
                 .map_err(|e| e.to_string())
                 .and_then(|r| r.json().map_err(|e| e.to_string()));
@@ -828,6 +834,10 @@ impl<'r> Turn<'r> {
                     last = e;
                 }
             }
+        }
+        if all_down && last != "no model answered" {
+            tracing::warn!(purpose, error = %last, "every model is down");
+            return Err(Stop(MODEL_DOWN.into()));
         }
         Err(Stop(format!("The model could not answer: {last}")))
     }
