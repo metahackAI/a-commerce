@@ -11,9 +11,10 @@ import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
 
 import type {ApiErrorBody} from '@/lib/api';
 import {date, dateTime, isMoney, money, value, words} from '@/app/bo/_lib/format';
-import type {Member, MemberTier, OrderSummary, ReturnHistory} from '@/app/bo/_lib/types';
+import type {Member, MemberTier, OrderSummary, Page, ReturnHistory, StoreMessage} from '@/app/bo/_lib/types';
 
 import {ErrorState} from './ErrorState';
+import {MessageList} from './MessageList';
 import {PageFrame, PageSection} from './PageFrame';
 import {StateToken} from './StateToken';
 import {OrderList} from './lists/sales';
@@ -32,9 +33,23 @@ export interface CustomerViewProps {
   orders: OrderSummary[] | null;
   ordersTotal: number;
   ordersError: ApiErrorBody | null;
+  messages: Page<StoreMessage> | null;
+  messagesError: ApiErrorBody | null;
 }
 
-export function CustomerView({member: m, tier, tierError, tierNames, returns, returnsError, orders, ordersTotal, ordersError}: CustomerViewProps) {
+export function CustomerView({
+  member: m,
+  tier,
+  tierError,
+  tierNames,
+  returns,
+  returnsError,
+  orders,
+  ordersTotal,
+  ordersError,
+  messages,
+  messagesError,
+}: CustomerViewProps) {
   const ids = {customer_id: m.id};
   const tierName = (id: string | null | undefined) => (id ? (tierNames[id] ?? id) : '—');
 
@@ -153,6 +168,14 @@ export function CustomerView({member: m, tier, tierError, tierNames, returns, re
         {orders && ordersTotal > orders.length ? (
           <Link href={`/bo/orders?customer=${encodeURIComponent(m.id)}`}>{`See all ${ordersTotal} orders`}</Link>
         ) : null}
+      </PageSection>
+
+      <PageSection
+        title="Messages"
+        count={messages ? `${messages.total}` : undefined}
+        description="What the store sent this member, newest first. A sent message cannot be taken back.">
+        {messagesError ? <ErrorState error={messagesError} title="The messages could not be loaded." /> : null}
+        {messages ? <MessageList messages={messages.items} customerId={m.id} /> : null}
       </PageSection>
     </PageFrame>
   );

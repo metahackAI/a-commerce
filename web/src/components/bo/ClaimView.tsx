@@ -15,10 +15,11 @@ import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
 import type {ApiErrorBody} from '@/lib/api';
 import {count, date, dateTime, money, words} from '@/app/bo/_lib/format';
 import {withParams} from '@/app/bo/_lib/links';
-import type {Claim, Order, Refund, ReturnEvaluation, ReturnHistory} from '@/app/bo/_lib/types';
+import type {Claim, Order, Refund, ReturnEvaluation, ReturnHistory, StoreMessage} from '@/app/bo/_lib/types';
 
 import {useBoSession} from './BoSession';
 import {ErrorState} from './ErrorState';
+import {MessageList} from './MessageList';
 import {PageFrame, PageSection} from './PageFrame';
 import {StateToken} from './StateToken';
 import {DataTable, Figure} from './tables';
@@ -34,9 +35,11 @@ export interface ClaimViewProps {
   refundError: ApiErrorBody | null;
   history: ReturnHistory | null;
   historyError: ApiErrorBody | null;
+  /** Messages the store sent the customer about this request or its order. */
+  messages: StoreMessage[] | null;
 }
 
-export function ClaimView({claim: c, order, evaluation: e, evaluationError, refund, refundError, history, historyError}: ClaimViewProps) {
+export function ClaimView({claim: c, order, evaluation: e, evaluationError, refund, refundError, history, historyError, messages}: ClaimViewProps) {
   const router = useRouter();
   const session = useBoSession();
   const canRefund =
@@ -224,6 +227,12 @@ export function ClaimView({claim: c, order, evaluation: e, evaluationError, refu
           />
         ) : null}
       </PageSection>
+
+      {messages && order?.customer_id ? (
+        <PageSection title="Messages about this return" count={`${messages.length}`} description="What the store told the customer about this request or its order.">
+          <MessageList messages={messages} customerId={order.customer_id} empty="Nothing about this request or its order yet." />
+        </PageSection>
+      ) : null}
     </PageFrame>
   );
 }

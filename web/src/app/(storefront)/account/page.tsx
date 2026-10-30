@@ -8,13 +8,13 @@ import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import type {ReactNode} from 'react';
 
-import {AddressList, CouponList, LoyaltyView, MemoryList, SignOutButton, WishlistView} from '@/components/fo/AccountViews';
+import {AddressList, CouponList, LoyaltyView, MemoryList, MessageList, SignOutButton, WishlistView} from '@/components/fo/AccountViews';
 import {ErrorNotice} from '@/components/fo/ErrorNotice';
 import type {Page} from '@/lib/api';
 
 import {words} from '../_lib/format';
 import {load, shopper, type Loaded} from '../_lib/server';
-import type {Address, LoyaltyBalance, MemberCoupon, Preference, Profile, WishlistItem} from '../_lib/types';
+import type {Address, LoyaltyBalance, MemberCoupon, Preference, Profile, StoreMessage, WishlistItem} from '../_lib/types';
 
 export const metadata: Metadata = {title: 'Account'};
 
@@ -64,13 +64,14 @@ export default async function AccountPage() {
     );
   }
 
-  const [profile, memories, addresses, wishlist, coupons, loyalty] = await Promise.all([
+  const [profile, memories, addresses, wishlist, coupons, loyalty, messages] = await Promise.all([
     load<Profile>('/v1/customer/people/me'),
     load<Page<Preference>>('/v1/customer/people/me/preferences', {limit: 50}),
     load<Page<Address>>('/v1/customer/people/me/addresses', {limit: 20}),
     load<Page<WishlistItem>>('/v1/customer/people/me/wishlist', {limit: 50}),
     load<Page<MemberCoupon>>('/v1/promotion/customers/me/coupons', {limit: 50}),
     load<LoyaltyBalance>('/v1/promotion/customers/me/loyalty'),
+    load<Page<StoreMessage>>('/v1/messaging/notifications', {customer_id: 'me', limit: 10}),
   ]);
   const p = profile.ok ? profile.data : null;
 
@@ -111,6 +112,9 @@ export default async function AccountPage() {
               </Section>
               <Section title="Addresses">
                 <Loadable loaded={addresses}>{d => <AddressList addresses={d.items} />}</Loadable>
+              </Section>
+              <Section title="Messages from Northwind" subtitle="Emails and notices about your orders and returns, newest first.">
+                <Loadable loaded={messages}>{d => <MessageList messages={d.items} />}</Loadable>
               </Section>
               <Section title="Coupons and rewards">
                 <VStack gap={4}>

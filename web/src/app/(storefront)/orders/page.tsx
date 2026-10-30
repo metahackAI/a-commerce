@@ -9,8 +9,9 @@ import {ErrorNotice} from '@/components/fo/ErrorNotice';
 import {OrderList, ReturnHistory} from '@/components/fo/OrderViews';
 import type {Page} from '@/lib/api';
 
+import {words} from '../_lib/format';
 import {load, shopper} from '../_lib/server';
-import type {OrderSummary, ReturnHistoryItem} from '../_lib/types';
+import type {ClaimSummary, OrderSummary, ReturnHistoryItem} from '../_lib/types';
 
 export const metadata: Metadata = {title: 'Orders'};
 
@@ -30,11 +31,32 @@ export default async function OrdersPage({searchParams}: {searchParams: Promise<
         />
       );
     }
-    const customerId = who.session.user?.id;
-    const [orders, returns] = await Promise.all([
+    // The shopper's own requests (search_claims answers a shopper only for themselves), named by
+    // the order numbers and items of their orders.
+    const [orders, claims] = await Promise.all([
       load<Page<OrderSummary>>('/v1/sales/orders/mine', {limit: 20, cursor: after}),
-      customerId ? load<Page<ReturnHistoryItem> & {summary?: {days?: number}}>(`/v1/customer/people/${encodeURIComponent(customerId)}/returns`, {limit: 20}) : null,
+      load<Page<ClaimSummary>>('/v1/fulfillment/claims', {limit: 20}),
     ]);
+    const byOrder = new Map((orders.ok ? orders.data.items : []).map(o => [o.id, o]));
+    const returns = !claims.ok
+      ? claims
+      : {
+          ok: true as const,
+          data: claims.data.items.map((c): ReturnHistoryItem => {
+            const o = byOrder.get(c.order_id);
+            return {
+              id: c.id,
+              claim_type: c.claim_type,
+              order_id: c.order_id,
+              order_number: o?.order_number ?? c.order_id,
+              item: o?.ordered_item.map(i => i.name).join(', ') || words(c.claim_type),
+              amount: c.amount,
+              reason: c.reason ?? '',
+              status: c.status,
+              requested_at: c.created_at,
+            };
+          }),
+        };
     return (
       <VStack gap={8}>
         {!orders.ok ? (
@@ -54,14 +76,12 @@ export default async function OrdersPage({searchParams}: {searchParams: Promise<
         )}
         <VStack gap={3}>
           <Heading level={2}>Returns and cancellations</Heading>
-          {returns === null ? null : !returns.ok ? (
+          {!returns.ok ? (
             <Text color="secondary">{returns.error.message}</Text>
-          ) : returns.data.items.length === 0 ? (
-            <Text color="secondary">
-              {returns.data.summary?.days ? `No returns in the last ${returns.data.summary.days} days.` : 'No returns yet.'}
-            </Text>
+          ) : returns.data.length === 0 ? (
+            <Text color="secondary">No returns, exchanges or cancellations yet.</Text>
           ) : (
-            <ReturnHistory items={returns.data.items} />
+            <ReturnHistory items={returns.data} />
           )}
         </VStack>
       </VStack>

@@ -59,7 +59,8 @@ fn set(items: &[&str]) -> BTreeSet<String> {
 }
 
 /// A signed-in shopper: browse, keep a cart, prepare and place orders, ask for returns, review
-/// products, manage their own profile and remembered preferences. Which tools of a domain a
+/// products, manage their own profile and remembered preferences, and read the messages the store
+/// sent them. Which tools of a domain a
 /// shopper reaches is decided by each tool's audience (acom-http), not by these scopes alone.
 pub fn shopper() -> BTreeSet<String> {
     set(&[
@@ -73,6 +74,7 @@ pub fn shopper() -> BTreeSet<String> {
         "tools:read:customer",
         "tools:write:customer",
         "tools:read:fulfillment",
+        "tools:read:messaging",
         "human:order",
         "human:cancel",
         "human:return",

@@ -6,7 +6,7 @@ title: Shopping assistant
 description: Finds and compares products, checks fit, picks gifts, keeps the cart, prepares the order, and lays out return options.
 home_domains: [search, catalog, sales]
 tool_scope:
-  domains: [search, catalog, merchandising, promotion, sales, fulfillment, customer]
+  domains: [search, catalog, merchandising, promotion, sales, fulfillment, customer, messaging]
   kinds: [read, write]
   # Always among the candidates: finding products, knowing who is asking, their cart and orders.
   always: [search_products, get_my_profile, get_cart, get_my_orders]
