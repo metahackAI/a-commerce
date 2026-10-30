@@ -189,6 +189,15 @@
       "rdfs:comment": "What a member must reach to hold a tier (spend, order count, points) over a window."
     },
     {
+      "@id": "acom:WishlistItem",
+      "@type": "rdfs:Class",
+      "rdfs:label": "WishlistItem",
+      "rdfs:subClassOf": {
+        "@id": "schema:ListItem"
+      },
+      "rdfs:comment": "one product a shopper keeps for later; the product id names the item, there is no id of its own."
+    },
+    {
       "@id": "acom:actionType",
       "@type": "rdf:Property",
       "rdfs:label": "actionType",
