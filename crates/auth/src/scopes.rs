@@ -58,12 +58,14 @@ fn set(items: &[&str]) -> BTreeSet<String> {
     items.iter().map(|s| (*s).to_owned()).collect()
 }
 
-/// A signed-in shopper: browse, keep a cart, prepare and place orders, ask for returns, manage
-/// their own profile and remembered preferences.
+/// A signed-in shopper: browse, keep a cart, prepare and place orders, ask for returns, review
+/// products, manage their own profile and remembered preferences. Which tools of a domain a
+/// shopper reaches is decided by each tool's audience (acom-http), not by these scopes alone.
 pub fn shopper() -> BTreeSet<String> {
     set(&[
         "tools:read:search",
         "tools:read:catalog",
+        "tools:write:catalog",
         "tools:read:merchandising",
         "tools:read:promotion",
         "tools:read:sales",

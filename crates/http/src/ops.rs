@@ -61,7 +61,28 @@ pub(crate) fn json_body(body: &[u8]) -> Result<Map<String, Value>, ApiError> {
     }
 }
 
+/// Whether a caller from this surface may use a tool meant for this audience. Scopes are per
+/// domain, so this is what keeps a shopper (or a guest) away from operator tools in the same
+/// domain, such as `search_orders`, and an operator page away from a shopper's own cart.
+fn audience_allows(surface: Surface, audience: Audience) -> bool {
+    match audience {
+        Audience::Both => true,
+        Audience::Operator => matches!(surface, Surface::Bo | Surface::System),
+        Audience::Shopper => matches!(surface, Surface::Fo | Surface::Mcp | Surface::System),
+        Audience::Internal => surface == Surface::System,
+    }
+}
+
 fn may_use(p: &Principal, meta: &OpMeta) -> Result<(), ApiError> {
+    if !audience_allows(p.surface, meta.audience) {
+        return Err(ApiError(
+            ToolError::new(
+                ErrorCode::FORBIDDEN,
+                format!("`{}` is not available here.", meta.tool),
+            )
+            .detail(json!({"reason": "audience", "audience": meta.audience})),
+        ));
+    }
     let domain = meta.domain();
     match meta.kind {
         Kind::Read if !p.can_read(domain) => Err(forbidden_scope(&format!("tools:read:{domain}"))),
@@ -196,12 +217,7 @@ async fn person(op: &dyn DynOp<Cx>, cx: &Cx, input: Value) -> Result<Value, Tool
 
 /// Whether a tool belongs in this caller's manifest.
 fn visible(p: &Principal, meta: &OpMeta) -> bool {
-    let audience = match p.surface {
-        Surface::Bo => matches!(meta.audience, Audience::Operator | Audience::Both),
-        Surface::Fo => matches!(meta.audience, Audience::Shopper | Audience::Both),
-        Surface::Mcp => matches!(meta.audience, Audience::Shopper | Audience::Both),
-        Surface::System => true,
-    };
+    let audience = audience_allows(p.surface, meta.audience);
     let scoped = match meta.kind {
         Kind::Read => p.can_read(meta.domain()),
         Kind::Write | Kind::WriteApproval => p.can_write(meta.domain()),
@@ -281,4 +297,21 @@ async fn call_tool(
     }
     .await
     .unwrap_or_else(IntoResponse::into_response)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn audiences_follow_the_surface() {
+        assert!(audience_allows(Surface::Bo, Audience::Operator));
+        assert!(!audience_allows(Surface::Fo, Audience::Operator));
+        assert!(!audience_allows(Surface::Mcp, Audience::Operator));
+        assert!(audience_allows(Surface::Fo, Audience::Shopper));
+        assert!(!audience_allows(Surface::Bo, Audience::Shopper));
+        assert!(audience_allows(Surface::Fo, Audience::Both));
+        assert!(!audience_allows(Surface::Bo, Audience::Internal));
+        assert!(audience_allows(Surface::System, Audience::Internal));
+    }
 }
