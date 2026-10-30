@@ -43,8 +43,4 @@ CREATE SCHEMA IF NOT EXISTS analytics AUTHORIZATION acom_owner;
 GRANT USAGE ON SCHEMA analytics TO acom_app, acom_readonly;
 ALTER DEFAULT PRIVILEGES FOR ROLE acom_owner IN SCHEMA analytics GRANT SELECT ON TABLES TO acom_readonly;
 
--- DELETE is granted per table after the migrations have run (the tables do not exist yet here):
---   GRANT DELETE ON sales.cart_line, customer.preference, platform.change_set_item,
---                   platform.session, platform.idempotency_key TO acom_app;
--- cart_line: remove_cart_item / clear_cart; preference: memory undo and remove; change_set_item:
--- items taken out of a draft change set; session and idempotency_key: expiry cleanup.
+-- DELETE is granted per table by migrations/0014_app_delete_grants.sql, once the tables exist.
