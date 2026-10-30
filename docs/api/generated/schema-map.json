@@ -3542,6 +3542,115 @@
     ]
   },
   {
+    "schema": "messaging",
+    "table": "message_template",
+    "kind": "table",
+    "term": "schema:CreativeWork/acom:MessageTemplate",
+    "description": "a reusable message for one channel, with named variables; creating one sends nothing. id prefix tpl_.",
+    "id_prefix": "tpl",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix tpl_; the same value the API, logs and events use."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "name operators pick the template by, for example Back in stock."
+      },
+      {
+        "name": "message_channel",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:messageChannel",
+        "description": "channel the template is written for; a campaign must use the same channel. values: message_channel",
+        "values": [
+          "email",
+          "sms",
+          "push",
+          "in_app"
+        ],
+        "values_list": "message_channel"
+      },
+      {
+        "name": "message_purpose",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:messagePurpose",
+        "description": "marketing (needs opt-in consent, held in quiet hours) or transactional (about an order or claim)."
+      },
+      {
+        "name": "headline",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:headline",
+        "description": "subject line for email and push; NULL for sms and in-app."
+      },
+      {
+        "name": "text",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:text",
+        "description": "body with variables written as {{name}}, up to 2,000 characters."
+      },
+      {
+        "name": "variables",
+        "type": "text[]",
+        "nullable": false,
+        "term": "acom:variables",
+        "description": "variable names the headline and text may use, for example {customer_name,product_name}."
+      },
+      {
+        "name": "in_language",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:inLanguage",
+        "description": "BCP 47 language tag of the text, for example en-US."
+      },
+      {
+        "name": "template_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:templateStatus",
+        "description": "draft until a campaign uses the template."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
     "schema": "platform",
     "table": "action_log",
     "kind": "table",

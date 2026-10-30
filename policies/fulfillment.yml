@@ -138,6 +138,9 @@ return:
   free_gift_items: whole_quantity_only
   replacement_option: creates_exchange   # get_return_options의 replacement → 같은 변형 교환 클레임
   send_back_methods: [pickup, drop_off]  # 회수 방문 또는 쇼퍼가 맡기기
+  pickup:                                # 회수 방문 일정 (get_return_options의 send_back.pickup_window)
+    business_days_after_request: 1       # 기본값. 요청한 다음 영업일(delivery.estimate.business_days)에 방문
+    window: { start: "09:00", end: "12:00" }   # 기본값. 방문 시간대(스토어 시간대)
   withdraw:
     allowed_states: [charge_due, requested, approved]   # 회수 지시 전까지
   restore_discounts_when: { field: liability, op: in, value: [store_fault, seller_fault, carrier_fault] }   # 반품 쿠폰 복원은 쇼퍼 귀책이 아닐 때만
@@ -226,7 +229,14 @@ delivery:
   estimate:                              # get_delivery_dates 계산 파라미터
     ship_cutoff_local_time: "14:00"      # 이 시각(스토어 시간대) 전 주문은 그날 출고 대상
     ship_days: [mon, tue, wed, thu, fri, sat]
+    business_days: [mon, tue, wed, thu, fri]    # 운송 일수·회수 일정을 세는 영업일
     transit_business_days_from: shipping_zone   # 운송 일수는 배송 지역 데이터
+  default_zone:                          # 배송 지역 데이터(list_shipping_zones)가 저장되기 전까지 모든 배송지가 쓰는 지역
+    name: Contiguous US
+    countries: [US]                      # 이 나라 밖의 주소는 address_not_deliverable
+    shipping_rate: { value: 6.00, currency: USD }   # 기본값. 유료 배송의 배송비(docs/scenarios.md §1), 무료 배송 회수분·반품 배송비의 기준
+    surcharge: { value: 0.00, currency: USD }       # 지역 추가 배송비
+    transit_business_days: 2
   tracking:
     source: carrier_event                # 배송 상태는 택배사 이벤트로 전이 (integration receive_carrier_event)
     validate_number_format: true         # confirm_shipment가 택배사별 송장 형식을 확인

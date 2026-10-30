@@ -135,6 +135,15 @@
       "rdfs:comment": "A coupon issued to one member, with its own status and validity. Used as additionalType on OwnershipInfo."
     },
     {
+      "@id": "acom:MessageTemplate",
+      "@type": "rdfs:Class",
+      "rdfs:label": "MessageTemplate",
+      "rdfs:subClassOf": {
+        "@id": "schema:CreativeWork"
+      },
+      "rdfs:comment": "a reusable message for one channel, with named variables; creating one sends nothing. id prefix tpl_."
+    },
+    {
       "@id": "acom:Preference",
       "@type": "rdfs:Class",
       "rdfs:label": "Preference",
@@ -1557,6 +1566,9 @@
       "rdfs:label": "messageChannel",
       "schema:domainIncludes": [
         {
+          "@id": "acom:MessageTemplate"
+        },
+        {
           "@id": "schema:Message"
         }
       ],
@@ -1582,6 +1594,22 @@
         }
       ],
       "rdfs:comment": "what the message does. values: message_kind"
+    },
+    {
+      "@id": "acom:messagePurpose",
+      "@type": "rdf:Property",
+      "rdfs:label": "messagePurpose",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:MessageTemplate"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "marketing (needs opt-in consent, held in quiet hours) or transactional (about an order or claim)."
     },
     {
       "@id": "acom:model",
@@ -2724,6 +2752,22 @@
       "rdfs:comment": "Whether a task needs a person, is being worked on, or is done."
     },
     {
+      "@id": "acom:templateStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "templateStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:MessageTemplate"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "draft until a campaign uses the template."
+    },
+    {
       "@id": "acom:tierId",
       "@type": "rdf:Property",
       "rdfs:label": "tierId",
@@ -2903,6 +2947,22 @@
         }
       ],
       "rdfs:comment": "when it was used."
+    },
+    {
+      "@id": "acom:variables",
+      "@type": "rdf:Property",
+      "rdfs:label": "variables",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:MessageTemplate"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "variable names the headline and text may use, for example {customer_name,product_name}."
     },
     {
       "@id": "acom:variantBought",
