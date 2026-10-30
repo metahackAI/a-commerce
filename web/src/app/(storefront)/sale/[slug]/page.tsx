@@ -8,7 +8,7 @@ import type {Page} from '@/lib/api';
 
 import {dateTime, words} from '../../_lib/format';
 import {ResultsView, parseSearchParams, type RawParams} from '../../_lib/ResultsView';
-import {load} from '../../_lib/server';
+import {load, shopper} from '../../_lib/server';
 
 // A sale's page, where its banner links (`/sale/vip-weekend`). The promotion comes from the sales
 // running now for this shopper (list_active_promotions answers a shopper with only those); the
@@ -56,6 +56,7 @@ export default async function SalePage({params, searchParams}: {params: Params; 
   // category; each card carries the shopper's own price.
   const categoryId = promotion?.applies_to?.category_ids?.[0];
   if (!promotion || !categoryId) {
+    const signedIn = (await shopper()).isShopper;
     return (
       <Layout
         height="auto"
@@ -68,7 +69,11 @@ export default async function SalePage({params, searchParams}: {params: Params; 
               <Banner
                 status="info"
                 title="This sale is not on for you right now"
-                description="It may be for members of another tier, or not started yet. Sign in to see the prices for your tier."
+                description={
+                  signedIn
+                    ? 'It may be for members of another tier, or it has not started yet.'
+                    : 'It may be for members of another tier, or it has not started yet. Sign in to see the prices for your tier.'
+                }
                 endContent={<Button label="Shop all" size="sm" href="/search" />}
               />
             )}
