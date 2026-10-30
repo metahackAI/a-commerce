@@ -3917,9 +3917,11 @@ dependencies = [
  "acom-contract",
  "acom-core",
  "acom-registry",
+ "reqwest",
  "serde",
  "serde_json",
  "serde_norway",
+ "tokio",
 ]
 
 [[package]]

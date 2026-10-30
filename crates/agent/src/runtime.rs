@@ -1368,7 +1368,13 @@ impl<'r> Turn<'r> {
                     order.push(id.clone());
                 }
             }
-            let result = match &step.each {
+            // A read that needs one id the plan did not give, from a step that returned several,
+            // runs once per row, as `each` would.
+            let each = step
+                .each
+                .clone()
+                .or_else(|| executor::implied_each(step, &tool, &view));
+            let result = match &each {
                 Some(source) => self.run_each(plan, step, &tool, source, &view).await,
                 None => {
                     let bound = executor::bind(step, &tool, &view, &order, &self.pointed);
