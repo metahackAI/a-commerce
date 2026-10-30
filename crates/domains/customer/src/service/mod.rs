@@ -7,3 +7,5 @@ pub mod for_fulfillment;
 pub mod for_merchandising;
 pub mod for_messaging;
 pub mod for_promotion;
+pub mod for_sales;
+pub mod providers;

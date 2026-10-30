@@ -31,6 +31,9 @@ use crate::model::Rules;
 
 /// Adds every operation of this domain to the registry.
 pub fn register(b: &mut RegistryBuilder<Cx>) {
+    // Readers that sales (get_order's parcel) and customer (get_return_history) call into.
+    service::for_sales::install();
+    service::for_customer::install();
     b.read(claim::SearchReturnRequests)
         .read(claim::EvaluateReturnRequest)
         .read(claim::SearchClaims)

@@ -7,6 +7,11 @@ free_shipping_min_subtotal:              # 무료 배송 기준 (check: free_shi
   amount: { value: 80.00, currency: USD }
   measured: before_member_benefits       # 회원 혜택 적용 전 상품 소계로 판단
 
+shipping:                                # 기본 배송비와 도착 예정. 배송 지역 데이터(fulfillment list_shipping_zones)가 생기기 전까지 모든 배송지에 적용
+  standard_rate: { value: 6.00, currency: USD }   # 기본 배송비. 무료 배송 혜택은 이 금액을 면제한다
+  transit_business_days: 2               # 출고 다음 출고일부터 센 운송 일수. 출고 마감 시각·출고 요일은 fulfillment.yml delivery.estimate
+  ships_to: [US]                         # 배송하는 나라(ISO 3166-1). 밖의 주소는 address_not_deliverable
+
 cart:
   separate_by: [order_type]              # 일반 주문과 구독 분리
   no_mix: [domestic_international]       # check: cart.no_mix. 국내·해외 배송 혼합 금지

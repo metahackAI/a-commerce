@@ -2080,6 +2080,60 @@
     ]
   },
   {
+    "schema": "customer",
+    "table": "wishlist_item",
+    "kind": "table",
+    "term": "schema:ListItem/acom:WishlistItem",
+    "description": "one product a shopper keeps for later; the product id names the item, there is no id of its own.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:customer",
+        "description": "shopper whose wishlist this is (cus_ id).",
+        "references": "customer.person"
+      },
+      {
+        "name": "product_group_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:item",
+        "description": "the product kept (prd_ id; API product_id).",
+        "references": "catalog.product_group"
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the shopper added the product (API added_at)."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
     "schema": "fulfillment",
     "table": "claim",
     "kind": "table",

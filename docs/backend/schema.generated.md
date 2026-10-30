@@ -393,6 +393,19 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `customer.wishlist_item`
+
+`schema:ListItem/acom:WishlistItem` — one product a shopper keeps for later; the product id names the item, there is no id of its own.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `customer_id` | text |  | `schema:customer` | shopper whose wishlist this is (cus_ id). → `customer.person` |
+| `product_group_id` | text |  | `schema:item` | the product kept (prd_ id; API product_id). → `catalog.product_group` |
+| `created_at` | timestamptz |  | `-` | when the shopper added the product (API added_at). |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ## `fulfillment`
 
 ### `fulfillment.claim`
