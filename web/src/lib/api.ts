@@ -54,6 +54,8 @@ export interface CommitResult {
   ok: boolean;
   id: string;
   undo?: {by: 'person'; target: string; until: string | null};
+  /** Anything else the write produced (`cart`, `memory`, …), per the tool's spec. */
+  [slot: string]: unknown;
 }
 
 export type Query = Record<string, string | number | boolean | string[] | undefined | null>;
@@ -124,12 +126,15 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   return parse<T>(res);
 }
 
-/** Previews a write: `POST {path}?preview=true` with the input. Nothing changes yet. */
-export function preview(path: string, input: unknown, query?: Query): Promise<Preview> {
-  return api<Preview>(path, {method: 'POST', query: {...query, preview: true}, body: input});
+/** The method a write's spec gives it (most are POST; `set_price` is PUT). */
+export type WriteMethod = 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
+/** Previews a write: `{method} {path}?preview=true` with the input. Nothing changes yet. */
+export function preview(path: string, input: unknown, query?: Query, method: WriteMethod = 'POST'): Promise<Preview> {
+  return api<Preview>(path, {method, query: {...query, preview: true}, body: input});
 }
 
-/** Runs a previewed write that needs no approval: `POST {path} {preview_id}`. */
-export function commit(path: string, previewId: string): Promise<CommitResult> {
-  return api<CommitResult>(path, {method: 'POST', body: {preview_id: previewId}});
+/** Runs a previewed write that needs no approval: `{method} {path} {preview_id}`. */
+export function commit(path: string, previewId: string, method: WriteMethod = 'POST'): Promise<CommitResult> {
+  return api<CommitResult>(path, {method, body: {preview_id: previewId}});
 }

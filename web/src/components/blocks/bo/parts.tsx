@@ -119,19 +119,15 @@ function RejectWithReason({action}: {action: Extract<BlockAction, {kind: 'person
       <TextArea label="Why reject it?" value={reason} onChange={setReason} maxLength={500} rows={2} hasAutoFocus />
       <HStack gap={2} hAlign="end" vAlign="center">
         <Button label="Cancel" variant="ghost" onClick={() => setOpen(false)} />
-        {reason.trim() ? (
-          <PersonButton
-            action={{...action, body: {...base, reason: reason.trim()}, confirm: `${action.confirm} Reason: “${reason.trim()}”`}}
-            onDone={() => {
-              setOpen(false);
-              router.refresh();
-            }}
-          />
-        ) : (
-          <Text type="supporting" color="secondary">
-            Write a reason to reject.
-          </Text>
-        )}
+        <PersonButton
+          variant="secondary"
+          isDisabled={!reason.trim()}
+          action={{...action, body: {...base, reason: reason.trim()}, confirm: `${action.confirm} Reason: “${reason.trim()}”`}}
+          onDone={() => {
+            setOpen(false);
+            router.refresh();
+          }}
+        />
       </HStack>
     </VStack>
   );
@@ -161,7 +157,7 @@ export function BlockActions({block, hide}: {block: UiBlock; hide?: (a: BlockAct
                 label={a.label}
                 onClick={() => {
                   dock.open();
-                  void ai.send(a.label);
+                  void ai.sendEvent(block.block_id, a.action_id, a.label, a.args);
                 }}
               />
             );
