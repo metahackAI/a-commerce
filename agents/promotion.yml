@@ -1,0 +1,21 @@
+# The promotion agent: sales, member prices, coupons, and the banners that announce them.
+id: promotion
+surface: bo
+default: true
+title: Promotion agent
+description: Sales, member and period prices, coupons, and the banners and slots that announce them.
+home_domains: [promotion, merchandising]
+tool_scope:
+  domains: [promotion, merchandising, catalog, search, customer, platform]
+  kinds: [read, write, write_approval]
+blocks: [change_set, product_table, action_log]
+models: {worker: glimmer, planner: spark}
+instructions: promotion.md
+# What a person can say to fix a failed check (shown next to the check).
+check_intents:
+  promo_min_stock: Drop the low-stock ones
+  price_floor: Lower the discount only where it breaks the price floor
+  max_discount: Keep the discount within the limit
+  promotion_overlap: Show me the promotions it overlaps with
+  member_benefits_per_order: Make the coupon not stack with tier coupons
+  slot_free: Find a free slot for the banner

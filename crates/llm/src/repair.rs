@@ -473,6 +473,11 @@ fn fix_string(
         }
     };
 
+    // `$item[n].slot`: what an earlier change-set item will produce, bound when the set runs.
+    if raw.starts_with("$item[") {
+        return Some(Value::String(raw));
+    }
+
     if let Some(Value::Array(allowed)) = schema.get("enum") {
         let allowed: Vec<&str> = allowed.iter().filter_map(Value::as_str).collect();
         return match enum_value(&raw, &allowed, schema) {
@@ -817,5 +822,18 @@ mod tests {
         assert_eq!(r.value, json!({"limit": 5}));
         assert_eq!(id_prefix("^prd_[a-z0-9_]+$"), Some("prd"));
         assert_eq!(id_prefix("^[A-Z]{3}$"), None);
+    }
+
+    #[test]
+    fn change_set_placeholders_pass_untouched() {
+        let schema = json!({"type": "object", "additionalProperties": false,
+            "properties": {"promotion_id": {"type": "string", "pattern": "^promo_[a-z0-9_]+$", "description": "Promotion."}}});
+        let r = repair(
+            &json!({"promotion_id": "$item[1].promotion_id"}),
+            &schema,
+            &env(),
+        );
+        assert_eq!(r.value["promotion_id"], "$item[1].promotion_id");
+        assert!(r.notes.is_empty());
     }
 }
