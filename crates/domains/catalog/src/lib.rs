@@ -95,6 +95,7 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .read(ops::inventory::GetInventory)
         .write(ops::inventory::SetVariantStock)
         .write(ops::reorder::CreateReorder)
+        .write(ops::reorder::ReceiveReorder)
         .read(ops::history::GetChangeHistory)
         .read(ops::brand::ListBrands)
         .read(ops::brand::GetBrand)

@@ -385,6 +385,18 @@
 - 되돌리기: 받기 전(`processing`)이면 재주문을 `cancelled`로 바꿉니다. 공급처가 보냈거나 받은 재주문은 되돌리지 않습니다(`invalid_state`).
 - 멱등성: 프리뷰 → 실행(`preview_id`)
 
+### `receive_reorder` — Kind: W
+- 논리주소/REST: `catalog.reorder.receive` · `POST /v1/catalog/reorders/{reorder_id}/receive`
+- 요약: 공급처에서 온 재주문을 받습니다. 주문한 수량이 각 변형의 팔 수 있는 재고에 더해지고(품절로 자동 전환됐던 변형은 판매 중으로 돌아옴), 재주문은 `delivered`가 됩니다. 실제로 온 수량이 다르면 받은 뒤 `set_variant_stock`으로 고칩니다.
+- consumes → produces: `reorder_id` → `variant_id[]`
+- 입력: `reorder_id`(Text, `^ro_`, ✓)
+- 출력: 프리뷰 형식 → 실행 `{ok: true, id: "ro_01jd2k8", undo: {by: "person", target: "cs_…", until: "…"}}`
+- 프리뷰: `changes`=`update` `reorder` `order_status` `processing` → `delivered`, 그리고 줄마다 `update` `inventory_level`(`from`/`to`, 바뀌면 `availability`). checks는 판매 상태가 바뀌는 변형마다 `inventory.auto_restore`. `needs_approval: false`.
+- 정책: [catalog.yml](../../policies/catalog.yml) `inventory.auto_restore`
+- 에러: `not_found`(`detail.entity: reorder`) → `get_inventory` · `invalid_state`(이미 받았거나 취소된 재주문) → `get_inventory`
+- 되돌리기: 그 뒤로 재고가 바뀌지 않았으면 재고를 받기 전으로, 재주문을 받기 전 상태로 돌립니다. 그새 팔렸거나 고쳐졌으면 `invalid_state`(→ `set_variant_stock`).
+- 멱등성: 프리뷰 → 실행(`preview_id`)
+
 ---
 
 ## approval

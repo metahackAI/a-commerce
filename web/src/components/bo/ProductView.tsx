@@ -6,6 +6,7 @@
 // (get_change_history). Prices and stock of a variant are edited with preview → apply.
 
 import {useState} from 'react';
+import {useRouter} from 'next/navigation';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
 import {Text} from '@astryxdesign/core/Text';
 import {Button} from '@astryxdesign/core/Button';
@@ -25,6 +26,7 @@ import {DataTable, Figure} from './tables';
 import {TargetFact, TargetInline} from './targets';
 import {VariantEditor, type EditMode} from './VariantEditor';
 import {ProductEditor, type EditorTab} from './ProductEditor';
+import {WriteFlow} from './WriteFlow';
 
 type InvVariant = Inventory['variants'][number];
 
@@ -44,6 +46,34 @@ export interface ProductViewProps {
   brands?: Brand[];
   /** Opens the editor on this tab (a new product goes straight to its variants). */
   initialEdit?: EditorTab | null;
+}
+
+/** One open reorder: its units and arrival, and taking it in once it is here (receive_reorder). */
+function ReorderLine({reorder: r, canReceive}: {reorder: NonNullable<Inventory['reorders']>[number]; canReceive: boolean}) {
+  const router = useRouter();
+  const [receiving, setReceiving] = useState(false);
+  return (
+    <VStack gap={1}>
+      <HStack gap={2} vAlign="center" wrap="wrap">
+        <Text hasTabularNumbers>{`${count(r.total_units)} arriving by ${dateTime(r.expected_arrival_until)}`}</Text>
+        {canReceive && !receiving ? <Button label="Receive…" size="sm" variant="ghost" onClick={() => setReceiving(true)} /> : null}
+      </HStack>
+      {receiving ? (
+        <WriteFlow
+          method="POST"
+          path={`/v1/catalog/reorders/${encodeURIComponent(r.id)}/receive`}
+          input={{reorder_id: r.id}}
+          previewLabel="Preview the receipt"
+          applyLabel="Receive"
+          askWhenApprovalNeeded={`Prepare a change set to receive reorder ${r.id}.`}
+          onApplied={() => {
+            setReceiving(false);
+            router.refresh();
+          }}
+        />
+      ) : null}
+    </VStack>
+  );
 }
 
 /** A brand's or category's name from the lists the page loaded, or the id when it is not there. */
@@ -185,6 +215,16 @@ export function ProductView(p: ProductViewProps) {
               </TargetFact>
             ) : null}
           </MetadataList>
+        </PageSection>
+      ) : null}
+
+      {reorders.length > 0 && canWrite ? (
+        <PageSection title="On order" description="Reorders from the supplier that have not arrived. Receive one when it is here: its units become sellable stock.">
+          <VStack gap={3}>
+            {reorders.map(r => (
+              <ReorderLine key={r.id} reorder={r} canReceive={canWrite} />
+            ))}
+          </VStack>
         </PageSection>
       ) : null}
 

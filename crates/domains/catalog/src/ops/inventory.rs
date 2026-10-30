@@ -237,7 +237,7 @@ pub(crate) fn plan_stock(
     Ok((plan, check))
 }
 
-fn snapshot_json(s: &StockSnapshot, with_managed: bool) -> Value {
+pub(crate) fn snapshot_json(s: &StockSnapshot, with_managed: bool) -> Value {
     let mut v = json!({"inventory_level": s.inventory_level, "availability": s.availability});
     if with_managed {
         v["acom:managed"] = json!(s.managed);
@@ -245,7 +245,11 @@ fn snapshot_json(s: &StockSnapshot, with_managed: bool) -> Value {
     v
 }
 
-async fn write(tx: &mut TxCx, plan: &StockPlan, s: &StockSnapshot) -> Result<(), ToolError> {
+pub(crate) async fn write(
+    tx: &mut TxCx,
+    plan: &StockPlan,
+    s: &StockSnapshot,
+) -> Result<(), ToolError> {
     let n = repo::set_stock(
         tx,
         &StockWrite {
