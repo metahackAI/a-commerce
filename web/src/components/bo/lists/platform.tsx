@@ -32,7 +32,10 @@ export function ChangeSetList({items}: {items: ChangeSetSummary[]}) {
           cell: r => (
             <HStack gap={1} wrap="wrap">
               <StateToken state={r.state} />
-              {r.needs_approval ? <Token label="Needs approval" size="sm" color="orange" /> : null}
+              {/* Only while a person's decision is still to come; a live set was approved already. */}
+              {r.needs_approval && (r.state === 'drafting' || r.state === 'waiting_for_approval') ? (
+                <Token label="Needs approval" size="sm" color="orange" />
+              ) : null}
             </HStack>
           ),
         },
