@@ -43,10 +43,20 @@ dependencies = [
 name = "acom-catalog"
 version = "0.1.0"
 dependencies = [
+ "acom-auth",
+ "acom-changeset",
  "acom-contract",
  "acom-core",
  "acom-policy",
  "acom-store",
+ "chrono",
+ "rust_decimal",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -121,10 +131,20 @@ dependencies = [
 name = "acom-customer"
 version = "0.1.0"
 dependencies = [
+ "acom-auth",
+ "acom-changeset",
  "acom-contract",
  "acom-core",
  "acom-policy",
  "acom-store",
+ "chrono",
+ "rust_decimal",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -138,13 +158,24 @@ dependencies = [
 name = "acom-fulfillment"
 version = "0.1.0"
 dependencies = [
+ "acom-auth",
  "acom-catalog",
+ "acom-changeset",
  "acom-contract",
  "acom-core",
  "acom-customer",
  "acom-policy",
+ "acom-promotion",
  "acom-sales",
  "acom-store",
+ "chrono",
+ "rust_decimal",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -201,23 +232,43 @@ dependencies = [
 name = "acom-merchandising"
 version = "0.1.0"
 dependencies = [
+ "acom-auth",
  "acom-catalog",
+ "acom-changeset",
  "acom-contract",
  "acom-core",
  "acom-policy",
  "acom-promotion",
  "acom-store",
+ "chrono",
+ "rust_decimal",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
 name = "acom-messaging"
 version = "0.1.0"
 dependencies = [
+ "acom-auth",
+ "acom-changeset",
  "acom-contract",
  "acom-core",
  "acom-customer",
  "acom-policy",
  "acom-store",
+ "chrono",
+ "rust_decimal",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -254,12 +305,22 @@ dependencies = [
 name = "acom-promotion"
 version = "0.1.0"
 dependencies = [
+ "acom-auth",
  "acom-catalog",
+ "acom-changeset",
  "acom-contract",
  "acom-core",
  "acom-customer",
  "acom-policy",
  "acom-store",
+ "chrono",
+ "rust_decimal",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -283,24 +344,44 @@ dependencies = [
 name = "acom-sales"
 version = "0.1.0"
 dependencies = [
+ "acom-auth",
  "acom-catalog",
+ "acom-changeset",
  "acom-contract",
  "acom-core",
  "acom-customer",
  "acom-policy",
  "acom-promotion",
  "acom-store",
+ "chrono",
+ "rust_decimal",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
 name = "acom-search"
 version = "0.1.0"
 dependencies = [
+ "acom-auth",
  "acom-catalog",
+ "acom-changeset",
  "acom-contract",
  "acom-core",
  "acom-policy",
  "acom-store",
+ "chrono",
+ "rust_decimal",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

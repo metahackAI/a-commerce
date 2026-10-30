@@ -36,6 +36,11 @@ pub async fn preview(
             "`{tool}` is not a write; call it without preview."
         )));
     }
+    if change_set_id.is_some() && person_endpoint(cx, meta.tool).is_some() {
+        return Err(ToolError::invalid_input(format!(
+            "`{tool}` is run by the person, not by a change set."
+        )));
+    }
     let mut planned = op.preview(cx, input.clone()).await?;
     let (needs_approval, reason) = match (&planned.inner.approval, meta.kind) {
         (ApprovalNeed::Needed { reason }, _) => (true, Some(reason.clone())),
@@ -318,8 +323,20 @@ pub(crate) async fn still_right(
     Ok(())
 }
 
+/// The person-only endpoint that runs a "preview only" tool's preview
+/// (`approval.preview_only`: `prepare_order` → `POST /v1/sales/orders`), if `tool` is one.
+pub fn person_endpoint(cx: &Cx, tool: &str) -> Option<String> {
+    cx.policy
+        .raw("approval")
+        .and_then(|p| p.get("preview_only"))
+        .and_then(|m| m.get(tool))
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+}
+
 /// Runs a stored preview on its own (`POST {path} {preview_id}`): only a write that needs no
-/// approval and is not part of a change set.
+/// approval, is not part of a change set, and is not "preview only" (those run from a
+/// person-only endpoint through [`claim_preview`]).
 pub async fn commit(
     registry: &Registry<Cx>,
     cx: &Cx,
@@ -328,6 +345,12 @@ pub async fn commit(
 ) -> Result<CommitResult, ToolError> {
     let op = op(registry, tool)?;
     let meta = op.meta();
+    if let Some(endpoint) = person_endpoint(cx, meta.tool) {
+        return Err(ToolError::invalid_input(format!(
+            "`{tool}` only prepares; the person runs it with `{endpoint}` from the confirmation card."
+        ))
+        .detail(json!({"field": "preview_id", "reason": "preview_only", "endpoint": endpoint})));
+    }
     let mut tx = cx.begin().await.map_err(ToolError::from)?;
     let p = load(&mut tx, preview_id).await?;
     if p.instrument != meta.tool {

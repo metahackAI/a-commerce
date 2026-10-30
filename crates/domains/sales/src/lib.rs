@@ -5,6 +5,8 @@
 //! `ReadOp`/`WriteOp`), `repo` (SQL). Other domains are reached only through the service
 //! traits they export, never through their tables.
 
+pub mod service;
+
 use acom_contract::RegistryBuilder;
 use acom_store::Cx;
 

@@ -326,6 +326,12 @@ pub async fn add_item(cx: &Cx, cs: &str, item: ItemRef) -> Result<Value, ToolErr
     let mut tx = cx.begin().await.map_err(ToolError::from)?;
     let p = preview::load(&mut tx, &item.preview_id).await?;
     ensure_open(&p, cx.clock.now())?;
+    if preview::person_endpoint(cx, &p.instrument).is_some() {
+        return Err(ToolError::invalid_input(format!(
+            "`{}` is run by the person, not by a change set.",
+            p.instrument
+        )));
+    }
     if let Some(other) = p.change_set_id.as_deref().filter(|o| *o != cs) {
         return Err(ToolError::new(
             ErrorCode::INVALID_STATE,

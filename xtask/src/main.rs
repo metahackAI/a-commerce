@@ -8,6 +8,10 @@
 //! - `check-seed`: the demo seed fits the migrations (columns, required values, words, keys,
 //!   references), without a database.
 //! - `hash-password <password>`: an argon2id hash for seed accounts.
+//! - `dev-token <persona> [--agent]`: an internal token signed with the local key
+//!   (`infra/secrets/gateway_signing_key.pem`), to call commerce without the gateway while
+//!   developing. Personas: `admin`, `jamie`, `alex`, `guest`; `--agent` makes the on-behalf
+//!   token a chat turn would carry.
 
 mod schema;
 mod seed;
@@ -40,10 +44,92 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         },
+        "dev-token" => dev_token(
+            &repo_root(),
+            std::env::args().nth(2).as_deref().unwrap_or("admin"),
+            std::env::args().any(|a| a == "--agent"),
+        ),
         _ => {
             eprintln!(
-                "usage: cargo xtask check-docs | check-schema [--write] | check-seed | hash-password <password>"
+                "usage: cargo xtask check-docs | check-schema [--write] | check-seed | hash-password <password> | dev-token <admin|jamie|alex|guest> [--agent]"
             );
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn dev_token(root: &Path, persona: &str, agent: bool) -> ExitCode {
+    use acom_auth::{Principal, Signer, Surface, scopes};
+    use acom_core::TenantId;
+    use acom_core::enums::ActorKind;
+    let Ok(tenant) = TenantId::parse("store_northwind") else {
+        return ExitCode::FAILURE;
+    };
+    let (subject, kind, surface, set, name) = match persona {
+        "admin" => (
+            "adm_admin",
+            ActorKind::Operator,
+            Surface::Bo,
+            scopes::admin(),
+            "Admin",
+        ),
+        "jamie" => (
+            "cus_jamie",
+            ActorKind::Shopper,
+            Surface::Fo,
+            scopes::shopper(),
+            "Jamie",
+        ),
+        "alex" => (
+            "cus_alex",
+            ActorKind::Shopper,
+            Surface::Fo,
+            scopes::shopper(),
+            "Alex",
+        ),
+        "guest" => (
+            "ses_dev_guest",
+            ActorKind::Shopper,
+            Surface::Fo,
+            scopes::guest(),
+            "Guest",
+        ),
+        other => {
+            eprintln!("unknown persona `{other}` (admin, jamie, alex, guest)");
+            return ExitCode::FAILURE;
+        }
+    };
+    let mut p = Principal {
+        subject: subject.to_owned(),
+        kind,
+        tenant,
+        surface,
+        scopes: set,
+        name: Some(name.to_owned()),
+        session_id: Some("ses_dev".to_owned()),
+    };
+    if agent {
+        p = p.on_behalf();
+    }
+    let key = root.join("infra/secrets/gateway_signing_key.pem");
+    let signer = match Signer::from_pem_file(&key.to_string_lossy()) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("{e} (run `make keys`)");
+            return ExitCode::FAILURE;
+        }
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    match signer.sign(&p, "req_dev", now, 12 * 3600) {
+        Ok(t) => {
+            println!("{t}");
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("{e}");
             ExitCode::FAILURE
         }
     }
