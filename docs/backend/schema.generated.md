@@ -1262,6 +1262,24 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `sales.gift_order`
+
+`schema:AcceptAction/acom:GiftOrder` — a gift waiting for its recipient to accept it and give an address; id prefix gift_. API: gift_order. · id `gift_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | gift id (gift_ prefix), the part of the accept link that names the gift (API gift_order_id). |
+| `order_id` | text |  | `schema:object` | the gift order the recipient accepts (ord_ id). → `sales.sales_order` |
+| `recipient_name` | text |  | `schema:recipient` | the name the sender gave for the recipient, printed on the card and the parcel; used for this gift only. |
+| `recipient_contact` | text |  | `acom:recipientContact` | the email or phone the accept link goes to; used for this gift only and never saved to anyone's profile. |
+| `action_status` | text |  | `schema:actionStatus` | the recipient's acceptance: potential until they accept, completed once they did, failed when it lapsed. values: action_status Values: `potential` · `active` · `completed` · `failed`. |
+| `expires` | timestamptz |  | `schema:expires` | the last moment the recipient can accept (order time + gift.auto_cancel_if_no_address_days); payment waits until then. |
+| `accepted_at` | timestamptz | ✓ | `acom:acceptedAt` | when the recipient accepted and gave the address; NULL until then. |
+| `created_at` | timestamptz |  | `-` | when the gift was ordered. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `sales.order_event`
 
 `schema:Action` — one state change of an order; rows are only added.

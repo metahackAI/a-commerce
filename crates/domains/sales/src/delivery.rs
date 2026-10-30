@@ -55,10 +55,21 @@ pub(crate) fn short_label(label: Option<&str>, street: &str) -> String {
 }
 
 /// "Home · 12 Harbor St, Apt 3, Brooklyn, NY 11201": what the checkout card shows.
+/// A gift's address may come without region or postal code ("Dad · 48 Pine Rd, Lakeview").
 pub(crate) fn full_label(label: Option<&str>, a: &Address) -> String {
-    let place = match a.address_region.as_deref().filter(|r| !r.is_empty()) {
-        Some(r) => format!("{}, {r} {}", a.address_locality, a.postal_code),
-        None => format!("{} {}", a.address_locality, a.postal_code),
+    let region = a.address_region.as_deref().map(str::trim).unwrap_or("");
+    let postal = a.postal_code.trim();
+    let tail = [region, postal]
+        .into_iter()
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    let place = if tail.is_empty() {
+        a.address_locality.clone()
+    } else if region.is_empty() {
+        format!("{} {tail}", a.address_locality)
+    } else {
+        format!("{}, {tail}", a.address_locality)
     };
     short_label(label, &format!("{}, {place}", a.street_address))
 }
@@ -145,6 +156,15 @@ mod tests {
             full_label(None, &home),
             "12 Harbor St, Apt 3, Brooklyn, NY 11201"
         );
+        let dad = Address {
+            name: Some("Dad".into()),
+            street_address: "48 Pine Rd".into(),
+            address_locality: "Lakeview".into(),
+            address_region: None,
+            postal_code: String::new(),
+            address_country: "US".into(),
+        };
+        assert_eq!(full_label(Some("Dad"), &dad), "Dad · 48 Pine Rd, Lakeview");
         assert!(deliverable("us", &["US".to_owned()]));
         assert!(!deliverable("CA", &["US".to_owned()]));
     }

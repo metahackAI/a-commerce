@@ -69,6 +69,8 @@ export interface RefundReviewBlockData {
     day?: number | string | null;
     suggested?: string;
     because?: string | null;
+    /** Things a person should look at (for example 4 returns in the last 90 days). */
+    flags?: {rule?: string; detail?: string}[];
   }[];
   checks?: Check[];
   messages?: (string | {to?: string; kind?: string; order_number?: string; text?: string; channel?: string})[];

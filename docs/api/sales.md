@@ -468,11 +468,11 @@
   | recipient_mode | enum | ✓ | `address_known`: `delivery_address`로 보냄; `recipient_accepts`: 받는 사람이 링크로 주소·옵션 입력 | `"address_known"` |
   | recipient_name | Text | ✓ | 받는 사람 이름(카드·송장에 씀) | `"Dad"` |
   | recipient_contact | Text | recipient_accepts일 때 ✓ | 수락 링크를 받을 이메일 또는 전화 | `"dad@example.com"` |
-  | delivery_address | PostalAddress | address_known일 때 ✓ | 이 주문에만 쓰는 주소(저장하지 않음) | `{"street_address": "48 Pine Rd", "address_locality": "Lakeview", "address_country": "US"}` |
+  | delivery_address | PostalAddress | address_known일 때 ✓ | 이 주문에만 쓰는 주소(저장하지 않음). `name`(생략하면 `recipient_name`), `street_address`, `address_locality`, `address_country`는 필수, 보내는 사람이 모를 수 있는 `address_region`·`postal_code`는 선택 | `{"street_address": "48 Pine Rd", "address_locality": "Lakeview", "address_country": "US"}` |
   | card_message | Text | | 카드 문구(300자) | `"For the next trail. Love, J."` |
   | gift_wrap | Boolean | | 포장(`gift.wrap_fee`). 기본 false | `true` |
   | gift_receipt | Boolean | | 가격 없는 선물 영수증 동봉. 기본 true | `true` |
-  | client_total | MonetaryAmount | ✓ | 보내는 사람이 본 합계 | `{"value": 76.20, "currency": "USD"}` |
+  | client_total | MonetaryAmount | ✓ | 보내는 사람이 본 합계. 선물 합계(포장비 포함) 또는 장바구니 합계(포장비 전) 중 하나여야 하고, 서버가 다시 계산해 비교 | `{"value": 76.20, "currency": "USD"}` |
 - 출력(프리뷰):
   ```jsonc
   {"preview_id": "pv_g118", "expires_at": "2026-11-07T10:52:00-05:00",
@@ -494,6 +494,9 @@
    "needs_approval": false, "approval_reason": null}
   ```
   - 예: F4(Jamie가 아버지에게, Tue Nov 10 도착, 합계 $76.20). `exchange_until`은 `gift_exchange_until`.
+  - `to`에는 `gift_options`(`wrap`, `wrap_fee`, `card_message`, `gift_receipt`, `receipt_hides_prices`, `exchange_until`), `recipient`(`name`, `mode`), 포장비 전 합계 `goods_total`도 실립니다. `recipient_accepts`면 `delivery`는 `{to, address_label: null, arrives: null, address_saved: false, recipient_contact, accept_within_days}`이고 주소는 받는 사람이 수락할 때 정해집니다.
+  - checks는 `gift.recipient_per_order`와 `checkout_validation`의 여섯 항목입니다(`server_total_matches_client`의 `detail`에 포장비를 더한 합계가 붙음).
+  - 주문하기(`POST /v1/sales/orders {preview_id}`)는 `sales_order.is_gift`·`gift_options`·포장비를 기록하고, 결제는 `address_known`이면 바로, `recipient_accepts`면 받는 사람이 수락할 때까지 보류합니다(`order_status: payment_due`). 이때 응답에 `gift_order_id`와 `accept_url`(`/gifts/{gift_order_id}`)이 더해지고, 수락 대기는 `sales.gift_order`(`action_status: potential`, `expires` = 주문 시각 + `gift.auto_cancel_if_no_address_days`)에 남습니다.
 - 프리뷰: `create order`(`order_type: gift`, `id: null`). `needs_approval: false`(프리뷰만).
 - 정책: `gift.recipient_per_order`, `gift.recipient_modes`, `gift.wrap_fee`, `gift.gift_receipt_hides_prices`, `gift.auto_cancel_if_no_address_days`, `gift_exchange_until`, `checkout_validation.stock_available`, `checkout_validation.server_total_matches_client`, [approval.yml](../../policies/approval.yml) `preview_only`
 - 에러: `cart_empty` → `add_to_cart` · `out_of_stock` → `get_cart` · `address_not_deliverable`(`address_known`일 때) → `prepare_gift_order`
@@ -503,7 +506,8 @@
 - 경로·스코프: `POST /v1/sales/gift-orders/{gift_order_id}/accept` · `human:order`(수락 링크로 연 세션). **툴이 아니며 모델은 보지 못합니다.** 받는 사람이 수락 링크의 버튼으로만 보냅니다.
 - 요약: 받는 사람이 선물을 수락하고 배송지·옵션(사이즈·색)을 입력합니다(`recipient_accepts` 선물만). **가격은 바꿀 수 없습니다.** 수락하면 보류된 결제가 진행됩니다.
 - consumes → produces: `gift_order_id` → `order_id`
-- 입력: 본문 `delivery_address`(PostalAddress, ✓), `size`(Text), `color`(Text). 헤더 `Idempotency-Key`, `X-CSRF-Token`.
+- 입력: 경로 `gift_order_id`(`^gift_[a-z0-9_]+$`), 본문 `delivery_address`(PostalAddress, ✓, 선택 필드는 `prepare_gift_order`와 같음), `size`(Text), `color`(Text). 헤더 `Idempotency-Key`, `X-CSRF-Token`.
+- 동작: 링크의 `gift_order_id`가 곧 수락 권한입니다(받는 사람은 이 스토어의 회원이 아닐 수 있음). `size`·`color`는 같은 상품의 다른 변형이고 **정가가 같아야** 하며(다르면 `invalid_input`, `detail.reason: price_differs`), 바꾸면 새 변형의 재고를 잡고 원래 변형의 재고를 돌려놓습니다. 카드 결제는 이때 완료(`payment_complete`)되고 주문은 `processing`이 됩니다. 수락 이벤트(`AcceptAction`)에 이번 주문에만 쓰는 배송지와 도착 예정이 남습니다.
 - 출력: `{"ok": true, "id": "ord_20530", "undo": null}`
 - 정책: `gift.recipient_can_change`(수락·주소·옵션만), `gift.auto_cancel_if_no_address_days`
 - 에러(모두 `next_tool: null`): `gift_expired`(수락 기한 경과, 보내는 사람에게 알림) → null · `out_of_stock`(고른 옵션 품절, 다른 옵션 선택) → null

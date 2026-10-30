@@ -817,8 +817,8 @@ async fn nothing_is_remembered_about_a_gift_recipient_and_made_up_numbers_are_dr
     assert!(!events.iter().any(|e| e.name() == "memory.saved"));
     let b = blocks(&events);
     assert_eq!(
-        b[0].ui, "look_gallery",
-        "a first visit is shown as photos (shopper.yml)"
+        b[0].ui, "product_list",
+        "a signed-in shopper is not on a first visit (shopper.yml)"
     );
     let text = message(&events);
     assert!(!text.contains("19.99"), "{text}");
@@ -1016,7 +1016,8 @@ async fn a_failing_tool_with_a_next_tool_revises_the_plan_once_more() {
     assert_eq!(spark.asked(), ["plan", "reply"]);
     assert_eq!(glimmer.asked(), ["plan", "plan", "reply"]);
     assert!(events.iter().any(|e| matches!(e, Event::Step { kind: StepKind::Plan, summary, .. } if summary.starts_with("Changing the plan"))));
-    assert_eq!(blocks(&events)[0].ui, "look_gallery");
+    // Jamie is signed in, so not on a first visit: the plain list.
+    assert_eq!(blocks(&events)[0].ui, "product_list");
 }
 
 // ---- B3: a sales question, read only ------------------------------------------------------

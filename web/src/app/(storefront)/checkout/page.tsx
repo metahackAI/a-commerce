@@ -54,6 +54,9 @@ export default async function CheckoutPage() {
           addresses={orElse(addresses, {items: [], total: 0}).items}
           methods={orElse(methods, {items: [], total: 0}).items}
         />
+        <HStack>
+          <Button label="Send it as a gift instead" size="sm" variant="ghost" href="/checkout/gift" />
+        </HStack>
       </VStack>
     );
   })();

@@ -144,6 +144,15 @@
       "rdfs:comment": "A prize for one rank of an event. Used as additionalType on an Offer."
     },
     {
+      "@id": "acom:GiftOrder",
+      "@type": "rdfs:Class",
+      "rdfs:label": "GiftOrder",
+      "rdfs:subClassOf": {
+        "@id": "schema:AcceptAction"
+      },
+      "rdfs:comment": "a gift waiting for its recipient to accept it and give an address; id prefix gift_. API: gift_order."
+    },
+    {
       "@id": "acom:MemberCoupon",
       "@type": "rdfs:Class",
       "rdfs:label": "MemberCoupon",
@@ -277,6 +286,22 @@
         "@id": "schema:ListItem"
       },
       "rdfs:comment": "one product a shopper keeps for later; the product id names the item, there is no id of its own."
+    },
+    {
+      "@id": "acom:acceptedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "acceptedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:GiftOrder"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the recipient accepted and gave the address; NULL until then."
     },
     {
       "@id": "acom:actionType",
@@ -2328,6 +2353,22 @@
         }
       ],
       "rdfs:comment": "the shopper's own words, up to 500 characters."
+    },
+    {
+      "@id": "acom:recipientContact",
+      "@type": "rdf:Property",
+      "rdfs:label": "recipientContact",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:GiftOrder"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the email or phone the accept link goes to; used for this gift only and never saved to anyone's profile."
     },
     {
       "@id": "acom:recipientCount",

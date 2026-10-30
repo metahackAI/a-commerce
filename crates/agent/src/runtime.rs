@@ -23,12 +23,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::blocks::change_set::{ChangeSetView, ItemView};
-use crate::blocks::{Block, insights, shop, table};
+use crate::blocks::{Block, insights, review, shop, shopper, table};
 use crate::checker;
 use crate::client::{ItemRef, NewChangeSet, ToolClient};
 use crate::executor::{self, StepRecord};
 use crate::memory::{ConversationContext, OpenChangeSet, Owner};
-use crate::planner::{self, About, Plan, PlanInput};
+use crate::planner::{self, About, Plan, PlanInput, PlanStep};
 use crate::profile::{AgentProfile, ChatSurface, Limits, Profiles};
 use crate::router;
 use crate::store::{StepRow, StoreInfo, StoreSettings, SystemStore, TurnEnd, TurnLog, TurnStart};
@@ -441,6 +441,8 @@ struct Turn<'r> {
     candidates: Vec<String>,
     plan: Option<Plan>,
     history: Vec<StepRecord>,
+    /// Rows of blocks shown earlier that steps used this turn (`blk_…`).
+    sources: Vec<StepRecord>,
     draft: Option<Draft>,
     view: Option<ChangeSetView>,
     blocks: Vec<Block>,
@@ -490,6 +492,7 @@ impl<'r> Turn<'r> {
             candidates: Vec::new(),
             plan: None,
             history: Vec::new(),
+            sources: Vec::new(),
             draft: None,
             view: None,
             blocks: Vec::new(),
@@ -947,10 +950,12 @@ impl<'r> Turn<'r> {
                 None,
             )
             .await;
-        let pinned: Vec<String> = self
+        let mut pinned: Vec<String> = self
             .open_change_set()
             .map(|c| c.items.iter().map(|i| i.tool.clone()).collect())
             .unwrap_or_default();
+        // The agent's own core reads are always at hand (`tool_scope.always`).
+        pinned.extend(self.profile.tool_scope.always.iter().cloned());
         let pinned: Vec<&str> = pinned.iter().map(String::as_str).collect();
         let mut query = self.text.clone();
         for c in &self.request.context {
@@ -1268,90 +1273,205 @@ impl<'r> Turn<'r> {
                     .push("I did not remember anything about the person this is for.".into());
                 continue;
             }
-            let bound = executor::bind(step, &tool, &view, &order, &self.pointed);
-            let mut input = bound.input;
-            if tool.is_write()
-                && self.surface == ChatSurface::Bo
-                && let Some(base) = self.replaceable_input(&tool.tool)
-            {
-                input = executor::merge(&base, &input);
-            }
-            let mut repaired = acom_llm::repair(&input, &tool.input_schema, &self.repair_env());
-            if !repaired.is_valid()
-                && let Some(fixed) = self.ask_arguments(&tool, &repaired).await
-            {
-                repaired = fixed;
-            }
-            if !repaired.is_valid() {
-                let mut why: Vec<String> = repaired.errors.clone();
-                if !repaired.missing.is_empty() {
-                    why.push(format!("missing {}", repaired.missing.join(", ")));
+            // Blocks shown earlier in the conversation stand in for steps (`blk_…`).
+            for id in step.uses.iter().chain(step.each.iter()) {
+                if id.starts_with("blk_")
+                    && !view.contains_key(id)
+                    && let Some(r) = self.block_source(id)
+                {
+                    view.insert(id.clone(), r);
+                    order.push(id.clone());
                 }
-                let h = self
-                    .begin_step(
-                        StepKind::CallTool,
-                        format!("Preparing {}", tool.tool),
-                        Some(&tool.tool),
-                    )
-                    .await;
-                let sentence = format!(
-                    "The arguments for {} are not usable: {}.",
-                    tool.tool,
-                    why.join("; ")
-                );
-                self.end_step(
-                    &h,
-                    StepStatus::Failed,
-                    StepEnd {
-                        summary: sentence.clone(),
-                        input: Some(repaired.value),
-                        ..StepEnd::default()
-                    },
-                )
-                .await;
-                return Flow::Revise(sentence);
             }
-            let mut notes = bound.notes;
-            notes.extend(repaired.notes.iter().cloned());
-            let input = repaired.value;
-            // Same read with the same arguments earlier this turn: reuse its result.
-            if !tool.is_write()
-                && let Some(prev) = self
-                    .history
-                    .iter()
-                    .find(|r| r.tool == tool.tool && r.input == input)
-                    .cloned()
-            {
-                view.insert(
-                    step.id.clone(),
-                    StepRecord {
-                        step: step.id.clone(),
-                        ..prev
-                    },
-                );
-                order.push(step.id.clone());
-                continue;
-            }
-            let result = match (tool.kind, self.surface) {
-                (ToolKind::Read, _) => self.run_read(&step.id, &tool, input, &notes).await,
-                (_, ChatSurface::Bo) => {
-                    self.run_change_set_write(plan, &step.id, &tool, input, &notes)
+            let result = match &step.each {
+                Some(source) => self.run_each(plan, step, &tool, source, &view).await,
+                None => {
+                    let bound = executor::bind(step, &tool, &view, &order, &self.pointed);
+                    let mut input = bound.input;
+                    if tool.is_write()
+                        && self.surface == ChatSurface::Bo
+                        && let Some(base) = self.replaceable_input(&tool.tool)
+                    {
+                        input = executor::merge(&base, &input);
+                    }
+                    self.call(plan, &step.id, &tool, input, bound.notes)
                         .await
-                }
-                (_, ChatSurface::Fo) => {
-                    self.run_shopper_write(&step.id, &tool, input, &notes).await
+                        .map(Some)
                 }
             };
             match result {
-                Ok(record) => {
-                    self.history.push(record.clone());
+                Ok(Some(record)) => {
                     view.insert(step.id.clone(), record);
                     order.push(step.id.clone());
+                }
+                Ok(None) => {}
+                // A memory that cannot be kept (a guest has none) does not stop the answer.
+                Err(Flow::Stop(why)) if tool.remembers() => {
+                    self.problems
+                        .push(format!("I could not remember that: {why}"));
                 }
                 Err(flow) => return flow,
             }
         }
         Flow::Done
+    }
+
+    /// The rows of a block shown earlier in this conversation, as a step's result.
+    fn block_source(&mut self, block_id: &str) -> Option<StepRecord> {
+        let block = self.ctx.block(block_id)?;
+        let data = block.get("data").cloned().unwrap_or(Value::Null);
+        let rows = executor::rows(&data);
+        let record = StepRecord {
+            step: block_id.to_owned(),
+            tool: block
+                .get("ui")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_owned(),
+            kind: ToolKind::Read,
+            input: Value::Null,
+            slots: executor::slots_from_rows(&rows),
+            output: Some(json!({"items": rows, "total": rows.len()})),
+            preview: None,
+            item: None,
+        };
+        self.sources.push(record.clone());
+        Some(record)
+    }
+
+    /// One tool call: repair the arguments (asking the worker once when they cannot be), reuse
+    /// a read made with the same arguments this turn, else read, preview into the change set, or
+    /// preview and commit the shopper's write.
+    async fn call(
+        &mut self,
+        plan: &Plan,
+        step: &str,
+        tool: &ToolSpec,
+        input: Value,
+        notes: Vec<String>,
+    ) -> Result<StepRecord, Flow> {
+        let mut repaired = acom_llm::repair(&input, &tool.input_schema, &self.repair_env());
+        if !repaired.is_valid()
+            && let Some(fixed) = self.ask_arguments(tool, &repaired).await
+        {
+            repaired = fixed;
+        }
+        if !repaired.is_valid() {
+            let mut why: Vec<String> = repaired.errors.clone();
+            if !repaired.missing.is_empty() {
+                why.push(format!("missing {}", repaired.missing.join(", ")));
+            }
+            let h = self
+                .begin_step(
+                    StepKind::CallTool,
+                    format!("Preparing {}", tool.tool),
+                    Some(&tool.tool),
+                )
+                .await;
+            let sentence = format!(
+                "The arguments for {} are not usable: {}.",
+                tool.tool,
+                why.join("; ")
+            );
+            self.end_step(
+                &h,
+                StepStatus::Failed,
+                StepEnd {
+                    summary: sentence.clone(),
+                    input: Some(repaired.value),
+                    ..StepEnd::default()
+                },
+            )
+            .await;
+            return Err(Flow::Revise(sentence));
+        }
+        let mut notes = notes;
+        notes.extend(repaired.notes.iter().cloned());
+        let input = repaired.value;
+        // Same read with the same arguments earlier this turn: reuse its result.
+        if !tool.is_write()
+            && let Some(prev) = self
+                .history
+                .iter()
+                .find(|r| r.tool == tool.tool && r.input == input)
+                .cloned()
+        {
+            return Ok(StepRecord {
+                step: step.to_owned(),
+                ..prev
+            });
+        }
+        let record = match (tool.kind, self.surface) {
+            (ToolKind::Read, _) => self.run_read(step, tool, input, &notes).await,
+            (_, ChatSurface::Bo) => {
+                self.run_change_set_write(plan, step, tool, input, &notes)
+                    .await
+            }
+            (_, ChatSurface::Fo) => self.run_shopper_write(step, tool, input, &notes).await,
+        }?;
+        self.history.push(record.clone());
+        Ok(record)
+    }
+
+    /// A step with `each`: one call per row of the source (filtered by `when`), each taking its
+    /// ids from its row. Returns one record whose result lists every row's result, or `None`
+    /// when no row matched.
+    async fn run_each(
+        &mut self,
+        plan: &Plan,
+        step: &PlanStep,
+        tool: &ToolSpec,
+        source: &str,
+        view: &BTreeMap<String, StepRecord>,
+    ) -> Result<Option<StepRecord>, Flow> {
+        let Some(src) = view.get(source) else {
+            return Err(Flow::Revise(format!(
+                "{} runs for each row of {source}, which has no result.",
+                tool.tool
+            )));
+        };
+        let rows: Vec<Value> = src
+            .output
+            .as_ref()
+            .map(executor::rows)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|r| executor::row_matches(r, step.when.as_ref()))
+            .collect();
+        let mut items: Vec<Value> = Vec::new();
+        let mut slots: BTreeMap<String, Vec<Value>> = BTreeMap::new();
+        let mut last: Option<StepRecord> = None;
+        for row in rows {
+            if let Some(why) = self.limit_reached() {
+                return Err(Flow::Stop(why));
+            }
+            let bound = executor::bind_row(step, tool, &row);
+            let record = self
+                .call(plan, &step.id, tool, bound.input, bound.notes)
+                .await?;
+            if let Some(o) = &record.output {
+                items.extend(executor::rows(o));
+            }
+            for (k, vs) in &record.slots {
+                let list = slots.entry(k.clone()).or_default();
+                for v in vs {
+                    if !list.contains(v) {
+                        list.push(v.clone());
+                    }
+                }
+            }
+            last = Some(record);
+        }
+        Ok(last.map(|last| {
+            let total = items.len();
+            StepRecord {
+                step: step.id.clone(),
+                output: (!tool.is_write()).then(|| json!({"items": items, "total": total})),
+                slots,
+                item: None,
+                ..last
+            }
+        }))
     }
 
     /// The arguments the model wrote could not be repaired: ask the worker once to fill them.
@@ -2033,34 +2153,223 @@ impl<'r> Turn<'r> {
             .find(|r| r.output.is_some() && fits(r))
     }
 
-    /// Facts the profile shows about the shopper (`compares_specs`), from any read's `key`s.
+    /// Facts the profile shows about the shopper, from any read's `key`s (`compares_specs`) and
+    /// remembered values as `key=value` (`layout_preference=photos over details`), for
+    /// `layout_rules`.
     fn profile_facts(&self) -> Vec<String> {
         let mut out = Vec::new();
-        for r in &self.history {
-            for i in shop::items_of(r.output.as_ref().unwrap_or(&Value::Null)) {
-                if let Some(k) = i.get("key").and_then(Value::as_str) {
-                    out.push(k.to_owned());
+        let mut add = |f: &Value| {
+            if let Some(k) = f.get("key").and_then(Value::as_str) {
+                out.push(k.to_owned());
+                if let Some(v) = f.get("value").and_then(Value::as_str) {
+                    out.push(format!("{k}={v}"));
                 }
             }
-            for f in r
-                .output
-                .as_ref()
-                .and_then(|o| o.get("facts"))
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-            {
-                if let Some(k) = f.get("key").and_then(Value::as_str) {
-                    out.push(k.to_owned());
+        };
+        for r in &self.history {
+            let output = r.output.as_ref().unwrap_or(&Value::Null);
+            for i in shop::items_of(output) {
+                add(&i);
+            }
+            for key in ["facts", "preferences"] {
+                for f in output
+                    .get(key)
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                {
+                    add(f);
                 }
             }
         }
         out
     }
 
+    /// The words that choose the layout: this message when it names one, else the latest
+    /// earlier message of the conversation that did ("less text" keeps holding).
+    fn layout_words(&self) -> String {
+        let names = |t: &str| {
+            let t = t.to_lowercase();
+            self.profile
+                .layout_rules
+                .iter()
+                .any(|r| r.when_said.iter().any(|p| t.contains(&p.to_lowercase())))
+        };
+        if names(&self.text) {
+            return self.text.clone();
+        }
+        self.ctx
+            .said_before()
+            .find(|t| names(t))
+            .map_or_else(|| self.text.clone(), str::to_owned)
+    }
+
+    /// Every tool result this turn saw, earlier blocks it used included, as sources a number
+    /// in the model's wording must come from.
+    fn number_sources(&self) -> Vec<Value> {
+        let mut out: Vec<Value> = self
+            .history
+            .iter()
+            .chain(&self.sources)
+            .filter_map(|r| r.output.clone())
+            .collect();
+        out.extend(
+            self.history
+                .iter()
+                .filter_map(|r| r.preview.as_ref())
+                .filter_map(|p| serde_json::to_value(p).ok()),
+        );
+        out
+    }
+
+    /// Whether model wording uses only numbers from the tools or from what the person said.
+    fn supported(&self, text: &str, sources: &[Value]) -> bool {
+        let refs: Vec<&Value> = sources.iter().collect();
+        let mut said: Vec<&str> = vec![self.text.as_str()];
+        said.extend(self.ctx.said_before());
+        checker::unsupported_numbers(text, &refs, &said).is_empty()
+    }
+
+    /// The plan's notes the block may show: `(element, text)`, numbers checked.
+    fn checked_notes(&self) -> Vec<(String, String)> {
+        let sources = self.number_sources();
+        self.plan
+            .as_ref()
+            .map(|p| {
+                p.notes
+                    .iter()
+                    .filter(|n| self.supported(&n.text, &sources))
+                    .map(|n| (n.element.clone(), n.text.clone()))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// The "looking for" chips: the plan's understood lines, numbers checked.
+    fn looking_for_block(&self) -> Option<Block> {
+        let sources = self.number_sources();
+        let chips: Vec<(String, String)> = self
+            .plan
+            .as_ref()?
+            .interpretation
+            .iter()
+            .filter(|u| self.supported(&u.text, &sources))
+            .map(|u| {
+                (
+                    u.text.clone(),
+                    u.source.clone().unwrap_or_else(|| "said".into()),
+                )
+            })
+            .collect();
+        shopper::looking_for(&chips)
+    }
+
+    fn fit_check_block(&self) -> Option<Block> {
+        let reads: Vec<shopper::Read<'_>> = self
+            .history
+            .iter()
+            .filter_map(|r| {
+                r.output.as_ref().map(|o| shopper::Read {
+                    tool: &r.tool,
+                    output: o,
+                })
+            })
+            .collect();
+        let remembered: Vec<String> = self
+            .blocks
+            .iter()
+            .filter(|b| b.ui == "memory_note")
+            .filter_map(|b| b.data["text"].as_str().map(str::to_owned))
+            .collect();
+        shopper::fit_check(&reads, &self.checked_notes(), &remembered)
+    }
+
+    /// Products this turn read, else the rows of an earlier block of one of `uis` it used,
+    /// else the latest such block in the conversation.
+    fn product_rows(&self, uis: &[&str]) -> Vec<Value> {
+        if let Some(r) = self.last_output(|r| {
+            r.kind == ToolKind::Read
+                && shop::items_of(r.output.as_ref().unwrap_or(&Value::Null))
+                    .first()
+                    .is_some_and(|i| i.get("name").is_some())
+        }) {
+            return shop::items_of(r.output.as_ref().unwrap_or(&Value::Null));
+        }
+        if let Some(s) = self
+            .sources
+            .iter()
+            .rev()
+            .find(|s| uis.contains(&s.tool.as_str()))
+        {
+            return shop::items_of(s.output.as_ref().unwrap_or(&Value::Null));
+        }
+        self.ctx
+            .last_block(uis)
+            .map(|b| shop::results_of(b.get("data").unwrap_or(&Value::Null)))
+            .map(|o| shop::items_of(&o))
+            .unwrap_or_default()
+    }
+
+    fn gift_picker_block(&self, review_target: Option<&str>) -> Option<Block> {
+        let gift = self
+            .history
+            .iter()
+            .rev()
+            .filter(|r| self.tool(&r.tool).is_some_and(ToolSpec::preview_only))
+            .filter_map(|r| r.preview.as_ref())
+            .find(|p| p.changes.iter().any(|c| c.to["order_type"] == "gift"));
+        let cart = self
+            .last_output(|r| r.output.as_ref().is_some_and(|o| o.get("lines").is_some()))
+            .and_then(|r| r.output.as_ref());
+        let picks = self.product_rows(&["gift_picker", "look_gallery", "product_list"]);
+        shopper::gift_picker(&picks, cart, gift, review_target)
+    }
+
+    /// The batch of return requests: this turn's queue joined with its evaluations, else the
+    /// review shown earlier; with the change set when this turn drafted one.
+    fn refund_review_block(&self) -> Option<Block> {
+        let reads = || {
+            self.history
+                .iter()
+                .filter(|r| r.kind == ToolKind::Read)
+                .filter_map(|r| r.output.as_ref())
+                .flat_map(executor::rows)
+        };
+        let queue: Vec<Value> = reads()
+            .filter(|r| r.get("claim_id").is_some() && r.get("suggested").is_none())
+            .collect();
+        let evaluations: Vec<Value> = reads()
+            .filter(|r| r.get("claim_id").is_some() && r.get("suggested").is_some())
+            .collect();
+        let mut rows = review::requests(&queue, &evaluations);
+        if rows.is_empty() {
+            rows = self
+                .sources
+                .iter()
+                .rev()
+                .find(|s| s.tool == "refund_review")
+                .and_then(|s| s.output.as_ref())
+                .map(executor::rows)
+                .or_else(|| {
+                    self.ctx
+                        .last_block(&["refund_review"])
+                        .and_then(|b| b.get("data"))
+                        .map(review::rows_of)
+                })
+                .unwrap_or_default();
+        }
+        review::refund_review(&rows, self.view.as_ref(), &self.profile.check_intents)
+    }
+
     fn build_blocks(&mut self) {
+        let reply_plan = self
+            .plan
+            .as_ref()
+            .and_then(|p| p.reply_plan.clone())
+            .unwrap_or_default();
         let mut out: Vec<Block> = Vec::new();
-        if let Some(view) = &self.view {
+        // A batch review carries its change set itself, approve button included.
+        if let Some(view) = self.view.as_ref().filter(|_| reply_plan != "refund_review") {
             let title = self.plan.as_ref().and_then(|p| p.title.clone());
             let b = crate::blocks::change_set::block(
                 view,
@@ -2069,18 +2378,14 @@ impl<'r> Turn<'r> {
             );
             out.push(b);
         }
+        let mut cards: Vec<Block> = Vec::new();
         for r in &self.history {
             if let Some(p) = &r.preview
                 && self.tool(&r.tool).is_some_and(ToolSpec::preview_only)
             {
-                out.push(shop::checkout_card(p));
+                cards.push(shop::checkout_card(p));
             }
         }
-        let reply_plan = self
-            .plan
-            .as_ref()
-            .and_then(|p| p.reply_plan.clone())
-            .unwrap_or_default();
         let allowed = |ui: &str| self.profile.blocks.iter().any(|b| b == ui);
         let block = match reply_plan.as_str() {
             "product_table" => self
@@ -2111,24 +2416,49 @@ impl<'r> Turn<'r> {
                 .and_then(|r| shop::return_options(r.output.as_ref()?, &r.input)),
             "compare_table" | "look_gallery" | "product_list" => {
                 let facts = self.profile_facts();
-                let first_visit = self.ctx.is_first_turn() && facts.is_empty();
-                let rule =
-                    shop::layout(&self.profile.layout_rules, &self.text, &facts, first_visit);
+                // A first visit: a guest with no history yet. A signed-in shopper has a record.
+                let first_visit = self.principal.customer_id().is_none()
+                    && self.ctx.is_first_turn()
+                    && facts.is_empty();
+                let said = self.layout_words();
+                let rule = shop::layout(&self.profile.layout_rules, &said, &facts, first_visit);
                 let ui = rule
                     .map(|r| r.ui.as_str())
                     .filter(|u| allowed(u))
                     .unwrap_or(reply_plan.as_str());
-                self.last_output(|r| {
-                    r.kind == ToolKind::Read
-                        && shop::items_of(r.output.as_ref().unwrap_or(&Value::Null))
-                            .first()
-                            .is_some_and(|i| i.get("name").is_some())
-                })
-                .and_then(|r| shop::products(ui, r.output.as_ref()?, rule.map(|r| r.why.as_str())))
+                // Nothing read this turn: the results shown last, laid out again.
+                let rows = self.product_rows(&["compare_table", "look_gallery", "product_list"]);
+                shop::products(
+                    ui,
+                    &json!({"items": rows, "total": rows.len()}),
+                    rule.map(|r| r.why.as_str()),
+                )
             }
+            "fit_check" => self.fit_check_block(),
+            "looking_for" => self.looking_for_block(),
+            "gift_picker" => {
+                let target = cards.last().map(|c| format!("block:{}", c.block_id));
+                out.extend(self.looking_for_block());
+                self.gift_picker_block(target.as_deref())
+            }
+            "profile_card" => self
+                .last_output(|r| {
+                    r.output
+                        .as_ref()
+                        .is_some_and(|o| o.get("preferences").is_some())
+                })
+                .and_then(|r| shopper::profile_card(r.output.as_ref()?)),
+            "refund_review" => self.refund_review_block(),
             _ => None,
         };
-        out.extend(block);
+        // A gift is reviewed in its picker first; the card with the Place order button follows.
+        if reply_plan == "gift_picker" {
+            out.extend(block);
+            out.extend(cards);
+        } else {
+            out.extend(cards);
+            out.extend(block);
+        }
         for b in out {
             self.emit.send(Event::Block(Box::new(b.clone())));
             if b.ui == "change_set"
@@ -2161,10 +2491,17 @@ impl<'r> Turn<'r> {
             .filter(|r| r.kind == ToolKind::Read)
             .map(|r| json!({"tool": r.tool, "result": compact(r.output.as_ref().unwrap_or(&Value::Null))}))
             .collect();
+        // A block's summary (a review's counts and refund total) is what the reply may cite.
         let blocks: Vec<Value> = self
             .blocks
             .iter()
-            .map(|b| json!({"ui": b.ui, "title": b.title}))
+            .map(|b| {
+                let mut v = json!({"ui": b.ui, "title": b.title});
+                if let Some(s) = b.data.get("summary").filter(|s| s.is_object()) {
+                    v["summary"] = s.clone();
+                }
+                v
+            })
             .collect();
         json!({"request": self.text, "change_set": cs, "reads": reads, "blocks_shown": blocks,
                "problems": self.problems,
@@ -2207,6 +2544,14 @@ impl<'r> Turn<'r> {
                 "sales_explainer" => parts.push(
                     "Here is how sales compare and what the data shows behind the change.".into(),
                 ),
+                "fit_check" => parts.push("Here is how the sizes compare.".into()),
+                "gift_picker" => parts.push(
+                    "Here are a few picks; nothing about the person it is for is saved.".into(),
+                ),
+                "refund_review" if self.view.is_none() => {
+                    parts.push("Here is how the store's policy sorts these requests.".into())
+                }
+                "profile_card" => parts.push("Here is what we know about you.".into()),
                 "return_options" => {
                     parts.push("Here are your options; only you can send the request.".into())
                 }
@@ -2399,3 +2744,6 @@ fn sentences(text: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod scenes;

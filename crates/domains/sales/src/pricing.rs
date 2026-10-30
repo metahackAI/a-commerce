@@ -254,6 +254,8 @@ pub(crate) enum DeliveryChoice {
     CartDefault,
     Saved(String),
     OneTime(Address),
+    /// Nowhere yet: a gift whose recipient gives the address when accepting it.
+    Later,
 }
 
 /// The priced cart.

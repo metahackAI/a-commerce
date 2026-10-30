@@ -83,6 +83,18 @@ fn facts(item: &Value, max: usize) -> Vec<Value> {
         .unwrap_or_default()
 }
 
+/// Whether a profile fact matches a rule's `when_profile` entry: a fact key (`compares_specs`),
+/// or `key=words` for a remembered value (`layout_preference=photos` matches the memory
+/// `layout_preference=photos over details`). Facts are `key` and `key=value`.
+fn profile_matches(pattern: &str, fact: &str) -> bool {
+    match pattern.split_once('=') {
+        None => fact == pattern,
+        Some((key, words)) => fact.split_once('=').is_some_and(|(k, v)| {
+            k == key && v.to_lowercase().contains(&words.trim().to_lowercase())
+        }),
+    }
+}
+
 /// Which layout shows product results (docs/api/chat.md §3.4): what the shopper says now,
 /// then their profile, then a first visit, then the rule with no condition.
 pub fn layout<'a>(
@@ -99,7 +111,7 @@ pub fn layout<'a>(
             rules.iter().find(|r| {
                 r.when_profile
                     .iter()
-                    .any(|p| profile_facts.iter().any(|f| f == p))
+                    .any(|p| profile_facts.iter().any(|f| profile_matches(p, f)))
             })
         })
         .or_else(|| rules.iter().find(|r| first_visit && r.first_visit))
@@ -108,6 +120,34 @@ pub fn layout<'a>(
                 .iter()
                 .find(|r| r.when_said.is_empty() && r.when_profile.is_empty() && !r.first_visit)
         })
+}
+
+/// The products an earlier results block showed, as rows to lay out again (F6: the same
+/// results, another layout). A comparison keeps its prices beside its products.
+pub fn results_of(data: &Value) -> Value {
+    let items: Vec<Value> = match (data.get("products"), data.get("prices")) {
+        (Some(Value::Array(products)), prices) => products
+            .iter()
+            .enumerate()
+            .map(|(n, p)| {
+                let mut row = p.clone();
+                if let Some(price) = prices.and_then(|ps| ps.get(n))
+                    && let Some(o) = row.as_object_mut()
+                {
+                    for k in ["price", "list_price"] {
+                        o.insert(k.into(), price.get(k).cloned().unwrap_or(Value::Null));
+                    }
+                }
+                row
+            })
+            .collect(),
+        // A gift picker's picks are products too.
+        _ => match data.get("picks") {
+            Some(Value::Array(picks)) => picks.clone(),
+            _ => items_of(data),
+        },
+    };
+    json!({"items": items, "total": items.len()})
 }
 
 /// Product results as `compare_table`, `look_gallery`, or `product_list`.
@@ -126,6 +166,7 @@ pub fn products(ui: &str, output: &Value, why: Option<&str>) -> Option<Block> {
         })).collect::<Vec<_>>()}),
         "product_list" => json!({"items": shown.iter().map(|i| json!({
             "product_id": product_id(i), "name": name(i), "price": price_of(i, "price"),
+            "list_price": price_of(i, "list_price"), "image": image(i),
             "facts": facts(i, 4),
         })).collect::<Vec<_>>()}),
         _ => return None,
@@ -277,6 +318,12 @@ pub fn checkout_card(preview: &Preview) -> Block {
         .cloned()
         .unwrap_or(Value::Null);
     let mut data = pick(&order, CART_FIELDS);
+    // A gift's card also shows the wrap, the card and receipt, and the recipient.
+    for f in ["order_type", "gift_wrap", "gift_options", "recipient"] {
+        if let Some(v) = order.get(f).filter(|v| !v.is_null()) {
+            data.insert(f.into(), v.clone());
+        }
+    }
     data.insert("preview_id".into(), json!(preview.preview_id));
     data.insert("expires_at".into(), json!(preview.expires_at));
     data.insert("checks".into(), json!(preview.checks));
@@ -432,6 +479,21 @@ mod tests {
             layout(rules, "A jacket", &[], false).unwrap().ui,
             "product_list"
         );
+        // A remembered layout (F6) is a key and its value.
+        let photos = [
+            "layout_preference".to_owned(),
+            "layout_preference=photos over details".to_owned(),
+        ];
+        assert_eq!(
+            layout(rules, "Any rain jackets?", &photos, false)
+                .unwrap()
+                .ui,
+            "look_gallery"
+        );
+        assert!(!profile_matches(
+            "layout_preference=photos",
+            "layout_preference"
+        ));
     }
 
     #[test]
@@ -469,6 +531,19 @@ mod tests {
                 .any(|f| f == "weight g: 190")
         );
         assert!(products("product_list", &json!({"items": []}), None).is_none());
+    }
+
+    #[test]
+    fn earlier_results_come_back_with_their_prices() {
+        let list = products("product_list", &jackets(), None).unwrap();
+        let again = results_of(&list.data);
+        let g = products("look_gallery", &again, Some("Shown as photos.")).unwrap();
+        assert_eq!(g.data["items"][0]["product_id"], "prd_windbreaker");
+        assert_eq!(g.data["items"][0]["image"], "w.jpg");
+        assert_eq!(g.data["items"][0]["price"]["value"].to_string(), "71.2");
+        let table = products("compare_table", &jackets(), None).unwrap();
+        let rows = results_of(&table.data);
+        assert_eq!(rows["items"][1]["price"]["value"].to_string(), "102.4");
     }
 
     #[test]

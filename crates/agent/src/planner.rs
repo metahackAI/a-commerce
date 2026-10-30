@@ -18,6 +18,19 @@ pub struct Understood {
     /// `who`, `products`, `benefit`, `when`, `where`, or `other`.
     pub aspect: String,
     pub text: String,
+    /// Where it came from, for the shopper's "looking for" chips: `said` (the default),
+    /// `profile`, or `his` / `hers` (about the person a gift is for).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+}
+
+/// Short wording the model gives one element of the answer block (why a pick suits the
+/// request, what a size option is for). Never a number the tools did not return.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Note {
+    /// `size:L`, `product:prd_windbreaker`.
+    pub element: String,
+    pub text: String,
 }
 
 /// Whom the request is about. Nothing is remembered about someone else (a gift).
@@ -36,8 +49,17 @@ pub struct PlanStep {
     pub tool: String,
     #[serde(default)]
     pub args: Value,
+    /// Earlier steps (or blocks shown earlier in the conversation, `blk_…`) whose results
+    /// fill this step's ids.
     #[serde(default)]
     pub uses: Vec<String>,
+    /// Run once per row of this earlier step's result (or earlier block), each run taking its
+    /// ids from that row.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub each: Option<String>,
+    /// With `each`: only the rows whose fields equal these values (`{"suggested": "refund"}`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub when: Option<Value>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -54,7 +76,16 @@ pub struct Plan {
     /// The block to answer with, or `text`.
     #[serde(default)]
     pub reply_plan: Option<String>,
+    /// Wording for elements of the answer block.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub notes: Vec<Note>,
 }
+
+/// Where an understood line came from.
+pub const SOURCES: &[&str] = &["said", "profile", "his", "hers"];
+
+/// The longest list of notes a plan keeps.
+const MAX_NOTES: usize = 12;
 
 const ASPECTS: &[&str] = &["who", "products", "benefit", "when", "where", "other"];
 
@@ -71,7 +102,9 @@ pub fn plan_schema(tools: &[&ToolSpec], blocks: &[String], max_steps: usize) -> 
             "interpretation": {"type": "array", "maxItems": 6, "items": {
                 "type": "object", "additionalProperties": false, "required": ["aspect", "text"],
                 "properties": {"aspect": {"type": "string", "enum": ASPECTS},
-                               "text": {"type": "string"}}}},
+                               "text": {"type": "string"},
+                               "source": {"type": "string", "enum": SOURCES,
+                                          "description": "said (default), profile, or his/hers for the person a gift is for."}}}},
             "about": {"type": "string", "enum": ["self", "other"]},
             "steps": {"type": "array", "maxItems": max_steps, "items": {
                 "type": "object", "additionalProperties": false,
@@ -81,8 +114,16 @@ pub fn plan_schema(tools: &[&ToolSpec], blocks: &[String], max_steps: usize) -> 
                     "tool": {"type": "string", "enum": names},
                     "args": {"type": "object"},
                     "uses": {"type": "array", "items": {"type": "string"},
-                             "description": "Ids of earlier steps whose results this step needs."}}}},
-            "reply_plan": {"type": "string", "enum": replies}
+                             "description": "Ids of earlier steps (or blk_ ids of blocks shown earlier) whose results this step needs."},
+                    "each": {"type": "string",
+                             "description": "Run this step once per row of that earlier step's result or earlier block (s2, blk_...)."},
+                    "when": {"type": "object",
+                             "description": "With each: only rows whose fields equal these values, like {\"suggested\": \"refund\"}."}}}},
+            "reply_plan": {"type": "string", "enum": replies},
+            "notes": {"type": "array", "maxItems": MAX_NOTES, "items": {
+                "type": "object", "additionalProperties": false, "required": ["element", "text"],
+                "properties": {"element": {"type": "string", "description": "size:L, product:prd_..."},
+                               "text": {"type": "string", "description": "A few words for that element, no numbers you did not read."}}}}
         }
     })
 }
@@ -106,11 +147,21 @@ pub fn validate(raw: &Value, tools: &[&ToolSpec], blocks: &[String]) -> Result<P
         ));
     }
     let mut seen: Vec<String> = Vec::new();
+    // A block shown earlier in the conversation can stand in for a step (`blk_…`); the runtime
+    // checks that it exists.
+    let earlier =
+        |id: &str, seen: &[String]| seen.iter().any(|s| s == id) || id.starts_with("blk_");
     for (n, step) in plan.steps.iter_mut().enumerate() {
-        if step.id.trim().is_empty() || seen.contains(&step.id) {
+        if step.id.trim().is_empty() || seen.contains(&step.id) || step.id.starts_with("blk_") {
             step.id = format!("s{}", n + 1);
         }
-        step.uses.retain(|u| seen.contains(u));
+        step.uses.retain(|u| earlier(u, &seen));
+        if step.each.as_deref().is_some_and(|e| !earlier(e, &seen)) {
+            step.each = None;
+        }
+        if step.each.is_none() || !step.when.as_ref().is_none_or(Value::is_object) {
+            step.when = None;
+        }
         if !step.args.is_object() {
             step.args = match &step.args {
                 Value::String(s) => acom_llm::parse::extract_json(s).unwrap_or(json!({})),
@@ -124,7 +175,13 @@ pub fn validate(raw: &Value, tools: &[&ToolSpec], blocks: &[String]) -> Result<P
         if !ASPECTS.contains(&u.aspect.as_str()) {
             u.aspect = "other".into();
         }
+        if u.source.as_deref().is_some_and(|s| !SOURCES.contains(&s)) {
+            u.source = None;
+        }
     }
+    plan.notes
+        .retain(|n| !n.element.trim().is_empty() && !n.text.trim().is_empty());
+    plan.notes.truncate(MAX_NOTES);
     if plan
         .reply_plan
         .as_deref()
@@ -143,6 +200,14 @@ impl Plan {
             .filter_map(|s| tools.iter().find(|t| t.tool == s.tool))
             .map(|t| t.domain())
             .collect()
+    }
+
+    /// The model's wording for one element (`size:L`), if it gave any.
+    pub fn note(&self, element: &str) -> Option<&str> {
+        self.notes
+            .iter()
+            .find(|n| n.element == element)
+            .map(|n| n.text.as_str())
     }
 
     /// The interpretation as stored with a change set.

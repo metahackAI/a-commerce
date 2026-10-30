@@ -6801,6 +6801,103 @@
   },
   {
     "schema": "sales",
+    "table": "gift_order",
+    "kind": "table",
+    "term": "schema:AcceptAction/acom:GiftOrder",
+    "description": "a gift waiting for its recipient to accept it and give an address; id prefix gift_. API: gift_order.",
+    "id_prefix": "gift",
+    "api_name": "gift_order",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "gift id (gift_ prefix), the part of the accept link that names the gift (API gift_order_id)."
+      },
+      {
+        "name": "order_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:object",
+        "description": "the gift order the recipient accepts (ord_ id).",
+        "references": "sales.sales_order"
+      },
+      {
+        "name": "recipient_name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:recipient",
+        "description": "the name the sender gave for the recipient, printed on the card and the parcel; used for this gift only."
+      },
+      {
+        "name": "recipient_contact",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:recipientContact",
+        "description": "the email or phone the accept link goes to; used for this gift only and never saved to anyone's profile."
+      },
+      {
+        "name": "action_status",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:actionStatus",
+        "description": "the recipient's acceptance: potential until they accept, completed once they did, failed when it lapsed. values: action_status",
+        "values": [
+          "potential",
+          "active",
+          "completed",
+          "failed"
+        ],
+        "values_list": "action_status"
+      },
+      {
+        "name": "expires",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:expires",
+        "description": "the last moment the recipient can accept (order time + gift.auto_cancel_if_no_address_days); payment waits until then."
+      },
+      {
+        "name": "accepted_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:acceptedAt",
+        "description": "when the recipient accepted and gave the address; NULL until then."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the gift was ordered."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "sales",
     "table": "order_event",
     "kind": "table",
     "term": "schema:Action",

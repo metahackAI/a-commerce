@@ -7,7 +7,9 @@
 
 pub mod change_set;
 pub mod insights;
+pub mod review;
 pub mod shop;
+pub mod shopper;
 pub mod table;
 pub mod tasks;
 
@@ -32,6 +34,11 @@ pub const KNOWN_BLOCKS: &[&str] = &[
     "memory_note",
     "sales_explainer",
     "task_list",
+    "fit_check",
+    "gift_picker",
+    "looking_for",
+    "profile_card",
+    "refund_review",
 ];
 
 /// Block data format version (`schema`).

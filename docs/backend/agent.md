@@ -72,8 +72,8 @@ examples: promotion.examples.yml               # 툴 검색·계획용 몇 개�
 
 모델은 전체 툴 목록을 보지 않습니다. 매니페스트(`GET /v1/tools`, 스코프로 이미 걸러짐)에서 후보를 고릅니다.
 
-1. **범위:** 에이전트의 `tool_scope`와 호출자 스코프의 교집합.
-2. **점수:** 이름·설명·필드 설명의 BM25 + 설명 임베딩 유사도(pgvector, 매니페스트가 바뀔 때만 재계산) + 홈 도메인 가중치.
+1. **범위:** 에이전트의 `tool_scope`와 호출자 스코프의 교집합. `tool_scope.always`의 툴(쇼퍼의 `search_products`, `get_my_profile`)은 말과 상관없이 늘 후보입니다.
+2. **점수:** 이름·설명·필드 설명의 BM25 + 설명 임베딩 유사도(pgvector, 매니페스트가 바뀔 때만 재계산) + 홈 도메인 가중치. 사람이 쓰는 말과 툴이 쓰는 말이 다른 경우는 `runtime.yml`의 `tool_search.related_words`(데이터)가 검색어를 넓힙니다("fit" → measurements, reviews, orders; 이어서 따라감). 맞는 말이 하나도 없으면 홈 도메인의 읽기부터 채웁니다.
 3. **그래프 확장:** 상위 후보의 `consumes`를 생산하는 툴(앞 단계)과 `produces`를 소비하는 툴(뒤 단계)을 1홉 추가. 예: `set_sale_prices` → 앞에 `search_products`, `list_tiers`, 뒤에 `create_coupon`, `schedule_banner`.
 4. **자르기:** 5~8개. 결과는 결정적(같은 입력 → 같은 후보)이고 턴 로그에 남깁니다.
 
@@ -100,7 +100,10 @@ examples: promotion.examples.yml               # 툴 검색·계획용 몇 개�
 }
 ```
 
-- **id는 모델이 옮기지 않습니다.** `uses`로 앞 단계를 가리키면 실행기가 툴 메타데이터의 `produces`/`consumes` 슬롯 이름(`product_id[]`, `tier_id`, `promotion_id`)으로 값을 채웁니다. 42개 상품 id를 모델이 베껴 쓰다 틀리는 일이 구조적으로 없습니다.
+- **id는 모델이 옮기지 않습니다.** `uses`로 앞 단계를 가리키면 실행기가 툴 메타데이터의 `produces`/`consumes` 슬롯 이름(`product_id[]`, `tier_id`, `promotion_id`)으로 값을 채웁니다. 42개 상품 id를 모델이 베껴 쓰다 틀리는 일이 구조적으로 없습니다. `uses`를 적은 단계는 그 단계들(과 사람이 가리킨 것)에서만 id를 받고, 없으면 추측하지 않고 인자를 되묻습니다(F3: 주문을 읽은 뒤에 가진 windbreaker의 id를 채움).
+- **행마다 실행(`each`, `when`):** `"each": "s1"`은 그 단계 결과의 행마다 한 번씩 실행하고, 실행마다 그 행의 같은 이름 필드(`claim_id`, `customer_id`, `order_id`)로 슬롯을 채웁니다. `"when": {"suggested": "refund"}`는 값이 같은 행만 고릅니다. B2: 요청 12건 평가는 `evaluate_return_request` 한 단계, 환불 9건·메시지 3건은 세 단계.
+- **앞서 보인 블록을 단계처럼:** 대화 기록은 블록을 id와 함께 보여 줍니다(`[showed refund_review blk_31]`). `uses`·`each`에 `blk_…`를 쓰면 그 블록의 행(`requests`, `items`, `picks`)이 결과처럼 쓰여 다시 읽지 않습니다(B2의 변경셋, F4의 선물 고르기).
+- **블록 문구(`notes`)와 출처(`source`):** 모델은 블록 요소에 붙일 짧은 말(`{"element": "size:L", "text": "Over a hoodie"}`, 첫째가 추천)과 이해한 줄의 출처(`said`·`profile`·`his`·`hers`, 칩)를 냅니다. 둘 다 툴 결과나 사람의 말에 없는 숫자가 들면 쓰지 않습니다.
 - **모델 선택:** 단계 ≤ 3이고 한 도메인이면 Glimmer, 아니면 Spark. 에이전트 정의의 `models`로 바꿀 수 있습니다. 모든 결정은 턴 로그에 남아 평가에서 비교됩니다.
 - **계획 수정:** 읽기 결과가 다음 인자를 바꿔야 할 때(예: 하한을 넘는 상품 2개는 15%로) 플래너를 한 번 더 부릅니다. 턴당 2회까지.
 
