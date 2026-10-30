@@ -34,7 +34,7 @@ use crate::client::{ItemRef, NewChangeSet, ToolClient};
 use crate::executor::{self, StepRecord};
 use crate::memory::{ConversationContext, OpenChangeSet, Owner};
 use crate::planner::{self, About, Plan, PlanInput, PlanStep};
-use crate::profile::{AgentProfile, ChatSurface, Limits, Profiles};
+use crate::profile::{AgentProfile, ChatSurface, LayoutRule, Limits, Profiles};
 use crate::router;
 use crate::store::{StepRow, StoreInfo, StoreSettings, SystemStore, TurnEnd, TurnLog, TurnStart};
 use crate::stream::{Command, Emitter, Event, StepKind, StepStatus, TurnUsage};
@@ -583,6 +583,7 @@ impl<'r> Turn<'r> {
             }
         }
         self.finish_change_set().await;
+        self.compare_for_layout().await;
         self.build_blocks();
         let reply = self.reply().await;
         self.finish(Some(reply), None).await;
@@ -2477,6 +2478,65 @@ impl<'r> Turn<'r> {
 
     /// Products this turn read, else the rows of an earlier block of one of `uis` it used,
     /// else the latest such block in the conversation.
+    /// The product block this turn shows: the layout rule that fits the shopper and their words
+    /// (agents/shopper.yml `layout_rules`), else the plan's choice.
+    fn product_layout(&self, reply_plan: &str) -> (String, Option<&LayoutRule>) {
+        let facts = self.profile_facts();
+        // A first visit: a guest with no history yet. A signed-in shopper has a record.
+        let first_visit =
+            self.principal.customer_id().is_none() && self.ctx.is_first_turn() && facts.is_empty();
+        let said = self.layout_words();
+        let rule = shop::layout(&self.profile.layout_rules, &said, &facts, first_visit)
+            .filter(|r| self.profile.blocks.iter().any(|b| *b == r.ui));
+        let ui = rule.map_or(reply_plan, |r| r.ui.as_str()).to_owned();
+        (ui, rule)
+    }
+
+    /// A comparison shows the products' attributes side by side, which only `compare_products`
+    /// reads. When the turn will show one and the plan only searched, compare the top few.
+    async fn compare_for_layout(&mut self) {
+        let Some(plan) = self.plan.clone() else {
+            return;
+        };
+        let reply_plan = plan.reply_plan.clone().unwrap_or_default();
+        if !["compare_table", "look_gallery", "product_list"].contains(&reply_plan.as_str())
+            || self.history.iter().any(|r| r.tool == "compare_products")
+            || self.product_layout(&reply_plan).0 != "compare_table"
+        {
+            return;
+        }
+        let Some(tool) = self
+            .tool("compare_products")
+            .filter(|t| self.profile.allows(t))
+            .cloned()
+        else {
+            return;
+        };
+        let ids: Vec<Value> = self
+            .product_rows(&["compare_table", "look_gallery", "product_list"])
+            .iter()
+            .filter_map(|i| {
+                i.get("product_id")
+                    .or_else(|| i.get("id"))
+                    .filter(|v| v.as_str().is_some_and(|s| s.starts_with("prd_")))
+                    .cloned()
+            })
+            .take(4)
+            .collect();
+        if ids.len() < 2 {
+            return;
+        }
+        let _ = self
+            .call(
+                &plan,
+                "compare",
+                &tool,
+                json!({"product_ids": ids}),
+                vec!["product_ids: the top results, for the comparison the layout shows".into()],
+            )
+            .await;
+    }
+
     fn product_rows(&self, uis: &[&str]) -> Vec<Value> {
         if let Some(r) = self.last_output(|r| {
             r.kind == ToolKind::Read
@@ -2627,17 +2687,8 @@ impl<'r> Turn<'r> {
                 .last_output(|r| r.kind == ToolKind::Read)
                 .and_then(|r| shop::return_options(r.output.as_ref()?, &r.input)),
             "compare_table" | "look_gallery" | "product_list" => {
-                let facts = self.profile_facts();
-                // A first visit: a guest with no history yet. A signed-in shopper has a record.
-                let first_visit = self.principal.customer_id().is_none()
-                    && self.ctx.is_first_turn()
-                    && facts.is_empty();
-                let said = self.layout_words();
-                let rule = shop::layout(&self.profile.layout_rules, &said, &facts, first_visit);
-                let ui = rule
-                    .map(|r| r.ui.as_str())
-                    .filter(|u| allowed(u))
-                    .unwrap_or(reply_plan.as_str());
+                let (ui, rule) = self.product_layout(&reply_plan);
+                let ui = ui.as_str();
                 // Nothing read this turn: the results shown last, laid out again.
                 let rows = self.product_rows(&["compare_table", "look_gallery", "product_list"]);
                 shop::products(
