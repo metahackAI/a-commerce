@@ -20,6 +20,9 @@ pub fn build() -> Result<Registry<Cx>, Vec<String>> {
     acom_messaging::register(&mut b);
     acom_platform::register(&mut b);
     acom_analytics::register(&mut b);
+    acom_community::register(&mut b);
+    acom_partner::register(&mut b);
+    acom_integration::register(&mut b);
     b.build()
 }
 

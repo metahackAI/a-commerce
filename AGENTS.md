@@ -31,12 +31,13 @@ The whole server side is one Cargo workspace: `crates/` (libraries), `services/`
 
 - An operation exists in `docs/api/` first. Its tool name, address, kind, and REST path in code must match the spec; `cargo xtask check-docs` compares them.
 - One operation is one type implementing `ReadOp` or `WriteOp` (`acom-contract`), in its domain crate, with at least one contract test.
+- The folders follow the API hierarchy: `domain.resource.operation` lives in `crates/domains/{domain}/src/{resource}/{tool}.rs` (one file per operation, one folder per resource; `docs/backend/README.md` §2.2). `cargo xtask check-layout` checks it; `cargo xtask check-coverage` checks that every specified tool and person-only endpoint is built.
 - Input types use `#[serde(deny_unknown_fields)]`, word enums, a doc comment on every field, and no data-carrying enums (they become `oneOf`; use a `mode` word field instead); the registry refuses schemas that are not closed.
 - Money is `acom_core::Money`, never a float. Time comes from the `Clock`, never `Utc::now()`. Ids use the prefixes in `docs/api/conventions.md` §9; state words come from `docs/api/enums.md`; error codes and classes from `docs/api/errors.md`.
 - Business numbers come from `policies/*.yml` through `acom-policy`, never from constants in code or prompts.
 - `core`, `contract`, and `policy` do no I/O. Domain crates call each other only through exported service traits, never each other's tables. The agent crate never depends on a domain crate.
 - The agent can preview and draft change sets; it can never approve, run an approved change set, or call a person-only endpoint.
-- Before pushing: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`.
+- Before pushing: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`, `cargo xtask check-layout {domain}`.
 
 ## Database
 

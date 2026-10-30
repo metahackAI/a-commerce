@@ -7,6 +7,9 @@
 //!   regenerates the data dictionary and `vocab/acom.jsonld`, otherwise stale files are an error.
 //! - `check-seed`: the demo seed fits the migrations (columns, required values, words, keys,
 //!   references), without a database.
+//! - `check-layout [domain…]`: every registered operation lives in
+//!   `crates/domains/{domain}/src/{resource}/{tool}.rs`, as its address says (layout.rs).
+//! - `check-coverage [domain…]`: every tool and person-only endpoint the spec lists is built.
 //! - `check-eval`: the agent task set in `eval/tasks/` is well formed and names only tools that
 //!   are built or specified; prints each task's derived coverage (`eval/README.md`).
 //! - `eval --base <url> [--set design|held_out] [--tool-set acom|facade|both] [--repeat N] [--reset]`:
@@ -18,6 +21,7 @@
 //!   token a chat turn would carry.
 
 mod eval;
+mod layout;
 mod run_eval;
 mod schema;
 mod seed;
@@ -35,6 +39,12 @@ fn main() -> ExitCode {
         "check-schema" => check_schema(&repo_root(), std::env::args().any(|a| a == "--write")),
         "check-seed" => check_seed(&repo_root()),
         "check-eval" => check_eval(&repo_root()),
+        "check-layout" => {
+            layout::check_layout(&repo_root(), &std::env::args().skip(2).collect::<Vec<_>>())
+        }
+        "check-coverage" => {
+            layout::check_coverage(&repo_root(), &std::env::args().skip(2).collect::<Vec<_>>())
+        }
         "eval" => run_eval::eval(&repo_root()),
         "hash-password" => match std::env::args().nth(2) {
             Some(pw) => match acom_auth::password::hash(&pw) {
@@ -336,9 +346,9 @@ fn check_schema(root: &Path, write: bool) -> ExitCode {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Entry {
-    domain: String,
-    kind: String,
+pub(crate) struct Entry {
+    pub(crate) domain: String,
+    pub(crate) kind: String,
 }
 
 fn check_docs(root: &Path) -> ExitCode {
@@ -428,7 +438,7 @@ fn check_docs(root: &Path) -> ExitCode {
 
 /// Reads `## 4.` of the API README: `**[domain](domain.md)**` headers, then table rows whose
 /// cells list `` `tool` KIND `` (bold marks MVP). Person-only endpoints are skipped.
-fn parse_index(readme: &str) -> BTreeMap<String, Entry> {
+pub(crate) fn parse_index(readme: &str) -> BTreeMap<String, Entry> {
     let mut out = BTreeMap::new();
     let mut in_index = false;
     let mut domain = String::new();

@@ -72,14 +72,16 @@ a-commerce/
 │   │   ├── catalog/   acom-catalog       ┐
 │   │   ├── search/    acom-search        │
 │   │   ├── merchandising/                │ 도메인 = docs/api/{domain}.md 1:1
-│   │   ├── promotion/                    │ 각 크레이트: model(상태기계) · ops(오퍼레이션) · repo(SQL)
+│   │   ├── promotion/                    │ 폴더 = API 계층: src/{resource}/{tool}.rs (§2.2)
 │   │   ├── customer/                     │
-│   │   ├── sales/                        │ MVP에 필요한 도메인부터 만들고,
-│   │   ├── fulfillment/                  │ 나머지는 착수할 때 크레이트를 추가
+│   │   ├── sales/                        │
+│   │   ├── fulfillment/                  │
 │   │   ├── messaging/                    │
 │   │   ├── platform/                     ┘
 │   │   ├── analytics/ acom-analytics     analytics 뷰(읽기 모델)만 읽는 집계·매출 변화 설명
-│   │   └── (community, partner, integration — 착수 시 추가)
+│   │   ├── community/ acom-community     게시판·글·댓글과 모더레이션
+│   │   ├── partner/   acom-partner       입점 판매자·계약·등급
+│   │   └── integration/ acom-integration 외부 채널·택배사·결제사 어댑터, 대량 가져오기, 이벤트 수신
 │   ├── registry/      acom-registry      모든 도메인 오퍼레이션을 하나의 Registry로 조립
 │   ├── http/          acom-http          Registry → axum 라우터, 에러→HTTP, 내부 토큰 추출기
 │   ├── mcp/           acom-mcp           Registry → MCP 서버(rmcp, streamable HTTP)
@@ -133,6 +135,28 @@ llm ◀── agent ◀── services/agent
 3. **`agent`는 도메인 크레이트에 의존하지 않습니다.** 툴 정보는 `commerce`가 내놓는 매니페스트(`GET /v1/tools`, 빌드 때 생성되는 `tools.json`)로만 압니다. 에이전트와 커머스는 HTTP로만 만납니다(테스트에서는 같은 프로세스 안의 `ToolClient` 구현으로 대체).
 4. **비즈니스 상수는 코드에 두지 않습니다.** 한도·하한·기간·승인 기준은 `acom-policy` 타입을 통해 `policies/*.yml`에서 옵니다. 리뷰에서 숫자 리터럴을 찾습니다.
 5. **`unsafe` 금지, `unwrap`/`expect`는 테스트와 시작 단계에서만.** 워크스페이스 lints로 강제합니다.
+
+### 2.2 도메인 크레이트의 폴더 = API 계층
+
+API는 `domain.resource.operation` 계층입니다(`catalog.offer.set_price`). 코드도 같은 계층을 따릅니다: **도메인 = 크레이트, 리소스 = 폴더, 오퍼레이션 = 파일(툴 이름)**.
+
+```
+crates/domains/catalog/src/
+├── lib.rs                  register(): 리소스 순서대로 모든 오퍼레이션, 도메인 에러 코드
+├── offer/                  docs/api/catalog.md 의 `## offer`
+│   ├── mod.rs              리소스 안에서 함께 쓰는 것(타입, 상태기계, SQL 도우미)
+│   ├── set_price.rs        catalog.offer.set_price — 입력 타입, OpMeta, ReadOp/WriteOp, 계약 테스트
+│   └── get_price_breakdown.rs
+├── inventory/
+│   ├── get_inventory.rs
+│   └── set_variant_stock.rs
+├── service/                for_{소비 도메인}.rs — 다른 도메인이 읽거나 부를 수 있는 것
+└── repo.rs · model.rs · rules.rs   도메인 전체가 쓰는 SQL·모델·정책 읽기(선택)
+```
+
+- 오퍼레이션의 `OpMeta`는 `crates/domains/{domain}/src/{resource}/{tool}.rs`에 하나만 있습니다. 사람 전용 엔드포인트도 같습니다(`sales.gift_order.accept` → `sales/src/gift_order/accept_gift_order.rs`).
+- `cargo xtask check-layout [domain…]`이 등록된 오퍼레이션마다 어디 있고 어디에 있어야 하는지 대조하고, `cargo xtask check-coverage [domain…]`이 명세의 툴과 사람 전용 엔드포인트가 모두 만들어졌는지 봅니다.
+- 다른 도메인의 기능이 필요하면 그 도메인의 `service/for_{내 도메인}.rs`에 함수를 더합니다(테이블을 직접 읽지 않음).
 
 ---
 
@@ -197,4 +221,4 @@ cargo xtask check-seed            # 데모 시드가 스키마에 맞는지 (DB 
 - 오퍼레이션 하나 = `Operation` 구현 하나 + 계약 테스트 하나 이상([commerce.md](commerce.md) §1, [testing.md](testing.md) §1).
 - 툴 체크리스트는 [../../AGENTS.md](../../AGENTS.md)를 따릅니다(한 동사, 단어 enum, 필드 설명·예시, 프리뷰, consumes/produces, 실행 가능한 에러, 정책은 데이터).
 - 마이그레이션은 되돌릴 수 있게 쓰고(확장 → 이전 → 축소), 테이블·컬럼 이름은 [../api/data-model.md](../api/data-model.md) §DB 명명을 따릅니다.
-- `cargo fmt --check`, `cargo clippy --workspace -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`, `cargo xtask check-schema`, `cargo xtask check-seed`가 CI 게이트입니다.
+- `cargo fmt --check`, `cargo clippy --workspace -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`, `cargo xtask check-schema`, `cargo xtask check-seed`, `cargo xtask check-layout`, `cargo xtask check-coverage`가 CI 게이트입니다.
