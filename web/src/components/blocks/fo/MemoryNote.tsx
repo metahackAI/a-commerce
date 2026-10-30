@@ -56,13 +56,13 @@ export function MemoryNoteBlock({block}: BlockProps) {
               Forgotten
             </Text>
           ) : undo ? (
-            <ActionButton action={undo} onDone={() => setIsUndone(true)} />
+            <ActionButton blockId={block.block_id} action={undo} onDone={() => setIsUndone(true)} />
           ) : null}
         </HStack>
         {others.length > 0 ? (
           <HStack gap={1} wrap="wrap">
             {others.map(a => (
-              <ActionButton key={a.action_id} action={a} />
+              <ActionButton blockId={block.block_id} key={a.action_id} action={a} />
             ))}
           </HStack>
         ) : null}

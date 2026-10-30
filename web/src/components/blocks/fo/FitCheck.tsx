@@ -50,7 +50,7 @@ function OptionCard({block, option, isFirst}: {block: UiBlock; option: Option; i
         {option.reason ? <Text type="body">{option.reason}</Text> : null}
         {action ? (
           <HStack>
-            <ActionButton action={action} />
+            <ActionButton blockId={block.block_id} action={action} />
           </HStack>
         ) : priceText ? (
           <Text type="body" weight="semibold" hasTabularNumbers>

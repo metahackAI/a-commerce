@@ -70,7 +70,7 @@ function OptionCard({block, option, isSelected}: {block: UiBlock; option: Option
         {actions.length > 0 ? (
           <HStack gap={1} wrap="wrap">
             {actions.map(a => (
-              <ActionButton key={a.action_id} action={a} />
+              <ActionButton blockId={block.block_id} key={a.action_id} action={a} />
             ))}
           </HStack>
         ) : null}

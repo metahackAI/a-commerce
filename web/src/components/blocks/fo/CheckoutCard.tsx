@@ -61,7 +61,7 @@ export function CheckoutCardBlock({block}: BlockProps) {
         <VStack gap={2}>
           {place ? (
             <HStack>
-              <ActionButton
+              <ActionButton blockId={block.block_id}
                 action={place}
                 onDone={result => {
                   const id = (result as {id?: unknown} | null)?.id;

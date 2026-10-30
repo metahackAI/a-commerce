@@ -176,7 +176,7 @@ export function CompareTableBlock({block}: BlockProps) {
                     {perProduct
                       .filter(a => productOf(a) === p.product_id)
                       .map(a => (
-                        <ActionButton key={a.action_id} action={a} />
+                        <ActionButton blockId={block.block_id} key={a.action_id} action={a} />
                       ))}
                   </HStack>
                 </TableCell>

@@ -9,7 +9,7 @@ import {useState} from 'react';
 import {Button} from '@astryxdesign/core/Button';
 import {AlertDialog} from '@astryxdesign/core/AlertDialog';
 
-import {writeHeaders} from '@/lib/api';
+import {type ApiErrorBody, writeHeaders} from '@/lib/api';
 
 export interface PersonAction {
   label: string;
@@ -21,7 +21,18 @@ export interface PersonAction {
   confirm: string;
 }
 
-export function PersonButton({action, onDone}: {action: PersonAction; onDone?: (result: unknown) => void}) {
+export interface PersonButtonProps {
+  action: PersonAction;
+  onDone?: (result: unknown) => void;
+  /**
+   * Called when the endpoint refuses (for example `estimate_changed` with `detail.new_preview`), so
+   * the page can show the new numbers. The dialog closes; return `true` to keep it open with the
+   * error sentence instead.
+   */
+  onError?: (error: ApiErrorBody, status: number) => boolean | void;
+}
+
+export function PersonButton({action, onDone, onError}: PersonButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,8 +49,17 @@ export function PersonButton({action, onDone}: {action: PersonAction; onDone?: (
       });
       const result: unknown = await res.json().catch(() => null);
       if (!res.ok) {
-        const message = (result as {error?: {message?: string}} | null)?.error?.message;
-        setError(message ?? `The request failed (${res.status}).`);
+        const body = (result as {error?: ApiErrorBody} | null)?.error ?? {
+          code: 'upstream_unavailable',
+          class: 'upstream_unavailable',
+          message: `The request failed (${res.status}).`,
+          next_tool: null,
+        };
+        if (onError && onError(body, res.status) !== true) {
+          setIsOpen(false);
+          return;
+        }
+        setError(body.message);
         return;
       }
       setIsOpen(false);

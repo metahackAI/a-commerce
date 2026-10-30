@@ -46,7 +46,7 @@ function PickCard({block, pick}: {block: UiBlock; pick: Pick}) {
         />
         <HStack gap={2} vAlign="center" wrap="wrap">
           {pick.chosen_size ? <StatusTag label={`Chosen · ${pick.chosen_size}`} tone="success" /> : null}
-          {action && !pick.chosen_size ? <ActionButton action={action} /> : null}
+          {action && !pick.chosen_size ? <ActionButton blockId={block.block_id} action={action} /> : null}
         </HStack>
       </VStack>
     </Card>

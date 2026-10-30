@@ -29,6 +29,19 @@ export function useSay() {
   );
 }
 
+/** A block's `say` button: sends the block's intent (`ui_event`) and opens the assistant. */
+export function useSayEvent() {
+  const ai = useAi();
+  const {openAssistant} = useStorefront();
+  return useCallback(
+    (blockId: string, actionId: string, label: string, args?: Record<string, unknown>) => {
+      openAssistant();
+      void ai.sendEvent(blockId, actionId, label, args);
+    },
+    [ai, openAssistant],
+  );
+}
+
 /** "Ask about this": picks the element as context for the next message and opens the assistant. */
 export function AskButton({target, label}: {target: {ask: () => void}; label: string}) {
   const {openAssistant} = useStorefront();

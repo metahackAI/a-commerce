@@ -53,7 +53,7 @@ function FactRow({block, fact}: {block: UiBlock; fact: Fact}) {
       endContent={
         <HStack gap={1} vAlign="center">
           {own.map(a => (
-            <ActionButton key={a.action_id} action={a} />
+            <ActionButton blockId={block.block_id} key={a.action_id} action={a} />
           ))}
           <AskButton target={target} label={value} />
         </HStack>

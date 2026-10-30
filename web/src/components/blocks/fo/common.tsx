@@ -16,7 +16,7 @@ import type {ReactNode} from 'react';
 import type {BlockAction, UiBlock} from '@/ai/types';
 import {useAiTarget} from '@/ai/useAiTarget';
 import {PersonButton} from '@/components/PersonButton';
-import {useSay} from '@/components/fo/Ask';
+import {useSay, useSayEvent} from '@/components/fo/Ask';
 
 /** The block's suggested sentences for one element (`<kind>:<id>`). */
 export function intentsFor(block: UiBlock, kind: string, id: string): string[] {
@@ -34,8 +34,18 @@ export function list<T>(v: T[] | null | undefined): T[] {
   return Array.isArray(v) ? v : [];
 }
 
-export function ActionButton({action, onDone}: {action: BlockAction; onDone?: (result: unknown) => void}) {
+export function ActionButton({
+  action,
+  blockId,
+  onDone,
+}: {
+  action: BlockAction;
+  /** The block the button belongs to; `say` buttons then send their intent as `ui_event`. */
+  blockId?: string;
+  onDone?: (result: unknown) => void;
+}) {
   const say = useSay();
+  const sayEvent = useSayEvent();
   const router = useRouter();
   if (action.kind === 'person') {
     return (
@@ -49,7 +59,15 @@ export function ActionButton({action, onDone}: {action: BlockAction; onDone?: (r
     );
   }
   if (action.kind === 'say') {
-    return <Button label={action.label} size="sm" onClick={() => say(action.label)} />;
+    return (
+      <Button
+        label={action.label}
+        size="sm"
+        onClick={() =>
+          blockId ? sayEvent(blockId, action.action_id, action.label, action.args) : say(action.label)
+        }
+      />
+    );
   }
   return (
     <Button
@@ -83,7 +101,7 @@ export function BlockActions({
   return (
     <HStack gap={2} wrap="wrap" vAlign="center">
       {actions.map(a => (
-        <ActionButton key={a.action_id} action={a} onDone={onDone} />
+        <ActionButton key={a.action_id} action={a} blockId={block.block_id} onDone={onDone} />
       ))}
     </HStack>
   );

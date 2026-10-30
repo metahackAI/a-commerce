@@ -218,6 +218,14 @@ export function CheckoutFlow({cart, addresses, methods}: {cart: Cart; addresses:
                       router.push(placed?.id ? `/orders/${encodeURIComponent(placed.id)}?placed=1` : '/orders');
                       router.refresh();
                     }}
+                    onError={err => {
+                      // The order would cost something else now, or the preview ran out: prepare
+                      // again against what the shopper saw, so the card shows old and new totals.
+                      const stale = ['estimate_changed', 'price_changed', 'eligibility_changed', 'preview_expired', 'preview_superseded'];
+                      if (!stale.includes(err.code)) return true;
+                      setError(err);
+                      void prepare(seenTotal.current);
+                    }}
                   />
                   <Text type="supporting" color="secondary">
                     Northwind can prepare your order, but only you can place it.
