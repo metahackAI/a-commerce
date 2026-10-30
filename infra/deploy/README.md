@@ -59,5 +59,6 @@ journalctl --user -u acom-deployer -f
 ```
 
 - `gh`가 저장소 쓰기 권한이 있는 계정으로 로그인돼 있어야 합니다(deployment 상태 보고).
+- GHCR 패키지(`acom-*`)는 처음 만들어질 때 private입니다. 각 패키지 설정에서 public으로 바꾸면 서버 로그인이 필요 없고, private으로 두면 서버에서 `gh auth token | docker login ghcr.io -u <계정> --password-stdin`을 한 번 실행합니다(안 하면 배포가 `image pull failed ... unauthorized`로 실패).
 - `deployer.sh`를 고치면 위 `install` 줄을 다시 실행하고 `systemctl --user restart acom-deployer`.
 - 데이터베이스는 compose 볼륨 `acom-demo_postgres-data`. `docker compose -p acom-demo ... down -v`는 데모 데이터를 지웁니다.
