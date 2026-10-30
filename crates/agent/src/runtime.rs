@@ -2487,7 +2487,7 @@ impl<'r> Turn<'r> {
             self.principal.customer_id().is_none() && self.ctx.is_first_turn() && facts.is_empty();
         let said = self.layout_words();
         let rule = shop::layout(&self.profile.layout_rules, &said, &facts, first_visit)
-            .filter(|r| self.profile.blocks.iter().any(|b| *b == r.ui));
+            .filter(|r| self.profile.blocks.contains(&r.ui));
         let ui = rule.map_or(reply_plan, |r| r.ui.as_str()).to_owned();
         (ui, rule)
     }
