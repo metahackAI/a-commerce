@@ -35,7 +35,7 @@ export default async function OrdersPage({searchParams}: {searchParams: SearchPa
         <FilterBar
           values={values}
           filters={[
-            {kind: 'text', key: 'order_number', label: 'Order number', placeholder: '20402', width: 140},
+            {kind: 'text', key: 'order_number', label: 'Order number', placeholder: 'e.g. 20402', width: 140},
             {kind: 'text', key: 'customer', label: 'Customer', placeholder: 'Email or name', width: 200},
             {kind: 'multi', key: 'order_status', label: 'Status', options: STATUSES.map(s => ({value: s, label: s === 'problem' ? 'Needs attention' : label(s)}))},
             {kind: 'date', key: 'order_date_from', label: 'Placed from'},

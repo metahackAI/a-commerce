@@ -9,7 +9,7 @@ import {VStack} from '@astryxdesign/core/Layout';
 import {EmptyState} from '@astryxdesign/core/EmptyState';
 import {Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow} from '@astryxdesign/core/Table';
 
-import {actor, dateTime, value, words} from '@/app/bo/_lib/format';
+import {actionStatus, actor, dateTime, value, words} from '@/app/bo/_lib/format';
 import {entityHref} from '@/app/bo/_lib/links';
 import type {ActionEntry} from '@/app/bo/_lib/types';
 
@@ -87,7 +87,7 @@ export function ActionLogTable({entries, blockId, empty}: {entries: ActionEntry[
                 </VStack>
               </TableCell>
               <TableCell>
-                <StateToken state={a.action_status} />
+                <StateToken state={a.action_status} label={actionStatus(a.action_status)} />
               </TableCell>
             </TargetRow>
           );

@@ -112,7 +112,7 @@ export default async function PromotionsPage({searchParams}: {searchParams: Sear
               values={values}
               keep={{view}}
               filters={[
-                {kind: 'text', key: 'code', label: 'Code', placeholder: 'VIPWEEKEND20', width: 180},
+                {kind: 'text', key: 'code', label: 'Code', placeholder: 'e.g. VIPWEEKEND20', width: 180},
                 {kind: 'text', key: 'promotion_id', label: 'Promotion id', placeholder: 'promo_…', width: 180},
                 {
                   kind: 'select',
@@ -166,7 +166,7 @@ export default async function PromotionsPage({searchParams}: {searchParams: Sear
           <FilterBar
             values={values}
             filters={[
-              {kind: 'text', key: 'query', label: 'Name', placeholder: 'VIP weekend'},
+              {kind: 'text', key: 'query', label: 'Name', placeholder: 'e.g. VIP weekend'},
               {kind: 'multi', key: 'status', label: 'Status', options: STATUSES.map(s => ({value: s, label: label(s)}))},
               {kind: 'select', key: 'discount_layer', label: 'Layer', options: ['item_price', 'order_discount', 'add_on'].map(s => ({value: s, label: label(s)}))},
               {kind: 'select', key: 'valid_for_member_tier', label: 'For', options: tierOptions},

@@ -34,6 +34,18 @@ function Bookings({bookings}: {bookings: Booking[] | undefined}) {
   );
 }
 
+/** Free windows with the audiences that share each one, so a slot free for everyone reads once. */
+function freeWindows(availability: DisplaySlotSummary['availability']): {window: string; audiences: string[]}[] {
+  const out: {window: string; audiences: string[]}[] = [];
+  for (const a of availability) {
+    const window = period(a.free_from, a.free_until);
+    const same = out.find(w => w.window === window);
+    if (same) same.audiences.push(a.audience);
+    else out.push({window, audiences: [a.audience]});
+  }
+  return out;
+}
+
 export function SlotList({items, keep}: {items: DisplaySlotSummary[]; keep: Record<string, string | string[] | undefined>}) {
   return (
     <DataTable
@@ -57,8 +69,13 @@ export function SlotList({items, keep}: {items: DisplaySlotSummary[]; keep: Reco
               <Text color="secondary">Not free in this period</Text>
             ) : (
               <VStack gap={0.5}>
-                {r.availability.map((a, i) => (
-                  <Text key={`${a.audience}-${i}`}>{`${a.audience}: ${period(a.free_from, a.free_until)}`}</Text>
+                {freeWindows(r.availability).map(w => (
+                  <VStack key={w.window} gap={0}>
+                    <Text>{w.window}</Text>
+                    <Text type="supporting" color="secondary">
+                      {w.audiences.join(', ')}
+                    </Text>
+                  </VStack>
                 ))}
               </VStack>
             ),

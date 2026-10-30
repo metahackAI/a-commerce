@@ -32,8 +32,8 @@ export default async function DataPage({searchParams}: {searchParams: SearchPara
           filters={[
             {kind: 'text', key: 'term', label: 'Term', placeholder: 'orderStatus or schema:Order', width: 220},
             {kind: 'select', key: 'schema', label: 'Schema', options: SCHEMAS.map(s => ({value: s, label: s}))},
-            {kind: 'text', key: 'table', label: 'Table', placeholder: 'sales.sales_order', width: 200},
-            {kind: 'text', key: 'api_name', label: 'API name', placeholder: 'variant_id', width: 160},
+            {kind: 'text', key: 'table', label: 'Table', placeholder: 'e.g. sales.sales_order', width: 200},
+            {kind: 'text', key: 'api_name', label: 'API name', placeholder: 'e.g. variant_id', width: 160},
           ]}
         />
       }>
