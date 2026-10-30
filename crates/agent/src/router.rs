@@ -35,7 +35,7 @@ pub fn by_phrase(agents: &[&AgentProfile], request: &str) -> Option<Route> {
                 .map(|n| (n, *a))
         })
         .collect();
-    best.sort_by(|x, y| y.0.cmp(&x.0));
+    best.sort_by_key(|b| std::cmp::Reverse(b.0));
     match best.as_slice() {
         [] => None,
         [(n, _), (m, _), ..] if n == m => None,
