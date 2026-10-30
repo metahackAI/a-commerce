@@ -97,7 +97,7 @@ SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(
 | ui | 쓰는 곳 | data 요지 | 버튼 | design.md §6 |
 |---|---|---|---|---|
 | `change_set` | 쓰기 요청의 결과 | `change_set_id`, `version`, `state`, `request`(원문들), `understood{who, products, benefit, when, where}`, `checks[]`, `groups[]{op, label, summary, rows[], more}`, `left_out[]`, `preview{segments[], selected, content}`, `after_approval[]`, `undo{until}` | `person` 승인(`{version}`), `person` 거절, `say` 수정 요청, `open` 이전 버전 비교 | `promotion_preview` + `approval_card` |
-| `refund_review` | 반품·환불 일괄 판단 | `summary{waiting, refund{count, amount}, ask_photos, decline}`, `requests[]{order_number, item, amount, reason, evidence, day, suggested, because}`, `checks[]`, `messages[]`, `change_set_id` | `person` 승인("Approve 9 refunds and send 3 messages"), `say` 메시지 수정 | `order_detail` |
+| `refund_review` | 반품·환불 일괄 판단 | `summary{waiting, refund{count, amount}, ask_photos, decline}`, `requests[]{claim_id, order_id, customer_id, order_number, item, amount, reason, evidence, day, suggested, because, rule, refund_amount, flags[]}`, `checks[]{rule, passed, detail, fix_tool, element}`, `messages[]{to, customer_id, order_number, kind, channel, text}`, `change_set_id`, `version`, `state`. 변경셋을 담으면 `change_set` 블록을 따로 보내지 않음 | 변경셋 전: `say` 초안("Draft 9 refunds and 3 messages"). 변경셋 후: `person` 승인("Approve 9 refunds and send 3 messages")·거절, `say` 메시지 수정, `open` 변경셋 | `order_detail` |
 | `product_drafts` | 상품 초안 작성 진행 | `progress{total, ready, needs_you, working}`, `drafts[]{name, source_code, cost, price, sizes, status, note}`, `rules[]`, `checks[]` | `say` 일시 정지, `person` 준비된 초안 저장 | `product_table` |
 | `sales_explainer` | 매출 질문(읽기만) | `summary{revenue, baseline, difference, orders}`, `series[]{date, revenue}`, `causes[]{cause, evidence, estimated}`, `next[]{label, request}` | `say` 다음 행동 각각 | — |
 | `task_list` | 운영자 홈 | `groups[]{state: needs_you \| working \| done, items[]{task_id, title, origin, at, summary, tag, change_set_id?}}`, `agents[]{name, stats}` | `open` 항목, `person` 되돌리기(완료 항목) | — |
@@ -108,18 +108,18 @@ SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(
 
 | ui | 쓰는 곳 | data 요지 | 버튼 | design.md §6 |
 |---|---|---|---|---|
-| `looking_for` | 대화에서 이해한 조건 칩 | `chips[]{label, source: said \| profile \| his \| hers, removable}` | `say` 칩 제거 | — |
+| `looking_for` | 대화에서 이해한 조건 칩 | `chips[]{label, source: said \| profile \| his \| hers, removable}`. 계획의 `interpretation`(`source`)에서 오고, 툴 결과나 사람의 말에 없는 숫자가 든 칩은 빠짐 | `say` 칩 제거 | — |
 | `compare_table` | 스펙 비교 | `products[]{product_id, name, color, material, badge?}`, `rows[]{label, values[]}`, `prices[]{price, list_price, label}`, `sorted_by` | `say` 담기(사이즈), `say` "show photos" | `product_compare` |
 | `look_gallery` | 사진 위주 | `items[]{product_id, name, price, list_price?, image, caption}` | `say` 자세히·비교 | `product_gallery` |
 | `product_list` | 글 위주 목록 | `items[]{product_id, name, price, facts[]}` | `say` 좁히기 | `product_table` |
-| `fit_check` | 사이즈 판단 | `product{...}`, `options[]{label, size, reason, price}`, `measurements{columns[], rows[]}`, `reviews{sample, fit[], mentions[]}`, `used[]`, `not_used[]` | `say` 사이즈 담기 | — |
-| `gift_picker` | 선물 | `picks[]{product_id, name, price, list_price?, why, chosen_size?}`, `gift_options{wrap, card_message, receipt, exchange_until}`, `delivery{to, arrives, address_saved: false}`, `total` | `say` 고르기, `open` 주문 확인 | — |
+| `fit_check` | 사이즈 판단 | `product{product_id, name, image, facts[], price, list_price, note}`, `options[]{label, size, reason, price, recommended}`, `measurements{columns[], rows[]{label, values[]}, caption}`, `reviews{sample, fit[], mentions[]}`, `used[]{label, value}`, `not_used[]{label, value}`. 비교 대상은 쇼퍼가 사서 반품하지 않은 상품(`get_my_orders`)의 실측. `options`의 `label`과 순서는 계획의 `notes`(`size:L`), 첫째가 추천 | `say` 사이즈 담기(`args{product_id, size}`) | — |
+| `gift_picker` | 선물 | `picks[]{product_id, name, price, list_price?, price_label?, why, image, chosen_size?}`, `gift_options{wrap, card_message, receipt, exchange_until}`, `delivery{to, arrives, address_saved: false}`, `total`. 옵션·배송·합계는 `prepare_gift_order` 프리뷰에서. 아무것도 기억하지 않음 | `say` 고르기(`args{product_id}`), `open` 주문 확인(`block:<checkout_card>`, 주문하기는 그 카드의 `person` 버튼) | — |
 | `cart` | 장바구니 | `lines[]{product_id, name, color, size, quantity, note}`, `subtotal`, `discounts[]{label, amount}`, `shipping`, `total`, `delivery{address_label, arrives}`, `payment{label}` | `say` 수량·삭제, `open` 주문 확인 | `cart` |
 | `checkout_card` | 주문 확인(`prepare_order` 결과) | `preview_id`, `expires_at`, `lines[]`, `subtotal`, `discounts[]`, `shipping`, `total`, `delivery`, `payment`, `note: "Only you can place it."` | **`person` 주문하기** (`POST /v1/sales/orders {preview_id}`) | `checkout_card` |
 | `return_options` | 반품·교환 선택 | `order{order_number, item, delivered_at, photos}`, `options[]{kind: replacement \| refund, facts[], send_back{pickup, drop_off}}`, `selected`, `steps[]` (`get_return_options` 출력과 같은 모양) | **`person` 요청 보내기** (`POST /v1/fulfillment/returns`) | `order_detail` |
 | `order_detail` | 주문 조회 | `order_number`, `status`, `lines[]`, `delivery`, `payment`, `totals` | `say` 반품·교환 문의 | `order_detail` |
 | `memory_note` | 기억 한 줄 | `memory_id`, `text` | **`person` 되돌리기** | — |
-| `profile_card` | "What Northwind knows about you" | `facts[]{key, value, source}` | `say` 수정, `person` 삭제 | — |
+| `profile_card` | "What Northwind knows about you" | `facts[]{key, value, source, memory_id}` (`get_my_profile`의 기억과 사이즈) | `say` 수정, `person` 삭제(기억마다 `POST /v1/customer/me/memories/{memory_id}/undo`) | — |
 
 블록마다 Rust 타입(`acom-agent::blocks`)과 JSON Schema(`ui-blocks.schema.json`, `cargo xtask codegen`이 생성)가 있고, 웹 컴포넌트는 그 스키마에서 만든 TS 타입을 씁니다.
 
@@ -129,8 +129,8 @@ SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(
 
 | 신호 | 블록 |
 |---|---|
-| 프로필 `compares_specs`, 또는 "compare", "which is lighter" | `compare_table` |
-| 기록 없음(첫 방문), 또는 "photos", "less text" | `look_gallery` |
-| 그 밖 | `product_list` |
+| 프로필 `compares_specs`·`layout_preference=table`, 또는 "compare", "which is lighter" | `compare_table` |
+| 기록 없음(로그인하지 않은 첫 방문), 프로필 `layout_preference=photos`, 또는 "photos", "less text" | `look_gallery` |
+| 프로필 `layout_preference=list`, "as a list", 그 밖 | `product_list` |
 
-형태를 바꾼 이유는 `why`에 한 줄로 쓰고, 사람이 말로 언제든 바꿀 수 있습니다.
+순서는 지금 한 말 → 이 대화에서 전에 한 말 → 프로필 → 첫 방문입니다. 프로필 항목은 기억의 키(`compares_specs`) 또는 `키=말`(`layout_preference=photos`는 기억 `photos over details`와 맞음)입니다. 형태를 바꾼 이유는 `why`에 한 줄로 쓰고, 사람이 말로 언제든 바꿀 수 있습니다. 새로 읽지 않고 형태만 바꾸면 마지막에 보여 준 결과를 그대로(같은 가격으로) 다시 놓습니다(F6). 로그인한 쇼퍼의 형태 요청은 `layout_preference`로 기억되어 되돌리기 줄이 붙고, 게스트는 기억이 없어 이 대화 안에서만 유지됩니다.

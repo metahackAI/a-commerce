@@ -290,3 +290,6 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 | 15 | 품절인데 "7 left" | chore coat M·L 품절 | M 쇼퍼에게 "7 left" | 재고 7은 S·XL에만. 쇼퍼에게는 자기 사이즈 재고를 보여 줌 |
 | 16 | 모바일 쇼퍼 | `mockups/mobile.html` | `storefront/fo-mobile-adapt.html` | 앞은 Jamie, 뒤는 Mina |
 | 17 | 승인 대기 표기 | Waiting for your approval / Needs your approval / Ready to review | | 상태는 `waiting_for_approval` 하나, 화면 문구는 자유 |
+| 18 | Mina의 첫 답 형태 | F1: `look_gallery`(첫 방문) | F6: `product_list` 뒤 `look_gallery` | 로그인하지 않은 첫 방문은 `look_gallery`(F1). F6의 목록 → 사진 전환과 되돌릴 수 있는 기억 한 줄은 로그인한 쇼퍼의 장면으로 재생하고, 게스트는 기억이 없어(`update_my_preferences`의 `not_signed_in`) 형태만 이 대화 안에서 유지 |
+| 19 | 선물의 `client_total` | 보내는 사람이 본 합계 $76.20 (`sales.md` 예) | 장바구니가 보여 준 합계 $71.20 | 둘 다 받음. 포장비는 정책에서 서버가 더하므로, 에이전트는 장바구니 합계를 넘기고 선물 합계 $76.20은 프리뷰가 보여 줌 |
+| 20 | B2 처리 순서 | 분류(읽기만, 14회) | 변경셋(환불 9 + 메시지 3) | 두 턴. 첫 턴은 큐와 평가만 읽어 `refund_review`, 다음 턴은 그 블록의 행으로 환불·메시지를 변경셋에 담음(다시 읽지 않음). 턴당 툴 호출 상한 20을 지킴 |
