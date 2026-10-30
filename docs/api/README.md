@@ -68,7 +68,7 @@ a-commerce API
 | **W$** | write, 항상 승인 | 에이전트(툴) | 고객에게 닿는 가격·혜택·노출·메시지, 권한·계약처럼 정책과 상관없이 사람이 봐야 하는 쓰기. 프리뷰 → 변경셋 → **사람 승인** → 실행기가 `preview_id`로 실행 |
 | **W(프리뷰만)** | write, 프리뷰만 | 에이전트(툴) | `prepare_order`, `prepare_subscription`, `prepare_gift_order`. 프리뷰를 만들 뿐 실행 단계가 없고 `needs_approval`은 항상 `false`. 그 `preview_id`를 사람 전용 엔드포인트가 실행(주문하기) |
 | **사람 전용** | HTTP 엔드포인트 | 사람이 누른 UI 버튼만 | 아래 표. **툴이 아니며 모델은 보지 못함** |
-| **런타임 전용** | HTTP 엔드포인트 | 우리 에이전트의 런타임만 | 변경셋 만들기·항목·제출. **툴이 아니며 모델은 보지 못함** |
+| **런타임 전용** | HTTP 엔드포인트 | 우리 에이전트의 런타임(변경셋), 백오피스 화면(데모 시계) | 변경셋 만들기·항목·제출, 데모 시계 읽기·옮기기. **툴이 아니며 모델은 보지 못함** |
 
 ### 2.1 사람 전용 엔드포인트
 
@@ -109,6 +109,13 @@ a-commerce API
 | `PUT /v1/platform/change-sets/{id}/items` | `{items: [{preview_id, depends_on?}]}` | 항목 교체(대화로 고침). `version+1`, `drafting` |
 | `DELETE /v1/platform/change-sets/{id}/items/{preview_id}` | — | 항목 빼기 |
 | `POST /v1/platform/change-sets/{id}/submit` | `{version}` | `waiting_for_approval` |
+
+**데모 시계.** 백오피스 화면(운영자 세션)이 부르는 런타임 전용 엔드포인트 둘입니다. 이것도 툴이 아니고, 채팅 턴의 토큰에는 `admin:*` 스코프가 없어 에이전트는 시간을 옮길 수 없습니다. 명세는 [platform.md](platform.md#데모-시계).
+
+| 엔드포인트 | 본문 | 결과 |
+|---|---|---|
+| `GET /v1/platform/demo-clock` | — (`tools:read:platform`) | `{now, is_running, demo_mode}` |
+| `PUT /v1/platform/demo-clock` | `{now, is_running?}` (`admin:demo`, 데모 모드에서만) | 그 사이 기한이 된 예약 작업을 순서대로 실행한 뒤 `{now, is_running, demo_mode, previous, ran[]}` |
 
 쓰기 프리뷰는 `?change_set_id=cs_…`로 바로 붙일 수도 있습니다. 내부 읽기 `GET /v1/platform/previews/{preview_id}`와 이벤트 구독 `GET /v1/platform/events`(SSE: `change_set.updated`, `task.updated`, `job.updated`)는 [platform.md](platform.md#내부-엔드포인트).
 
@@ -171,7 +178,7 @@ a-commerce API
 
 ## 4. 전체 오퍼레이션 인덱스
 
-툴 **287개**(R 130 · W 117 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 6개(§2.2). **굵게** 표시한 28개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
+툴 **287개**(R 130 · W 117 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 8개(§2.2: 변경셋 6개, 데모 시계 2개). **굵게** 표시한 28개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
 
 ### Offer
 
@@ -280,6 +287,7 @@ a-commerce API
 | policy | **`get_policy`** R · `list_policies` R |
 | change_set | **`get_change_set`** R · `search_change_sets` R · **`verify_change_set`** R · 사람 전용 `POST /v1/platform/change-sets/{id}/approve`, `…/reject`, `…/undo` · 런타임 전용 만들기·항목·제출(§2.2) |
 | task | `list_tasks` R · `get_task` R · 사람 전용 `POST /v1/platform/tasks/{task_id}/dismiss` |
+| demo_clock | 런타임 전용 `GET`·`PUT /v1/platform/demo-clock`(§2.2) — 예약 작업([platform.md](platform.md#예약-작업))을 시각에 맞춰 실행 |
 | action_log | `search_action_log` R · `get_action_log` R |
 | schema | `describe_data` R (DB 데이터 사전) |
 | enum | `list_enums` R |

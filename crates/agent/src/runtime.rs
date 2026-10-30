@@ -2067,6 +2067,9 @@ impl<'r> Turn<'r> {
             "action_log" => self
                 .last_output(|r| r.kind == ToolKind::Read)
                 .and_then(|r| table::action_log(r.output.as_ref()?)),
+            "task_list" => self
+                .last_output(|r| r.tool == "list_tasks")
+                .and_then(|r| crate::blocks::tasks::task_list(r.output.as_ref()?)),
             "order_detail" => self
                 .last_output(|_| true)
                 .and_then(|r| table::order_detail(r.output.as_ref()?)),

@@ -8,6 +8,7 @@
 pub mod change_set;
 pub mod shop;
 pub mod table;
+pub mod tasks;
 
 use std::str::FromStr;
 
@@ -28,6 +29,7 @@ pub const KNOWN_BLOCKS: &[&str] = &[
     "checkout_card",
     "return_options",
     "memory_note",
+    "task_list",
 ];
 
 /// Block data format version (`schema`).

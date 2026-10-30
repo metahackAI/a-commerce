@@ -34,9 +34,22 @@ export interface ChangeSetBlockData {
 export interface TaskListBlockData {
   groups: {
     state: TaskState;
-    items: {task_id: string; title: string; origin: TaskOrigin; at: string; summary?: string | null; tag?: string | null; change_set_id?: string | null}[];
+    items: {
+      task_id: string;
+      title: string;
+      origin: TaskOrigin;
+      at: string;
+      summary?: string | null;
+      tag?: string | null;
+      change_set_id?: string | null;
+      /** The platform.yml watcher that keeps it up to date, if any. */
+      watcher?: string | null;
+      updated_at?: string;
+    }[];
   }[];
   agents?: {name: string; stats?: unknown}[];
+  /** Tasks in the store for the filter (`list_tasks` total); more than shown when the list was cut. */
+  total?: number;
 }
 
 export interface RefundReviewBlockData {

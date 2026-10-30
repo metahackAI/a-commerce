@@ -197,7 +197,6 @@ async fn prepare_watchers(
     let Some(watchers) = watchers else {
         return Ok(());
     };
-    let mut tx = cx.begin().await.map_err(ToolError::from)?;
     for meta in registry.jobs() {
         let Some(s) = meta.watcher.and_then(|k| watchers.schedule(k)) else {
             continue;
@@ -205,20 +204,36 @@ async fn prepare_watchers(
         if !s.enabled {
             continue;
         }
-        let pending: Vec<(String, DateTime<Utc>)> = sqlx::query_as(
-            "SELECT id, run_at FROM platform.job
-             WHERE tenant_id = $1 AND kind = $2 AND done_at IS NULL ORDER BY run_at FOR UPDATE",
+        let mut tx = cx.begin().await.map_err(ToolError::from)?;
+        lock_kind(&mut tx, meta.kind).await?;
+        // A job another runner holds is still pending (done_at is set when it commits).
+        let pending: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM platform.job
+             WHERE tenant_id = $1 AND kind = $2 AND done_at IS NULL",
         )
         .bind(cx.tenant.as_str())
         .bind(meta.kind)
+        .fetch_one(&mut *tx.tx)
+        .await
+        .map_err(db_err)?;
+        if pending == 0 {
+            insert_job(&mut tx, meta.kind, until, &json!({})).await?;
+            tx.commit().await.map_err(ToolError::from)?;
+            continue;
+        }
+        // Only the due ones nobody is running now; a running one keeps its time.
+        let due: Vec<(String, DateTime<Utc>)> = sqlx::query_as(
+            "SELECT id, run_at FROM platform.job
+             WHERE tenant_id = $1 AND kind = $2 AND done_at IS NULL AND run_at <= $3
+             FOR UPDATE SKIP LOCKED",
+        )
+        .bind(cx.tenant.as_str())
+        .bind(meta.kind)
+        .bind(until)
         .fetch_all(&mut *tx.tx)
         .await
         .map_err(db_err)?;
-        if pending.is_empty() {
-            insert_job(&mut tx, meta.kind, until, &json!({})).await?;
-            continue;
-        }
-        for (id, run_at) in pending {
+        for (id, run_at) in due {
             let latest = latest_slot(run_at, until, minutes(s.every_minutes));
             if latest != run_at {
                 sqlx::query(
@@ -233,8 +248,21 @@ async fn prepare_watchers(
                 .map_err(db_err)?;
             }
         }
+        tx.commit().await.map_err(ToolError::from)?;
     }
-    tx.commit().await.map_err(ToolError::from)
+    Ok(())
+}
+
+/// One writer per job kind and store while deciding whether a kind needs its next job, so two
+/// runners never schedule the same watcher twice.
+async fn lock_kind(tx: &mut TxCx, kind: &str) -> Result<(), ToolError> {
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtext('job_kind:' || $1 || ':' || $2))")
+        .bind(tx.tenant.as_str())
+        .bind(kind)
+        .execute(&mut *tx.tx)
+        .await
+        .map_err(db_err)?;
+    Ok(())
 }
 
 async fn insert_job(
@@ -409,6 +437,7 @@ async fn run_one(
     let mut next_run_at = None;
     if let Some(s) = schedule {
         let next = next_run(job.run_at, until, minutes(s.every_minutes));
+        lock_kind(&mut tx, &job.kind).await?;
         let pending: i64 = sqlx::query_scalar(
             "SELECT count(*) FROM platform.job
              WHERE tenant_id = $1 AND kind = $2 AND done_at IS NULL",

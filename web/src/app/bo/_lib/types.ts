@@ -148,6 +148,8 @@ export interface TaskSummary {
   change_set_id: string | null;
   watcher: string | null;
   conversation_id?: string | null;
+  /** When it last changed, including a watcher writing what it observed again. */
+  updated_at?: string;
 }
 
 /** `get_task`. */

@@ -7,7 +7,7 @@ home_domains: [fulfillment, sales, messaging]
 tool_scope:
   domains: [fulfillment, sales, messaging, customer, catalog, platform]
   kinds: [read, write, write_approval]
-blocks: [change_set, order_detail, action_log, product_table]
+blocks: [change_set, order_detail, action_log, product_table, task_list]
 models: {worker: glimmer, planner: spark}
 instructions: orders.md
 check_intents:

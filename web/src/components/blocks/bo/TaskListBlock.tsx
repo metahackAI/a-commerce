@@ -1,7 +1,8 @@
 'use client';
 
 // `task_list` block (docs/api/chat.md §3.3): the operator's home in the conversation. Tasks in
-// their groups (needs you, working, done) with the agents working on the store. Opening an item
+// their groups (needs you, working, done) with the agents working on the store, built from
+// `list_tasks` (watcher-kept tasks say when their watcher last refreshed them). Opening an item
 // goes to its task; dismiss and undo are person buttons.
 
 import {HStack, VStack} from '@astryxdesign/core/Layout';
@@ -37,7 +38,8 @@ export function TaskListBlock({block}: BlockProps) {
             summary: i.summary ?? null,
             tag: i.tag ?? null,
             change_set_id: i.change_set_id ?? null,
-            watcher: null,
+            watcher: i.watcher ?? null,
+            updated_at: i.updated_at,
           }));
           const title = TASK_GROUPS.find(x => x.state === g.state)?.title ?? g.state;
           return (
