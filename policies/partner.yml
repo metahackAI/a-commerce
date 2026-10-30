@@ -1,0 +1,41 @@
+# policy: partner — 입점 판매자·계약·등급 규칙 (데이터)
+# docs/api/partner.md가 인용하는 키만 둔다. 값은 새 스토어의 기본값이다.
+# 비율은 0–1(conventions.md §4). 금액은 {value, currency}.
+version: 1
+
+tax_id_unique: true                      # check: tax_id_unique. 같은 사업자 번호로 두 판매자를 만들 수 없음
+
+onboarding:
+  required_documents: [business_registration, payout_account_proof]   # check: onboarding.required_documents
+  prohibited_categories: []              # check: onboarding.prohibited_categories. 기본값: 금지 업종 없음(스토어가 카테고리 id로 채움)
+
+profile:
+  editable_fields: [contact_point, address, business_category]   # update_seller가 바꿀 수 있는 필드. 계약·상태는 별도 오퍼레이션
+
+lifecycle:
+  allowed_transitions:                   # 판매자 상태 전이(enums.md §1.14 판매자)
+    applied: [under_review, terminated]
+    under_review: [approved, terminated]
+    approved: [active, terminated]
+    active: [suspended, terminated]
+    suspended: [active, terminated]
+
+suspend:
+  hide_products: true                    # 정지되면 그 판매자의 상품을 바로 숨김. 진행 중 주문은 계속 처리
+
+commission:                              # check: commission. 수수료율 범위(0–1)
+  min_rate: 0.00
+  max_rate: 0.40
+
+contract:
+  no_period_overlap: true                # check: contract.no_period_overlap. 같은 판매자의 계약 기간은 겹치지 않음
+
+grade:
+  computed_metrics: [shipping_compliance, order_fulfillment, claim_rate, service_score]   # 서버가 계산하는 등급 근거
+  override_requires_reason: true         # check: grade.override_requires_reason. 계산값과 다른 등급은 사유 필수
+  benefits: {}                           # 기본값: 등급별 혜택 없음. 예: { platinum: { commission_discount_rate: 0.02 } }
+
+dashboard:
+  visible_metrics_by_role:               # get_seller_overview가 역할별로 보여 주는 지표 묶음
+    seller: [sales, settlement, fulfillment, claims, grade, tasks]
+    operator: [sales, settlement, fulfillment, claims, grade, tasks]

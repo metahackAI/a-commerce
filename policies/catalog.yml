@@ -1,0 +1,115 @@
+# policy: catalog — 상품·변형·재고·가격·리뷰 규칙 (데이터)
+# 백엔드가 로드·강제한다. 프롬프트나 코드 상수에 숨기지 않는다.
+# 값은 의미 있는 영단어, 금액은 {value, currency}, 비율은 0–1. 조건은 문자열 식이 아니라 구조화된 데이터다.
+# 이 값들은 새 스토어의 기본값이다. 데모 스토어가 덮어쓰는 값은 docs/scenarios.md §5에 있다.
+version: 3
+
+price_floor:                             # check: price_floor (set_sale_prices, set_price, create_product, set_variants, create_bundle, approve_product, import_products)
+  base: cost                             # 기준은 변형의 원가(acom:CostSpecification)
+  multiplier: 1.15                       # 하한 = 원가 × 1.15 (원가 + 15%)
+  compare: gte                           # 판매가 ≥ 하한이면 통과(같아도 통과)
+  rounding: cent                         # 하한은 센트 단위로 반올림해 비교
+  applies_to: [list_price, sale_price]
+  on_violation: block                    # 프리뷰에서 실패. 에러 below_price_floor, fix_tool은 가격을 정한 툴(set_sale_prices, set_price)
+  # 예시: 원가 $58.00 → 하한 $66.70. 정가 $79.00의 20% 할인($63.20)은 실패, 15%($67.15)는 통과
+
+pricing_rule:                            # 상품 초안의 판매가 제안(가져오기·초안 작성)
+  base: cost
+  multiplier: 2.5                        # 원가 × 2.5
+  round_to: nearest_ending_in_9          # 가장 가까운 x9 달러로
+  tie: up                                # 두 x9의 거리가 같으면 위로. 예: 원가 $52.00 → $130.00 → $129.00
+
+pricing:
+  levels: [cost, list_price, sale_price] # sale_price는 promotion이 만드는 기간 한정 회원 판매가
+  cost_visibility: operators_only        # 원가는 운영자 주체에게만 보임. 쇼퍼·외부 에이전트 응답에는 cost 필드가 없음
+  rounding: cent
+  sale_price:
+    auto_revert: true                    # 기간이 끝나면 정가로 돌아감
+    compute: on_demand                   # 배치로 켜고 끄지 않고 valid_from·valid_through로 계산
+  scheduled_change:                      # check: pricing.scheduled_change (schedule_price_change)
+    compute: on_demand                   # 예약한 정가는 valid_from 시각부터 계산으로 적용(배치 토글 없음)
+    start_not_in_past: true              # valid_from은 지금 이후여야 함
+    revert_after_through: true           # valid_through가 있으면 그 뒤 이전 정가로 돌아감
+
+product:
+  required_on_create: [seller, category, name]   # check: product.required_on_create
+  sku_unique: store                      # check: product.sku_unique. SKU는 스토어 안에서 유일
+  approval:
+    content_changes: auto                # 설명·이미지·문구 = 승인 없이
+    structural_changes: review           # 가격·카테고리·구조·단종 = 승인 필요 (approval.yml product_approve)
+  publish_requires:                      # check: product.publish_requires (approve_product)
+    - at_least_one_variant               # 판매 가능한 변형이 하나 이상
+    - price_on_every_variant             # 모든 변형에 정가
+    - cost_on_every_variant              # 모든 변형에 원가(가격 하한 계산에 필요)
+  discontinue:                           # check: product.discontinue (discontinue_product)
+    reversible: false                    # 단종은 되돌리지 않음
+    block_if_open_subscriptions: true    # 진행 중 구독이 있으면 실패
+  age_restriction:                       # check: product.age_restriction. 상품별 min_age(정수, 세). 0 또는 없음 = 연령 제한 없음
+    field: min_age
+    allowed_values: any                  # [default] 0 이상 정수 아무 값. 스토어가 목록으로 좁힐 수 있음
+    # 예시: allowed_values: [0, 15, 19]  — 관할·업종에 맞춰 스토어가 정함
+    by_category: {}                      # [default] 카테고리별 최소 min_age(스토어 정의). 예시: { spirits: <값> }
+    verification:
+      method: self_declared_birth_date   # [default] 다른 값: id_document, third_party_identity, manual_review
+      verify_at: order                   # [default] order | cart | product_view
+      reverify_after_days: null          # [default] 재확인하지 않음
+    on_fail: block_purchase
+
+variant:
+  max_option_axes: null                  # [default] null = 제한 없음. 스토어가 정수로 상한을 둘 수 있음 (check: variant.max_option_axes)
+  # 성능 참고: 조합 수 = 축별 값 수의 곱. 축이 늘면 변형 수가 급증하므로 max_variants_per_group으로 함께 제한한다.
+  max_variants_per_group: 1000           # [default] 조합 폭증 방지 (check: variant.max_variants_per_group)
+  option_source: inline                  # 입력할 때 만들고, 백엔드가 중복 제거
+  missing_from_input: deactivate         # set_variants 입력에서 빠진 기존 변형은 지우지 않고 판매 중지
+
+inventory:
+  managed_at: variant                    # 재고는 변형(사이즈·색) 단위로만 관리
+  product_status: derived                # 상품 상태는 변형에서 파생(읽기 전용)
+  availability_values: [in_stock, out_of_stock, pre_order, back_order, discontinued]   # schema.org ItemAvailability (enums.md §1.10)
+  auto_out_of_stock:                     # 재고가 0이 되면 자동 품절
+    when: { field: inventory_level, op: eq, value: 0 }
+    set_availability: out_of_stock
+  auto_restore:                          # 자동으로 품절된 변형만, 재고가 생기면 판매 중으로 되돌림
+    when:
+      all:
+        - { field: inventory_level, op: gt, value: 0 }
+        - { field: auto_out_of_stock, op: eq, value: true }
+    set_availability: in_stock
+    notify_restock_alerts: true          # 재입고 알림 신청자에게 거래성 알림
+  safety_stock:
+    enabled: true
+    alert_only: true                     # 판매 상태와 무관, 알림만
+
+bundle:                                  # 묶음 상품 (create_bundle)
+  derive_price_from: components
+  derive_stock_from: components
+  same_seller: true                      # check: bundle.same_seller. 구성품은 같은 판매자
+  same_age_restriction: true             # check: bundle.same_age_restriction. 구성품은 같은 min_age
+  components_must_be_active: true        # check: bundle.components_must_be_active. 판매 중인 구성품만
+
+gift_card:                               # 디지털 상품권 (acom:sale_type gift_card)
+  disallow: [pre_order, subscription, exchange]   # check: gift_card.disallow
+  delivery: instant
+  expiry: [absolute_date, days_from_purchase]
+
+content:                                 # 생성 이미지·문구 (generate_image, generate_copy)
+  ai_content_disclosure: required        # check: content.ai_content_disclosure. 생성물에 acom:ai_generated: true 표기
+  brand_guideline: enforced              # check: content.brand_guideline. 로고·색·금지 연출 검사
+  max_images_per_request: 4
+
+review:                                  # 상품 리뷰 (create_review, report_review, moderate_review)
+  verified_purchase_only: true           # check: review.verified_purchase_only. 배송 완료된 주문 품목만
+  one_per_order_item: true               # check: review.one_per_order_item
+  profanity_filter: block                # check: review.profanity_filter. block | hold_for_review
+  moderation: post_review                # 바로 보이고 사후 심사(moderate_review)
+  report_reasons: [spam, abuse, obscene, advertisement, fake, irrelevant, other]   # enums.md §2.4 acom:report_reason
+
+question:                                # 상품 문의 (ask_question, answer_question)
+  profanity_filter: block                # check: question.profanity_filter
+  private_allowed: true                  # 쇼퍼가 비공개 문의를 남길 수 있음
+  edit_until: answered                   # 답이 달리기 전까지만 수정
+
+restock_alert:                           # 재입고 알림 (subscribe_restock)
+  channels: [email, sms, push, in_app]   # enums.md §3 acom:message_channel
+  message_kind: transactional            # 마케팅 동의와 무관한 거래성 알림
+  expires_after_days: 90                 # 알림이 안 가면 신청은 90일 뒤 만료

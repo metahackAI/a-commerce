@@ -1,0 +1,24 @@
+# policy: integration — 외부 채널 연계·대량 가져오기·이벤트 수신 규칙 (데이터)
+# docs/api/integration.md가 인용하는 키만 둔다. 값은 새 스토어의 기본값이다.
+# 비즈니스 규칙(가격 하한, 상태 전이)은 코어 도메인 정책을 그대로 쓴다.
+version: 1
+
+import:
+  max_items_per_batch: 500               # 한 배치의 최대 행 수. 넘으면 batch_too_large
+  partial_success: report_per_item       # 건별로 수락·거부를 보고하고 통과한 행만 반영 (report_per_item | all_or_nothing)
+  required_fields: [name, price, category, size]   # check: import.required_fields. 행마다 있어야 하는 값
+  category_mapping: required             # check: import.category_mapping. 내부 카테고리로 매핑되지 않은 행은 거부
+
+status_mapping:                          # 외부 상태 → 내부 상태 단어(enums.md). 채널별 표는 register_channel이 저장
+  unmapped: reject                       # check: status_mapping.unmapped. 매핑 없는 외부 상태는 반영하지 않음(status_unmapped)
+  must_cover: [order, claim]             # check: status_mapping.must_cover. 채널 등록 때 주문·클레임 상태를 모두 매핑해야 함
+  transitions_from_core: true            # check: status_mapping.transitions_from_core. sales·fulfillment의 상태 전이 규칙을 그대로 따름
+
+channel:
+  credential_vaulting: required          # 자격 증명은 비밀 저장소 참조로만 받음. 평문은 받지도 돌려주지도 않음
+  connection_test_required: true         # check: channel.connection_test_required. 등록 프리뷰에서 연결 테스트 통과 필요
+
+events:
+  signature_required: true               # 인바운드 이벤트는 채널의 서명 키로 검증(실패 시 unauthenticated)
+  replay_window:
+    minutes: 15                          # 발생 시각이 이보다 오래된 이벤트는 저장만 하고 반영하지 않음
