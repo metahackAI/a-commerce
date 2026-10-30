@@ -54,6 +54,12 @@ pub fn close(schema: &mut Value) {
         }
     }
 
+    // An optional word field lists `null` among its words; optional is expressed by leaving the
+    // field out of `required`.
+    if let Some(Value::Array(words)) = obj.get_mut("enum") {
+        words.retain(|w| !w.is_null());
+    }
+
     if let Some(Value::Array(alts)) = obj.get("oneOf")
         && !alts.is_empty()
         && alts.iter().all(|a| a.get("const").is_some())
@@ -207,6 +213,16 @@ mod tests {
         );
         assert_eq!(s["properties"]["note"]["type"], "string");
         assert_eq!(s["required"], serde_json::json!(["audience", "items"]));
+    }
+
+    #[test]
+    fn optional_words_do_not_allow_null() {
+        let mut v = serde_json::json!({"type": ["string", "null"], "enum": ["vip", "gold", null]});
+        close(&mut v);
+        assert_eq!(
+            v,
+            serde_json::json!({"type": "string", "enum": ["vip", "gold"]})
+        );
     }
 
     #[test]

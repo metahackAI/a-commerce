@@ -101,6 +101,24 @@ pub async fn preview(
     if let Some(cs) = change_set_id {
         change_set::attach(&mut tx, cs, id.as_str(), &input, None).await?;
     }
+    // Preparing again (an order, a subscription) replaces the caller's earlier preparation:
+    // only the newest one can be run.
+    if person_endpoint(cx, meta.tool).is_some() {
+        sqlx::query(
+            "UPDATE platform.preview SET preview_state = 'superseded', superseded_by_id = $5,
+               updated_at = now(), version = version + 1
+             WHERE tenant_id = $1 AND instrument = $2 AND agent_id = $3 AND preview_state = 'open'
+               AND id <> $4",
+        )
+        .bind(cx.tenant.as_str())
+        .bind(meta.tool)
+        .bind(&cx.principal.subject)
+        .bind(id.as_str())
+        .bind(id.as_str())
+        .execute(&mut *tx.tx)
+        .await
+        .map_err(db_err)?;
+    }
     let object = planned
         .inner
         .changes
@@ -367,12 +385,7 @@ pub async fn commit(
         .detail(json!({"reason": "owner"})));
     }
     if p.preview_state == PreviewState::Committed.as_str() {
-        let done = first_result(&p)?;
-        return Ok(CommitResult {
-            ok: true,
-            id: done.id,
-            undo: None,
-        });
+        return Ok(run_result(first_result(&p)?));
     }
     if let Some(cs) = &p.change_set_id {
         return Err(ToolError::new(
@@ -421,11 +434,24 @@ pub async fn commit(
     )
     .await?;
     tx.commit().await.map_err(ToolError::from)?;
-    Ok(CommitResult {
+    Ok(run_result(done))
+}
+
+/// The answer to a run: the main id, an `undo` the write offers (a remembered preference names
+/// its memory), and every other slot it produced (`cart`, `memory`…).
+pub(crate) fn run_result(done: Committed) -> CommitResult {
+    let mut produced = done.produced;
+    let undo = produced
+        .remove("undo")
+        .and_then(|u| serde_json::from_value::<Undo>(u).ok());
+    produced.remove("ok");
+    produced.remove("id");
+    CommitResult {
         ok: true,
         id: done.id,
-        undo: None::<Undo>,
-    })
+        undo,
+        produced,
+    }
 }
 
 /// A preview a person-only endpoint runs (`POST /v1/sales/orders {preview_id}` runs a

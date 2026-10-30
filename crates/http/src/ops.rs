@@ -24,30 +24,88 @@ pub(crate) fn routes(registry: &Registry<Cx>) -> Router<Arc<Api>> {
     let mut r = Router::new()
         .route("/v1/tools", get(manifest))
         .route("/v1/tools/{tool}", post(call_tool));
-    for op in registry.iter() {
-        let meta = op.meta();
-        let tool = meta.tool;
-        let handler = move |State(api): State<Arc<Api>>,
-                            caller: Caller,
-                            path: Option<Path<BTreeMap<String, String>>>,
-                            Query(query): Query<Pairs>,
-                            headers: HeaderMap,
-                            body: Bytes| async move {
-            let path = path.map(|Path(p)| p).unwrap_or_default();
+    let ops: Vec<&'static OpMeta> = registry.iter().map(|op| op.meta()).collect();
+    for meta in &ops {
+        r = r.route(meta.path, method_router(meta, BTreeMap::new()));
+    }
+    for (path, meta, fixed) in shadowed(&ops) {
+        r = r.route(path, method_router(meta, fixed));
+    }
+    r
+}
+
+/// The handler for one operation. `fixed` are path parameters the route itself stands for (see
+/// [`shadowed`]).
+fn method_router(meta: &'static OpMeta, fixed: BTreeMap<String, String>) -> MethodRouter<Arc<Api>> {
+    let tool = meta.tool;
+    let handler = move |State(api): State<Arc<Api>>,
+                        caller: Caller,
+                        path: Option<Path<BTreeMap<String, String>>>,
+                        Query(query): Query<Pairs>,
+                        headers: HeaderMap,
+                        body: Bytes| {
+        let fixed = fixed.clone();
+        async move {
+            let mut path = path.map(|Path(p)| p).unwrap_or_default();
+            path.extend(fixed);
             rest(&api, &caller, tool, path, query, &headers, &body)
                 .await
                 .unwrap_or_else(IntoResponse::into_response)
-        };
-        let method: MethodRouter<Arc<Api>> = match meta.method {
-            Method::Get => get(handler),
-            Method::Post => post(handler),
-            Method::Put => put(handler),
-            Method::Patch => patch(handler),
-            Method::Delete => delete(handler),
-        };
-        r = r.route(meta.path, method);
+        }
+    };
+    match meta.method {
+        Method::Get => get(handler),
+        Method::Post => post(handler),
+        Method::Put => put(handler),
+        Method::Patch => patch(handler),
+        Method::Delete => delete(handler),
     }
-    r
+}
+
+/// A literal path such as `/v1/customer/people/me/preferences` (POST) wins over the pattern
+/// `/v1/customer/people/{customer_id}/preferences` (GET) for every method, so a GET to `.../me/...`
+/// would get 405. For each pattern that covers another operation's more literal path without
+/// sharing its method, the pattern's operation is mounted on that path too, with the literal
+/// segments as its parameters (`customer_id = "me"`).
+fn shadowed(
+    ops: &[&'static OpMeta],
+) -> Vec<(&'static str, &'static OpMeta, BTreeMap<String, String>)> {
+    let mut out = Vec::new();
+    for pattern in ops.iter().filter(|m| m.path.contains('{')) {
+        let pat: Vec<&str> = pattern.path.split('/').collect();
+        for other in ops {
+            if other.path == pattern.path
+                || ops
+                    .iter()
+                    .any(|m| m.path == other.path && m.method == pattern.method)
+                || out.iter().any(|(p, m, _): &(&str, &OpMeta, _)| {
+                    *p == other.path && m.method == pattern.method
+                })
+            {
+                continue;
+            }
+            let lit: Vec<&str> = other.path.split('/').collect();
+            if lit.len() != pat.len() {
+                continue;
+            }
+            let mut fixed = BTreeMap::new();
+            let covers = pat
+                .iter()
+                .zip(&lit)
+                .all(|(p, l)| match p.strip_prefix('{') {
+                    Some(name) if !l.starts_with('{') => {
+                        fixed.insert(name.trim_end_matches('}').to_owned(), (*l).to_owned());
+                        true
+                    }
+                    Some(_) => true,
+                    None => p == l,
+                });
+            if covers && !fixed.is_empty() {
+                out.push((other.path, *pattern, fixed));
+            }
+        }
+    }
+    out
 }
 
 pub(crate) fn json_body(body: &[u8]) -> Result<Map<String, Value>, ApiError> {
@@ -302,6 +360,61 @@ async fn call_tool(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use acom_contract::{ActionType, Group};
+
+    const fn meta(tool: &'static str, method: Method, path: &'static str) -> OpMeta {
+        OpMeta {
+            address: "customer.preference.x",
+            tool,
+            group: Group::Engage,
+            kind: Kind::Read,
+            method,
+            path,
+            summary: "",
+            consumes: &[],
+            produces: &[],
+            checks: &[],
+            errors: &[],
+            audience: Audience::Both,
+            action_type: ActionType::SEARCH,
+            person_scope: "",
+        }
+    }
+
+    static GET_PREFS: OpMeta = meta(
+        "get_preferences",
+        Method::Get,
+        "/v1/customer/people/{customer_id}/preferences",
+    );
+    static UPDATE_MINE: OpMeta = meta(
+        "update_my_preferences",
+        Method::Post,
+        "/v1/customer/people/me/preferences",
+    );
+    static GET_PROFILE: OpMeta = meta("get_my_profile", Method::Get, "/v1/customer/people/me");
+    static GET_MEMBER: OpMeta = meta(
+        "get_member",
+        Method::Get,
+        "/v1/customer/people/{customer_id}",
+    );
+
+    #[test]
+    fn patterns_also_answer_on_literal_paths_that_lack_their_method() {
+        let found = shadowed(&[&GET_PREFS, &UPDATE_MINE, &GET_PROFILE, &GET_MEMBER]);
+        assert_eq!(found.len(), 1, "{found:?}");
+        let (path, op, fixed) = &found[0];
+        assert_eq!(*path, "/v1/customer/people/me/preferences");
+        assert_eq!(op.tool, "get_preferences");
+        assert_eq!(fixed.get("customer_id").map(String::as_str), Some("me"));
+        // Both GETs on /people/me and /people/{id} already have their own handler.
+        let _ = Router::<Arc<Api>>::new()
+            .route(
+                UPDATE_MINE.path,
+                method_router(&UPDATE_MINE, BTreeMap::new()),
+            )
+            .route(GET_PREFS.path, method_router(&GET_PREFS, BTreeMap::new()))
+            .route(path, method_router(op, fixed.clone()));
+    }
 
     #[test]
     fn audiences_follow_the_surface() {

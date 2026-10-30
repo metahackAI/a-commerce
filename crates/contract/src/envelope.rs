@@ -113,6 +113,10 @@ pub struct CommitResult {
     pub id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub undo: Option<Undo>,
+    /// What the write produced, by slot name (`promotion_id`, `cart`, `memory`…), as the
+    /// operation's spec shows its run result.
+    #[serde(flatten)]
+    pub produced: serde_json::Map<String, Value>,
 }
 
 #[cfg(test)]
