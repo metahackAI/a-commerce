@@ -11,6 +11,8 @@ metadata:
 data:
   ACOM_ENV: production
   ACOM_DEMO_MODE: "false"
+  # demo: the migrate Job also loads the demo store once (seed/demo). none: migrations only.
+  ACOM_SEED: none
   RUST_LOG: info
   ACOM_LOG_FORMAT: json
 

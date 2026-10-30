@@ -6,16 +6,22 @@
 //! query forgets a `tenant_id` filter. The schema is `migrations/*.sql`, embedded in the binary.
 //! Design: `docs/backend/commerce.md` §5, `docs/backend/database.md`.
 
+pub mod page;
+pub mod runtime;
+
 use std::sync::Arc;
 
 use acom_auth::Principal;
 use acom_contract::{Ctx, ErrorCode, ToolError};
-use acom_core::{Clock, TenantId};
+use acom_core::{Clock, StoreTime, TenantId};
 use acom_policy::PolicySet;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::{Postgres, Transaction};
 
 /// The migrations in `migrations/`, embedded at compile time.
+pub use page::Page;
+pub use runtime::Runtime;
+
 pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../../migrations");
 
 #[derive(Debug, thiserror::Error)]
@@ -24,6 +30,8 @@ pub enum StoreError {
     Database(#[from] sqlx::Error),
     #[error("migration error: {0}")]
     Migrate(#[from] sqlx::migrate::MigrateError),
+    #[error("policy error: {0}")]
+    Policy(String),
 }
 
 impl From<StoreError> for ToolError {
@@ -107,6 +115,8 @@ pub struct Cx {
     pub principal: Arc<Principal>,
     pub request_id: String,
     pub clock: Arc<dyn Clock>,
+    /// The store's time zone: inputs are read and outputs written in it.
+    pub time: StoreTime,
     pub policy: Arc<PolicySet>,
     pub db: Db,
 }
@@ -122,8 +132,17 @@ impl Cx {
             principal: self.principal.clone(),
             request_id: self.request_id.clone(),
             clock: self.clock.clone(),
+            time: self.time,
             policy: self.policy.clone(),
         })
+    }
+
+    /// The same request run by the system: the change-set runner after a person approved.
+    pub fn as_system(&self, subject: &str) -> Cx {
+        Cx {
+            principal: Arc::new(Principal::system(self.tenant.clone(), subject)),
+            ..self.clone()
+        }
     }
 
     /// Runs read queries inside a read-only transaction scoped to the store.
@@ -144,6 +163,7 @@ pub struct TxCx {
     pub principal: Arc<Principal>,
     pub request_id: String,
     pub clock: Arc<dyn Clock>,
+    pub time: StoreTime,
     pub policy: Arc<PolicySet>,
 }
 
@@ -159,7 +179,8 @@ impl Ctx for Cx {
 }
 
 /// `set_config('app.tenant_id', …, true)`: local to the transaction, read by every RLS policy.
-async fn scope_to_tenant(
+/// Every transaction on store data starts with this.
+pub async fn scope_to_tenant(
     tx: &mut Transaction<'static, Postgres>,
     tenant: &TenantId,
 ) -> Result<(), StoreError> {

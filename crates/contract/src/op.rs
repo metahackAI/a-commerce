@@ -34,9 +34,10 @@ pub trait ReadOp<C: Ctx>: Operation {
     ) -> impl Future<Output = Result<Self::Output, ToolError>> + Send;
 }
 
-/// Entities a preview read, with the version it saw. A run re-checks them.
+/// Rows a preview read, with the version it saw. A run re-checks them before it commits.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Basis {
+    /// `schema.table`, for example `catalog.offer`.
     pub entity: String,
     pub id: String,
     pub version: i64,
@@ -114,4 +115,14 @@ pub trait WriteOp<C: Ctx>: Operation {
         plan: &Self::Plan,
         done: &Committed,
     ) -> impl Future<Output = Result<(), ToolError>> + Send;
+}
+
+/// A person-only endpoint. Runs directly in one transaction, without a preview; the caller must
+/// hold the `human:*` scope named in its metadata. Never offered to a model.
+pub trait PersonOp<C: Ctx>: Operation {
+    fn run(
+        &self,
+        tx: &mut C::Tx,
+        input: Self::Input,
+    ) -> impl Future<Output = Result<Self::Output, ToolError>> + Send;
 }

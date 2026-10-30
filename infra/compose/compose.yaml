@@ -60,6 +60,8 @@ services:
     environment:
       <<: *rust-env
       MIGRATION_DATABASE_URL: postgres://acom_owner:${ACOM_OWNER_PASSWORD:-acom_owner}@postgres:5432/acom
+      # demo: after migrating, load the demo store once (seed/demo). none: migrations only.
+      ACOM_SEED: ${ACOM_SEED:-demo}
     depends_on:
       postgres: {condition: service_healthy}
     networks: [data]

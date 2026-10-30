@@ -1488,6 +1488,22 @@
       "rdfs:comment": "Who is responsible, which decides who pays."
     },
     {
+      "@id": "acom:loginId",
+      "@type": "rdf:Property",
+      "rdfs:label": "loginId",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Person"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "what the operator types to sign in (for example admin); NULL means the account cannot sign in with a password."
+    },
+    {
       "@id": "acom:managed",
       "@type": "rdf:Property",
       "rdfs:label": "managed",

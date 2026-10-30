@@ -3796,6 +3796,13 @@
         "values_list": "admin_status"
       },
       {
+        "name": "login_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:loginId",
+        "description": "what the operator types to sign in (for example admin); NULL means the account cannot sign in with a password."
+      },
+      {
         "name": "password_hash",
         "type": "text",
         "nullable": true,

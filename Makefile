@@ -9,7 +9,7 @@ COMPOSE_DBG := $(COMPOSE) -f infra/compose/compose.debug.yaml
 TAG         ?= local
 IMAGES      := gateway commerce agent
 
-.PHONY: help env keys up up-debug up-models up-observability down clean ps logs migrate \
+.PHONY: help env keys up up-debug up-models up-observability down clean ps logs migrate reseed \
         images image-web check check-rust check-web check-infra k8s-render kind-up kind-down
 
 help: ## List the commands
@@ -52,6 +52,9 @@ logs: ## Follow logs (SERVICE=commerce for one service)
 
 migrate: ## Run migrations again (the stack runs them on start)
 	$(COMPOSE) run --rm migrate
+
+reseed: ## Empty the store and load the demo store again (admin / admin123)
+	$(COMPOSE) run --rm migrate seed --reset
 
 # --- images -------------------------------------------------------------------------------------
 

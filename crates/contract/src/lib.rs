@@ -15,7 +15,7 @@ pub use envelope::{Change, ChangeOp, Check, CommitResult, Preview, ReadResult, U
 pub use error::{ErrorClass, ErrorCode, ToolError};
 pub use meta::{ActionType, Audience, Group, Kind, Method, OpMeta, Slot};
 pub use op::{
-    ApprovalNeed, Basis, Committed, Ctx, Operation, Planned, ReadOp, UndoSupport, Verification,
-    WriteOp,
+    ApprovalNeed, Basis, Committed, Ctx, Operation, PersonOp, Planned, ReadOp, UndoSupport,
+    Verification, WriteOp,
 };
-pub use registry::{DynOp, ManifestEntry, Registry, RegistryBuilder};
+pub use registry::{DynOp, DynPlanned, ManifestEntry, Registry, RegistryBuilder};

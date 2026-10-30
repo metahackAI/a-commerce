@@ -9,7 +9,9 @@ use serde_json::Value;
 
 use crate::error::{ErrorCode, ToolError};
 use crate::meta::{Kind, OpMeta};
-use crate::op::{Committed, Ctx, Operation, Planned, ReadOp, Verification, WriteOp};
+use crate::op::{
+    Committed, Ctx, Operation, PersonOp, Planned, ReadOp, UndoSupport, Verification, WriteOp,
+};
 use crate::schema::closed_schema_for;
 
 /// A preview with its plan as JSON, ready to be stored.
@@ -46,6 +48,19 @@ pub trait DynOp<C: Ctx>: Send + Sync {
         plan: &'a Value,
         done: &'a Committed,
     ) -> BoxFuture<'a, Result<(), ToolError>>;
+    /// Runs a person-only endpoint. Other kinds refuse.
+    fn person<'a>(
+        &'a self,
+        tx: &'a mut C::Tx,
+        input: Value,
+    ) -> BoxFuture<'a, Result<Value, ToolError>> {
+        let _ = (tx, input);
+        Box::pin(async move { Err(ToolError::invalid_input("not a person-only endpoint")) })
+    }
+    /// Whether `undo` can take this write back.
+    fn undo_support(&self) -> UndoSupport {
+        UndoSupport::NotSupported
+    }
 }
 
 fn parse<T: serde::de::DeserializeOwned>(v: Value) -> Result<T, ToolError> {
@@ -118,6 +133,9 @@ impl<C: Ctx, O: WriteOp<C>> DynOp<C> for WriteAdapter<O> {
     fn meta(&self) -> &'static OpMeta {
         &O::META
     }
+    fn undo_support(&self) -> UndoSupport {
+        O::UNDO
+    }
     fn input_schema(&self) -> &Value {
         &self.schema
     }
@@ -177,6 +195,59 @@ impl<C: Ctx, O: WriteOp<C>> DynOp<C> for WriteAdapter<O> {
     }
 }
 
+struct PersonAdapter<O> {
+    op: O,
+    schema: Value,
+}
+
+impl<C: Ctx, O: PersonOp<C>> DynOp<C> for PersonAdapter<O> {
+    fn meta(&self) -> &'static OpMeta {
+        &O::META
+    }
+    fn input_schema(&self) -> &Value {
+        &self.schema
+    }
+    fn read<'a>(&'a self, _: &'a C, _: Value) -> BoxFuture<'a, Result<Value, ToolError>> {
+        Box::pin(async move { Err(not_a("read", &O::META)) })
+    }
+    fn preview<'a>(&'a self, _: &'a C, _: Value) -> BoxFuture<'a, Result<DynPlanned, ToolError>> {
+        Box::pin(async move { Err(not_a("write", &O::META)) })
+    }
+    fn commit<'a>(
+        &'a self,
+        _: &'a mut C::Tx,
+        _: &'a Value,
+    ) -> BoxFuture<'a, Result<Committed, ToolError>> {
+        Box::pin(async move { Err(not_a("write", &O::META)) })
+    }
+    fn verify<'a>(
+        &'a self,
+        _: &'a C,
+        _: &'a Value,
+        _: &'a Committed,
+    ) -> BoxFuture<'a, Result<Verification, ToolError>> {
+        Box::pin(async move { Err(not_a("write", &O::META)) })
+    }
+    fn undo<'a>(
+        &'a self,
+        _: &'a mut C::Tx,
+        _: &'a Value,
+        _: &'a Committed,
+    ) -> BoxFuture<'a, Result<(), ToolError>> {
+        Box::pin(async move { Err(not_a("write", &O::META)) })
+    }
+    fn person<'a>(
+        &'a self,
+        tx: &'a mut C::Tx,
+        input: Value,
+    ) -> BoxFuture<'a, Result<Value, ToolError>> {
+        Box::pin(async move {
+            let out = self.op.run(tx, parse(input)?).await?;
+            to_json(&out)
+        })
+    }
+}
+
 /// Collects operations from every domain crate.
 pub struct RegistryBuilder<C: Ctx> {
     ops: BTreeMap<&'static str, Arc<dyn DynOp<C>>>,
@@ -213,8 +284,24 @@ impl<C: Ctx> RegistryBuilder<C> {
         self.insert(O::META.tool, Arc::new(WriteAdapter { op, schema }))
     }
 
+    pub fn person<O: PersonOp<C>>(&mut self, op: O) -> &mut Self {
+        if O::META.kind != Kind::Person || !O::META.person_scope.starts_with("human:") {
+            self.problems.push(format!(
+                "{}: person-only endpoints need Kind::Person and a human:* scope",
+                O::META.tool
+            ));
+        }
+        let schema = closed_schema_for::<O::Input>();
+        self.insert(O::META.tool, Arc::new(PersonAdapter { op, schema }))
+    }
+
     fn check_kind<O: Operation>(&mut self, write: bool) {
-        if (O::META.kind == Kind::Read) == write {
+        let ok = match O::META.kind {
+            Kind::Read => !write,
+            Kind::Write | Kind::WriteApproval => write,
+            Kind::Person => false,
+        };
+        if !ok {
             self.problems
                 .push(format!("{}: registered as the wrong kind", O::META.tool));
         }
@@ -329,6 +416,7 @@ mod tests {
             errors: &[],
             audience: Audience::Both,
             action_type: ActionType::SEARCH,
+            person_scope: "",
         };
         type Input = SearchIn;
         type Output = ReadResult<String>;
@@ -362,6 +450,7 @@ mod tests {
             errors: &[],
             audience: Audience::Shopper,
             action_type: ActionType::UPDATE,
+            person_scope: "",
         };
         type Input = NoteIn;
         type Output = ();

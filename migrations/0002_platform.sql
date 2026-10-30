@@ -27,6 +27,7 @@ CREATE TABLE platform.admin_user (
   email text NOT NULL,
   job_title text,
   admin_status text NOT NULL DEFAULT 'active',
+  login_id text,
   password_hash text,
   last_login_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -35,6 +36,8 @@ CREATE TABLE platform.admin_user (
   CONSTRAINT admin_user_pkey PRIMARY KEY (tenant_id, id),
   CONSTRAINT admin_user_id_check CHECK (id ~ '^adm_[a-z0-9_]+$'),
   CONSTRAINT admin_user_email_key UNIQUE (tenant_id, email),
+  CONSTRAINT admin_user_login_id_key UNIQUE (tenant_id, login_id),
+  CONSTRAINT admin_user_login_id_check CHECK (login_id ~ '^[a-z][a-z0-9_.-]{2,63}$'),
   CONSTRAINT admin_user_admin_status_check CHECK (admin_status IN ('active', 'suspended', 'locked'))
 );
 
@@ -401,6 +404,8 @@ COMMENT ON COLUMN platform.admin_user.job_title IS
   'schema:jobTitle — job title shown next to the name.';
 COMMENT ON COLUMN platform.admin_user.admin_status IS
   'acom:adminStatus — whether the account can sign in. values: admin_status';
+COMMENT ON COLUMN platform.admin_user.login_id IS
+  'acom:loginId — what the operator types to sign in (for example admin); NULL means the account cannot sign in with a password.';
 COMMENT ON COLUMN platform.admin_user.password_hash IS
   '- argon2 hash of the password; NULL until the person sets one (demo login does not use it).';
 COMMENT ON COLUMN platform.admin_user.last_login_at IS

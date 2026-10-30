@@ -683,6 +683,7 @@
 | `email` | text |  | `schema:email` | sign-in email address, unique in the store. |
 | `job_title` | text | ✓ | `schema:jobTitle` | job title shown next to the name. |
 | `admin_status` | text |  | `acom:adminStatus` | whether the account can sign in. values: admin_status Values: `active` · `suspended` · `locked`. |
+| `login_id` | text | ✓ | `acom:loginId` | what the operator types to sign in (for example admin); NULL means the account cannot sign in with a password. |
 | `password_hash` | text | ✓ | `-` | argon2 hash of the password; NULL until the person sets one (demo login does not use it). |
 | `last_login_at` | timestamptz | ✓ | `acom:lastLoginAt` | last successful sign-in; NULL if never. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |

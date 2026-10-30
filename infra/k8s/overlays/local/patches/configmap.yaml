@@ -5,3 +5,4 @@ metadata:
 data:
   ACOM_ENV: local
   ACOM_DEMO_MODE: "true"
+  ACOM_SEED: demo

@@ -7,6 +7,7 @@
 //!   regenerates the data dictionary and `vocab/acom.jsonld`, otherwise stale files are an error.
 //! - `check-seed`: the demo seed fits the migrations (columns, required values, words, keys,
 //!   references), without a database.
+//! - `hash-password <password>`: an argon2id hash for seed accounts.
 
 mod schema;
 mod seed;
@@ -23,8 +24,26 @@ fn main() -> ExitCode {
         "check-docs" => check_docs(&repo_root()),
         "check-schema" => check_schema(&repo_root(), std::env::args().any(|a| a == "--write")),
         "check-seed" => check_seed(&repo_root()),
+        "hash-password" => match std::env::args().nth(2) {
+            Some(pw) => match acom_auth::password::hash(&pw) {
+                Ok(h) => {
+                    println!("{h}");
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("{e}");
+                    ExitCode::FAILURE
+                }
+            },
+            None => {
+                eprintln!("usage: cargo xtask hash-password <password>");
+                ExitCode::FAILURE
+            }
+        },
         _ => {
-            eprintln!("usage: cargo xtask check-docs | check-schema [--write] | check-seed");
+            eprintln!(
+                "usage: cargo xtask check-docs | check-schema [--write] | check-seed | hash-password <password>"
+            );
             ExitCode::FAILURE
         }
     }

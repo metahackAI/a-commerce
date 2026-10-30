@@ -85,6 +85,7 @@ A-Commerce의 모든 구성 요소는 컨테이너이고, **어디서 띄우든 
 | `ACOM_GATEWAY_SIGNING_KEY_FILE` / `_PUBLIC_KEY_FILE` | gateway / 나머지 | `infra/secrets/*.pem`(`make keys`) | 비밀 저장소 |
 | `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL`, `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | agent | `.env` | 비밀 저장소 |
 | `ACOM_ENV`, `ACOM_DEMO_MODE`, `RUST_LOG`, `ACOM_LOG_FORMAT` | 전부 | `local`, `true`, `info`, `json` | `production`, `false`, `info`, `json` |
+| `ACOM_SEED`, `ACOM_SEED_DIR` | migrate | `demo`(마이그레이션 뒤 데모 스토어를 한 번 적재), `seed/demo` | `none`, 이미지의 `/app/seed/demo` |
 
 ## 6. 운영 표면
 

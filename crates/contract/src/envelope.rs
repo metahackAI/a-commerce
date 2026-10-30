@@ -68,8 +68,9 @@ pub struct Check {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Preview {
     pub preview_id: String,
-    /// RFC 3339 with the store offset.
-    pub expires_at: String,
+    /// RFC 3339 with the store offset. `None` for a preview in a change set: those do not
+    /// expire and are previewed again when a person approves.
+    pub expires_at: Option<String>,
     pub changes: Vec<Change>,
     pub checks: Vec<Check>,
     pub needs_approval: bool,
