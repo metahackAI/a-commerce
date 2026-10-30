@@ -627,7 +627,7 @@ mod tests {
             .preview(&cx, input("80.00"))
             .await
             .unwrap_or_else(|e| panic!("{e}"));
-        assert_eq!(planned.changes[0].from, json!({"price": 79.00}));
+        assert_eq!(planned.changes[0].from["price"].to_string(), "79.00");
         assert!(matches!(planned.approval, ApprovalNeed::NotNeeded));
         let mut tx = cx.begin().await.unwrap_or_else(|e| panic!("{e}"));
         let done = SetPrice

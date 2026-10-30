@@ -692,8 +692,9 @@ mod tests {
         assert_eq!(s["required"], json!(["cart_id", "customer_id"]));
     }
 
-    /// Integration: needs the demo seed with the B1 change set run and the demo clock on
-    /// Sat Nov 7 (`DATABASE_URL`).
+    /// Integration: on the demo clock (Fri Nov 6) no sale is running yet, so Jamie pays the list
+    /// price. The VIP weekend price ($71.20 on Sat Nov 7) is checked by the scene test in
+    /// `services/commerce/tests/scenes.rs` (`DATABASE_URL`, demo seed).
     #[tokio::test]
     #[ignore = "integration: needs a PostgreSQL database"]
     async fn prices_jamies_windbreaker_from_the_database() {
@@ -729,6 +730,6 @@ mod tests {
         )
         .await
         .expect("calculate");
-        assert_eq!(b.total.value.to_string(), "71.20");
+        assert_eq!(b.total.value.to_string(), "89.00");
     }
 }

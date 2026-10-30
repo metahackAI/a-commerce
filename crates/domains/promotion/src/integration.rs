@@ -72,7 +72,20 @@ async fn search_promotions_finds_the_ended_linen_clearance() {
         .read(&cx, input(json!({"status": ["ended"]})))
         .await
         .unwrap();
-    assert_eq!(out["items"][0]["id"], "promo_linen_clearance", "{out:#}");
+    let ids: Vec<&str> = out["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|p| p["id"].as_str())
+        .collect();
+    assert!(ids.contains(&"promo_linen_clearance"), "{out:#}");
+    assert!(
+        out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|p| p["status"] == "ended")
+    );
 }
 
 #[tokio::test]

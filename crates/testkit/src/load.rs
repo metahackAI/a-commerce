@@ -153,6 +153,15 @@ pub async fn load(pool: &PgPool, rows: &SeedRows) -> Result<Report, String> {
         .await
         .map_err(|e| format!("{table} (rows {}–{}): {e}", i + 1, j))?;
         *report.tables.entry(table.to_owned()).or_default() += j - i;
+        // Once a table is loaded, refresh its statistics: foreign-key checks of the tables
+        // loaded after it are planned once per connection, and a plan made while the table
+        // looked empty scans it whole for every row.
+        if rows.get(j).is_none_or(|(t, _)| t != table) {
+            sqlx::query(sqlx::AssertSqlSafe(format!("ANALYZE {table}")))
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| format!("{table}: {e}"))?;
+        }
         i = j;
     }
     tx.commit().await.map_err(|e| e.to_string())?;

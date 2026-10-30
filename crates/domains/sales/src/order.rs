@@ -1147,6 +1147,7 @@ impl ReadOp<Cx> for SearchOrders {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cart::{GetCart, GetCartInput};
     use acom_contract::schema::{closed_schema_for, violations};
 
     #[test]
@@ -1208,12 +1209,32 @@ mod tests {
         assert_eq!(back, plan);
     }
 
-    /// Integration: F2 step 5 — Jamie prepares her order for $71.20 and places it
-    /// (`DATABASE_URL`, demo seed with change set #1042 run and the windbreaker in her cart).
+    /// Integration: Jamie puts the windbreaker in her cart, prepares the order for exactly the
+    /// cart's total, and places it; the order is rolled back and the cart line removed again
+    /// (`DATABASE_URL`, demo seed). The $71.20 of scene F2, which needs change set #1042 run
+    /// first, is checked by `services/commerce/tests/scenes.rs`.
     #[tokio::test]
     #[ignore = "integration: needs a PostgreSQL database"]
     async fn jamie_prepares_and_places_her_order() {
         let cx = crate::testdb::cx("cus_jamie").await;
+        let registry = crate::testdb::registry();
+        let added = acom_changeset::preview(
+            &registry,
+            &cx,
+            "add_to_cart",
+            json!({"mode": "variant", "variant_id": "var_windbreaker_m_slate", "order_quantity": 1}),
+            None,
+        )
+        .await
+        .unwrap();
+        let line = acom_changeset::commit(&registry, &cx, "add_to_cart", &added.preview_id)
+            .await
+            .unwrap();
+        let cart = GetCart
+            .read(&cx, GetCartInput { fields: None })
+            .await
+            .unwrap();
+        let total: Money = serde_json::from_value(cart["total"].clone()).unwrap();
         let planned = PrepareOrder
             .preview(
                 &cx,
@@ -1222,7 +1243,7 @@ mod tests {
                     delivery_address_id: Some("adr_home".into()),
                     delivery_address: None,
                     payment_method: None,
-                    client_total: promotion::money(Decimal::new(7120, 2), acom_core::Currency::USD),
+                    client_total: total,
                 },
             )
             .await
@@ -1232,16 +1253,13 @@ mod tests {
             "{:?}",
             planned.checks
         );
-        assert_eq!(planned.changes[0].to["total"]["value"].to_string(), "71.20");
+        assert_eq!(planned.changes[0].to["total"], cart["total"]);
         let p = acom_changeset::preview(
-            &crate::testdb::registry(),
+            &registry,
             &cx,
             "prepare_order",
-            serde_json::to_value(
-                json!({"delivery_mode": "saved", "delivery_address_id": "adr_home",
-                                        "client_total": {"value": 71.20, "currency": "USD"}}),
-            )
-            .unwrap(),
+            json!({"delivery_mode": "saved", "delivery_address_id": "adr_home",
+                   "client_total": cart["total"]}),
             None,
         )
         .await
@@ -1257,7 +1275,20 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(out["order_status"], "processing");
-        // Rolled back on drop.
+        drop(tx); // rolled back
+        let cart_line_id = line.produced["cart_line_id"].as_str().unwrap().to_owned();
+        let removed = acom_changeset::preview(
+            &registry,
+            &cx,
+            "remove_cart_item",
+            json!({"cart_line_id": cart_line_id}),
+            None,
+        )
+        .await
+        .unwrap();
+        acom_changeset::commit(&registry, &cx, "remove_cart_item", &removed.preview_id)
+            .await
+            .unwrap();
     }
 
     /// Integration: order reads for Alex's #20402 (`DATABASE_URL`, demo seed).
