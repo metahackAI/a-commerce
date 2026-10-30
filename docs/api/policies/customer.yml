@@ -1,0 +1,59 @@
+# policy: customer — 회원·등급·동의·개인정보·상담·보상 규칙 (데이터)
+# 값은 의미 있는 영단어, 금액은 {value, currency}.
+version: 2
+
+member:
+  types: [individual, business]
+  states: [active, dormant, withdrawn, blocked]
+  dormant_after_days: 365
+  id_reuse_after_withdrawal_days: 90
+  password: { min_length: 8, max_length: 64, require: [letter, digit] }
+
+identity_verification:
+  required_for: [password_reset, withdrawal, contact_change]
+  method: one_time_code                  # 이메일 또는 SMS 일회용 코드
+
+tier:                                    # MemberProgramTier (plan.md §4.2)
+  values: [member, gold, vip]            # 게스트는 등급 없음
+  recalc: monthly
+  basis_months: 6
+  downgrade_allowed: true
+  benefit_on_upgrade: issue_coupons      # 승급 시 혜택 자동 발급, 강등 시 회수 없음
+
+consent:
+  mandatory: [terms, privacy]
+  optional: [marketing_email, marketing_sms, marketing_push]
+  history: immutable
+  marketing_gate: opt_in                 # check: consent_required. 동의한 경우에만 마케팅 발송
+
+privacy:
+  pii_encrypted_at_rest: [name, telephone, email, tax_id]
+  masking_default: true                  # 기본 마스킹, 해제하면 사유 기록
+  access_reason_logging: required
+  payment_card_shown: last4_only
+
+preference:                              # 쇼퍼 기억 (acom:Preference)
+  source_required: true                  # 어디서 알게 됐는지(source: conversation) 기록
+  shown_to_shopper: true
+  undo: person_only                      # POST /memories/{id}/undo
+
+withdrawal:
+  initiator: self_only                   # 운영자가 대신 못 함
+  block_if: [loyalty_balance_positive, open_orders, open_claims, open_inquiries]
+  on_withdraw: mask_pii_immediately
+  hold_days: 90
+  retain: [order_data, claim_data]       # 법적 보존
+
+customer_service:
+  inquiry_types: [order_status, return, product_question, account, other]
+  states: [received, in_progress, resolved]
+  assignment: [auto_round_robin, manual]
+  auto_assign_interval_minutes: 10
+  notify_member_on_resolve: true
+
+remedy:
+  liability: [store_fault, seller_fault, customer_claim]
+  types: [loyalty_points, coupon, cash]
+  approval_levels: [agent_request, remedy_approver, payout_approver]
+  cash_requires: [verified_refund_account, payout_approval]
+  loyalty_grant_over: { value: 50.00, currency: USD }   # approval.yml loyalty_grant

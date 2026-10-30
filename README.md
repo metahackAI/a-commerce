@@ -99,7 +99,7 @@ Numbers will be added here once measured.
               Commerce back-end services
 ```
 
-Full architecture (back-end structure, API hierarchy, agent-friendly interface, schema.org data model, AI-native features): [docs/architecture.md](docs/architecture.md). Design details: [docs/design.md](docs/design.md). Build plan: [docs/plan.md](docs/plan.md). Research (what AI-native commerce means, who else is building it, with source captures): [docs/research.md](docs/research.md). UI mockups: [design/mockups](design/mockups), layout options and UI per intent: [design/options](design/options), storefront plan: [design/storefront](design/storefront).
+Full architecture (back-end structure, API hierarchy, agent-friendly interface, schema.org data model, AI-native features): [docs/architecture.md](docs/architecture.md). Full API specification (every operation, by group → domain → resource, with data model and policies): [docs/api/](docs/api/README.md). Design details: [docs/design.md](docs/design.md). Build plan: [docs/plan.md](docs/plan.md). Research (what AI-native commerce means, who else is building it, with source captures): [docs/research.md](docs/research.md). UI mockups: [design/mockups](design/mockups), layout options and UI per intent: [design/options](design/options), storefront plan: [design/storefront](design/storefront).
 
 ## Getting started
 
@@ -133,6 +133,7 @@ Everything in this repository was created between Oct 27 and Nov 4, 2026. The co
 | Oct 27 | Repository created, project scope defined |
 | Oct 28 | Build plan: MVP scope, tool signatures, seed data, UI block schema, roles and schedule |
 | Oct 30 | Architecture document: back-end structure, API hierarchy, schema.org data model, AI-native features |
+| Oct 30 | API specification: 13 domains, every operation, data model, policies |
 
 ## References
 

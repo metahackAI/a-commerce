@@ -1,0 +1,65 @@
+# policy: fulfillment — 취소·반품·교환·환불·배송 규칙 (데이터)
+# 값은 의미 있는 영단어, 금액은 {value, currency}. 데모 값은 plan.md §4.1과 같다.
+version: 2
+
+return_window_days: 30                   # 배송 완료 후 30일 (schema.org merchant_return_days)
+refund_without_person_max:               # 이 금액 이하 환불은 사람 없이 처리 가능 (approval.yml refund)
+  value: 200.00
+  currency: USD
+
+defect_refund:                           # 불량
+  refund_type: full_refund
+  return_fees: free_return               # 반품 배송비 무료
+changed_mind_return_shipping: customer   # 단순 변심: 반품 배송비는 고객 부담 (return_fees_customer_responsibility)
+damage_claim_needs_photo: true           # 파손 주장은 사진 필요 → 없으면 ask_for_photos
+size_exchange_days: 30                   # 사이즈 교환 30일, 무료
+size_exchange_fee: { value: 0.00, currency: USD }
+gift_exchange_until: "12-31"             # 선물 교환은 12월 31일까지
+
+return_suggestions:                      # evaluate_return_request가 인용하는 규칙
+  refund: "within return_window_days and (defect or tags_on or changed_mind)"
+  ask_for_photos: "reason == arrived_damaged and photos == 0"
+  decline: "days_since_delivery > return_window_days"
+  flag_return_history: { returns: 4, days: 90 }   # 90일 안에 4회 이상 반품은 검토 표시
+
+refund:                                  # checks: refund_to_original_payment, coupon_deducted
+  to: original_payment                   # 원래 결제 수단으로
+  coupon_deducted: true                  # 쿠폰을 쓴 주문은 쿠폰 혜택을 빼고 환불액 계산
+  lands_in_business_days: [3, 5]         # 확정 후 카드에 반영되기까지
+  priority: [primary_payment, secondary_payment, loyalty_points]
+  loyalty_restore: immediate
+  trigger_on: [cancel_approved, return_completed]
+  settlement: payment_event_confirmed    # 결제사 이벤트로 확정 (조용한 실패 금지)
+  on_failure: manual_queue
+  manual_queue_sla_hours: 24
+
+cancel:
+  allowed_before: shipped                # 출고 전만 취소
+  auto_approve_when: payment_due
+  operator_approve_when: processing
+  after_shipped: use_return
+
+return:
+  states: [potential, active, completed, failed]   # ReturnAction.action_status
+  inventory_restore_when: "inspection == as_new"
+  non_returnable_when: [used, final_sale, gift_card]
+
+exchange:
+  phases: [pickup, reshipment]
+  replacement_constraints: [same_price, actively_selling, in_stock]
+  fallback_to_return_when: [customer_declines, replacement_out_of_stock]
+  on_fallback: refund_reshipment_fee
+
+liability:                               # 책임 → 배송비 부담
+  store_fault: [defect, misdescription, arrived_damaged, out_of_stock, late_shipment]
+  customer_fault: [changed_mind, wrong_size_ordered, duplicate_order]
+  store_fault_pays: [return_shipping, outbound_shipping]
+  customer_fault_pays: [return_shipping, lost_free_shipping]   # 반품 후 소계가 기준 미만이면 무료 배송 혜택 회수
+
+delivery:
+  states: [label_created, picked_up, in_transit, delivered, delivery_failed, waiting_for_stock]
+  shortage_state: waiting_for_stock
+  shipping_fee_types: [paid, free, free_over_min_subtotal]
+  remote_area_surcharge: by_zone
+  tracking: carrier_event
+  no_ship_for: [gift_card]
