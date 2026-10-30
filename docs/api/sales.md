@@ -267,13 +267,13 @@
 
 ### `search_orders` — Kind: R
 - 논리주소/REST: `sales.order.search` · `GET /v1/sales/orders`
-- 요약: 운영자용 주문 검색.
+- 요약: 운영자용 주문 검색. 사람이 말하는 단위로 찾습니다: 주문 번호, 고객의 이메일·이름·전화번호.
 - consumes → produces: → `order_id[]`
-- 입력: `order_status`(enum[], [enums.md](enums.md) §1.1), `customer_id`(`^cus_`), `order_date_from` / `order_date_to`(Date), `seller_id`(`^slr_`), `sort`(`order_date` \| `-order_date` \| `total` \| `-total`, 기본 `-order_date`), `limit`(기본 20, 최대 100), `cursor`, `fields`(Text[])
+- 입력: `order_number`(Text, `^#?[0-9]{1,12}$`, `#` 있어도 됨), `customer`(Text, 2–100자: 이메일·이름·전화번호나 그 일부, 또는 고객 id. `search_members`와 같은 방식으로 맞춤), `order_status`(enum[], [enums.md](enums.md) §1.1), `customer_id`(`^cus_`), `order_date_from` / `order_date_to`(Date), `seller_id`(`^slr_`), `sort`(`order_date` \| `-order_date` \| `total` \| `-total`, 기본 `-order_date`), `limit`(기본 20, 최대 100), `cursor`, `fields`(Text[])
 - 출력: `{"items": [{"id": "ord_20402", "order_number": "20402", "order_status": "delivered", "customer_id": "cus_alex", "order_date": "2026-10-27T19:12:00-04:00", "total": {"value": 312.00, "currency": "USD"}}], "total": 1}`
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음
-- 에러: `invalid_filter` → `list_enums`
+- 에러: `invalid_filter` → `list_enums` · `invalid_filter`(`detail.reason: too_broad`, `customer`가 500명 넘게 맞음, 이메일이나 더 긴 이름으로) → `search_members`
 - 멱등성: 읽기.
 
 ### `verify_guest` — Kind: W

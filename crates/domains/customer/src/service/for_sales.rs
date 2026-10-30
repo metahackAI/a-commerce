@@ -1,5 +1,6 @@
 //! What the cart, checkout and order placement read about a shopper: who they are, their tier,
-//! their saved card, and their saved addresses.
+//! their saved card, and their saved addresses; and, for order search, who a name or an email
+//! means.
 
 use acom_contract::ToolError;
 use acom_store::{StoreError, TxCx};
@@ -98,6 +99,32 @@ pub async fn shopper(tx: &mut TxCx, customer_id: &str) -> Result<Option<Shopper>
         tier_id,
         card_last4,
     }))
+}
+
+/// The people an operator means by `text`: an exact customer id, or a name, email or phone
+/// that contains it (letter case ignored), as `search_members` matches them. At most `limit`
+/// ids; the second value says whether more people matched.
+pub async fn people_matching(
+    tx: &mut TxCx,
+    text: &str,
+    limit: i64,
+) -> Result<(Vec<String>, bool), ToolError> {
+    let mut ids: Vec<String> = sqlx::query_scalar(
+        "SELECT id FROM customer.person
+         WHERE tenant_id = $1
+           AND (id = $2 OR name ILIKE '%' || $2 || '%' OR email ILIKE '%' || $2 || '%'
+                OR telephone ILIKE '%' || $2 || '%')
+         ORDER BY id LIMIT $3",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(text)
+    .bind(limit + 1)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    let more = ids.len() as i64 > limit;
+    ids.truncate(usize::try_from(limit).unwrap_or(0));
+    Ok((ids, more))
 }
 
 /// The shopper's current tier id (`vip`), `None` for people without a membership. With several

@@ -59,7 +59,7 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
             {`Version ${cs.version}${isLatest ? '' : ` (latest is ${latestVersion})`}`}
           </Text>
           {cs.needs_approval && !cs.approved_at ? <Token label="Needs approval" size="sm" color="orange" /> : null}
-          {summary ? (
+          {summary && summary.total > 0 ? (
             <StateToken
               state={summary.failed > 0 ? 'failed' : 'passed'}
               label={summary.failed > 0 ? `${summary.failed} of ${summary.total} checks failed` : `${summary.passed} of ${summary.total} checks passed`}

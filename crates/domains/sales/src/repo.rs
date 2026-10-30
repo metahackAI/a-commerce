@@ -352,6 +352,10 @@ pub(crate) async fn order(tx: &mut TxCx, id: &str) -> Result<Option<OrderRow>, T
 #[derive(Debug, Clone, Default)]
 pub(crate) struct OrderFilter {
     pub customer_id: Option<String>,
+    /// The number people see (`20402`).
+    pub order_number: Option<String>,
+    /// Orders of any of these customers.
+    pub customer_ids: Option<Vec<String>>,
     pub statuses: Vec<String>,
     pub from: Option<DateTime<Utc>>,
     pub until: Option<DateTime<Utc>>,
@@ -365,7 +369,9 @@ const ORDER_FILTER: &str = "tenant_id = $1
     AND ($2::text IS NULL OR customer_id = $2)
     AND (cardinality($3::text[]) = 0 OR order_status = ANY($3))
     AND ($4::timestamptz IS NULL OR order_date >= $4)
-    AND ($5::timestamptz IS NULL OR order_date < $5)";
+    AND ($5::timestamptz IS NULL OR order_date < $5)
+    AND ($6::text IS NULL OR order_number = $6)
+    AND ($7::text[] IS NULL OR customer_id = ANY($7))";
 
 /// One page of orders and the total that match.
 pub(crate) async fn orders(
@@ -380,12 +386,14 @@ pub(crate) async fn orders(
     .bind(&f.statuses)
     .bind(f.from)
     .bind(f.until)
+    .bind(f.order_number.as_deref())
+    .bind(f.customer_ids.as_deref())
     .fetch_one(&mut *tx.tx)
     .await
     .map_err(db)?;
     let rows = sqlx::query_as::<_, OrderRow>(sqlx::AssertSqlSafe(format!(
         "SELECT {ORDER_COLUMNS} FROM sales.sales_order WHERE {ORDER_FILTER}
-         ORDER BY {} LIMIT $6 OFFSET $7",
+         ORDER BY {} LIMIT $8 OFFSET $9",
         f.order_by
     )))
     .bind(tx.tenant.as_str())
@@ -393,6 +401,8 @@ pub(crate) async fn orders(
     .bind(&f.statuses)
     .bind(f.from)
     .bind(f.until)
+    .bind(f.order_number.as_deref())
+    .bind(f.customer_ids.as_deref())
     .bind(f.limit)
     .bind(f.offset)
     .fetch_all(&mut *tx.tx)

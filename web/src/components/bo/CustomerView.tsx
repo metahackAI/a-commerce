@@ -149,7 +149,7 @@ export function CustomerView({member: m, tier, tierError, tierNames, returns, re
         {ordersError ? <ErrorState error={ordersError} title="The orders could not be loaded." /> : null}
         {orders ? <OrderList items={orders} /> : null}
         {orders && ordersTotal > orders.length ? (
-          <Link href={`/bo/orders?customer_id=${encodeURIComponent(m.id)}`}>{`See all ${ordersTotal} orders`}</Link>
+          <Link href={`/bo/orders?customer=${encodeURIComponent(m.id)}`}>{`See all ${ordersTotal} orders`}</Link>
         ) : null}
       </PageSection>
     </PageFrame>

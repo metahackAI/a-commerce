@@ -71,6 +71,7 @@ export function TaskView({task, changeSet}: {task: Task; changeSet: ChangeSet | 
                 path: `/v1/platform/tasks/${encodeURIComponent(task.id)}/dismiss`,
                 confirm: `Dismiss “${task.title}”? A linked change set that is still waiting is rejected too.`,
               }}
+              variant="secondary"
               onDone={() => router.refresh()}
             />
           ) : null}
