@@ -188,6 +188,9 @@ pub enum LlmError {
     Transport(String),
     #[error("the model did not answer within {0} seconds")]
     Timeout(u64),
+    /// The endpoint failed the last calls in a row; it is left alone for a while.
+    #[error("the model has not answered lately; the next try is in {0} seconds")]
+    Resting(u64),
     #[error("the model's answer could not be read: {0}")]
     BadResponse(String),
     #[error("the model answered without the JSON that was asked for: {0}")]
@@ -199,8 +202,22 @@ impl LlmError {
     pub fn is_retryable(&self) -> bool {
         match self {
             Self::Http { status, .. } => *status == 429 || *status >= 500,
-            Self::Transport(_) | Self::Timeout(_) | Self::NoJson(_) | Self::BadResponse(_) => true,
+            Self::Transport(_)
+            | Self::Timeout(_)
+            | Self::Resting(_)
+            | Self::NoJson(_)
+            | Self::BadResponse(_) => true,
             Self::NotConfigured(_) => false,
+        }
+    }
+
+    /// Whether the endpoint itself is down (unreachable, silent, failing, or resting after that),
+    /// as opposed to an answer that could not be used.
+    pub fn is_down(&self) -> bool {
+        match self {
+            Self::Http { status, .. } => *status >= 500,
+            Self::Transport(_) | Self::Timeout(_) | Self::Resting(_) => true,
+            Self::NotConfigured(_) | Self::NoJson(_) | Self::BadResponse(_) => false,
         }
     }
 }

@@ -581,6 +581,40 @@ fn b1_plan() -> String {
     .to_string()
 }
 
+/// A model that is down: the endpoint answers 503 to everything.
+#[tokio::test]
+async fn when_the_model_is_down_the_turn_says_so_plainly() {
+    let log = Arc::new(MemoryLog::default());
+    let down = Scripted::new("glimmer", "Muse Glimmer 30B", vec![]);
+    let rt = runtime(&[down], log);
+    let commerce = Commerce::new();
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say("What needs me today?"),
+        commerce.clone(),
+    )
+    .await;
+    let said: Vec<String> = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::MessageDone { text, .. } => Some(text.clone()),
+            Event::Error { message, .. } => Some(message.clone()),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        said.iter().any(|t| t == MODEL_DOWN),
+        "{said:?} in {:?}",
+        names(&events)
+    );
+    assert!(
+        !said.iter().any(|t| t.contains("503")),
+        "no endpoint detail for the person: {said:?}"
+    );
+}
+
 #[tokio::test]
 async fn without_a_model_a_turn_says_what_to_configure_and_ends() {
     let log = Arc::new(MemoryLog::default());

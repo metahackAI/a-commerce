@@ -5,6 +5,7 @@
 //! tested without a network.
 
 use std::collections::BTreeMap;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use futures::future::BoxFuture;
@@ -31,6 +32,45 @@ pub enum StructuredOutput {
     Prompt,
 }
 
+/// Calls in a row that may fail with the endpoint down before it is left alone.
+const TRIP_AFTER: u32 = 2;
+/// How long an endpoint that keeps failing is left alone before one call tries it again.
+const REST: Duration = Duration::from_secs(45);
+
+/// Stops waiting on an endpoint that is down: after `TRIP_AFTER` calls in a row that timed out,
+/// could not connect or got a 5xx, calls fail at once for `REST`; then one call tries again, and
+/// an answer closes it.
+#[derive(Debug, Default)]
+struct Breaker {
+    failures: u32,
+    resting_until: Option<Instant>,
+}
+
+impl Breaker {
+    /// How long calls still wait before trying again, if the endpoint is resting.
+    fn resting(&mut self, now: Instant) -> Option<Duration> {
+        let until = self.resting_until?;
+        if now < until {
+            return Some(until - now);
+        }
+        // Rest is over: let this call through, and trip again at once if it fails.
+        self.resting_until = None;
+        self.failures = TRIP_AFTER - 1;
+        None
+    }
+
+    fn record(&mut self, down: bool, now: Instant) {
+        if !down {
+            self.failures = 0;
+            return;
+        }
+        self.failures += 1;
+        if self.failures >= TRIP_AFTER {
+            self.resting_until = Some(now + REST);
+        }
+    }
+}
+
 /// One OpenAI-compatible endpoint and model.
 #[derive(Debug)]
 pub struct OpenAiCompatible {
@@ -40,6 +80,7 @@ pub struct OpenAiCompatible {
     structured: StructuredOutput,
     timeout: Duration,
     http: reqwest::Client,
+    breaker: Mutex<Breaker>,
 }
 
 impl OpenAiCompatible {
@@ -60,6 +101,7 @@ impl OpenAiCompatible {
             structured,
             timeout,
             http,
+            breaker: Mutex::new(Breaker::default()),
         })
     }
 
@@ -69,6 +111,27 @@ impl OpenAiCompatible {
     }
 
     async fn send(
+        &self,
+        req: &ChatRequest,
+        on_delta: Option<DeltaSink<'_>>,
+    ) -> Result<ChatResponse, LlmError> {
+        let resting = self
+            .breaker
+            .lock()
+            .map_or(None, |mut b| b.resting(Instant::now()));
+        if let Some(wait) = resting {
+            return Err(LlmError::Resting(wait.as_secs().max(1)));
+        }
+        let res = self.call(req, on_delta).await;
+        // Only the endpoint's own failures count; an answer that could not be used means it is up.
+        let down = res.as_ref().err().is_some_and(LlmError::is_down);
+        if let Ok(mut b) = self.breaker.lock() {
+            b.record(down, Instant::now());
+        }
+        res
+    }
+
+    async fn call(
         &self,
         req: &ChatRequest,
         on_delta: Option<DeltaSink<'_>>,
@@ -413,6 +476,51 @@ impl StreamReader {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_failing_endpoint_rests_then_gets_one_try() {
+        let t0 = Instant::now();
+        let mut b = Breaker::default();
+        b.record(true, t0);
+        assert_eq!(b.resting(t0), None, "one failure is not enough");
+        b.record(true, t0);
+        assert_eq!(
+            b.resting(t0 + Duration::from_secs(5)),
+            Some(REST - Duration::from_secs(5))
+        );
+        // After the rest one call goes through; if it fails, the endpoint rests again at once.
+        let later = t0 + REST + Duration::from_secs(1);
+        assert_eq!(b.resting(later), None);
+        b.record(true, later);
+        assert!(b.resting(later).is_some());
+        // An answer closes it.
+        let after = later + REST + Duration::from_secs(1);
+        assert_eq!(b.resting(after), None);
+        b.record(false, after);
+        b.record(true, after);
+        assert_eq!(b.resting(after), None);
+    }
+
+    #[test]
+    fn only_the_endpoints_own_failures_count_as_down() {
+        assert!(LlmError::Timeout(30).is_down());
+        assert!(LlmError::Transport("refused".into()).is_down());
+        assert!(
+            LlmError::Http {
+                status: 503,
+                message: String::new()
+            }
+            .is_down()
+        );
+        assert!(
+            !LlmError::Http {
+                status: 400,
+                message: String::new()
+            }
+            .is_down()
+        );
+        assert!(!LlmError::NoJson("prose".into()).is_down());
+    }
     use crate::chat::ToolDef;
 
     fn plan_request() -> ChatRequest {
