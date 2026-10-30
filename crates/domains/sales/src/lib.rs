@@ -71,6 +71,7 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .read(order::SearchOrders)
         .read(payment::GetPayment)
         .write(gift::PrepareGiftOrder)
+        .read(gift::GetGiftOrder)
         .person(gift::AcceptGiftOrder);
     // Scheduled work (platform.job): the stock-out forecast over recent sales.
     b.job(watch::StockOutForecast);
@@ -134,7 +135,7 @@ mod tests {
         let mut b = RegistryBuilder::default();
         super::register(&mut b);
         let registry = b.build().unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(registry.len(), 14);
+        assert_eq!(registry.len(), 15);
         for op in registry.iter() {
             let m = op.meta();
             assert_eq!(m.domain(), "sales", "{}", m.tool);

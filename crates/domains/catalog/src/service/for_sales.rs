@@ -8,6 +8,8 @@ use acom_store::{StoreError, TxCx};
 use rust_decimal::Decimal;
 use serde_json::Value;
 
+use crate::model::size_key;
+
 fn db(e: sqlx::Error) -> ToolError {
     ToolError::from(StoreError::from(e))
 }
@@ -45,6 +47,8 @@ pub struct VariantFacts {
     pub inventory_level: i64,
     /// The offer row's version, for previews' basis.
     pub offer_version: i64,
+    /// The variant's image, or the product's when the variant has none.
+    pub image: Option<String>,
 }
 
 impl VariantFacts {
@@ -84,6 +88,7 @@ struct VariantRow {
     availability: String,
     inventory_level: i32,
     offer_version: i32,
+    image: Option<String>,
 }
 
 impl VariantRow {
@@ -107,6 +112,7 @@ impl VariantRow {
             availability: self.availability,
             inventory_level: i64::from(self.inventory_level),
             offer_version: i64::from(self.offer_version),
+            image: self.image,
         })
     }
 }
@@ -114,7 +120,8 @@ impl VariantRow {
 const VARIANT_SELECT: &str = "SELECT v.id AS variant_id, g.id AS product_id, g.name AS product_name,
        v.color, v.size, v.sale_type, g.approval_status, o.id AS offer_id, o.price,
        o.price_currency::text AS price_currency, o.cost_value, o.cost_currency::text AS cost_currency,
-       o.availability, o.inventory_level, o.version AS offer_version
+       o.availability, o.inventory_level, o.version AS offer_version,
+       coalesce(v.image, g.image) AS image
      FROM catalog.product v
      JOIN catalog.product_group g ON g.tenant_id = v.tenant_id AND g.id = v.product_group_id
      JOIN catalog.offer o ON o.tenant_id = v.tenant_id AND o.product_id = v.id";
@@ -139,6 +146,31 @@ pub async fn variants(
         .into_iter()
         .map(VariantRow::facts)
         .collect::<Result<Vec<_>, _>>()?;
+    with_scheduled_prices(tx, facts).await
+}
+
+/// Every variant of `product_id` that has an offer, by color and then size in wearing order.
+pub async fn product_variants(
+    tx: &mut TxCx,
+    product_id: &str,
+) -> Result<Vec<VariantFacts>, ToolError> {
+    let rows = sqlx::query_as::<_, VariantRow>(sqlx::AssertSqlSafe(format!(
+        "{VARIANT_SELECT} WHERE v.tenant_id = $1 AND v.product_group_id = $2 ORDER BY v.id"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(product_id)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    let mut facts = rows
+        .into_iter()
+        .map(VariantRow::facts)
+        .collect::<Result<Vec<_>, _>>()?;
+    facts.sort_by(|a, b| {
+        a.color
+            .cmp(&b.color)
+            .then_with(|| size_key(a.size.as_deref()).cmp(&size_key(b.size.as_deref())))
+    });
     with_scheduled_prices(tx, facts).await
 }
 
@@ -394,6 +426,7 @@ mod tests {
             availability: availability.into(),
             inventory_level: level,
             offer_version: 1,
+            image: None,
         }
     }
 

@@ -57,7 +57,7 @@ a-commerce API
 | 툴 이름(모델이 보는 이름) | `verb_noun`, 평이한 영어 | `set_sale_prices` |
 | REST 경로 | `METHOD /v1/{domain}/{resources}/...` | `POST /v1/promotion/sale-prices` |
 
-툴 검색은 이 계층을 씁니다. 요청 → 해당 도메인 → 리소스 → 후보 툴 몇 개 + 툴 그래프 이웃. 모델은 287개 목록이 아니라 소수 후보만 봅니다([../backend/agent.md](../backend/agent.md) §3).
+툴 검색은 이 계층을 씁니다. 요청 → 해당 도메인 → 리소스 → 후보 툴 몇 개 + 툴 그래프 이웃. 모델은 288개 목록이 아니라 소수 후보만 봅니다([../backend/agent.md](../backend/agent.md) §3).
 
 ## 2. 오퍼레이션 종류
 
@@ -179,7 +179,7 @@ a-commerce API
 
 ## 4. 전체 오퍼레이션 인덱스
 
-툴 **287개**(R 130 · W 117 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 9개(§2.2: 변경셋 6개, 데모 시계 2개, 데모 스토어 다시 적재 1개). **굵게** 표시한 30개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
+툴 **288개**(R 131 · W 117 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 9개(§2.2: 변경셋 6개, 데모 시계 2개, 데모 스토어 다시 적재 1개). **굵게** 표시한 30개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
 
 ### Offer
 
@@ -226,7 +226,7 @@ a-commerce API
 | receipt | `issue_receipt` W · `get_receipt` R |
 | subscription | `prepare_subscription` W(프리뷰만) · `pause_subscription` W · `resume_subscription` W · `cancel_subscription` W · `update_schedule` W · `list_subscriptions` R · 사람 전용 `POST /v1/sales/subscriptions` |
 | installment | `set_installment` W |
-| gift_order | `prepare_gift_order` W(프리뷰만) · 사람 전용 `POST /v1/sales/gift-orders/{id}/accept`(받는 사람) |
+| gift_order | `prepare_gift_order` W(프리뷰만) · `get_gift_order` R · 사람 전용 `POST /v1/sales/gift-orders/{id}/accept`(받는 사람) |
 
 **[fulfillment](fulfillment.md)**
 | resource | operations |

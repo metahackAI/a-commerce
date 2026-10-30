@@ -868,6 +868,8 @@ pub enum OrderField {
     CouponsRecorded,
     /// Cancel, return and exchange requests on the order.
     Claims,
+    /// Who a gift is for, its card, and the recipient's acceptance; `null` for other orders.
+    Gift,
 }
 
 impl OrderField {
@@ -879,6 +881,7 @@ impl OrderField {
             OrderField::OrderDate => "order_date",
             OrderField::CustomerId => "customer_id",
             OrderField::Claims => "claims",
+            OrderField::Gift => "gift",
             OrderField::OrderedItem => "ordered_item",
             OrderField::Delivery => "delivery",
             OrderField::Payment => "payment",
@@ -942,6 +945,10 @@ impl ReadOp<Cx> for GetOrder {
             None => Vec::new(),
         };
         let payment = repo::payment(&mut tx, &o.id).await?;
+        let acceptance = match o.gift_options {
+            Some(_) => repo::gift_order_of(&mut tx, &o.id).await?,
+            None => None,
+        };
         // Orders placed before discounts were recorded in full: one line per promotion.
         let discounts = match record.get("discounts") {
             Some(d) if d.is_array() => d.clone(),
@@ -1032,8 +1039,15 @@ impl ReadOp<Cx> for GetOrder {
                 "subtotal": repo::money(o.subtotal_value, &o.subtotal_currency)?,
                 "discounts": discounts,
                 "shipping": repo::money(o.shipping_value, &o.shipping_currency)?,
+                "gift_wrap": match (o.gift_wrap_value, o.gift_wrap_currency.as_deref()) {
+                    (Some(v), Some(c)) => json!(repo::money(v, c)?),
+                    _ => Value::Null,
+                },
                 "total": repo::money(o.total_payment_due_value, &o.total_payment_due_currency)?,
             },
+            "gift": o.gift_options.as_ref().map(|g| {
+                gift::order_gift(g, acceptance.as_ref(), cx.clock.now(), &cx.time)
+            }),
             "coupons_recorded": coupons,
             "claims": claims.iter().map(|c| json!({
                 "id": c.id, "claim_type": c.claim_type, "claim_status": c.claim_status,

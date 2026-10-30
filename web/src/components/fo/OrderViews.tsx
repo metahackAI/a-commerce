@@ -4,6 +4,7 @@
 // delivery tracking (get_delivery, track_shipment). Each row is an AI target (`order_row`) so the
 // shopper can ask "where is it?" or "I want to return this".
 
+import {Button} from '@astryxdesign/core/Button';
 import {Card} from '@astryxdesign/core/Card';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
 import {Link} from '@astryxdesign/core/Link';
@@ -16,6 +17,7 @@ import {dateTime, longDate, money, words} from '@/app/(storefront)/_lib/format';
 import type {
   Delivery,
   OrderClaim,
+  OrderGift,
   OrderItem,
   OrderStatus,
   OrderSummary,
@@ -157,6 +159,49 @@ function addressText(a: string | PostalAddress | null | undefined): string {
   if (typeof a === 'string') return a;
   return [a.name, a.street_address, a.address_locality, a.address_region, a.postal_code].filter(Boolean).join(', ');
 }
+
+/** A gift order: who it is for, the card, and, for a gift sent by link, whether they accepted. */
+export function GiftOnOrder({orderId, gift}: {orderId: string; gift: OrderGift}) {
+  const who = gift.recipient_name ?? 'them';
+  const target = useAiTarget({
+    kind: 'order_gift',
+    label: `Gift for ${who}`,
+    ids: {order_id: orderId, ...(gift.acceptance ? {gift_order_id: gift.acceptance.gift_order_id} : {})},
+  });
+  const a = gift.acceptance;
+  return (
+    <Card ref={target.ref} {...target.props}>
+      <VStack gap={3}>
+        <HStack gap={2} vAlign="center" justify="between">
+          <Heading level={2}>{`Gift for ${who}`}</Heading>
+          <HStack gap={1} vAlign="center">
+            {a ? <StatusTag label={ACCEPTANCE[a.action_status] ?? words(a.action_status)} tone={a.action_status === 'completed' ? 'success' : a.action_status === 'failed' ? 'error' : 'warning'} /> : null}
+            <AskButton target={target} label="this gift" />
+          </HStack>
+        </HStack>
+        {a?.action_status === 'potential' ? (
+          <Text>{`${who} accepts it through the link and gives their address and size, until ${dateTime(a.expires)}. Your card is charged when they accept.`}</Text>
+        ) : a?.action_status === 'failed' ? (
+          <Text>{`${who} did not accept it by ${dateTime(a.expires)}.`}</Text>
+        ) : a?.action_status === 'completed' ? (
+          <Text>{`${who} accepted it and it ships to the address they gave.`}</Text>
+        ) : null}
+        <MetadataList>
+          {gift.card_message ? <MetadataListItem label="Card">{`“${gift.card_message}”`}</MetadataListItem> : null}
+          {gift.gift_receipt ? <MetadataListItem label="Receipt">Gift receipt, no prices</MetadataListItem> : null}
+          {gift.exchange_until ? <MetadataListItem label="Exchange until">{longDate(gift.exchange_until)}</MetadataListItem> : null}
+        </MetadataList>
+        {a?.action_status === 'potential' ? (
+          <HStack gap={2}>
+            <Button label="Their link" size="sm" href={a.accept_url} />
+          </HStack>
+        ) : null}
+      </VStack>
+    </Card>
+  );
+}
+
+const ACCEPTANCE: Record<string, string> = {potential: 'Waiting to accept', completed: 'Accepted', failed: 'Not accepted'};
 
 export function DeliveryCard({
   orderId,

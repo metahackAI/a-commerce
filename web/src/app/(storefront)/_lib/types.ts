@@ -401,6 +401,42 @@ export interface PlacedOrder {
   accept_url?: string;
 }
 
+/** One way the recipient may take a gift: same product, same price (get_gift_order). */
+export interface GiftOption {
+  size: string | null;
+  color: string | null;
+  available: boolean;
+}
+
+export interface GiftViewItem {
+  name: string;
+  image: string | null;
+  size: string | null;
+  color: string | null;
+  quantity: number;
+  /** Empty when the recipient can only take it as chosen. */
+  options: GiftOption[];
+}
+
+/** get_gift_order: a gift as its recipient opens it from the link. It carries no prices. */
+export interface GiftView {
+  id: string;
+  /** `potential` waits for the recipient, `completed` was accepted, `failed` lapsed. */
+  action_status: 'potential' | 'active' | 'completed' | 'failed';
+  expires: string;
+  recipient_name: string;
+  /** The sender's first name. */
+  from: string | null;
+  card_message: string | null;
+  gift_wrap: boolean;
+  exchange_until: string | null;
+  items: GiftViewItem[];
+  /** What the recipient may change (`gift.recipient_can_change`): acceptance, address, options. */
+  can_change: string[];
+  /** Countries the store ships to. */
+  ships_to: string[];
+}
+
 export type OrderStatus = 'payment_due' | 'processing' | 'in_transit' | 'delivered' | 'returned' | 'cancelled' | 'problem';
 
 export interface OrderItem {
@@ -452,10 +488,23 @@ export interface Order {
     delivered_at?: string | null;
   } | null;
   payment?: {payment_method?: string; card_last4?: string | null; payment_status?: string} | null;
-  totals: {subtotal: Money; discounts: Discount[]; shipping: Money; total: Money};
+  totals: {subtotal: Money; discounts: Discount[]; shipping: Money; gift_wrap?: Money | null; total: Money};
   coupons_recorded?: RecordedCoupon[];
   /** Cancel, return and exchange requests on the order, oldest first. */
   claims?: OrderClaim[];
+  /** Who a gift is for and how it reaches them; `null` for other orders. */
+  gift?: OrderGift | null;
+}
+
+/** `get_order` `gift`. */
+export interface OrderGift {
+  recipient_name: string | null;
+  recipient_mode: 'address_known' | 'recipient_accepts' | string | null;
+  card_message: string | null;
+  gift_receipt: boolean | null;
+  exchange_until: string | null;
+  /** A gift the recipient accepts by link: the link and where it stands. */
+  acceptance: {gift_order_id: string; accept_url: string; action_status: string; expires: string} | null;
 }
 
 /** One request on an order (`get_order` `claims[]`). */

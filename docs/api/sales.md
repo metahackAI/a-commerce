@@ -249,11 +249,14 @@
    "totals": {"subtotal": {"value": 312.00, "currency": "USD"},
               "discounts": [],
               "shipping": {"value": 0.00, "currency": "USD"},
+              "gift_wrap": null,
               "total": {"value": 312.00, "currency": "USD"}},
+   "gift": null,
    "coupons_recorded": [],
    "claims": [{"id": "clm_20402", "claim_type": "return", "claim_status": "requested",
                "order_item_ids": ["oln_20402_1"], "requested_at": "2026-11-06T09:52:00-05:00"}]}
   ```
+  - `gift`: 선물 주문이면 `{recipient_name, recipient_mode, card_message, gift_receipt, exchange_until, acceptance}`, 아니면 `null`. `acceptance`는 받는 사람이 링크로 수락하는 선물(`recipient_accepts`)일 때 `{gift_order_id, accept_url, action_status, expires}`이고, 기한이 지난 대기는 `failed`로 보입니다. 포장비는 `totals.gift_wrap`(포장하지 않았으면 `null`).
   - `claims[]`: 이 주문의 취소·반품·교환 요청(오래된 순)과 각각이 걸린 줄. 쇼퍼 화면은 열린 요청이 있는 줄에 "반품 요청 중"을 보여 주고 새 요청 버튼을 내지 않습니다. 상태는 [enums.md](enums.md) §1.5.
   - 예: Alex의 #20402(F5, B2). Fri Nov 6 기준 배송 완료 6일째. 쿠폰을 쓴 주문이면 `totals.discounts[]`와 `coupons_recorded[]`가 채워집니다(예 `[{"coupon_id": "cpn_vipweekend20", "code": "VIPWEEKEND20", "promotion_id": "promo_1042"}]`).
   - `order_status`·`order_item_status`는 [enums.md](enums.md) §1.1, `delivery_state`는 §1.3, `payment_status`는 §1.4. 줄마다 상태가 따로 움직입니다.
@@ -501,6 +504,19 @@
 - 정책: `gift.recipient_per_order`, `gift.recipient_modes`, `gift.wrap_fee`, `gift.gift_receipt_hides_prices`, `gift.auto_cancel_if_no_address_days`, `gift_exchange_until`, `checkout_validation.stock_available`, `checkout_validation.server_total_matches_client`, [approval.yml](../../policies/approval.yml) `preview_only`
 - 에러: `cart_empty` → `add_to_cart` · `out_of_stock` → `get_cart` · `address_not_deliverable`(`address_known`일 때) → `prepare_gift_order`
 - 멱등성: 상태를 바꾸지 않음. 다시 부르면 이전 프리뷰는 `superseded`.
+
+### `get_gift_order` — Kind: R
+- 논리주소/REST: `sales.gift_order.get` · `GET /v1/sales/gift-orders/{gift_order_id}`
+- 요약: 받는 사람이 수락 링크로 여는 선물: 무엇인지(이름·사진·사이즈·색·수량), 보낸 사람의 이름과 카드, 같은 가격으로 바꿀 수 있는 옵션, 언제까지 수락할 수 있는지. **가격은 싣지 않습니다**(`gift.gift_receipt_hides_prices`).
+- consumes → produces: `gift_order_id` → `gift_order_id`
+- 입력: `gift_order_id`(`^gift_`, ✓)
+- 출력: `{"id": "gift_01jc9x2m", "action_status": "potential", "expires": "2026-11-11T09:00:00-05:00", "recipient_name": "Dad", "from": "Jamie", "card_message": "For the next trail. Love, J.", "gift_wrap": true, "exchange_until": "2026-12-31", "items": [{"name": "Packable windbreaker", "image": "/media/garment/jacket-navy.svg", "size": "L", "color": "Navy", "quantity": 1, "options": [{"size": "M", "color": "Navy", "available": true}, {"size": "L", "color": "Navy", "available": true}, {"size": "XL", "color": "Navy", "available": false}]}], "can_change": ["acceptance", "address", "options"], "ships_to": ["US"]}` — `action_status`는 `potential`(수락 대기), `completed`(수락함), `failed`(기한 경과로 취소). 기한이 지났지만 아직 정리되지 않은 선물도 `failed`로 보입니다.
+  - `options`는 받는 사람이 고를 수 있는 같은 상품의 변형 중 **정가가 같은 것**만이고, 선물에 줄이 하나이고 `gift.recipient_can_change`에 `options`가 있을 때만 실립니다(아니면 `[]`). 지금 고른 변형도 들어 있습니다.
+  - 링크의 `gift_order_id`가 곧 볼 권한입니다. 보내는 사람의 연락처·주소·결제, 받는 사람의 연락처는 싣지 않습니다.
+- 프리뷰: 해당 없음(읽기)
+- 정책: `gift.recipient_can_change`, `gift.gift_receipt_hides_prices`, `shipping.ships_to`
+- 에러: `not_found`(`detail.entity: gift_order`) → null
+- 멱등성: 읽기.
 
 ### `POST /v1/sales/gift-orders/{id}/accept` — 사람 전용
 - 경로·스코프: `POST /v1/sales/gift-orders/{gift_order_id}/accept` · `human:order`(수락 링크로 연 세션). **툴이 아니며 모델은 보지 못합니다.** 받는 사람이 수락 링크의 버튼으로만 보냅니다.

@@ -10,7 +10,7 @@ import {Heading, Text} from '@astryxdesign/core/Text';
 import {CancelPanel} from '@/components/fo/CancelPanel';
 import {CartSummary} from '@/components/fo/CartSummary';
 import {ErrorNotice} from '@/components/fo/ErrorNotice';
-import {DeliveryCard, OrderLines, StatusBadge} from '@/components/fo/OrderViews';
+import {DeliveryCard, GiftOnOrder, OrderLines, StatusBadge} from '@/components/fo/OrderViews';
 import type {Page} from '@/lib/api';
 
 import {longDate, words} from '../../_lib/format';
@@ -93,10 +93,17 @@ export default async function OrderPage({params, searchParams}: {params: Params;
           <Card>
             <VStack gap={3}>
               <Heading level={2}>Payment</Heading>
-              <CartSummary subtotal={o.totals.subtotal} discounts={o.totals.discounts} shipping={o.totals.shipping} total={o.totals.total} coupons={o.coupons_recorded} />
+              <CartSummary
+                subtotal={o.totals.subtotal}
+                discounts={o.totals.discounts}
+                shipping={o.totals.shipping}
+                giftWrap={o.totals.gift_wrap ?? undefined}
+                total={o.totals.total}
+                coupons={o.coupons_recorded}
+              />
               {o.payment ? (
                 <MetadataList>
-                  <MetadataListItem label="Paid with">
+                  <MetadataListItem label={o.payment.payment_status === 'payment_due' ? 'Pays with' : 'Paid with'}>
                     {[words(o.payment.payment_method), o.payment.card_last4 ? `ending ${o.payment.card_last4}` : null].filter(Boolean).join(' ')}
                   </MetadataListItem>
                   {o.payment.payment_status ? <MetadataListItem label="Status">{words(o.payment.payment_status)}</MetadataListItem> : null}
@@ -104,7 +111,8 @@ export default async function OrderPage({params, searchParams}: {params: Params;
               ) : null}
             </VStack>
           </Card>
-          {o.delivery || delivery?.ok ? (
+          {o.gift ? <GiftOnOrder orderId={o.id} gift={o.gift} /> : null}
+          {o.delivery?.delivery_address || delivery?.ok ? (
             <DeliveryCard
               orderId={o.id}
               delivery={delivery?.ok ? delivery.data : null}

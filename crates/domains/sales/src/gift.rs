@@ -1,6 +1,7 @@
 //! Gift orders (`docs/api/sales.md` §gift_order): `prepare_gift_order`, which only prepares a
 //! gift from the caller's own cart for the sender's Place order button (the same person-only
-//! `POST /v1/sales/orders` that places any order), and the recipient's person-only
+//! `POST /v1/sales/orders` that places any order); `get_gift_order`, what the recipient sees
+//! through the link; and the recipient's person-only
 //! `POST /v1/sales/gift-orders/{gift_order_id}/accept`.
 //!
 //! The recipient's name, address, contact and size are used for this one order and never
@@ -13,11 +14,13 @@ use acom_catalog::service::for_sales::{self as catalog, VariantMatch};
 use acom_changeset::LogEntry;
 use acom_contract::{
     ActionType, Audience, Change, ChangeOp, Check, Committed, ErrorCode, Group, Kind, Method,
-    OpMeta, Operation, PersonOp, Planned, Slot, ToolError, UndoSupport, Verification, WriteOp,
+    OpMeta, Operation, PersonOp, Planned, ReadOp, Slot, ToolError, UndoSupport, Verification,
+    WriteOp,
 };
-use acom_core::Money;
 use acom_core::enums::ActionStatus;
 use acom_core::ids::OrderId;
+use acom_core::{Money, StoreTime};
+use acom_customer::service::for_sales as customer;
 use acom_store::{Cx, TxCx};
 use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
 use rust_decimal::Decimal;
@@ -518,6 +521,153 @@ fn preview_only() -> ToolError {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct GetGiftOrderInput {
+    /// The gift, from the accept link.
+    #[schemars(regex(pattern = r"^gift_[a-z0-9_]+$"), example = &"gift_01jc9x2m")]
+    pub gift_order_id: String,
+}
+
+/// What the recipient sees through the link. The link is the permission, so nothing about the
+/// sender's contact, address or payment, or the recipient's contact, is shown, and no price
+/// (`gift.gift_receipt_hides_prices`).
+pub(crate) struct GetGiftOrder;
+
+impl Operation for GetGiftOrder {
+    const META: OpMeta = OpMeta {
+        address: "sales.gift_order.get",
+        tool: "get_gift_order",
+        group: Group::Transact,
+        kind: Kind::Read,
+        method: Method::Get,
+        path: "/v1/sales/gift-orders/{gift_order_id}",
+        summary: "A gift as its recipient opens it from the link: what it is, who sent it and their card, the sizes and colors they may switch to at the same price, and until when they can accept. No prices.",
+        consumes: &[Slot::one("gift_order_id")],
+        produces: &[Slot::one("gift_order_id")],
+        checks: &[],
+        errors: &[ErrorCode::NOT_FOUND],
+        audience: Audience::Shopper,
+        action_type: ActionType::SEARCH,
+        person_scope: "",
+    };
+    type Input = GetGiftOrderInput;
+    type Output = Value;
+}
+
+fn no_such_gift(id: &str) -> ToolError {
+    ToolError::new(
+        ErrorCode::NOT_FOUND,
+        "There is no such gift; check the link.",
+    )
+    .detail(json!({"entity": "gift_order", "id": id}))
+}
+
+impl ReadOp<Cx> for GetGiftOrder {
+    async fn read(&self, cx: &Cx, input: GetGiftOrderInput) -> Result<Value, ToolError> {
+        let mut tx = cx.read().await.map_err(ToolError::from)?;
+        let view = gift_view(&mut tx, &input.gift_order_id).await?;
+        tx.commit().await.map_err(ToolError::from)?;
+        Ok(view)
+    }
+}
+
+/// Where an acceptance stands at `now`: one still waiting past its deadline has lapsed.
+pub(crate) fn acceptance_status(g: &repo::GiftOrderRow, now: DateTime<Utc>) -> &str {
+    if g.action_status == ActionStatus::Potential.as_str() && now > g.expires {
+        ActionStatus::Failed.as_str()
+    } else {
+        &g.action_status
+    }
+}
+
+/// `get_order`'s `gift`: who it is for, the card, and the link's acceptance when it has one.
+pub(crate) fn order_gift(
+    options: &Value,
+    acceptance: Option<&repo::GiftOrderRow>,
+    now: DateTime<Utc>,
+    time: &StoreTime,
+) -> Value {
+    let field = |k: &str| options.get(k).cloned().unwrap_or(Value::Null);
+    json!({
+        "recipient_name": field("recipient"),
+        "recipient_mode": field("recipient_mode"),
+        "card_message": field("card_message"),
+        "gift_receipt": field("gift_receipt"),
+        "exchange_until": field("exchange_until"),
+        "acceptance": acceptance.map(|g| json!({
+            "gift_order_id": g.id,
+            "accept_url": format!("/gifts/{}", g.id),
+            "action_status": acceptance_status(g, now),
+            "expires": time.format(g.expires),
+        })),
+    })
+}
+
+/// `get_gift_order`'s answer, read in `tx`.
+pub(crate) async fn gift_view(tx: &mut TxCx, id: &str) -> Result<Value, ToolError> {
+    let gift_rules = rules::gift_rules(&tx.policy)?;
+    let g = repo::gift_order(tx, id)
+        .await?
+        .ok_or_else(|| no_such_gift(id))?;
+    let order = repo::order(tx, &g.order_id)
+        .await?
+        .ok_or_else(|| ToolError::new(ErrorCode::INTERNAL, "gift without its order"))?;
+    let options = order.gift_options.clone().unwrap_or_default();
+    let from = match order.customer_id.as_deref() {
+        Some(c) => customer::shopper(tx, c).await?.map(|s| s.name),
+        None => None,
+    };
+    let items = repo::items(tx, std::slice::from_ref(&g.order_id)).await?;
+    let ids: Vec<String> = items.iter().map(|i| i.product_id.clone()).collect();
+    let variants = catalog::variants(tx, &ids).await?;
+    let may_switch = items.len() == 1
+        && gift_rules
+            .recipient_can_change
+            .iter()
+            .any(|c| c == "options");
+    let mut lines = Vec::new();
+    for item in &items {
+        let v = variants.iter().find(|v| v.variant_id == item.product_id);
+        let mut choices = Vec::new();
+        if let Some(v) = v.filter(|_| may_switch) {
+            // Same product, same list price (`gift.recipient_can_change`); the chosen one is
+            // held already.
+            let quantity = i64::from(item.order_quantity);
+            for o in catalog::product_variants(tx, &v.product_id).await? {
+                if o.approval_status != "active" || !same(o.list_price, v.list_price) {
+                    continue;
+                }
+                let available =
+                    o.variant_id == v.variant_id || (o.sellable() && o.has_stock(quantity));
+                choices.push(json!({"size": o.size, "color": o.color, "available": available}));
+            }
+        }
+        lines.push(json!({
+            "name": item.name,
+            "image": v.and_then(|v| v.image.clone()),
+            "size": v.and_then(|v| v.size.clone()),
+            "color": v.and_then(|v| v.color.clone()),
+            "quantity": item.order_quantity,
+            "options": choices,
+        }));
+    }
+
+    Ok(json!({
+        "id": g.id,
+        "action_status": acceptance_status(&g, tx.clock.now()),
+        "expires": tx.time.format(g.expires),
+        "recipient_name": g.recipient_name,
+        "from": from.as_deref().and_then(|n| n.split_whitespace().next()),
+        "card_message": options.get("card_message").cloned().unwrap_or(Value::Null),
+        "gift_wrap": options.get("wrap").and_then(Value::as_bool).unwrap_or(false),
+        "exchange_until": options.get("exchange_until").cloned().unwrap_or(Value::Null),
+        "items": lines,
+        "can_change": gift_rules.recipient_can_change,
+        "ships_to": rules::ships_to(&tx.policy),
+    }))
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct AcceptGiftOrderInput {
     /// The gift, from the accept link.
     #[schemars(regex(pattern = r"^gift_[a-z0-9_]+$"), example = &"gift_01jc9x2m")]
@@ -573,13 +723,7 @@ impl PersonOp<Cx> for AcceptGiftOrder {
         let gift_rules = rules::gift_rules(&tx.policy)?;
         let g = repo::gift_order_for_update(tx, &input.gift_order_id)
             .await?
-            .ok_or_else(|| {
-                ToolError::new(
-                    ErrorCode::NOT_FOUND,
-                    "There is no such gift; check the link.",
-                )
-                .detail(json!({"entity": "gift_order", "id": input.gift_order_id}))
-            })?;
+            .ok_or_else(|| no_such_gift(&input.gift_order_id))?;
         if g.action_status == ActionStatus::Completed.as_str() {
             return Ok(json!({"ok": true, "id": g.order_id, "undo": null}));
         }
@@ -587,7 +731,7 @@ impl PersonOp<Cx> for AcceptGiftOrder {
         if g.action_status == ActionStatus::Failed.as_str() || now > g.expires {
             return Err(ToolError::new(
                 GIFT_EXPIRED,
-                "This gift can no longer be accepted; the sender has been told.",
+                "This gift can no longer be accepted; the time to accept it has passed.",
             )
             .detail(json!({"expires": tx.time.format(g.expires),
                            "policy_key": "gift.auto_cancel_if_no_address_days"})));
@@ -743,6 +887,7 @@ mod tests {
         for s in [
             closed_schema_for::<PrepareGiftOrderInput>(),
             closed_schema_for::<AcceptGiftOrderInput>(),
+            closed_schema_for::<GetGiftOrderInput>(),
         ] {
             assert!(violations(&s).is_empty(), "{s:#}");
         }
@@ -997,6 +1142,8 @@ mod tests {
         late: Option<String>,
         accepted_again: bool,
         accepted_size: Option<String>,
+        view: Value,
+        view_after: Value,
     }
 
     /// Integration: scene F4 on the demo store (`DATABASE_URL`). The VIP weekend price needs
@@ -1170,6 +1317,9 @@ mod tests {
                     "size": "XL"}))
                 .map_err(|e| e.to_string())
             };
+            seen.view = gift_view(&mut tx, &gift_order_id)
+                .await
+                .map_err(|e| e.message)?;
             // Too late: four days after the order, past `gift.auto_cancel_if_no_address_days`.
             let now = tx.clock.clone();
             tx.clock = Arc::new(acom_core::FixedClock::at(now.now() + Duration::days(4)));
@@ -1188,6 +1338,9 @@ mod tests {
                 .await
                 .map_err(|e| e.message)?;
             seen.accepted_again = again == seen.accepts;
+            seen.view_after = gift_view(&mut tx, &gift_order_id)
+                .await
+                .map_err(|e| e.message)?;
             let size: String = sqlx::query_scalar(
                 "SELECT v.size FROM sales.order_item i JOIN catalog.product v
                    ON v.tenant_id = i.tenant_id AND v.id = i.product_id
@@ -1284,5 +1437,26 @@ mod tests {
             "Dad picked XL at the same price"
         );
         assert_eq!(seen.accepts["order_status_after"], "processing");
+
+        // What Dad saw through the link before and after accepting: no prices anywhere.
+        let v = &seen.view;
+        assert_eq!(v["action_status"], "potential");
+        assert_eq!(v["recipient_name"], "Dad");
+        assert_eq!(v["from"], "Jamie");
+        assert_eq!(v["gift_wrap"], true);
+        assert_eq!(v["items"][0]["size"], "L");
+        let options = v["items"][0]["options"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        assert!(
+            options
+                .iter()
+                .any(|o| o["size"] == "XL" && o["available"] == true),
+            "{options:?}"
+        );
+        assert!(!v.to_string().contains("\"value\""), "no prices: {v}");
+        assert_eq!(seen.view_after["action_status"], "completed");
+        assert_eq!(seen.view_after["items"][0]["size"], "XL");
     }
 }
