@@ -18,7 +18,7 @@
   |------|------|:--:|--------|
   | valid_from | DateTime | ✓ | `2026-11-07T00:00:00` |
   | valid_through | DateTime | ✓ | `2026-11-08T23:59:00` |
-  | valid_for_member_tier | Text | | `"vip"` 또는 `"everyone"`. 없으면 전체 |
+  | valid_for_member_tier | Text | | 등급 id(`list_tiers`, 예 `"vip"`) 또는 `"everyone"`. 없으면 전체 |
   | limit / offset | Integer | | 기본 20 / 0 |
 - 출력:
 ```jsonc
@@ -50,7 +50,7 @@
   | acom:promotion_type | enum | ✓ | `bogo` \| `bundle` \| `threshold` \| `amount_off` |
   | acom:discount | object | ✓ | 예 `{amount_off: 10.00}`, `{threshold: 80.00, benefit: "free_shipping"}` |
   | valid_from / valid_through | DateTime | ✓ | 기간 |
-  | valid_for_member_tier | Text | | `"vip"` 또는 `"everyone"`(기본) |
+  | valid_for_member_tier | Text | | 등급 id(`list_tiers`, 예 `"vip"`) 또는 `"everyone"`(기본) |
   | acom:scope | object | ✓ | `{product_ids[], categories[], exclude_product_ids[]}` |
   | acom:stacking_tier | Integer | ✓ | 1 \| 2 \| 3 ([promotion.yml](policies/promotion.yml) `stacking`) |
   | acom:cost_share | object | | `{platform, vendor}`, 합 = 1 |
@@ -123,7 +123,7 @@
   |------|------|:--:|--------|
   | code | Text | ✓ | `"VIPWEEKEND20"` |
   | promotion_id | Text | ✓ | `promo_1042` (`set_sale_prices`에서) |
-  | valid_for_member_tier | Text | ✓ | `"vip"` 또는 `"everyone"` |
+  | valid_for_member_tier | Text | ✓ | 등급 id(`list_tiers`, 예 `"vip"`) 또는 `"everyone"` |
   | auto_apply | Boolean | ✓ | true면 체크아웃에서 자동 적용 |
   | stacking | Text | ✓ | `"no_tier_coupons"` — 등급 쿠폰과 함께 쓰지 않음 |
   | preview | Boolean | ✓ | true 먼저 |
@@ -227,44 +227,137 @@
 
 ## event
 
+> 이벤트는 **응모 방식**(entry mechanic)과 **당첨 방식**(selection method)의 조합이고, 보상은 **보상 종류**(reward type)와 **지급 방식**(fulfillment)의 조합이다. 셋 다 고정 목록이 아니라 스토어가 늘리고 끌 수 있는 레지스트리다([promotion.yml](policies/promotion.yml) `event.entry_mechanics` · `event.selection_methods` · `event.reward_types`). 세금·신고·법적 요구는 금액을 박아 두지 않고 스토어가 관할별로 정의하는 `event.compliance` 규칙으로 건다. 아래 값은 모두 **예시**다.
+
+### `list_event_types` — Kind: R
+- 논리주소/REST: `promotion.event.list_types` · `GET /v1/promotion/event-types`
+- 요약: 이 스토어에서 켜진 응모 방식과 당첨 방식, 허용 조합. `create_event` 전에 읽는다. 스토어 정의(`custom`) 항목은 응모 데이터 스키마(`acom:entry_payload_schema`)를 함께 준다.
+- consumes → produces: → `entry_mechanic`, `selection_method`
+- 출력(예시):
+```jsonc
+{"items": [
+  {"kind": "entry_mechanic", "id": "purchase_triggered", "name": "Buy to enter", "enabled": true, "builtin": true},
+  {"kind": "entry_mechanic", "id": "check_in", "name": "Daily check-in", "enabled": true, "builtin": true},
+  {"kind": "entry_mechanic", "id": "photo_styling_contest", "name": "Styling photo", "enabled": true, "builtin": false,
+   "acom:entry_payload_schema": {"image": "ImageObject", "caption": "Text"}},
+  {"kind": "selection_method", "id": "random_draw", "name": "Random draw", "enabled": true, "builtin": true},
+  {"kind": "selection_method", "id": "instant_win", "name": "Instant win", "enabled": true, "builtin": true}],
+ "acom:allowed_combinations": "any",
+ "total": 12}
+```
+- 정책: `event.entry_mechanics` · `event.selection_methods`
+- 멱등성: 읽기.
+
+### `list_reward_types` — Kind: R
+- 논리주소/REST: `promotion.event.list_reward_types` · `GET /v1/promotion/reward-types`
+- 요약: 켜진 보상 종류와 각 종류의 기본 지급 방식(`ship` \| `issue` \| `grant` \| `email` \| `manual`), 가치 입력 여부.
+- consumes → produces: → `reward_type`
+- 출력(예시): `{"items": [{"id": "product", "acom:fulfillment": "ship", "acom:has_value": true}, {"id": "coupon", "acom:fulfillment": "issue", "acom:has_value": true}, {"id": "loyalty_points", "acom:fulfillment": "grant", "acom:has_value": true}, {"id": "digital_code", "acom:fulfillment": "email", "acom:has_value": true}], "total": 7}`
+- 정책: `event.reward_types`
+- 멱등성: 읽기.
+
 ### `search_events` / `get_event` — Kind: R
-- 논리주소/REST: `GET /v1/promotion/events?status=&limit=&offset=` · `GET /v1/promotion/events/{event_id}` → `{items: Event[], total}` / `Event`.
+- 논리주소/REST: `promotion.event.search` · `GET /v1/promotion/events?status=&entry_mechanic=&selection_method=&valid_for_member_tier=&limit=&offset=` · `promotion.event.get` · `GET /v1/promotion/events/{event_id}`
+- 요약: 이벤트 목록 `{items: Event[], total}` / 상세. 상세는 응모 방식·당첨 방식·보상 등수·자격·한도·추첨 기록 요약(`acom:draw_record_id`)·보상 지급 현황을 담는다.
+- 에러: `event_not_found` → search_events.
 
 ### `create_event` — Kind: W
 - 논리주소/REST: `promotion.event.create` · `POST /v1/promotion/events`
-- 요약: 이벤트 생성. 입력: name(✓), acom:event_type(`draw_*` / `instant_*`,✓), start_date / end_date(✓), acom:reward_set[] (`prize` \| `gift` \| `loyalty_points` \| `coupon`), valid_for_member_tier, acom:participation_limit, preview(✓). 출력: `Event` + `acom:DrawEvent`. 정책: `event`.
+- 요약: 이벤트를 `draft`로 만든다. 응모 방식·당첨 방식은 `list_event_types`, 보상 종류는 `list_reward_types`에서 고른다.
+- consumes → produces: `entry_mechanic`, `selection_method`, `reward_type`, `tier`?, `segment_id`? → `event_id`
+- 입력:
+  | 필드 | 타입(schema.org/acom) | 필수 | 설명·예(예시) |
+  |------|----------------------|:--:|--------|
+  | name | Text | ✓ | `"Fall check-in week"` |
+  | start_date / end_date | DateTime | ✓ | 응모 가능 기간 |
+  | acom:display_period | object | | `{from, through}` 노출 기간(기본 = 응모 기간) |
+  | acom:entry_mechanic | Text | ✓ | 레지스트리 id, 예 `check_in` |
+  | acom:selection_method | Text | ✓ | 레지스트리 id, 예 `random_draw` |
+  | acom:entry_payload_schema | object | | 설문 문항·UGC 형식 등. `custom`이면 필수 |
+  | acom:reward_tiers | object[] | ✓ | 등수별 `{rank, reward_type, reward_ref?, acom:reward_value?: {value, currency}, winner_count, waitlist_count?, odds?}`. 예 `[{rank: 1, reward_type: "product", reward_ref: "prd_wool_overcoat", reward_value: {value: 240.00, currency: "USD"}, winner_count: 1, waitlist_count: 2}, {rank: 2, reward_type: "loyalty_points", reward_value: {value: 5.00, currency: "USD"}, winner_count: 100}]`. `instant_win`은 `odds`, `check_in`은 회차별 보상 `round` 허용 |
+  | acom:eligibility | object | | `{valid_for_member_tier, segment_id, member_types, purchase_condition: {min_subtotal, window, scope{product_ids[], categories[], brands[], exclude_*[]}}, channels[]}` — `valid_for_member_tier`는 `list_tiers`의 id 또는 `"everyone"` |
+  | acom:entry_limit | object | | `{count, period: day \| week \| event \| unlimited}`. 예 `{count: 1, period: "day"}` |
+  | acom:schedule | object | | `{draw_at?, announce_at?, dispatch_at?}` — `draw_at` ≥ `end_date`, `dispatch_at` ≥ `draw_at` |
+  | acom:compliance_jurisdictions | Text[] | | 적용할 스토어 정의 관할 id. 없으면 `event.compliance.jurisdiction_from`으로 결정 |
+  | preview | Boolean | ✓ | true 먼저 |
+- 출력(프리뷰): `{preview_id, changes: [{op: "create", entity: "event", ...}], checks: [{rule: "type_enabled", ...}, {rule: "combination_allowed", ...}, {rule: "reward_type_enabled", ...}, {rule: "instant_win_odds", ...}, {rule: "schedule_order", ...}, {rule: "compliance_rules", passed: true, detail: "Rank 1 reward triggers 1 store rule: collect winner info", fix_tool: null}], needs_approval: false, approval_reason: null}`
+- 출력(실행): `{ok: true, id: "evt_0311", undo: {tool: "undo_change_set", until: "..."}}`
+- 정책: `event.*`, 보상이 쿠폰·적립금이면 `coupon` · `loyalty`도 확인
+- 에러: `type_disabled` → list_event_types · `combination_not_allowed` → list_event_types · `reward_type_disabled` → list_reward_types · `odds_exceed_one` → update_event · `unknown_tier` → list_tiers · `invalid_schedule` → update_event
+- 멱등성: `Idempotency-Key`.
 
 ### `update_event` — Kind: W
-- 논리주소/REST: `promotion.event.update` · `PATCH /v1/promotion/events/{event_id}` (프리뷰 먼저). 에러: `invalid_state` → get_event.
-
-### `run_draw` — Kind: W$
-- 논리주소/REST: `promotion.event.run_draw` · `POST /v1/promotion/events/{event_id}/draw`
-- 요약: 추첨 실행(당첨·예비 선정). 입력: winner_count(✓), waitlist_count, preview(✓). 출력: 당첨자 집합. 정책: `event.tax_withholding`. 항상 승인.
-
-### `dispatch_reward` — Kind: W$
-- 논리주소/REST: `promotion.event.dispatch_reward` · `POST /v1/promotion/events/{event_id}/rewards`
-- 요약: 당첨 보상 발송(경품 배송, 적립금·쿠폰 지급). 원천징수 기준을 넘는 경품은 안내 포함. 항상 승인.
+- 논리주소/REST: `promotion.event.update` · `PATCH /v1/promotion/events/{event_id}` (프리뷰 먼저)
+- 요약: 이벤트 수정·상태 전이(`scheduled`, `paused`, `cancelled`). 응모가 시작된 뒤에는 자격을 좁히거나 보상을 줄이는 변경을 막는다(`changes_after_entry`). 에러: `invalid_state` → get_event · `changes_after_entry` → get_event. 멱등성: `Idempotency-Key`.
 
 ### `enter_event` — Kind: W
 - 논리주소/REST: `promotion.event.enter` · `POST /v1/promotion/events/{event_id}/entries`
-- 요약: 쇼퍼가 이벤트에 응모. 자격·중복 참여 한도·기간 검증. 개인정보 수집·당첨 연락 동의가 있어야 하며, 추첨은 `run_draw`로 분리.
+- 요약: 쇼퍼가 이벤트에 응모. 응모 방식에 맞는 데이터·자격·참여 한도·기간을 검증한다. `instant_win` · `first_come` · `everyone_qualifies`는 응답에 판정 결과가 바로 오고, `random_draw` · `ranked`는 `run_draw`로 분리된다. `purchase_triggered`는 주문 완료 시 내부 호출도 가능.
 - consumes → produces: `event_id` → `entry_id`
 - 입력:
   | 필드 | 타입(schema.org/acom) | 필수 | 설명 |
   |------|----------------------|:--:|------|
   | event_id | Text | ✓ | 대상 이벤트 |
-  | acom:answers | object | | 응모 설문·참여 데이터 |
-  | acom:entry_consent | Boolean | ✓(=true) | 개인정보 수집·당첨 연락 동의 |
+  | acom:entry_payload | object | | 응모 데이터(설문 응답, 댓글·이미지, 코드 등). 이벤트의 `entry_payload_schema`를 따름 |
+  | acom:order_id | Text | | `purchase_triggered`일 때 근거 주문 |
+  | acom:entry_consent | object | ✓ | `event.eligibility.consent_required` 항목별 동의, 예 `{entry_terms: true, winner_contact: true}` |
   | preview | Boolean | ✓ | true 먼저 |
-- 출력(프리뷰): `{preview_id, changes: [{op: "create", entity: "event_entry", id: null, from: null, to: {event_id}}], checks: [{rule: "eligible_member_tier", passed: true, ...}, {rule: "participation_limit", passed: true, ...}, {rule: "period_active", passed: true, ...}], needs_approval: false, approval_reason: null}`
-- 출력(실행): `{ok: true, id: "ent_5521", undo: null}`
-- 정책: `event.participation_limit`, 응모 동의.
-- 에러: `not_eligible` → get_event · `participation_limit_exceeded` → list_my_entries · `event_not_active` → get_event · `consent_required` → (동의 요청)
-- 멱등성: `(event_id, member_id)` — 한도가 1이면 upsert.
+- 출력(프리뷰): `{preview_id, changes: [{op: "create", entity: "event_entry", id: null, from: null, to: {event_id}}], checks: [{rule: "eligibility", passed: true, ...}, {rule: "entry_limit", passed: true, detail: "1 of 1 entries today", ...}, {rule: "period_active", passed: true, ...}, {rule: "payload_valid", passed: true, ...}], needs_approval: false, approval_reason: null}`
+- 출력(실행): `{ok: true, id: "ent_5521", acom:entry_status: "entered" | "won" | "lost", acom:reward?: {rank, reward_type}, undo: null}`
+- 정책: `event.eligibility` · `event.entry_limit`
+- 에러: `not_eligible` → get_event · `entry_limit_exceeded` → list_my_entries · `event_not_active` → get_event · `invalid_payload` → get_event · `consent_required` → (동의 요청) · `sold_out` → get_event
+- 멱등성: `(event_id, member_id, period_bucket)` — 기간당 한도 1이면 같은 기간 재전송은 첫 결과.
 
 ### `list_my_entries` — Kind: R
 - 논리주소/REST: `promotion.event.list_my_entries` · `GET /v1/promotion/events/entries/mine?event_id=&status=&limit=&offset=`
-- 요약: 쇼퍼 본인의 응모·당첨 내역. 출력: `{items: [{entry_id, event_id, acom:entry_number, acom:entry_status (entered \| won \| lost \| waitlist), acom:reward, entered_at}], total}`.
+- 요약: 쇼퍼 본인의 응모·당첨 내역. 출력: `{items: [{entry_id, event_id, acom:entry_status (entered \| invalid \| won \| lost \| waitlist \| cancelled), acom:reward?: {rank, reward_type, acom:reward_status}, acom:compliance_pending?: ["legal_name", "address"], entered_at}], total}`. 컴플라이언스 요구가 남았으면 무엇을 내야 하는지 함께 보인다.
+
+### `run_draw` — Kind: W$
+- 논리주소/REST: `promotion.event.run_draw` · `POST /v1/promotion/events/{event_id}/draw`
+- 요약: 추첨·재추첨·당첨 취소·예비 승격. `random_draw` · `ranked` 이벤트에 쓴다. 실행마다 추첨 기록(`get_draw_record`)이 남는다. 고객에게 닿으므로 항상 승인.
+- consumes → produces: `event_id` → `draw_record_id`, `entry_id[]`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명 |
+  |------|------|:--:|------|
+  | event_id | Text | ✓ | |
+  | acom:mode | enum | ✓ | `draw` \| `redraw` \| `cancel_winner` \| `promote_waitlist` \| `add_waitlist` \| `manual_select` |
+  | acom:rank | Integer | | 대상 등수(없으면 전 등수) |
+  | winner_count / waitlist_count | Integer | | 없으면 이벤트의 등수별 값 |
+  | acom:entry_ids | Text[] | | `cancel_winner` · `manual_select` 대상 |
+  | acom:reason | Text | | `cancel_winner` · `manual_select` · `redraw`에 필수 |
+  | preview | Boolean | ✓ | true 먼저 |
+- 출력(프리뷰): `{preview_id, changes: [{op: "update", entity: "event_entry", id: "ent_5521", from: "entered", to: "won"}, ...], checks: [{rule: "entries_closed", ...}, {rule: "exclude_previous_winners", ...}, {rule: "seed_committed", passed: true, detail: "Seed hash published before close", ...}, {rule: "compliance_rules", passed: true, detail: "2 winners need winner info", ...}], needs_approval: true, approval_reason: "Picks 101 winners"}`
+- 출력(실행): `{ok: true, id: "drw_0311_01", undo: null}` — 발표 후에는 되돌리지 않고 `cancel_winner` · `promote_waitlist`로 고친다.
+- 정책: `event.draw`(모드·기존 당첨자 제외·취소 사유) · `event.draw.fairness` · `event.draw.announcement` · `event.compliance`
+- 에러: `entries_open` → get_event · `not_draw_event` → get_event · `reason_required` → run_draw · `waitlist_empty` → run_draw(`add_waitlist`)
+- 멱등성: `Idempotency-Key`. 같은 시드·같은 응모자 스냅샷이면 같은 결과(재현 가능).
+
+### `get_draw_record` — Kind: R
+- 논리주소/REST: `promotion.event.get_draw_record` · `GET /v1/promotion/events/{event_id}/draws/{draw_record_id}`
+- 요약: 추첨 감사 기록. 고치지 않고 추가만 한다. 운영자·감사자용이며 쇼퍼에게는 공개 항목(방식, 시드 해시, 발표 시각)만.
+- 출력(예시):
+```jsonc
+{"items": [{"draw_record_id": "drw_0311_01", "event_id": "evt_0311", "acom:mode": "draw",
+  "acom:method": "seeded_shuffle", "acom:seed_commitment": "sha256:9c1e…", "acom:seed": "…",
+  "acom:entrant_snapshot_digest": "sha256:41ab…", "acom:entrant_count": 3812,
+  "acom:excluded": {"previous_winners": 0, "invalid_entries": 14},
+  "acom:results": [{"rank": 1, "winners": ["ent_5521"], "waitlist": ["ent_6002", "ent_0919"]}],
+  "agent": "op_mina", "acom:approved_by": "op_lee", "start_time": "2026-11-16T10:00:00"}],
+ "total": 1}
+```
+- 정책: `event.draw.fairness.record` · `event.draw.fairness.retention_days`
+- 에러: `draw_record_not_found` → get_event. 멱등성: 읽기.
+
+### `dispatch_reward` — Kind: W$
+- 논리주소/REST: `promotion.event.dispatch_reward` · `POST /v1/promotion/events/{event_id}/rewards`
+- 요약: 당첨 보상을 보상 종류의 지급 방식대로 처리한다 — `ship`(배송 요청, 기본 배송지), `issue`(쿠폰 발급, `issue_coupon`과 같은 경로), `grant`(적립금·스토어 크레딧, 원장에 추가), `email`(디지털 코드·안내 발송), `manual`(운영자 처리 기록). 컴플라이언스 규칙이 걸린 당첨자는 요구(정보 제출, 원천징수, 당첨자 납부 등)가 채워질 때까지 `compliance_pending`으로 보류한다. 즉시형 이벤트의 `issue` · `grant` 보상은 정책(`event.reward_types.auto_dispatch`)상 자동 지급된다.
+- consumes → produces: `event_id`, `entry_id[]`? → `reward_id[]`
+- 입력: event_id(✓), acom:entry_ids(Text[], 없으면 지급 대기 당첨자 전체), acom:rank(Integer), acom:notify(Boolean, 기본 true), preview(✓)
+- 출력(프리뷰): `{preview_id, changes: [{op: "create", entity: "reward", id: null, from: null, to: {entry_id: "ent_5521", reward_type: "product", fulfillment: "ship"}}, ...], checks: [{rule: "compliance_satisfied", passed: false, detail: "1 winner has not submitted required info; held", fix_tool: null}, {rule: "ship_address_present", ...}], needs_approval: true, approval_reason: "Sends rewards to 100 winners"}`
+- 출력(실행): `{ok: true, id: "rwd_batch_0311", undo: null}`
+- 정책: `event.reward_types` · `event.compliance` · [approval.yml](policies/approval.yml)
+- 에러: `compliance_pending` → list_my_entries · `missing_address` → (당첨자에게 주소 요청) · `pool_exhausted` → (쿠폰 한도 상향 요청)
+- 멱등성: `(entry_id, rank)` 한 번 지급.
 
 ---
 

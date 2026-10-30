@@ -58,7 +58,7 @@ a-commerce API
 | **W$** | write, 항상 승인 | 에이전트 | 돈이 움직이거나 고객에게 닿는 쓰기. 프리뷰 → 변경셋 → **사람 승인** 후 실행기가 `preview_id`로 실행 |
 | **사람 전용** | HTTP 엔드포인트 | UI 버튼만 | 변경셋 승인·되돌리기, 주문하기, 반품 요청 보내기, 기억 되돌리기 등. **툴이 아니며 모델은 보지 못함** |
 
-사람 전용 엔드포인트(MVP, [plan.md §3.6](../plan.md)):
+사람 전용 엔드포인트([plan.md §3.6](../plan.md)와 같은 목록):
 
 | 엔드포인트 | 누가 | 무엇 |
 |---|---|---|
@@ -67,6 +67,16 @@ a-commerce API
 | `POST /orders` `{order_preview_id}` | 쇼퍼 | 주문하기 |
 | `POST /returns` `{order_id, line_id, option}` | 쇼퍼 | 반품 요청 보내기 |
 | `POST /memories/{id}/undo` | 쇼퍼 | 기억한 선호 삭제 |
+| `POST /orders/{order_id}/cancel` | 쇼퍼 | 주문 전체·일부 취소 요청(`get_cancel_options` 결과 기반) |
+| `POST /exchanges` | 쇼퍼 | 교환 요청(`get_exchange_options` 결과 기반) |
+| `POST /claims/{claim_id}/pay-charge` | 쇼퍼 | 클레임 진행 전 추가 비용 결제 |
+| `POST /claims/{claim_id}/withdraw` | 쇼퍼 | 반품·교환 요청 철회 |
+| `POST /me/withdrawal` | 회원 본인 | 탈퇴(재인증 필수, `check_withdrawal_eligibility` 결과 기반) |
+| `POST /password-reset/requests`, `POST /password-reset/confirm` | 회원 본인 | 비밀번호 재설정(계정 존재 여부와 무관하게 같은 응답) |
+| `POST /account-recovery/login-id` | 회원 본인 | 로그인 아이디 찾기 |
+| `PUT /me/password` | 회원 본인 | 로그인 상태에서 비밀번호 변경 |
+
+취소·반품·교환 요청은 금액이 서버 재계산과 다르면 `estimate_changed`로 거부됩니다. 에이전트는 `get_*_options`로 준비만 하고, 보내는 것은 사람입니다. 비밀번호는 어떤 툴도 다루지 않습니다.
 
 ## 3. 공통 규약
 
@@ -167,7 +177,7 @@ a-commerce API
 **[fulfillment](fulfillment.md)**
 | resource | operations |
 |---|---|
-| claim | **`search_return_requests`** R · **`evaluate_return_request`** R · **`get_return_options`** R · `search_claims` R · `get_claim` R · `approve_claim` W$ · `reject_claim` W · `convert_exchange_to_return` W · `upload_evidence` W · 사람 전용 `POST /returns`, `POST /orders/{id}/cancel`, `POST /exchanges` |
+| claim | **`search_return_requests`** R · **`evaluate_return_request`** R · **`get_return_options`** R · `get_cancel_options` R · `get_exchange_options` R · `search_claims` R · `get_claim` R · `cancel_order_lines` W$(스토어가 시작하는 취소) · `approve_claim` W$ · `reject_claim` W · `convert_exchange_to_return` W · `upload_evidence` W · 사람 전용 `POST /orders/{id}/cancel`, `POST /exchanges`, `POST /returns`, `POST /claims/{id}/pay-charge`, `POST /claims/{id}/withdraw` |
 | inspection | `assess_return_condition` W |
 | refund | **`refund_return`** W$ · `get_refund` R · `retry_refund` W$ |
 | parcel_delivery | **`get_delivery_dates`** R · `get_delivery` R · `track_shipment` R · `schedule_shipment` W · `confirm_shipment` W · `register_shortage` W |
@@ -184,14 +194,14 @@ a-commerce API
 | benefit | `calculate_benefits` R (장바구니 혜택 계산의 단일 기준) |
 | conditional_gift | `create_conditional_gift` W · `list_conditional_gifts` R |
 | loyalty | `get_loyalty_balance` R · `list_loyalty_transactions` R · `grant_loyalty` W$ · `spend_loyalty` W · `expire_loyalty` W |
-| event | `search_events` R · `get_event` R · `create_event` W · `update_event` W · `run_draw` W$ · `dispatch_reward` W$ · `enter_event` W · `list_my_entries` R |
+| event | `list_event_types` R · `list_reward_types` R · `search_events` R · `get_event` R · `create_event` W · `update_event` W · `enter_event` W · `list_my_entries` R · `run_draw` W$ · `get_draw_record` R · `dispatch_reward` W$ — 참여 방식·당첨 방식·보상 종류는 확장 가능한 레지스트리 |
 | segment | `define_segment` W · `preview_segment` R · `list_segments` R |
 
 **[customer](customer.md)**
 | resource | operations |
 |---|---|
-| person | **`get_my_profile`** R · **`get_return_history`** R · `search_members` R · `get_member` R · `register_member` W · `update_member` W · `block_member` W$ · `unblock_member` W$ · `verify_identity` W · `check_availability` R · `verify_business` W$ · 사람 전용 탈퇴·비밀번호 재설정 |
-| membership | **`list_tiers`** R · `get_member_tier` R |
+| person | **`get_my_profile`** R · **`get_return_history`** R · `search_members` R · `get_member` R · `register_member` W · `update_member` W · `block_member` W$ · `unblock_member` W$ · `verify_identity` W · `check_availability` R · `verify_business` W$ · `check_withdrawal_eligibility` R · `send_password_reset` W$ · 사람 전용 `POST /me/withdrawal`, `POST /password-reset/requests`, `POST /password-reset/confirm`, `POST /account-recovery/login-id`, `PUT /me/password` |
+| membership | **`list_tiers`** R · `get_tier` R · `get_member_tier` R · `define_tier_program` W$ · `preview_tier_evaluation` R · `run_tier_evaluation` W$ · `set_member_tier` W$ · `list_tier_history` R — 등급 수·조건·혜택은 스토어가 데이터로 정의 |
 | address | `list_addresses` R · `add_address` W · `update_address` W · `set_primary_address` W |
 | consent | `get_consent` R · `set_consent` W |
 | preference | **`update_my_preferences`** W(승인 없음) · `get_preferences` R · 사람 전용 `POST /memories/{id}/undo` |

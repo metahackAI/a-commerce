@@ -45,15 +45,23 @@ acom:    https://a-commerce.dev/ns#     (우리 확장, schema.org에 없는 것
 | 엔티티 | schema.org 타입 | 핵심 속성 | 비고 |
 |---|---|---|---|
 | 회원 판매가 | `UnitPriceSpecification` | `price`, `price_currency`, `price_type`(`sale_price`), `valid_for_member_tier`, `valid_from`, `valid_through`, `acom:percent_off` | `set_sale_prices`가 만드는 것. 정가는 바꾸지 않음 |
-| 등급 프로그램 | `MemberProgram` | `name`, `has_tiers`, `hosting_organization` | 데모: VIP, Gold, Member |
-| 등급 | `MemberProgramTier` | `identifier`(`tier_vip`), `name`, `has_tier_benefit`, `has_tier_requirement`, `membership_points_earned` | `valid_for_member_tier`가 가리키는 대상 |
+| 등급 프로그램 | `MemberProgram` | `name`, `has_tiers`(MemberProgramTier[]), `hosting_organization` | 등급 수·이름·순서는 스토어가 정한다(고정 목록 없음). 예시(데모 스토어): Member, Gold, VIP |
+| 등급 | `MemberProgramTier` | `identifier`(예시 `tier_vip`), `name`, `acom:rank`(정렬 순서), `has_tier_requirement`, `has_tier_benefit`, `membership_points_earned` | `valid_for_member_tier`가 가리키는 대상. 정책의 등급별 값(할인 상한, 적립 배율 등)은 이 `identifier`를 키로 참조 |
+| 등급 요건 | `has_tier_requirement`의 값. 단순하면 `MonetaryAmount`, 그 밖에는 `acom:TierRequirement` ⚠️ (subtype of `StructuredValue`) | `acom:metric`(`spend`, `order_count`, `points` 등), `min_value`, `acom:window_months` | 스토어가 요건 종류·기준을 정의 |
+| 등급 혜택 | `has_tier_benefit`의 값. `acom:TierBenefit` ⚠️ (subtype of `Offer`) | `name`, `acom:benefit_kind`(`discount`, `loyalty_multiplier`, `free_shipping`, `coupon_bundle`, `custom`), `acom:benefit_value` | 혜택 종류도 레지스트리 |
 | 프로모션 | `acom:Promotion` ⚠️ (subtype of `Offer`) | `name`, `valid_from`, `valid_through`, `valid_for_member_tier`, `price_specification`(회원 판매가[]), `acom:promotion_status` | 기간 동안의 회원 판매가 묶음 |
 | 쿠폰 | `acom:Coupon` ⚠️ (subtype of `Offer`) | `identifier`, `acom:code`, `acom:promotion`, `valid_for_member_tier`, `acom:auto_apply`, `acom:stacking`, `acom:coupon_status` | 주문에는 `discount_code`로 남음. 같은 혜택을 주문에 기록할 뿐 할인을 더하지 않음 |
 | 쿠폰 상태 | `acom:coupon_status` ⚠️ | `issued`, `available`, `used`, `restored`, `expired`, `revoked` | |
 | 적립금 거래 | `acom:LoyaltyTransaction` ⚠️ (subtype of `MoneyTransfer`) | `amount`, `acom:accrual_type`, `acom:expires`, `acom:source_order` | 이벤트로 쌓음 |
 | 적립금 잔액 | `MonetaryAmount` | `value`, `currency` | 거래에서 파생 |
 | 사은품 조건 | `acom:ConditionalGift` ⚠️ (subtype of `Offer`) | `acom:min_subtotal`, `acom:gift_product`, `valid_for_member_tier` | |
-| 이벤트 | `Event` | `name`, `start_date`, `end_date`, `acom:reward` | |
+| 이벤트 | `Event` | `name`, `start_date`, `end_date`, `acom:event_state`, `acom:entry_mechanic`, `acom:selection_method`, `acom:reward_tiers`, `acom:eligibility`, `acom:entry_limit` | 응모 방식·당첨 방식은 아래 레지스트리의 id |
+| 이벤트 유형 레지스트리 | `acom:EventTypeDefinition` ⚠️ (subtype of `DefinedTerm`) in `DefinedTermSet` | `term_code`(snake_case id), `name`, `acom:kind`(`entry_mechanic` \| `selection_method`), `acom:builtin`, `acom:enabled`, `acom:entry_payload_schema` | 기본 제공 항목 + 스토어 정의 항목 |
+| 보상 종류 레지스트리 | `acom:RewardTypeDefinition` ⚠️ (subtype of `DefinedTerm`) in `DefinedTermSet` | `term_code`, `name`, `acom:fulfillment`(`ship` \| `issue` \| `grant` \| `email` \| `manual`), `acom:has_value`, `acom:enabled` | |
+| 응모 | `acom:EventEntry` ⚠️ (subtype of `JoinAction`) | `agent`, `object`(Event), `acom:entry_payload`, `acom:entry_status`, `start_time` | |
+| 보상 | `acom:EventReward` ⚠️ (subtype of `Offer`) | `acom:rank`, `acom:reward_type`, `acom:reward_ref`, `acom:reward_value`(MonetaryAmount), `acom:reward_status` | 지급은 `acom:fulfillment`에 따라 배송·쿠폰·적립금 원장·이메일 |
+| 추첨 기록 | `acom:DrawRecord` ⚠️ (subtype of `ChooseAction`) | `agent`, `object`(Event), `acom:method`, `acom:seed_commitment`, `acom:seed`, `acom:entrant_snapshot_digest`, `result` | 추가만, 고치지 않음 |
+| 컴플라이언스 규칙 | `acom:ComplianceRule` ⚠️ (subtype of `PropertyValue`) | `acom:jurisdiction`, `acom:applies_when`, `acom:actions`, `acom:winner_info_required` | 금액·세율은 스토어가 관할별로 정의 |
 | 세그먼트 | `acom:Segment` ⚠️ (subtype of `Audience`) | `audience_type`, `acom:conditions`, `version` | |
 
 ### 2.3 sales
@@ -182,6 +190,10 @@ schema.org에 없어 새로 만든 것은 대부분 정책·상태·커머스 �
 | `acom:DisplaySlot`, `acom:Segment` | `ItemList`, `Audience` | 페이지의 진열 자리, 조건으로 정의한 고객 묶음 |
 | `acom:percent_off` | `UnitPriceSpecification`의 속성 | 계산된 판매가 뒤에 있는 요청 할인율 |
 | `acom:coupon_status`, `acom:delivery_state`, `acom:approval_status` | 열거 | schema.org에 해당 상태 열거가 없음 |
+| `acom:EventTypeDefinition`, `acom:RewardTypeDefinition` | `DefinedTerm` | 스토어가 늘릴 수 있는 이벤트·보상 유형 레지스트리 |
+| `acom:EventEntry`, `acom:EventReward`, `acom:DrawRecord` | `JoinAction`, `Offer`, `ChooseAction` | 응모, 등수별 보상, 재현 가능한 추첨 감사 기록 |
+| `acom:TierRequirement`, `acom:TierBenefit` | `StructuredValue`, `Offer` | 스토어가 정의하는 등급 요건·혜택 |
+| `acom:ComplianceRule` | `PropertyValue` | 관할별 경품 신고·원천징수·정보 수집 요구 |
 
 schema.org 열거(`OrderStatus`, `ItemAvailability`, `ActionStatusType`, `PriceTypeEnumeration`, `ReturnFeesEnumeration`)는 그대로 재사용합니다. 확장 정의는 JSON-LD 컨텍스트 파일로 공개합니다.
 

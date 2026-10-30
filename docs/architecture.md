@@ -143,7 +143,7 @@ Each operation has three names generated from one definition:
 |---|---|---|---|
 | **read** | agents | No side effects. Lists return items and the total together. `fields` keeps responses small. | n/a |
 | **write** | agents | Runs with `preview=true` first. The preview joins a change set; the real run uses the `preview_id` after approval, or directly when policy needs no approval (for example remembering a shopper preference). | `PotentialActionStatus` → `ActiveActionStatus` → `CompletedActionStatus` / `FailedActionStatus` |
-| **person-only** | UI buttons | Approving or undoing a change set, placing an order, sending a return request, undoing a memory. These are HTTP endpoints, not tools, so no prompt can make an agent do them. | the person's `AuthorizeAction` or `OrderAction` |
+| **person-only** | UI buttons | Approving or undoing a change set, placing an order, sending a cancel, return or exchange request, deleting an account, resetting a password, undoing a memory. These are HTTP endpoints, not tools, so no prompt can make an agent do them. | the person's `AuthorizeAction` or `OrderAction` |
 
 ### 3.4 The MVP tools in the hierarchy
 
@@ -365,14 +365,7 @@ The same seven steps apply to every operation in the hierarchy.
 
 ### 5.8 Alignment with the MVP contract
 
-[docs/plan.md §3](plan.md) fixed the MVP tool signatures before these naming rules. The rules above rename a few inputs to their schema.org properties; plan.md will be updated by pull request:
-
-| docs/plan.md | schema.org-aligned name |
-|---|---|
-| `starts_at`, `ends_at` | `valid_from`, `valid_through` |
-| `audience` on sale prices and coupons | `valid_for_member_tier` (and `"everyone"` stays as no tier) |
-| `ship_to` | `delivery_address` |
-| `qty` | `order_quantity` |
+[plan.md](plan.md) uses these names since Oct 30 (see its §8 Changes): `starts_at` → `valid_from`, `ends_at` → `valid_through`, `audience` → `valid_for_member_tier` (a tier id from the store's tier program; `"everyone"` means no tier), `ship_to` → `delivery_address`, `qty` → `order_quantity`.
 
 ## 6. AI-native features
 

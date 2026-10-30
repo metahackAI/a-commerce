@@ -20,7 +20,7 @@
 - 출력:
 ```jsonc
 {"items": [
-  {"name": "max_discount.vip", "value": 30, "unit_text": "percent",
+  {"name": "max_discount.by_tier.vip", "value": 30, "unit_text": "percent",
    "meaning": "A VIP sale price can be at most 30% below the list price."},
   {"name": "max_discount.everyone", "value": 20, "unit_text": "percent",
    "meaning": "A sale for everyone can be at most 20% off."}],

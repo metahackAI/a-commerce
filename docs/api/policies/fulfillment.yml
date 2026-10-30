@@ -1,5 +1,7 @@
 # policy: fulfillment — 취소·반품·교환·환불·배송 규칙 (데이터)
 # 값은 의미 있는 영단어, 금액은 {value, currency}. 데모 값은 plan.md §4.1과 같다.
+# cancel·exchange·refund의 값은 모두 스토어가 바꿀 수 있는 설정이며, '(기본값)' 표시는 새 스토어의 초기값이다.
+# 특정 국가 법규에 묶인 값은 두지 않는다. 법정 기간이 있는 스토어는 window·reversal_window_days를 그에 맞춘다.
 version: 2
 
 return_window_days: 30                   # 배송 완료 후 30일 (schema.org merchant_return_days)
@@ -32,23 +34,129 @@ refund:                                  # checks: refund_to_original_payment, c
   settlement: payment_event_confirmed    # 결제사 이벤트로 확정 (조용한 실패 금지)
   on_failure: manual_queue
   manual_queue_sla_hours: 24
+  split: cash_like_first                 # 부분 환불은 priority 순서로 채우고, 남은 금액만 적립금으로 (기본값)
+  reversal_window_days:                  # 원결제 되돌리기가 가능한 기간 (기본값, 결제사 계약에 맞게 조정)
+    credit_card: 365
+    bank_transfer: 180
+    virtual_account: 180
+    loyalty_points: unlimited            # 스토어 자산이라 즉시 복원
+  when_reversal_unavailable: refund_destination   # 기간 경과·카드 해지 등 → 쇼퍼가 받을 곳(refund_to)을 지정, 수동 환불 큐
+  refund_destination_types: [bank_account, store_credit]
 
+# ── 취소 (출고 전) ─────────────────────────────────────────────
+# 라인 상태 기준. 상태 이름은 order.yml order_status + parcel_delivery 상태.
 cancel:
-  allowed_before: shipped                # 출고 전만 취소
-  auto_approve_when: payment_due
-  operator_approve_when: processing
-  after_shipped: use_return
+  scope: [full_order, lines, quantity]   # 전체·라인·라인 일부 수량
+  self_service_states: [payment_due, processing, ship_wait]        # 쇼퍼가 직접 (기본값)
+  operator_only_states: [ship_instructed, ship_confirmed]          # 쇼퍼는 '요청'만, 스토어가 출고를 멈출 수 있을 때 approve_claim (기본값)
+  not_cancellable_states: [shipped, delivered]                     # 취소 불가
+  after_shipped: use_return              # → get_return_options 안내
+  auto_approve_when:                     # 이 조건이면 approve_claim 없이 바로 승인 (기본값)
+    - unpaid                             # payment_due: 결제 전 → 즉시 취소, 환불 없음
+    - "self_service_state and charge_due == 0"   # 결제됨·창고 인계 전·추가 비용 없음
+  otherwise: claim_requested             # 그 외는 requested 클레임 → 운영 큐 → approve_claim(W$)
+  revocable: false                       # 취소는 철회 불가. 다시 사려면 새 주문 (기본값)
+  restore_inventory: cancelled_quantity  # 재고 관리 상품은 취소 수량만큼 복원
+  reasons:                               # 쇼퍼·운영자가 고르는 사유 → 귀책(acom:liability: store_fault | customer_fault)
+    customer_fault:
+      - changed_mind
+      - wrong_option_ordered             # 옵션·사이즈를 잘못 고름
+      - found_lower_price
+      - discount_changed                 # 쿠폰·할인을 바꿔 다시 주문하려고
+      - payment_method_change
+      - duplicate_order
+      - payment_not_completed            # 시스템: 결제 기한 경과 자동 취소 (order.yml inventory.unpaid_ttl_minutes)
+    store_fault:
+      - shipping_delay                   # 약속한 출고일 경과 또는 ship_wait일 때만 쇼퍼가 고를 수 있음
+      - out_of_stock
+      - free_gift_unavailable
+      - product_info_inaccurate          # 쇼퍼가 고르면 운영자 확인 필요(claim_requested)
+      - seller_cancelled                 # 운영자·입점 판매자만
+      - store_cancelled                  # 상담원 직권 취소, 운영자만
+  shopper_selectable_store_reasons:
+    shipping_delay: "line.status == ship_wait or now > line.promised_ship_date"
+    out_of_stock: "line.status == ship_wait"
+    product_info_inaccurate: needs_operator
+  restore:                               # 쿠폰·적립금 복원 (promotion.yml coupon.restore_on_cancel과 같은 규칙의 상세)
+    full_cancel:
+      coupons: restore_all               # 주문·상품·배송비 쿠폰 모두
+      points_used: refund_to_balance     # 결제에 쓴 적립금은 즉시 잔액으로
+      points_pending: cancel_all         # 적립 예정분 전부 취소
+    partial_cancel:
+      coupons:
+        line_coupons: restore            # 취소 라인에 걸린 상품 쿠폰·중복 할인 쿠폰
+        order_coupons: recalculate       # 주문 쿠폰은 복원하지 않고, 남은 소계가 사용 조건 미만이면 할인 회수(환불액에서 차감)
+        recalculate_skip_when: any_line_delivered   # 이미 배송 완료된 라인이 있으면 재계산하지 않음
+        free_shipping_coupon: "restore when whole shipping group cancelled and liability == store_fault"
+      points_used: "refund last, only the remainder after cash-like methods"   # refund.split
+      points_pending: cancel_for_cancelled_lines
+    expired_coupon_grace_days: promotion.coupon.expiry_grace_days   # 복원 시 이미 만료된 쿠폰에 주는 유예
+  free_gift_lines: whole_quantity_only   # 사은품이 딸린 라인은 전체 수량만 취소, 사은품도 함께 취소
+  shipping_recalculation:                # 부분 취소 후 배송비 다시 계산 (배송 그룹 단위)
+    applies_when: "liability == customer_fault"
+    below_free_threshold: charge_original_shipping   # 남은 소계 < free_shipping_min_subtotal → 원래 면제된 배송비 부과
+    whole_group_cancelled: refund_paid_shipping      # 그룹 전체 취소면 낸 배송비 환불
+    store_fault: no_charge
+  extra_charge:                          # 취소로 생기는 추가 비용
+    collect: deduct_from_refund          # 기본: 환불액에서 차감
+    when_exceeds_refund: charge_due      # 환불액보다 크면 쇼퍼가 먼저 결제 → 그 뒤 처리 (POST /claims/{id}/pay-charge)
+  idempotency: "hash(order_id + sorted(line_id:quantity))"   # 같은 라인·수량 중복 취소 방지
 
 return:
   states: [potential, active, completed, failed]   # ReturnAction.action_status
   inventory_restore_when: "inspection == as_new"
   non_returnable_when: [used, final_sale, gift_card]
+  scope: [lines, quantity]               # 부분 반품 가능
+  free_gift_lines: whole_quantity_only
+  replacement_option: creates_exchange   # get_return_options의 replacement → 같은 변형 교환 클레임
+  withdraw:
+    allowed_states: [charge_due, waiting, approved]   # 회수 송장이 잡히기 전까지 (기본값)
+  restore_discounts_when: "liability == store_fault"  # 반품 쿠폰 복원은 판매자 귀책일 때만 (기본값)
+  points_earned: claw_back_for_returned_lines
 
+# ── 교환 (출고 후, 회수 → 재배송) ────────────────────────────
 exchange:
-  phases: [pickup, reshipment]
-  replacement_constraints: [same_price, actively_selling, in_stock]
-  fallback_to_return_when: [customer_declines, replacement_out_of_stock]
-  on_fallback: refund_reshipment_fee
+  phases: [pickup, reshipment]           # 순서대로. 회수 전 맞교환은 하지 않음 (기본값)
+  scope: [lines, quantity]               # 부분 교환 가능, 수량은 바꾸지 않음
+  eligible_states: [shipped, delivered]  # shipped(받기 전) 요청은 받은 것으로 보고 처리
+  window:
+    self_service_days: 30                # 배송 완료 후 쇼퍼가 직접 (기본값 = size_exchange_days)
+    after_window: operator_only          # 기간 후엔 상담·운영자만 접수
+  not_exchangeable_when: [used, final_sale, gift_card, digital, product_not_exchangeable]
+  free_gift_lines: whole_quantity_only   # 사은품 딸린 라인은 전체 수량만, 사은품도 함께 회수
+  reasons:
+    customer_fault: [wrong_size, different_option_wanted]
+    store_fault: [defect, damaged, missing_parts, wrong_item_sent, wrong_option_sent]
+  replacement:
+    same_product: true                   # 같은 상품의 다른 변형만. 다른 상품은 반품 + 새 주문
+    same_variant_allowed_when: store_fault   # 불량·오배송이면 같은 옵션 새 상품
+    constraints: [actively_selling, in_stock_for_quantity]
+    price_difference: not_allowed        # 기본: 같은 가격 변형만. 대안: charge_or_refund_difference
+    reserve_stock_on: request            # 요청 시점에 대체 재고 예약, 클레임 종료·전환 시 해제
+  shipping_cost:                         # 귀책 → 누가 내나 (두 구간: 회수 + 재배송)
+    store_fault: store_pays_both_legs
+    customer_fault: customer_pays_both_legs
+    wrong_size_fee: size_exchange_fee    # 사이즈 교환은 별도 요금(기본 0.00)
+    customer_fault_fee: round_trip       # 기본: 지역 배송비 × 2 (+ remote_area_surcharge 구간마다)
+    address_change: recalc_surcharge     # 회수지·재배송지 변경 가능, 지역 추가비 다시 계산
+    collect: pay_before_accept           # 환불이 없어 차감 불가 → charge_due 상태에서 먼저 결제
+    no_fee_waiver_coupons: true          # 교환 배송비 면제 쿠폰은 운영하지 않음 (기본값)
+  pickup:
+    instruction: automatic               # 결제할 것이 없거나 결제가 끝나면 자동 회수 지시 (기본값)
+    operator_approval_when: [after_window, damage_claim_needs_photo, price_difference]
+  reship_after: inspected                # 대안: picked_up (검수 전 출고)
+  withdraw:                              # 쇼퍼 철회 (클레임 단위, 일부 라인만 철회 불가)
+    allowed_states: [charge_due, requested, pickup_instructed]
+    on_withdraw: [release_reserved_stock, refund_paid_charge, line_back_to_delivered]
+  fallback_to_return_when: [customer_declines, replacement_out_of_stock, replacement_discontinued]
+  allowed_conversion_states: [pickup_confirmed, picked_up, inspected, reship_requested, ship_instructed]   # 출고 전까지
+  on_fallback:
+    carry_over: [lines, quantity, reason, pickup_address, pickup_tracking, inspection]
+    refund_paid_charge: true             # 교환 때 낸 배송비 자동 환불 (= refund_reshipment_fee)
+    liability_after:
+      replacement_out_of_stock: store_fault
+      replacement_discontinued: store_fault
+      customer_declines: unchanged
 
 liability:                               # 책임 → 배송비 부담
   store_fault: [defect, misdescription, arrived_damaged, out_of_stock, late_shipment]

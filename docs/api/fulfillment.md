@@ -3,7 +3,17 @@
 > 계층: `fulfillment.{resource}.{operation}`. 공통 규약(응답 형식·에러·프리뷰/실행·멱등·헤더)은 [README.md](README.md) §3, 데이터 타입은 [data-model.md](data-model.md), 정책은 [fulfillment.yml](policies/fulfillment.yml) · [approval.yml](policies/approval.yml). MVP 툴의 시그니처는 [plan.md §3.3·§3.4](../plan.md)와 같습니다.
 > **설계 축**: ① 반품 요청(`ReturnAction`)은 운영 에이전트가 **정책 근거와 함께 묶어 검토**하고, 환불·고객 메시지는 한 변경셋으로 사람이 승인, ② 반품 요청을 **보내는 것은 쇼퍼 본인**(사람 전용 엔드포인트, 툴 아님), ③ 환불은 원결제수단으로, 상태는 결제 이벤트로 확정(조용한 실패 없음), ④ 검수 결과가 클레임 상태·비용·재고 복원을 구동, ⑤ 귀책 → 비용 규칙은 정책 데이터, ⑥ 상태 변화는 이벤트 테이블에 append.
 
+> ⑦ 취소·교환·반품은 같은 모양: 쇼퍼 에이전트는 **선택지 툴(R)** 로 대상·사유·비용·환불 예상을 준비하고, 보내기는 쇼퍼 버튼(사람 전용), 승인이 필요한 건은 운영 큐의 클레임 → `approve_claim`(변경셋).
+
 리소스: [claim](#claim) · [inspection](#inspection) · [refund](#refund) · [parcel_delivery](#parcel_delivery) · [shipping_rate](#shipping_rate) · [사람 전용 엔드포인트](#사람-전용-엔드포인트)
+
+| resource | operations |
+|---|---|
+| claim | **`search_return_requests`** R · **`evaluate_return_request`** R · **`get_return_options`** R · `get_cancel_options` R · `get_exchange_options` R · `search_claims` R · `get_claim` R · `approve_claim` W$ · `reject_claim` W · `cancel_order_lines` W$ · `convert_exchange_to_return` W · `upload_evidence` W · 사람 전용 `POST /returns`, `POST /orders/{order_id}/cancel`, `POST /exchanges`, `POST /claims/{claim_id}/pay-charge`, `POST /claims/{claim_id}/withdraw` |
+| inspection | `assess_return_condition` W |
+| refund | **`refund_return`** W$ · `get_refund` R · `retry_refund` W$ |
+| parcel_delivery | `get_delivery_dates` R · `get_delivery` R · `track_shipment` R · `schedule_shipment` W · `confirm_shipment` W · `register_shortage` W |
+| shipping_rate | `list_shipping_zones` R · `manage_shipping_zone` W · `set_shipping_rate` W |
 
 ---
 
@@ -18,15 +28,42 @@
                            └─send_customer_message(kind="decline") / reject_claim──▶ declined
 ```
 
-**claim — 취소·교환** (출고 전 = 취소, 출고 후 = 반품; 교환 = 회수 + 재배송)
+**claim — 취소(`CancelAction`)** (출고 전만. 라인 상태가 경로를 정함, [fulfillment.yml](policies/fulfillment.yml) `cancel`)
+
+| 라인 상태 | 쇼퍼 | 결과 |
+|---|---|---|
+| `payment_due`(결제 전) | 직접 | 즉시 `completed`. 환불 없음, 재고 복원 |
+| `processing`, `ship_wait`(창고 인계 전·재고 대기) | 직접 | 추가 비용이 없으면 자동 `approved` → 환불 확정 시 `completed`. 추가 비용이 환불액보다 크면 `charge_due` |
+| `ship_instructed`, `ship_confirmed`(피킹·포장 중) | 요청만 | `requested` 클레임 → 운영 큐 → `approve_claim`(출고를 멈출 수 있을 때) 또는 `reject_claim(already_handed_over)` |
+| `shipped`, `delivered` | 불가 | `already_shipped` 에러 → `get_return_options`(반품 경로) |
 
 ```
-cancel:    requested ──approve_claim──▶ approved ──▶ completed(+refund)
-               └─reject_claim──▶ declined           (출고 후에는 반품으로)
-
-exchange:  requested ──approve_claim──▶ recovery(반품 흐름) ──▶ reshipment(배송 흐름)
-               대체 상품 품절·쇼퍼 거절 ──convert_exchange_to_return──▶ 반품 + 환불
+(쇼퍼) POST /orders/{order_id}/cancel
+   ├─ 결제 전 ─────────────────────────────────────────────────────────────▶ completed
+   ├─ 직접 취소 상태 · charge_due == 0 ──(자동 승인)──▶ approved ──환불 확정──▶ completed
+   ├─ 직접 취소 상태 · 추가 비용 > 환불액 ──▶ charge_due ──POST /claims/{id}/pay-charge──▶ approved ─▶ …
+   └─ 운영자 전용 상태 ──▶ requested ──approve_claim(W$)──▶ approved ──환불 확정──▶ completed
+                              └─reject_claim──▶ declined (출고됨 → 반품 안내)
+(운영자) cancel_order_lines(W$, 품절·직권) ──승인──▶ approved ──▶ completed
 ```
+- 취소는 철회할 수 없습니다(`revocable: false`). 환불 실패는 클레임을 `approved`에 두고 환불을 수동 큐로 보냅니다(`refund.on_failure`).
+
+**claim — 교환** (출고 후. **회수 단계 → 재배송 단계**가 순서대로, 맞교환 없음, [fulfillment.yml](policies/fulfillment.yml) `exchange`)
+
+```
+(쇼퍼) POST /exchanges
+   ├─ 쇼퍼 부담 비용 있음 ──▶ charge_due ──pay-charge──┐
+   └─ 비용 없음 ───────────────────────────────────────┴─▶ requested
+회수:   requested ──(자동 또는 approve_claim)──▶ pickup_instructed ──회수 송장──▶ pickup_confirmed
+          ──택배 이벤트──▶ picked_up ──assess_return_condition──▶ inspected
+재배송: inspected(normal) ──▶ reship_requested ──schedule_shipment──▶ ship_instructed ──▶ ship_confirmed
+          ──confirm_shipment──▶ shipped ──▶ delivered = completed
+분기:   charge_due · requested · pickup_instructed ──POST /claims/{id}/withdraw──▶ withdrawn (라인은 delivered로)
+        pickup_confirmed ~ ship_instructed ──convert_exchange_to_return──▶ 반품 클레임(회수·검수 정보 승계) ──▶ 환불
+        inspected(damaged, 쇼퍼 귀책) ──reject_claim(inspection_failed)──▶ declined (반송 협의)
+```
+
+**claim — 반품** 직접 요청도 같은 모양입니다: `get_return_options` → (쇼퍼) `POST /returns` → `charge_due`(차감할 환불액보다 비용이 클 때만) 또는 `waiting` → 위 반품 흐름.
 
 **parcel_delivery — 배송** (라인별 상태, 송장 여러 개 가능, 모든 라인이 `shipped`면 주문 완료)
 
@@ -97,6 +134,7 @@ ship_instructed ──schedule_shipment──▶ ship_confirmed ──confirm_sh
   |------|------|:--:|--------|
   | order_id | Text | ✓ | `"ord_20402"`(쇼퍼 본인 주문만) |
   | line_id | Text | ✓ | `"line_1"` |
+  | quantity | Integer | | 반품할 수량. 생략 시 라인 전체. 사은품이 딸린 라인은 전체만(`free_gift_lines`) |
   | reason | Text(enum) | ✓ | `"defect"` \| `"damaged"` \| `"wrong_size"` \| `"not_as_described"` \| `"changed_mind"` |
 - 출력:
   ```jsonc
@@ -109,15 +147,107 @@ ship_instructed ──schedule_shipment──▶ ship_confirmed ──confirm_sh
    "send_back": {"cost": 0.00, "why": "defect", "pickup": "2026-11-09T09:00/12:00"},
    "total": 2}
   ```
-- 정책: `return_window_days`, `defect_refund`, `changed_mind_return_shipping`(변심이면 `you_pay`에 반품 배송비), `size_exchange_days`, `refund_without_person_max`(초과 금액이면 `confirmed_by`가 사람)
-- 에러: `order_not_found` → `get_my_orders` · `line_not_found` → `get_order` · `outside_return_window` → (선택지 없음, 사유 안내) · `not_your_order` → `get_my_orders`
+  - `replacement`는 같은 변형으로 바꾸는 교환입니다(`return.replacement_option: creates_exchange`). 다른 사이즈·색이면 `get_exchange_options`.
+  - 변심 반품은 반품 배송비와 무료 배송 회수분(`lost_free_shipping`)을 환불액에서 먼저 뺍니다. 뺄 환불액보다 크면 `send_back.charge_due`가 생기고 요청은 결제 후 접수됩니다.
+- 정책: `return_window_days`, `defect_refund`, `changed_mind_return_shipping`(변심이면 `you_pay`에 반품 배송비), `size_exchange_days`, `refund_without_person_max`(초과 금액이면 `confirmed_by`가 사람), `return.scope`, `return.restore_discounts_when`
+- 에러: `order_not_found` → `get_my_orders` · `line_not_found` → `get_order` · `outside_return_window` → (선택지 없음, 사유 안내) · `not_your_order` → `get_my_orders` · `not_shipped_yet` → `get_cancel_options` · `claim_in_progress` → `get_claim`
 - 멱등성: 읽기, 부작용 없음.
+
+### `get_cancel_options` — Kind: R
+- 논리주소/REST: `fulfillment.claim.get_cancel_options` · `GET /v1/fulfillment/orders/{order_id}/cancel-options?lines=line_1:1,line_2:2&reason=changed_mind`
+- 요약: 쇼퍼 에이전트가 취소를 **준비**하는 툴. 쇼퍼 본인 주문에서 취소할 수 있는 라인·수량, 고를 수 있는 사유(귀책 포함), 환불 예상과 결제수단별 내역, 복원되는 쿠폰·적립금, 배송비 재계산으로 생기는 추가 비용, 누가 확정하는지를 돌려줍니다. 아무것도 바꾸지 않으며, 취소를 **보내는 것은** 쇼퍼의 버튼(`POST /orders/{order_id}/cancel`)뿐입니다. schema.org `CancelAction`(`potential`).
+- consumes → produces: `order_id` → cancel options
+- 입력:
+  | 필드 | 타입 | 필수 | 설명·예 |
+  |------|------|:--:|--------|
+  | order_id | Text | ✓ | `"ord_20455"`(쇼퍼 본인 주문만) |
+  | lines | {line_id, quantity}[] | | 취소해 볼 라인과 수량. 생략하면 **전체 취소**로 계산. 예 `[{"line_id": "line_1", "quantity": 1}]` |
+  | reason | Text(enum) | | 사유를 주면 그 귀책으로 배송비·복원을 계산. 생략 시 `changed_mind`(쇼퍼 귀책, 가장 보수적인 견적) |
+- 출력:
+  ```jsonc
+  {"items": [
+     {"line_id": "line_1", "name": "Packable windbreaker, M", "ordered": 1, "cancellable_quantity": 1,
+      "line_status": "processing", "path": "self_service",        // "self_service" | "store_review" | "not_cancellable"
+      "unit_paid": 71.20, "price_currency": "USD"},
+     {"line_id": "line_2", "name": "Merino socks, 2-pack", "ordered": 2, "cancellable_quantity": 2,
+      "line_status": "processing", "path": "self_service", "unit_paid": 16.00,
+      "whole_quantity_only": false}],
+   "reasons": [{"reason": "changed_mind", "acom:liability": "customer_fault"},
+               {"reason": "wrong_option_ordered", "acom:liability": "customer_fault"},
+               {"reason": "found_lower_price", "acom:liability": "customer_fault"},
+               {"reason": "duplicate_order", "acom:liability": "customer_fault"},
+               {"reason": "product_info_inaccurate", "acom:liability": "store_fault", "needs_store_review": true}],
+   "estimate": {                                    // 요청한 lines·reason 기준
+     "scope": "partial",                            // "full" | "partial"
+     "cancelled_amount": 71.20,
+     "extra_charge": [{"kind": "lost_free_shipping", "amount": 6.95,
+                       "why": "What stays ($32.00) is under the $80.00 free-shipping minimum"}],
+     "discount_recalculated": [],                   // 주문 쿠폰 조건 미달로 회수되는 할인
+     "refund_total": 64.25,
+     "refund_breakdown": [{"to": "card ending 4821", "method": "credit_card", "amount": 64.25,
+                           "money_back": "3–5 business days after it is confirmed"},
+                          {"to": "loyalty points", "method": "loyalty_points", "amount": 0.00}],
+     "coupons_restored": [],
+     "points_pending_cancelled": 0.71,
+     "charge_due": 0.00,                            // 환불액으로 못 덮는 추가 비용(먼저 결제)
+     "needs_refund_destination": false,             // 원결제 되돌리기 불가 시 true → refund_to 필요
+     "confirmed_by": "store, automatic",            // 운영자 전용 상태가 섞이면 "a person at the store"
+     "revocable": false},
+   "not_cancellable": [],                           // 예 [{"line_id": "line_3", "why": "shipped", "next_tool": "get_return_options"}]
+   "total": 2}
+  ```
+  - 같은 주문 전체 취소(`lines` 생략): `refund_total` 103.20 = card 93.20 + loyalty points 10.00(현금성 수단 먼저, 적립금은 나머지), `coupons_restored: [{"coupon_id": "cpn_socks4", "amount": 4.00}]`, 배송비 재계산 없음.
+  - 사은품이 딸린 라인은 `whole_quantity_only: true`이고 `cancellable_quantity`는 주문 수량 그대로이며, 사은품도 함께 취소됩니다.
+- 정책: `cancel.self_service_states`, `cancel.operator_only_states`, `cancel.auto_approve_when`, `cancel.reasons`, `cancel.shopper_selectable_store_reasons`, `cancel.restore`, `cancel.shipping_recalculation`, `cancel.extra_charge`, `cancel.free_gift_lines`, `refund.priority`, `refund.split`, `refund.reversal_window_days`, `free_shipping_min_subtotal`([order.yml](policies/order.yml))
+- 에러: `order_not_found` → `get_my_orders` · `not_your_order` → `get_my_orders` · `line_not_found` → `get_order` · `quantity_over_cancellable` → `get_cancel_options` · `whole_quantity_only` → `get_cancel_options`(전체 수량으로) · `already_shipped` → `get_return_options` · `already_cancelled` → `get_claim` · `claim_in_progress` → `get_claim` · `reason_not_selectable` → `get_cancel_options`(허용 사유 안내)
+- 멱등성: 읽기, 부작용 없음. 견적은 `POST /orders/{order_id}/cancel` 시점에 다시 계산되며, 달라지면 그쪽이 `estimate_changed`로 거부합니다.
+
+### `get_exchange_options` — Kind: R
+- 논리주소/REST: `fulfillment.claim.get_exchange_options` · `GET /v1/fulfillment/orders/{order_id}/lines/{line_id}/exchange-options?reason=wrong_size&quantity=1`
+- 요약: 쇼퍼 에이전트가 교환을 **준비**하는 툴. 같은 상품의 바꿀 수 있는 변형(재고·가격 차이), 회수 일정, 재배송 예상일, 쇼퍼가 내는 비용과 결제 시점, 교환이 안 될 때의 대안(반품)을 돌려줍니다. 보내기는 쇼퍼의 버튼(`POST /exchanges`)뿐입니다.
+- consumes → produces: `order_id`, `line_id` → exchange options
+- 입력:
+  | 필드 | 타입 | 필수 | 설명·예 |
+  |------|------|:--:|--------|
+  | order_id | Text | ✓ | `"ord_20388"`(쇼퍼 본인 주문만) |
+  | line_id | Text | ✓ | `"line_2"` |
+  | reason | Text(enum) | ✓ | 쇼퍼 귀책 `"wrong_size"` \| `"different_option_wanted"`, 판매자 귀책 `"defect"` \| `"damaged"` \| `"missing_parts"` \| `"wrong_item_sent"` \| `"wrong_option_sent"` |
+  | quantity | Integer | | 교환할 수량. 생략 시 라인 전체 |
+  | pickup_address | Text \| PostalAddress | | 회수지. 생략 시 배송지. 지역 추가비가 다시 계산됨 |
+  | delivery_address | Text \| PostalAddress | | 재배송지. 생략 시 배송지 |
+- 출력:
+  ```jsonc
+  {"items": [
+     {"variant_id": "prd_trail_runner_10_slate", "size": "10", "color": "Slate", "availability": "in_stock",
+      "available_quantity": 7, "price": 128.00, "price_difference": 0.00, "price_currency": "USD", "selectable": true},
+     {"variant_id": "prd_trail_runner_10_5_slate", "size": "10.5", "color": "Slate", "availability": "out_of_stock",
+      "available_quantity": 0, "price": 128.00, "price_difference": 0.00, "selectable": false, "why": "out_of_stock",
+      "next_tool": "subscribe_restock"},
+     {"variant_id": "prd_trail_runner_10_ember", "size": "10", "color": "Ember", "availability": "in_stock",
+      "price": 138.00, "price_difference": 10.00, "selectable": false, "why": "price_differs"}],
+   "line": {"line_id": "line_2", "name": "Trail runner, 9, Slate", "exchangeable_quantity": 1,
+            "days_since_delivery": 5, "window_days": 30, "path": "self_service"},   // 기간 후면 "store_review"
+   "acom:liability": "customer_fault",
+   "pickup": {"earliest": "2026-11-09T09:00/12:00", "address": "12 Harbor St, Apt 3", "cost": 0.00},
+   "reship": {"ships_after": "inspected", "ships": "2026-11-12", "arrives": "2026-11-14", "cost": 0.00},
+   "you_pay": 0.00,                   // wrong_size → size_exchange_fee(0.00). different_option_wanted면 왕복 13.90
+   "pay_when": null,                  // 비용이 있으면 "before the request is accepted"
+   "confirmed_by": "store, automatic",
+   "if_not_possible": {"option": "return", "next_tool": "get_return_options",
+                       "why": "Used if the new size runs out before it ships, or you decline it"},
+   "total": 3}
+  ```
+  - 판매자 귀책(`defect` 등)이면 같은 변형(새 상품)도 `selectable: true`이고 회수·재배송비는 스토어가 냅니다.
+  - 바꿀 변형이 하나도 없으면 `items`의 `selectable`이 모두 `false`이고, 에이전트는 `if_not_possible`의 반품 경로를 보여줍니다.
+- 정책: `exchange.eligible_states`, `exchange.window`, `exchange.not_exchangeable_when`, `exchange.replacement`, `exchange.shipping_cost`, `exchange.pickup`, `exchange.reship_after`, `size_exchange_fee`, `delivery.remote_area_surcharge`
+- 에러: `order_not_found` → `get_my_orders` · `not_your_order` → `get_my_orders` · `line_not_found` → `get_order` · `not_shipped_yet` → `get_cancel_options`(출고 전이면 취소 후 다시 주문) · `outside_exchange_window` → `get_return_options` · `not_exchangeable` → `get_return_options` · `no_replacement_available` → `get_return_options` · `claim_in_progress` → `get_claim`
+- 멱등성: 읽기, 부작용 없음. 재고는 `POST /exchanges` 때 예약됩니다(`replacement.reserve_stock_on`).
 
 ### `search_claims` — Kind: R
 - 논리주소/REST: `fulfillment.claim.search` · `GET /v1/fulfillment/claims`
 - 요약: 반품·취소·교환 클레임 전체 검색. 반품 요청 큐만 볼 때는 `search_return_requests`를 씁니다.
 - consumes → produces: → `claim_id[]`
-- 입력: `type`(`return` \| `cancel` \| `exchange`), `status`, `order_id`, `customer_id`, `created_from`, `created_through`, `sort`(`newest` \| `amount_desc`), `fields?[]`, `limit`(기본 20), `offset`(기본 0)
+- 입력: `type`(`return` \| `cancel` \| `exchange`), `status`(취소 `charge_due` \| `requested` \| `approved` \| `completed` \| `declined`, 교환 `charge_due` \| `requested` \| `pickup_instructed` \| `pickup_confirmed` \| `picked_up` \| `inspected` \| `reship_requested` \| `shipped` \| `completed` \| `withdrawn` \| `converted` \| `declined`), `acom:liability`, `order_id`, `customer_id`, `created_from`, `created_through`, `sort`(`newest` \| `amount_desc`), `fields?[]`, `limit`(기본 20), `offset`(기본 0)
 - 출력: `{"items": [{"claim_id": "clm_3301", "type": "exchange", "status": "requested", "order_id": "ord_20388", "amount": 128.00, "price_currency": "USD"}], "total": 7}`
 - 정책: 없음(읽기).
 - 에러: `invalid_filter` → `search_claims`
@@ -128,35 +258,41 @@ ship_instructed ──schedule_shipment──▶ ship_confirmed ──confirm_sh
 - 요약: 클레임 한 건(상태 이력·증빙·검수·비용·연결된 환불). 반품 요청 id(`ret_…`)도 받습니다.
 - consumes → produces: `claim_id` → claim
 - 입력: `claim_id`(✓), `fields?[]`
-- 출력: `{"items": [{"claim_id": "ret_20402", "type": "return", "object": {"order_id": "ord_20402", "line_id": "line_1"}, "reason": "defect", "acom:liability": "seller_fault", "evidence": [...], "inspection": null, "refund_id": null, "status_history": [{"status": "waiting", "at": "2026-11-06T10:12:00"}]}], "total": 1}`
+- 출력: `{"items": [{"claim_id": "ret_20402", "type": "return", "object": {"order_id": "ord_20402", "line_id": "line_1"}, "reason": "defect", "acom:liability": "store_fault", "evidence": [...], "inspection": null, "refund_id": null, "status_history": [{"status": "waiting", "at": "2026-11-06T10:12:00"}]}], "total": 1}`
 - 정책: 없음(읽기).
 - 에러: `claim_not_found` → `search_claims`
 - 멱등성: 읽기.
 
 ### `approve_claim` — Kind: W$
 - 논리주소/REST: `fulfillment.claim.approve` · `POST /v1/fulfillment/claims/{claim_id}/approve`
-- 요약: 취소·교환 클레임(및 환불 없이 진행할 반품의 회수 지시)을 승인. 승인되면 회수 지시·재배송·환불 개시가 이어집니다. 반품 환불은 `refund_return`으로 합니다.
-- consumes → produces: `claim_id[]` → `claim_id[]`(approved)
-- 입력: `claim_id[]`(✓), `acom:liability`(`seller_fault` \| `customer_fault`, 미지정 시 접수값·검수값), `acom:cost_override`(배송비 조정, `note` 필수), `preview`(✓)
-- 출력(프리뷰):
+- 요약: 운영 큐에서 `requested` 상태인 취소·교환 클레임(및 환불 없이 진행할 반품의 회수 지시)을 승인. 자동 승인되지 않은 건만 여기에 옵니다: 피킹·포장 중인 라인의 취소 요청, 판매자 귀책 사유를 쇼퍼가 고른 취소, 기간 후·사진 필요·가격 차이 교환. 승인되면 취소는 출고 중단·재고 복원·쿠폰/적립금 복원·환불 개시, 교환은 회수 지시가 이어집니다. 반품 환불은 `refund_return`으로 합니다.
+- consumes → produces: `claim_id[]` → `claim_id[]`(approved \| pickup_instructed)
+- 입력: `claim_id[]`(✓), `acom:liability`(`store_fault` \| `customer_fault`, 미지정 시 접수값·검수값. 바꾸면 배송비·복원을 다시 계산), `acom:cost_override`(배송비 조정, `note` 필수), `preview`(✓)
+- 출력(프리뷰, 피킹 중 취소 1건):
   ```jsonc
-  {"preview_id": "pv_c41a",
-   "changes": [{"op": "update", "entity": "claim", "id": "clm_3301", "from": "requested", "to": "approved"}],
-   "checks": [{"rule": "liability_cost", "passed": true, "detail": "Seller fault: store pays both shipping legs", "fix_tool": null},
-              {"rule": "inspection_before_restock", "passed": true, "detail": "Stock restores only after a normal inspection", "fix_tool": "assess_return_condition"}],
-   "needs_approval": true, "approval_reason": "Approves 1 exchange"}
+  {"preview_id": "pv_c39e",
+   "changes": [{"op": "update", "entity": "claim", "id": "clm_4410", "from": "requested", "to": "approved"},
+               {"op": "update", "entity": "parcel_delivery", "id": "dlv_20455", "from": "ship_instructed", "to": "cancelled"},
+               {"op": "update", "entity": "inventory", "id": "prd_windbreaker_m_navy", "from": 11, "to": 12},
+               {"op": "create", "entity": "refund", "id": "clm_4410", "from": null, "to": 64.25}],
+   "checks": [{"rule": "cancel.operator_only_states", "passed": true, "detail": "Line is being packed and not yet with the carrier", "fix_tool": "reject_claim"},
+              {"rule": "cancel.shipping_recalculation", "passed": true, "detail": "Customer fault: $6.95 shipping taken from the refund (what stays is under $80.00)", "fix_tool": "approve_claim"},
+              {"rule": "cancel.restore", "passed": true, "detail": "No coupon on this line; 0.71 pending points cancelled", "fix_tool": null},
+              {"rule": "refund_to_original_payment", "passed": true, "detail": "$64.25 back to card ending 4821", "fix_tool": null}],
+   "needs_approval": true, "approval_reason": "Cancels 1 line and refunds $64.25"}
   ```
-- 출력(실행): `{"ok": true, "id": "clm_3301", "undo": {"tool": "undo_change_set", "until": "2026-11-07T23:59:00"}}`
-- 프리뷰: `checks` `liability_cost`(귀책 ↔ 비용 일관), `inspection_before_restock`. 항상 변경셋을 거쳐 사람이 승인.
-- 정책: `liability`, `exchange`, `cancel` ([fulfillment.yml](policies/fulfillment.yml)), [approval.yml](policies/approval.yml)
-- 에러: `liability_cost_conflict` → `approve_claim`(귀책·비용 다시 지정) · `inspection_pending` → `assess_return_condition` · `invalid_state` → `get_claim`
+- 출력(프리뷰, 교환): `changes` `clm_3301` `requested` → `pickup_instructed`, 대체 변형 재고 예약 1. `checks` `liability_cost`("Seller fault: store pays both shipping legs"), `exchange.replacement`("Size 10 in stock, same price"), `inspection_before_restock`.
+- 출력(실행): `{"ok": true, "id": "clm_4410", "undo": null}` — 환불이 따르는 취소는 되돌릴 수 없어 `undo`가 `null`. 교환 승인은 회수 송장 전까지 `{"tool": "undo_change_set", "until": …}`.
+- 프리뷰: `checks` `liability_cost`(귀책 ↔ 비용 일관), `cancel.operator_only_states`(아직 택배사에 넘기지 않았는지), `cancel.shipping_recalculation`, `cancel.restore`, `refund_to_original_payment`, `exchange.replacement`(재고·가격), `inspection_before_restock`. 항상 변경셋을 거쳐 사람이 승인.
+- 정책: `liability`, `exchange`, `cancel`, `refund` ([fulfillment.yml](policies/fulfillment.yml)), [approval.yml](policies/approval.yml)
+- 에러: `liability_cost_conflict` → `approve_claim`(귀책·비용 다시 지정) · `already_handed_over`(이미 택배사 인계) → `reject_claim` · `replacement_unavailable` → `convert_exchange_to_return` · `inspection_pending` → `assess_return_condition` · `charge_unpaid` → `get_claim` · `invalid_state` → `get_claim`
 - 멱등성: `Idempotency-Key = hash(claim_id[] + decision)` — 중복 승인 없음.
 
 ### `reject_claim` — Kind: W
 - 논리주소/REST: `fulfillment.claim.reject` · `POST /v1/fulfillment/claims/{claim_id}/reject`
 - 요약: 클레임 반려(사유 필수). `requested`/`waiting` → `declined`. 쇼퍼에게 알리는 문구는 `send_customer_message(kind="decline")`로 따로 보내며 그쪽이 승인을 받습니다.
 - consumes → produces: `claim_id` → `claim_id`
-- 입력: `claim_id`(✓), `reason`(✓, `outside_return_window` \| `not_returnable` \| `inspection_failed`), `preview`(✓)
+- 입력: `claim_id`(✓), `reason`(✓, `outside_return_window` \| `not_returnable` \| `inspection_failed` \| `already_handed_over`(취소: 이미 택배사 인계 → 쇼퍼에게 반품 안내) \| `outside_exchange_window`), `preview`(✓)
 - 출력(프리뷰): `{"preview_id": "pv_c52b", "changes": [{"op": "update", "entity": "claim", "id": "ret_20290", "from": "waiting", "to": "declined"}], "checks": [{"rule": "return_window_days", "passed": true, "detail": "Delivered Sep 28, 39 days ago (limit 30)", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
 - 출력(실행): `{"ok": true, "id": "ret_20290", "undo": {"tool": "undo_change_set", "until": "2026-11-07T23:59:00"}}`
 - 프리뷰: 반려 사유가 정책과 맞는지 check. 같은 요청의 거절 메시지와 한 변경셋으로 묶이면 그 변경셋 승인을 따릅니다.
@@ -164,15 +300,26 @@ ship_instructed ──schedule_shipment──▶ ship_confirmed ──confirm_sh
 - 에러: `invalid_state` → `get_claim` · `reason_required` → `reject_claim`
 - 멱등성: `Idempotency-Key = hash(claim_id + reason)`
 
+### `cancel_order_lines` — Kind: W$
+- 논리주소/REST: `fulfillment.claim.cancel_order_lines` · `POST /v1/fulfillment/orders/{order_id}/cancellations`
+- 요약: **스토어가 먼저** 출고 전 라인을 취소(품절·결품 지속, 사은품 소진, 판매자 사정, 상담원 직권). 쇼퍼의 취소 요청이 아니라 운영 에이전트가 제안하고 사람이 승인합니다. 귀책은 판매자이므로 배송비 재계산·추가 비용이 없고, 쿠폰은 복원, 적립 예정분은 취소, 환불은 원결제수단으로. 쇼퍼 안내 메시지(`send_customer_message`)와 한 변경셋으로 묶입니다.
+- consumes → produces: `order_id` → `claim_id`(type `cancel`)
+- 입력: `order_id`(✓), `lines[]`(✓, `{line_id, quantity}`), `reason`(✓, `out_of_stock` \| `free_gift_unavailable` \| `seller_cancelled` \| `store_cancelled` \| `shipping_delay`), `note`, `preview`(✓)
+- 출력(프리뷰): `{"preview_id": "pv_c71b", "changes": [{"op": "create", "entity": "claim", "id": "clm_4433", "from": null, "to": "approved"}, {"op": "update", "entity": "parcel_delivery", "id": "dlv_20461", "from": "ship_wait", "to": "cancelled"}, {"op": "create", "entity": "refund", "id": "clm_4433", "from": null, "to": 54.00}], "checks": [{"rule": "cancel.not_cancellable_states", "passed": true, "detail": "Line is waiting for stock, not shipped", "fix_tool": null}, {"rule": "cancel.restore", "passed": true, "detail": "Seller fault: 1 coupon restored, no shipping charge", "fix_tool": null}], "needs_approval": true, "approval_reason": "Store-initiated cancel refunds $54.00"}`
+- 출력(실행): `{"ok": true, "id": "clm_4433", "undo": null}`
+- 정책: `cancel.reasons.store_fault`, `cancel.restore`, `cancel.not_cancellable_states`, `refund`, [approval.yml](policies/approval.yml)
+- 에러: `already_shipped` → `get_delivery` · `line_not_found` → `get_order` · `reason_not_store_fault` → `cancel_order_lines` · `whole_quantity_only` → `cancel_order_lines` · `claim_in_progress` → `get_claim`
+- 멱등성: `Idempotency-Key = hash(order_id + sorted(line_id:quantity) + reason)`
+
 ### `convert_exchange_to_return` — Kind: W
 - 논리주소/REST: `fulfillment.claim.convert_exchange_to_return` · `POST /v1/fulfillment/claims/{claim_id}/convert-to-return`
-- 요약: 교환을 반품으로 전환(대체 상품 품절, 쇼퍼 거절). 재배송비는 환불 대상에 포함됩니다.
-- consumes → produces: `claim_id` → `claim_id`(return)
-- 입력: `claim_id`(✓), `reason`(✓, `replacement_out_of_stock` \| `customer_declines`), `preview`(✓)
-- 출력(프리뷰): `{"preview_id": "pv_c60d", "changes": [{"op": "update", "entity": "claim", "id": "clm_3301", "from": "exchange", "to": "return"}], "checks": [{"rule": "exchange_fallback", "passed": true, "detail": "Replacement size M is out of stock", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
-- 출력(실행): `{"ok": true, "id": "clm_3301", "undo": {"tool": "undo_change_set", "until": "2026-11-07T23:59:00"}}`
-- 정책: `exchange.fallback_to_return_when`, `exchange.on_fallback`
-- 에러: `not_an_exchange` → `get_claim` · `invalid_state` → `get_claim`
+- 요약: 교환을 반품으로 전환(대체 변형 품절·단종, 쇼퍼가 받지 않겠다고 함). 회수 송장이 잡힌 뒤부터 재배송 출고 전까지 가능합니다. 교환 클레임은 `converted`로 닫히고, 라인·수량·사유·회수지·회수 송장·검수 결과를 **승계한** 반품 클레임(`ret_…`)이 생겨 이후 반품 흐름(`refund_return`)을 탑니다. 쇼퍼가 낸 교환 배송비는 자동 환불되고, 예약한 대체 재고는 풀립니다. 스토어 사정(품절·단종)이면 귀책이 판매자로 바뀌어 반품 비용이 없습니다. 전환 전에 쇼퍼 안내(`send_customer_message`)가 같은 변경셋에 있어야 합니다.
+- consumes → produces: `claim_id` → `return_request_id`
+- 입력: `claim_id`(✓), `reason`(✓, `replacement_out_of_stock` \| `replacement_discontinued` \| `customer_declines`), `preview`(✓)
+- 출력(프리뷰): `{"preview_id": "pv_c60d", "changes": [{"op": "update", "entity": "claim", "id": "clm_3301", "from": "picked_up", "to": "converted"}, {"op": "create", "entity": "return_request", "id": "ret_20388", "from": null, "to": "waiting"}, {"op": "update", "entity": "inventory", "id": "prd_trail_runner_10_slate", "from": "reserved 1", "to": "released 1"}], "checks": [{"rule": "exchange.fallback_to_return_when", "passed": true, "detail": "Replacement size 10 is out of stock", "fix_tool": null}, {"rule": "exchange.on_fallback", "passed": true, "detail": "Liability moves to seller fault: no return shipping charged", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
+- 출력(실행): `{"ok": true, "id": "ret_20388", "undo": {"tool": "undo_change_set", "until": "2026-11-07T23:59:00"}}`
+- 정책: `exchange.fallback_to_return_when`, `exchange.allowed_conversion_states`, `exchange.on_fallback`
+- 에러: `not_an_exchange` → `get_claim` · `invalid_state`(이미 재배송 출고) → `get_claim` · `customer_not_notified` → `send_customer_message`
 - 멱등성: `Idempotency-Key = hash(claim_id + "convert")`
 
 ### `upload_evidence` — Kind: W
@@ -194,7 +341,7 @@ ship_instructed ──schedule_shipment──▶ ship_confirmed ──confirm_sh
 - 논리주소/REST: `fulfillment.inspection.assess` · `POST /v1/fulfillment/claims/{claim_id}/inspection`
 - 요약: 회수품 검수 결과 기록. 결과가 클레임 상태·비용·재고 복원을 정합니다. `normal`일 때만 재고를 복원합니다.
 - consumes → produces: `claim_id` → `inspection_id`
-- 입력: `claim_id`(✓), `condition`(✓, `normal` \| `damaged` \| `missing_parts`), `acom:liability`(`seller_fault` \| `customer_fault`), `next`(`approve` \| `hold` \| `decline`), `note`, `preview`(✓)
+- 입력: `claim_id`(✓), `condition`(✓, `normal` \| `damaged` \| `missing_parts`), `acom:liability`(`store_fault` \| `customer_fault`), `next`(`approve` \| `hold` \| `decline`), `note`, `preview`(✓)
 - 출력(프리뷰): `{"preview_id": "pv_i20a", "changes": [{"op": "update", "entity": "claim", "id": "ret_20402", "from": "picked_up", "to": "inspected"}, {"op": "update", "entity": "inventory", "id": "prd_chelsea_boots_9_tan", "from": 6, "to": 7}], "checks": [{"rule": "inspection_before_restock", "passed": true, "detail": "Condition normal: 1 unit back to stock", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
 - 출력(실행): `{"ok": true, "id": "ins_4402", "undo": {"tool": "undo_change_set", "until": "2026-11-10T23:59:00"}}`
 - 정책: `return.inventory_restore_when`, `liability`
@@ -365,13 +512,85 @@ ship_instructed ──schedule_shipment──▶ ship_confirmed ──confirm_sh
 
 ## 사람 전용 엔드포인트
 
-쇼퍼 본인이 UI 버튼으로만 부르는 HTTP 엔드포인트입니다. **툴이 아니며 모델은 보지 못하므로**, 어떤 프롬프트로도 에이전트가 반품·취소·교환 요청을 대신 보낼 수 없습니다. 쇼퍼 에이전트는 `get_return_options`로 선택지만 보여줍니다([plan.md §3.6](../plan.md), [README.md §2](README.md)).
+쇼퍼 본인이 UI 버튼으로만 부르는 HTTP 엔드포인트입니다. **툴이 아니며 모델은 보지 못하므로**, 어떤 프롬프트로도 에이전트가 반품·취소·교환 요청을 대신 보낼 수 없습니다. 쇼퍼 에이전트는 선택지 툴(`get_cancel_options`, `get_exchange_options`, `get_return_options`)로 준비한 내용을 확인 카드로 보여주고, 쇼퍼가 그 카드의 버튼을 누릅니다([plan.md §3.6](../plan.md), [README.md §2](README.md)).
 
-| 엔드포인트 | 누가 | 무엇 |
-|---|---|---|
-| `POST /returns` `{order_id, line_id, option}` | 쇼퍼 | 반품 요청 보내기. `option`은 `get_return_options`의 `"replacement"` 또는 `"refund"`. 백오피스에 `waiting` 반품 요청(`ret_…`)이 생김 |
-| `POST /orders/{id}/cancel` `{line_ids?, reason}` | 쇼퍼 | 출고 전 주문 취소 요청. 결제 대기 주문은 바로 취소, 결제된 주문은 `requested` 클레임이 되어 `approve_claim` 대기. 출고 후면 `already_shipped`로 거부하고 반품 안내 |
-| `POST /exchanges` `{order_id, line_id, replacement_product_id, reason}` | 쇼퍼 | 교환 요청. 대체 상품은 같은 가격·판매 중·재고 있음이어야 함. `requested` 클레임이 되어 `approve_claim` 대기 |
+| 엔드포인트 | 누가 | 준비 툴 | 무엇 |
+|---|---|---|---|
+| `POST /orders/{order_id}/cancel` | 쇼퍼 | `get_cancel_options` | 출고 전 취소(전체·라인·수량) |
+| `POST /exchanges` | 쇼퍼 | `get_exchange_options` | 같은 상품 다른 변형으로 교환(회수 → 재배송) |
+| `POST /returns` | 쇼퍼 | `get_return_options` | 반품(환불) 또는 같은 변형 교체 |
+| `POST /claims/{claim_id}/pay-charge` | 쇼퍼 | `get_claim` | `charge_due` 클레임의 추가 비용 결제 → 접수 |
+| `POST /claims/{claim_id}/withdraw` | 쇼퍼 | `get_claim` | 교환·반품 철회(클레임 단위). 취소는 철회 불가 |
 
-- 공통: 쇼퍼 세션의 본인 주문만, `Idempotency-Key` 필수(같은 키 재전송 시 첫 결과). 응답 `{"ok": true, "id": "ret_20402"}`, 에러는 공통 형식(`outside_return_window`, `already_shipped`, `not_your_order`, `replacement_unavailable`).
-- schema.org: 쇼퍼의 `ReturnAction`, `CancelAction`(취소), 교환은 `ReturnAction` + 재배송 `ParcelDelivery`.
+**공통 규칙**
+- 쇼퍼 세션의 본인 주문만(`not_your_order`). `Idempotency-Key` 필수: 같은 키 재전송은 첫 결과를 돌려주고, 다른 키라도 같은 라인에 열린 클레임이 있으면 `claim_in_progress`.
+- 서버가 보내는 순간 선택지를 **다시 계산**합니다. 쇼퍼가 본 견적(`expected_refund`·`expected_charge`)과 다르면 실행하지 않고 `estimate_changed`(새 견적 포함)로 거부해, 확인하지 않은 금액으로 처리되는 일이 없습니다.
+- 응답은 `{ok, id, …}`에 클레임 상태와 견적을 더한 형식, 에러는 공통 형식(`{"error": {code, message, next_tool}}`; `next_tool`은 쇼퍼 에이전트가 다시 부를 선택지 툴).
+- 상태 변화는 클레임 이벤트로 append되고, 쇼퍼 알림은 `messaging`이 상태 이벤트를 받아 보냅니다.
+
+### `POST /orders/{order_id}/cancel`
+- 요약: 출고 전 취소. 경로는 라인 상태가 정합니다(위 [상태 요약](#상태-요약)): 결제 전은 즉시 취소, 직접 취소 상태는 자동 승인, 피킹·포장 중은 운영 큐로 가는 요청. 출고 후는 거부하고 반품을 안내합니다. schema.org `CancelAction`.
+- 본문:
+  | 필드 | 타입 | 필수 | 설명·예 |
+  |------|------|:--:|--------|
+  | lines | {line_id, quantity}[] | | 생략하면 전체 취소. 예 `[{"line_id": "line_1", "quantity": 1}]` |
+  | reason | Text(enum) | ✓ | `get_cancel_options.reasons`의 값. 예 `"changed_mind"` |
+  | reason_text | Text | | 쇼퍼가 쓴 말(500자) |
+  | expected_refund | Number | ✓ | 쇼퍼가 확인한 `estimate.refund_total`. 예 `64.25` |
+  | expected_charge | Number | | 확인한 `estimate.charge_due`(기본 `0.00`) |
+  | refund_to | {type, ref} | 조건부 | `needs_refund_destination: true`일 때만. `type` `bank_account` \| `store_credit`, `ref`는 저장된 계좌 참조(계좌번호 원문은 받지 않음) |
+- 응답:
+  ```jsonc
+  {"ok": true, "id": "clm_4410", "type": "cancel", "status": "approved",   // "completed" | "approved" | "charge_due" | "requested"
+   "order_id": "ord_20455", "lines": [{"line_id": "line_1", "quantity": 1}],
+   "acom:liability": "customer_fault",
+   "refund": {"total": 64.25, "price_currency": "USD",
+              "breakdown": [{"to": "card ending 4821", "amount": 64.25}],
+              "money_back": "3–5 business days after it is confirmed"},
+   "extra_charge": [{"kind": "lost_free_shipping", "amount": 6.95, "collected": "deducted_from_refund"}],
+   "coupons_restored": [], "points_pending_cancelled": 0.71,
+   "confirmed_by": "store, automatic", "undo": null}
+  ```
+  - `status: "requested"`면 `confirmed_by: "a person at the store"`이고, 승인 전까지 `refund`는 견적입니다. `status: "charge_due"`면 `pay_charge: {"amount": …, "endpoint": "POST /claims/clm_…/pay-charge"}`가 붙습니다.
+- 에러: `already_shipped` → `get_return_options` · `not_cancellable` → `get_cancel_options` · `quantity_over_cancellable` → `get_cancel_options` · `whole_quantity_only` → `get_cancel_options` · `reason_not_selectable` → `get_cancel_options` · `estimate_changed` → `get_cancel_options` · `refund_destination_required` → `get_cancel_options` · `already_cancelled` → `get_claim` · `claim_in_progress` → `get_claim` · `not_your_order` → `get_my_orders`
+- 멱등성: `Idempotency-Key` 필수. 서버는 `hash(order_id + sorted(line_id:quantity))`로도 중복을 막아, 같은 라인·수량을 두 번 취소하지 않습니다.
+
+### `POST /exchanges`
+- 요약: 같은 상품의 다른 변형(판매자 귀책이면 같은 변형도)으로 교환. 요청 시 대체 재고를 예약하고, 쇼퍼 부담 비용이 있으면 `charge_due`로 결제를 먼저 받은 뒤 `requested`가 됩니다. 이후 회수 지시는 자동 또는 `approve_claim`, 재배송은 검수 후. schema.org `ReturnAction` + 재배송 `ParcelDelivery`.
+- 본문:
+  | 필드 | 타입 | 필수 | 설명·예 |
+  |------|------|:--:|--------|
+  | order_id | Text | ✓ | `"ord_20388"` |
+  | lines | {line_id, quantity, replacement_variant_id}[] | ✓ | 라인별 교환. 수량은 바꿀 수 없고, 대체 변형은 `get_exchange_options`에서 `selectable: true`인 것. 예 `[{"line_id": "line_2", "quantity": 1, "replacement_variant_id": "prd_trail_runner_10_slate"}]` |
+  | reason | Text(enum) | ✓ | `get_exchange_options`의 사유. 예 `"wrong_size"` |
+  | reason_text | Text | | 쇼퍼가 쓴 말 |
+  | evidence_ids | Text[] | 조건부 | `damaged`·`defect`는 `damage_claim_needs_photo`에 따라 사진(`upload_evidence`) |
+  | pickup_address | Text \| PostalAddress | | 생략 시 배송지 |
+  | delivery_address | Text \| PostalAddress | | 재배송지. 생략 시 배송지 |
+  | pickup_slot | Text | | `get_exchange_options.pickup.earliest` 등. 예 `"2026-11-09T09:00/12:00"` |
+  | expected_charge | Number | ✓ | 쇼퍼가 확인한 `you_pay`. 예 `0.00` |
+- 응답:
+  ```jsonc
+  {"ok": true, "id": "clm_3301", "type": "exchange", "status": "requested",   // "charge_due" | "requested" | "pickup_instructed"
+   "acom:liability": "customer_fault",
+   "replacement": [{"line_id": "line_2", "variant_id": "prd_trail_runner_10_slate", "reserved": 1}],
+   "pickup": {"slot": "2026-11-09T09:00/12:00", "cost": 0.00},
+   "reship": {"ships_after": "inspected", "arrives": "2026-11-14", "cost": 0.00},
+   "you_pay": 0.00, "price_currency": "USD",
+   "withdraw_until": "pickup_instructed",
+   "confirmed_by": "store, automatic"}
+  ```
+- 에러: `not_shipped_yet` → `get_cancel_options` · `outside_exchange_window` → `get_return_options` · `not_exchangeable` → `get_return_options` · `replacement_unavailable`(방금 품절) → `get_exchange_options` · `price_differs` → `get_exchange_options` · `quantity_mismatch` → `get_exchange_options` · `whole_quantity_only` → `get_exchange_options` · `evidence_required` → `upload_evidence` · `estimate_changed` → `get_exchange_options` · `claim_in_progress` → `get_claim` · `not_your_order` → `get_my_orders`
+- 멱등성: `Idempotency-Key` 필수. 같은 라인에 열린 교환·반품이 있으면 새로 만들지 않습니다.
+
+### `POST /returns`
+- 요약: 반품 요청 보내기. `option` `refund`는 반품 요청(`ret_…`, `waiting`)이 되고, `replacement`(같은 변형 새 상품)는 교환 클레임으로 만들어집니다. 변심 반품의 반품 배송비·무료 배송 회수분은 환불에서 차감하며, 환불액보다 크면 `charge_due`. MVP 형식 `{order_id, line_id, option}`(라인 전체 수량)도 그대로 받습니다.
+- 본문: `order_id`(✓), `lines[]`(✓, `{line_id, quantity}`; MVP는 `line_id`), `reason`(✓, `get_return_options`의 사유), `option`(✓, `refund` \| `replacement`), `reason_text`, `evidence_ids[]`(조건부, 파손 사진), `pickup_address`, `pickup_slot`, `expected_refund`(✓, MVP 형식 제외), `refund_to`(조건부, 원결제 되돌리기 불가 시)
+- 응답: `{"ok": true, "id": "ret_20402", "type": "return", "status": "waiting", "refund_estimate": {"total": 312.00, "breakdown": [{"to": "card ending 0937", "amount": 312.00}]}, "send_back": {"cost": 0.00, "pickup": "2026-11-09T09:00/12:00"}, "confirmed_by": "a person at the store, usually within 1 business day"}`
+- 에러: `outside_return_window` → (선택지 없음, 사유 안내) · `not_returnable` → `get_return_options` · `not_shipped_yet` → `get_cancel_options` · `evidence_required` → `upload_evidence` · `estimate_changed` → `get_return_options` · `claim_in_progress` → `get_claim` · `not_your_order` → `get_my_orders`
+- 멱등성: `Idempotency-Key` 필수.
+
+### `POST /claims/{claim_id}/pay-charge` · `POST /claims/{claim_id}/withdraw`
+- `pay-charge` 본문 `{amount, payment_method_ref}` — `charge_due` 클레임의 추가 비용(취소의 환불 초과분, 교환 왕복 배송비, 반품 배송비 초과분) 결제. 결제 이벤트로 확정되면 클레임이 다음 상태(`approved` \| `requested` \| `waiting`)로. 에러 `amount_mismatch` → `get_claim` · `invalid_state` → `get_claim`.
+- `withdraw` 본문 `{reason_text?}` — 교환·반품을 클레임 단위로 철회(일부 라인만 철회 불가). 회수 송장이 잡히기 전까지(`exchange.withdraw.allowed_states`, `return.withdraw.allowed_states`). 예약 재고 해제, 낸 추가 비용 자동 환불, 라인은 `delivered`로. 취소는 `not_revocable`로 거부.
+- 둘 다 `Idempotency-Key` 필수.

@@ -1,12 +1,12 @@
 # API 명세 — `customer` (회원·등급·주소·동의·기억(선호)·위시리스트·임직원·상담·보상·FAQ/공지)
 
 > 계층: `customer.{resource}.{operation}`. 공통 규약(응답 형식·에러·프리뷰/실행·멱등·헤더)은 [README.md](README.md) §3, 데이터 타입은 [data-model.md](data-model.md), 정책은 [customer.yml](policies/customer.yml) · [approval.yml](policies/approval.yml). MVP 툴의 시그니처는 [plan.md §3.2–§3.4](../plan.md)와 같습니다.
-> **설계 축**: ① 개인정보는 기본 가림, 가림 해제는 사유를 액션 로그에 남김, ② 마케팅 발송은 동의(opt-in) 게이트, ③ 탈퇴·비밀번호 재설정은 **회원 본인만**(사람 전용 엔드포인트, 툴 아님), ④ **보이고 고칠 수 있는 기억** — 에이전트가 기억한 선호는 쇼퍼에게 한 줄로 보이고 한 번에 되돌릴 수 있음, ⑤ 보상은 귀책 분류 + 단계별 승인(현금은 지급 승인자 별도), ⑥ 동의·탈퇴·보상 이력은 append만.
+> **설계 축**: ① 개인정보는 기본 가림, 가림 해제는 사유를 액션 로그에 남김, ② 마케팅 발송은 동의(opt-in) 게이트, ③ 탈퇴·비밀번호는 **회원 본인만**(사람 전용 엔드포인트, 툴 아님). 에이전트는 비밀번호를 받지도 보지도 않고, 탈퇴는 자격 확인(읽기)까지만, ④ **등급은 코드가 아니라 데이터** — 등급 이름·개수·요건·혜택은 스토어가 정의, ⑤ **보이고 고칠 수 있는 기억** — 에이전트가 기억한 선호는 쇼퍼에게 한 줄로 보이고 한 번에 되돌릴 수 있음, ⑥ 보상은 귀책 분류 + 단계별 승인(현금은 지급 승인자 별도), ⑦ 동의·탈퇴·보상·등급 이력은 append만, ⑧ 본인 확인은 교체 가능한 방법(일회용 코드·링크·외부 제공자) 목록.
 
 리소스: [person](#person) · [membership](#membership) · [address](#address) · [consent](#consent) · [preference](#preference) · [wishlist](#wishlist) · [employee](#employee) · [inquiry](#inquiry) · [remedy](#remedy) · [faq_notice](#faq_notice) · [사람 전용 엔드포인트](#사람-전용-엔드포인트)
 
-- schema.org: 회원 `Person` + `ProgramMembership`, 등급 `MemberProgramTier`, 주소 `PostalAddress`, 기억 `acom:Preference`(`PropertyValue`의 확장), 상담 `acom:CustomerInquiry`(`Message`의 확장).
-- id 예: 회원 `cus_jamie`, `cus_alex`, 등급 `tier_vip`, 기억 `mem_12`.
+- schema.org: 회원 `Person` + `ProgramMembership`, 등급 프로그램 `MemberProgram`(`has_tiers`), 등급 `MemberProgramTier`(`has_tier_requirement`, `has_tier_benefit`, `membership_points_earned`), 주소 `PostalAddress`, 기억 `acom:Preference`(`PropertyValue`의 확장), 상담 `acom:CustomerInquiry`(`Message`의 확장), 본인 확인 `acom:IdentityVerification`, 등급 평가 `acom:TierEvaluation`.
+- id 예: 회원 `cus_jamie`, `cus_alex`, 프로그램 `prg_rewards`, 등급 `vip`(데모 스토어의 tier id, **예시**), 등급 평가 `tev_2612`, 본인 확인 `ivf_201`, 기억 `mem_12`.
 
 ---
 
@@ -60,14 +60,14 @@
 - 요약: 회원 한 명(회원 정보, `member_of` 등급, 주소·동의 요약). 기본 가림.
 - consumes → produces: `customer_id` → person
 - 입력: `customer_id`(✓), `unmask`, `fields?[]`
-- 출력: `{"items": [{"customer_id": "cus_alex", "name": "A*** K***", "member_of": {"program": "northwind_rewards", "tier": "member", "membership_number": "NW-008812"}, "state": "active", "consent": {"marketing_email": true}}], "total": 1}`
+- 출력: `{"items": [{"customer_id": "cus_alex", "name": "A*** K***", "member_of": {"program": "prg_rewards", "tier": "member", "membership_number": "NW-008812"}, "state": "active", "consent": {"marketing_email": true}}], "total": 1}`
 - 정책: `privacy.masking_default`, `privacy.access_reason_logging`
 - 에러: `customer_not_found` → `search_members` · `access_reason_required` → `get_member`
 - 멱등성: 읽기.
 
 ### `register_member` — Kind: W
 - 논리주소/REST: `customer.person.register` · `POST /v1/customer/people`
-- 요약: 회원 가입(개인·사업자). 본인 확인 토큰과 필수 동의를 함께 받습니다.
+- 요약: 회원 가입(개인·사업자). 본인 확인 토큰과 필수 동의를 함께 받습니다. **비밀번호는 이 툴의 입력이 아닙니다.** 가입 화면은 같은 REST에 `password`를 직접 보낼 수 있고(사람 전용 필드, 모델에 노출되지 않음, 규칙은 `password`), 에이전트 경로로 가입하면 확인된 연락처로 비밀번호 설정 링크가 가고 회원이 사람 전용 `POST /password-reset/confirm`으로 설정합니다. 연결 로그인(`linked_login`)만 쓰는 계정은 비밀번호가 없어도 됩니다.
 - consumes → produces: → `customer_id`
 - 입력:
   | 필드 | 타입 | 필수 | 설명·예 |
@@ -75,26 +75,25 @@
   | type | Text(enum) | ✓ | `individual` \| `business` |
   | name | Text | ✓ | `"Alex Kim"` |
   | email | Text | ✓ | 로그인 id 겸용 |
-  | telephone | Text | ✓ | 본인 확인 번호 |
-  | password | Text | ✓ | 8–30자, 문자·숫자·기호 |
+  | telephone | Text | | 본인 확인 방법이 `sms_code`면 ✓ |
   | legal_name, tax_id | Text | business | 사업자 상호·사업자 번호 |
   | verification_token | Text | ✓ | `verify_identity` 결과 |
   | consents | Object[] | ✓ | `[{consent_type: "terms", granted: true}, {consent_type: "privacy", granted: true}]` |
   | preview | Boolean | ✓ | `true` 먼저 |
-- 출력(프리뷰): `{"preview_id": "pv_m01a", "changes": [{"op": "create", "entity": "person", "id": "cus_new", "from": null, "to": "active"}], "checks": [{"rule": "identity_verification", "passed": true, "detail": "Phone verified 2 min ago", "fix_tool": "verify_identity"}, {"rule": "consent_mandatory", "passed": true, "detail": "Terms and privacy accepted", "fix_tool": "set_consent"}, {"rule": "member_password", "passed": true, "detail": "12 characters, letters, digits and a symbol", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
-- 출력(실행): `{"ok": true, "id": "cus_8812", "undo": null}`
-- 정책: `identity_verification.required_for`, `member.password`, `consent.mandatory`, `member.id_reuse_after_withdrawal_days`
-- 에러: `identity_not_verified` → `verify_identity` · `mandatory_consent_missing` → `set_consent` · `duplicate_member` → `check_availability` · `password_policy` → `register_member` · `id_reuse_blocked` → `check_availability`
+- 출력(프리뷰): `{"preview_id": "pv_m01a", "changes": [{"op": "create", "entity": "person", "id": "cus_new", "from": null, "to": "active"}], "checks": [{"rule": "identity_verification", "passed": true, "detail": "Phone verified 2 min ago", "fix_tool": "verify_identity"}, {"rule": "consent_mandatory", "passed": true, "detail": "Terms and privacy accepted", "fix_tool": "set_consent"}, {"rule": "rejoin_block", "passed": true, "detail": "No recent withdrawal matches this person", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
+- 출력(실행): `{"ok": true, "id": "cus_8812", "undo": null}` — 새 회원은 프로그램의 entry tier에 들어갑니다(`tier.entry_tier`).
+- 정책: `identity_verification.required_for.signup`, `consent.mandatory`, `withdrawal.rejoin`, `withdrawal.identifier_reuse`, `tier.entry_tier`
+- 에러: `identity_not_verified` → `verify_identity` · `mandatory_consent_missing` → `set_consent` · `duplicate_member` → `check_availability` · `id_reuse_blocked` → `check_availability` · `rejoin_blocked` → (보관 기간 뒤 다시 가입, 메시지에 가능 날짜)
 - 멱등성: `Idempotency-Key = hash(email + telephone)`
 
 ### `update_member` — Kind: W
 - 논리주소/REST: `customer.person.update` · `PATCH /v1/customer/people/{customer_id}`
-- 요약: 회원 정보 수정. 연락처(`telephone`, `email`)를 바꾸면 본인 확인을 다시 합니다.
+- 요약: 회원 정보 수정. 연락처(`telephone`, `email`)를 바꾸면 새 연락처로 본인 확인을 다시 합니다. 비밀번호는 바꾸지 않습니다(사람 전용 `PUT /me/password`).
 - consumes → produces: `customer_id` → `customer_id`
 - 입력: `customer_id`(✓), `name`, `telephone`, `email`, `verification_token`(연락처 변경 시 ✓), `preview`(✓)
 - 출력(프리뷰): `{"preview_id": "pv_m02b", "changes": [{"op": "update", "entity": "person", "id": "cus_alex", "from": "a***@example.com", "to": "a***@example.org"}], "checks": [{"rule": "identity_verification", "passed": true, "detail": "Verified for contact change", "fix_tool": "verify_identity"}], "needs_approval": false, "approval_reason": null}`
 - 출력(실행): `{"ok": true, "id": "cus_alex", "undo": {"tool": "undo_change_set", "until": "2026-11-07T23:59:00"}}`
-- 정책: `identity_verification.required_for(contact_change)`
+- 정책: `identity_verification.required_for.contact_change`
 - 에러: `reverify_required` → `verify_identity` · `customer_not_found` → `search_members`
 - 멱등성: `Idempotency-Key`
 
@@ -122,22 +121,30 @@
 
 ### `verify_identity` — Kind: W
 - 논리주소/REST: `customer.person.verify_identity` · `POST /v1/customer/people/verify-identity`
-- 요약: 가입·연락처 변경·탈퇴·비밀번호 재설정 전에 하는 본인 확인(휴대폰 일회용 코드). 성공하면 짧게 유효한 1회용 토큰을 줍니다. 승인 대상이 아니라 신원 확인 절차입니다.
+- 요약: 가입·연락처 변경·사업자 확인 전에 하는 본인 확인. 방법은 정책에서 켠 **교체 가능한 방법** 중 하나입니다 — 일회용 코드(이메일·SMS), 매직 링크, 외부 신원 확인 제공자, 사업자 등록 조회. 특정 국가의 신원 체계에 묶이지 않고, 지역별 제공자는 `identity_verification.methods`에 플러그인으로 추가합니다. 성공하면 짧게 유효한 1회용 `verification_token`을 줍니다. 승인 대상이 아니라 신원 확인 절차입니다. 비밀번호 재설정·로그인 id 찾기·탈퇴 재인증도 같은 확인 엔진을 쓰지만 사람 전용 엔드포인트 안에서만 돕니다.
 - consumes → produces: → `verification_token`
-- 입력: `name`(✓), `telephone`(✓), `method`(✓, `sms_code`), `code`(두 번째 호출에서 ✓), `preview`(✓)
-- 출력(프리뷰): `{"preview_id": "pv_v01a", "changes": [{"op": "create", "entity": "identity_verification", "id": "ivf_201", "from": null, "to": "code_sent"}], "checks": [{"rule": "verification_rate_limit", "passed": true, "detail": "1 code per minute", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
-- 출력(실행): `{"ok": true, "id": "ivf_201", "undo": null}` — 코드 확인 후 `get`으로 `{verification_token, expires_in: 300}`
-- 정책: `identity_verification`
-- 에러: `code_mismatch` → `verify_identity` · `verification_expired` → `verify_identity`
-- 멱등성: 코드 발송은 `(telephone, 1분)` 제한, 토큰은 1회용.
+- 입력:
+  | 필드 | 타입 | 필수 | 설명·예 |
+  |------|------|:--:|--------|
+  | purpose | Text(enum) | ✓ | `signup` \| `contact_change` \| `business_verification` |
+  | method | Text | ✓ | 정책의 방법 id. 예 `email_code`, `sms_code`, `business_registry` |
+  | destination | Text | 코드·링크 방법 | 이메일 또는 전화번호. 예 `"alex@example.com"` |
+  | subject | Object | registry_lookup | 예 `{tax_id, legal_name}` |
+  | code | Text | 두 번째 호출 | 받은 일회용 코드 `"482913"` |
+  | preview | Boolean | ✓ | `true` 먼저 |
+- 출력(프리뷰): `{"preview_id": "pv_v01a", "changes": [{"op": "create", "entity": "identity_verification", "id": "ivf_201", "from": null, "to": "code_sent"}], "checks": [{"rule": "verification_method_allowed", "passed": true, "detail": "email_code is allowed for signup", "fix_tool": "get_policy"}, {"rule": "verification_rate_limit", "passed": true, "detail": "1 code per minute, 5 per hour", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
+- 출력(실행): `{"ok": true, "id": "ivf_201", "undo": null}` — 코드 확인 후 `{verification_token, expires_in: 300}`. 외부 제공자 방법이면 `{"ok": true, "id": "ivf_202", "redirect_url": "…"}`를 돌려주고, 제공자 콜백은 integration 도메인이 받아 같은 `ivf` id를 완료합니다.
+- 정책: `identity_verification.methods`, `identity_verification.required_for`, `identity_verification.code`, `identity_verification.resend_cooldown_seconds`
+- 에러: `method_not_enabled` → `get_policy` · `code_mismatch` → `verify_identity` · `verification_expired` → `verify_identity` · `too_many_attempts` → (새 확인 시작) · `rate_limited` → (메시지의 대기 시간 뒤)
+- 멱등성: 코드 발송은 `(destination, resend_cooldown_seconds)` 제한, 토큰은 1회용.
 
 ### `check_availability` — Kind: R
 - 논리주소/REST: `customer.person.check_availability` · `GET /v1/customer/people/availability?field=email&value=…`
 - 요약: 가입 전 이메일·로그인 id 사용 가능 여부. 비회원도 호출 가능.
 - consumes → produces: → availability
 - 입력: `field`(✓, `email` \| `login_id`), `value`(✓)
-- 출력: `{"items": [{"field": "email", "value": "alex@example.com", "available": false, "reason": "taken"}], "total": 1}` — `reason`: `taken` \| `reserved` \| `invalid_format`
-- 정책: `member.id_reuse_after_withdrawal_days`
+- 출력: `{"items": [{"field": "email", "value": "alex@example.com", "available": false, "reason": "taken"}], "total": 1}` — `reason`: `taken` \| `reserved`(탈퇴 후 보관 기간 포함) \| `invalid_format`. 탈퇴한 계정의 것인지는 드러내지 않습니다.
+- 정책: `withdrawal.identifier_reuse`
 - 에러: `invalid_format` → `check_availability`
 - 멱등성: 읽기.
 
@@ -152,33 +159,253 @@
 - 에러: `registry_mismatch` → `verify_business` · `already_verified` → `get_member` · `not_business_member` → `get_member`
 - 멱등성: `Idempotency-Key = hash(customer_id + tax_id)`
 
+### `check_withdrawal_eligibility` — Kind: R
+- 논리주소/REST: `customer.person.check_withdrawal_eligibility` · `GET /v1/customer/people/me/withdrawal-eligibility` (운영자: `GET /v1/customer/people/{customer_id}/withdrawal-eligibility`)
+- 요약: 탈퇴하기 전에 **막는 것, 없어지는 것, 남는 것**을 한 번에 돌려줍니다. 쇼퍼 에이전트는 "탈퇴하면 어떻게 되나요?"에 이 결과로 답하고, 탈퇴 화면도 같은 결과를 보여 준 뒤 회원이 사람 전용 `POST /me/withdrawal`을 누릅니다. 운영 에이전트는 상담 응대를 위해 `customer_id`로 읽을 수 있지만(기본 가림) **탈퇴를 실행할 수는 없습니다**. 막힌 이유마다 해결할 다음 툴을 붙입니다.
+- consumes → produces: (`customer_id`) → eligibility
+- 입력:
+  | 필드 | 타입 | 필수 | 설명·예 |
+  |------|------|:--:|--------|
+  | customer_id | Text | | 기본 `me`(쇼퍼 본인). 운영자만 다른 id |
+  | fields | Text[] | | 응답 축소. 예 `["eligible", "blockers"]` |
+- 출력:
+  ```jsonc
+  {"items": [{
+     "customer_id": "cus_jamie", "eligible": false, "checked_at": "2026-11-07T14:30:00",
+     "blockers": [
+       {"type": "open_order", "id": "ord_20431", "detail": "Delivered Nov 3; returns stay open until Nov 17", "clears_at": "2026-11-17T23:59:00", "next_tool": "get_order"},
+       {"type": "open_inquiry", "id": "inq_771", "detail": "Inquiry still in progress", "clears_at": null, "next_tool": "get_inquiry"},
+       {"type": "loyalty_balance", "id": null, "detail": "12.40 USD in points must be used or expire first", "amount": 12.40, "price_currency": "USD", "next_tool": "get_loyalty_balance"}],
+     "on_withdrawal": [
+       {"type": "store_credit", "detail": "25.00 USD is paid back to the original payment method", "amount": 25.00, "price_currency": "USD", "action": "pay_out"},
+       {"type": "coupons", "detail": "3 unused coupons are voided", "count": 3, "action": "void"},
+       {"type": "linked_login", "detail": "Sign-in with an external account is unlinked", "action": "unlink"},
+       {"type": "subscription", "id": "sub_coffee", "detail": "Ends after the current period (Dec 1)", "action": "cancel_at_period_end"},
+       {"type": "tier", "detail": "Gold status ends and does not carry over", "action": "remove"}],
+     "data_handling": {
+       "deleted_now": ["addresses", "preferences", "wishlist", "refund_accounts", "device_tokens", "linked_login_ids"],
+       "masked_now": ["name", "telephone", "email", "birth_date"],
+       "authored_content": "anonymize",
+       "retained": [
+         {"data": "order_and_payment_records", "days": 1825, "why": "tax_and_consumer_protection"},
+         {"data": "claims_and_inquiries", "days": 1095, "why": "dispute_handling"},
+         {"data": "consent_history", "days": 1825, "why": "proof_of_consent"},
+         {"data": "rejoin_check_fingerprint", "days": 90, "why": "prevent_signup_benefit_abuse"}]},
+     "rejoin_after_days": 90, "login_id_reusable": "after_hold",
+     "cooling_off_days": 0,
+     "reauthentication_methods": ["password", "email_code"]}],
+   "total": 1}
+  ```
+  - `blockers[].type`: `open_order` \| `open_claim` \| `open_inquiry` \| `pending_refund` \| `pending_remedy` \| `loyalty_balance` \| `store_credit` \| `active_subscription` \| `linked_login`. 어떤 항목이 막는지(`block`)·알리기만 하는지(`warn`)는 정책이 정합니다.
+  - `checked_at`은 탈퇴 요청의 `confirmation.eligibility_checked_at`에 그대로 씁니다.
+- 정책: `withdrawal.blockers`, `withdrawal.balances`, `withdrawal.on_withdraw`, `withdrawal.data_handling`, `withdrawal.rejoin`, `withdrawal.identifier_reuse`, `withdrawal.cooling_off_days`, `privacy.masking_default`
+- 에러: `not_signed_in` → (로그인 필요) · `already_withdrawn` → (없음) · `customer_not_found` → `search_members`
+- 멱등성: 읽기, 부작용 없음.
+
+### `send_password_reset` — Kind: W$
+- 논리주소/REST: `customer.person.send_password_reset` · `POST /v1/customer/people/{customer_id}/password-reset`
+- 요약: 상담 중 회원이 로그인하지 못할 때, 운영 에이전트가 **회원의 확인된 연락처로** 재설정 링크(또는 코드)를 보냅니다. 회원에게 닿는 쓰기이므로 항상 승인. 임시 비밀번호를 만들지 않고, 새 연락처로 보낼 수 없으며, 비밀번호를 보거나 정하지 않습니다. 회원은 받은 링크로 사람 전용 `POST /password-reset/confirm`을 거칩니다. 로그인 잠금은 재설정이 끝나면 풀립니다.
+- consumes → produces: `customer_id` → `recovery_request_id`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명·예 |
+  |------|------|:--:|--------|
+  | customer_id | Text | ✓ | `"cus_alex"` |
+  | method | Text | | `account_recovery`에서 허용한 방법 id. 기본은 `identity_verification.required_for.password_reset`의 첫 항목 |
+  | reason | Text | ✓ | `"Locked out after 5 attempts, asked by phone"` |
+  | preview | Boolean | ✓ | `true` 먼저 |
+- 출력(프리뷰): `{"preview_id": "pv_r01a", "changes": [{"op": "create", "entity": "recovery_request", "id": "rcv_88", "from": null, "to": "link_sent"}], "checks": [{"rule": "recovery_contact_verified", "passed": true, "detail": "Sends to a***@example.com, verified 2026-04-02", "fix_tool": null}, {"rule": "account_recovery_rate_limit", "passed": true, "detail": "1 of 3 requests this hour", "fix_tool": null}], "needs_approval": true, "approval_reason": "Sends a password reset link to a customer"}`
+- 출력(실행): `{"ok": true, "id": "rcv_88", "undo": null}` — 보낸 링크는 되돌릴 수 없고, 새 요청이 오면 이전 링크는 무효.
+- 정책: `account_recovery.operator_initiated`, `account_recovery.rate_limits`, `password.lockout.unlock_by`
+- 에러: `no_verified_contact` → `update_member` · `rate_limited` → (메시지의 대기 시간 뒤) · `member_not_active` → `get_member` · `customer_not_found` → `search_members`
+- 멱등성: `Idempotency-Key = hash(customer_id + "password_reset" + hour)`
+
 ---
 
 ## membership
 
+> **등급은 데이터입니다.** 스토어는 `MemberProgram`을 하나 이상 두고, 각 프로그램의 `has_tiers`에 등급(`MemberProgramTier`)을 원하는 만큼 둡니다. 등급 이름·개수·요건·혜택은 코드나 enum이 아니라 `define_tier_program`으로 저장한 정의입니다. 다른 도메인은 tier id만 참조합니다(`valid_for_member_tier`). 이 절의 `member`·`gold`·`vip`, 금액·회원 수는 모두 데모 스토어의 **예시**입니다.
+
+**정의 형식** (`get_tier`가 돌려주고 `define_tier_program`이 받는 모양, 값은 예시):
+```jsonc
+{"program_id": "prg_rewards", "name": "Northwind Rewards", "version": 4,
+ "evaluation": {"schedule": {"every": "month", "on_day": 1, "at": "03:00"}, "on_event": ["order_delivered"], "settle_days": 14},
+ "movement": {"upgrade": "immediate", "downgrade": "at_schedule", "max_steps_down": 1, "grace_periods": 1},
+ "has_tiers": [
+   {"tier": "member", "name": "Member", "rank": 0, "has_tier_requirement": [], "has_tier_benefit": []},
+   {"tier": "gold", "name": "Gold", "rank": 1,
+    "requirement_combine": "any",
+    "has_tier_requirement": [{"metric": "spend", "threshold": {"value": 300.00, "currency": "USD"},
+                              "window": {"type": "rolling", "length": 6, "unit": "month"},
+                              "counts": {"channels": ["web", "app"], "order_status": "delivered", "net_of_returns": true, "include_loyalty_spent": true}}],
+    "has_tier_benefit": [{"type": "points_multiplier", "value": 1.5},
+                         {"type": "coupon_on_entry", "coupon_id": "cpn_gold_welcome", "quantity": 1}],
+    "membership_points_earned": {"value": 1.5, "unit_text": "points per USD"}},
+   {"tier": "vip", "name": "VIP", "rank": 2,
+    "requirement_combine": "any",
+    "has_tier_requirement": [{"metric": "spend", "threshold": {"value": 800.00, "currency": "USD"}, "retain_threshold": {"value": 600.00, "currency": "USD"}},
+                             {"metric": "invite"}],
+    "has_tier_benefit": [{"type": "member_price"}, {"type": "free_shipping"}, {"type": "points_multiplier", "value": 2.0}],
+    "membership_points_earned": {"value": 2.0, "unit_text": "points per USD"}}]}
+```
+
+| 요소 | 필드 | 설명 |
+|---|---|---|
+| 등급 | `tier`(id), `name`, `rank` | id는 스토어 안에서 유일. `rank`가 클수록 위, 중복 금지. 요건 없는 entry tier(최하위) 1개 필수 |
+| 요건 `has_tier_requirement[]` | `metric` | `spend` \| `order_count` \| `points_earned` \| `manual`(set_member_tier로만) \| `invite`(초대 수락) \| `custom`(`custom_metric`: analytics 지표 id) |
+| | `threshold`, `retain_threshold` | spend는 `{value, currency}`, 나머지는 수. 유지 기준을 진입 기준보다 낮게 두면 경계에서 오르내림이 줄어듦 |
+| | `window` | `{type: rolling \| calendar \| lifetime, length, unit}` |
+| | `counts` | `channels[]`, `order_status`, `net_of_returns`, `include_loyalty_spent` — 실적에 무엇을 셀지 |
+| | `requirement_combine` | 요건 여러 개를 `any` \| `all` |
+| 혜택 `has_tier_benefit[]` | `type` | `member_price`(이 tier가 `valid_for_member_tier` 대상) \| `points_multiplier`(`value`) \| `free_shipping`(`min_subtotal?`) \| `free_returns` \| `coupon_on_entry`(`coupon_id`, `quantity`) \| `recurring_coupon`(`coupon_id`, `every`) \| `custom`(`name`, `description`) |
+| 적립 | `membership_points_earned` | `{value, unit_text}`. `points_multiplier` 혜택과 같은 값 |
+| 프로그램 | `evaluation`, `movement` | 평가 일정(정기·이벤트), 실적 확정 대기, 승급·강등·유예 규칙. 생략하면 [customer.yml](policies/customer.yml) `tier`의 기본값 |
+
+schema.org 대응: `member_price` → `TierBenefitLoyaltyPrice`, `points_multiplier` → `TierBenefitLoyaltyPoints`, `free_shipping` → `TierBenefitLoyaltyShipping`, `free_returns` → `TierBenefitLoyaltyReturns`, 나머지는 `acom:`.
+
 ### `list_tiers` — Kind: R
 - 논리주소/REST: `customer.membership.list_tiers` · `GET /v1/customer/tiers`
-- 요약: 회원 등급과 등급별 회원 수. 운영 에이전트가 "VIP 회원"을 `set_sale_prices`·`create_coupon`의 `valid_for_member_tier`로 넘길 때 씁니다. MVP 툴([plan.md §3.2](../plan.md)). schema.org `MemberProgramTier`.
+- 요약: 스토어가 정의한 등급과 등급별 회원 수. 운영 에이전트가 "VIP 회원"(예시) 같은 말을 tier id로 바꿔 `set_sale_prices`·`create_coupon`의 `valid_for_member_tier`로 넘길 때 씁니다. 몇 개의 등급이 있든 같은 모양으로 돌려줍니다. MVP 툴([plan.md §3.2](../plan.md)). schema.org `MemberProgramTier`.
 - consumes → produces: → `tier`
-- 입력: 없음
-- 출력:
+- 입력: 없음(MVP). 선택 `program_id`, `fields?[]`
+- 출력(예시 — 데모 스토어 값):
   ```jsonc
-  {"items": [{"tier": "vip", "name": "VIP", "member_count": 1284},
-             {"tier": "gold", "name": "Gold", "member_count": 4210},
-             {"tier": "member", "name": "Member", "member_count": 18930}],
+  {"items": [{"tier": "vip", "name": "VIP", "rank": 2, "program_id": "prg_rewards", "member_count": 1284},
+             {"tier": "gold", "name": "Gold", "rank": 1, "program_id": "prg_rewards", "member_count": 4210},
+             {"tier": "member", "name": "Member", "rank": 0, "program_id": "prg_rewards", "member_count": 18930}],
    "total": 3}
   ```
+  - 순서는 `rank` 내림차순. 프로그램이 없으면 빈 목록.
 - 정책: `tier`
 - 에러: 없음(읽기, 빈 목록 가능).
 - 멱등성: 읽기.
 
+### `get_tier` — Kind: R
+- 논리주소/REST: `customer.membership.get_tier` · `GET /v1/customer/tiers/{tier}`
+- 요약: 등급 하나의 전체 정의(요건·혜택·적립)와 속한 프로그램의 평가·이동 규칙, 회원 수, 이 등급을 가리키는 진행 중 프로모션·쿠폰 수. `define_tier_program`으로 바꾸기 전에 지금 값을 읽을 때 씁니다.
+- consumes → produces: `tier` → tier definition
+- 입력: `tier`(✓, 예 `"vip"`), `fields?[]`
+- 출력(예시): `{"items": [{"tier": "vip", "name": "VIP", "rank": 2, "program": {"program_id": "prg_rewards", "version": 4, "evaluation": {"schedule": {"every": "month", "on_day": 1}}, "movement": {"downgrade": "at_schedule", "grace_periods": 1}}, "has_tier_requirement": [{"metric": "spend", "threshold": {"value": 800.00, "currency": "USD"}, "window": {"type": "rolling", "length": 6, "unit": "month"}}], "has_tier_benefit": [{"type": "member_price"}, {"type": "free_shipping"}], "membership_points_earned": {"value": 2.0, "unit_text": "points per USD"}, "member_count": 1284, "referenced_by": {"active_promotions": 2, "active_coupons": 1}}], "total": 1}`
+- 정책: `tier`
+- 에러: `tier_not_found` → `list_tiers`
+- 멱등성: 읽기.
+
 ### `get_member_tier` — Kind: R
-- 논리주소/REST: `customer.membership.get_tier` · `GET /v1/customer/people/{customer_id}/tier`
-- 요약: 회원 한 명의 현재 등급과 다음 산정일. 등급은 구매 이력으로 매달 산정한 값(읽기).
+- 논리주소/REST: `customer.membership.get_member_tier` · `GET /v1/customer/people/{customer_id}/tier`
+- 요약: 회원 한 명의 현재 등급, **왜 그 등급인지**, 다음 등급까지 얼마나 남았는지, 유지가 위태로운지, 다음 평가일. 쇼퍼는 `customer_id: "me"`로 자기 것을 봅니다(예시: "VIP까지 387.50 USD 남았어요").
 - consumes → produces: `customer_id` → `tier`
-- 입력: `customer_id`(✓)
-- 출력: `{"items": [{"customer_id": "cus_jamie", "tier": "vip", "since": "2026-03-01", "next_review": "2026-12-01", "has_tier_benefit": ["Free shipping", "Early access"]}], "total": 1}`
-- 정책: `tier.recalc`, `tier.basis_months`
+- 입력: `customer_id`(✓, 쇼퍼는 `me`), `program_id?`
+- 출력(예시):
+  ```jsonc
+  {"items": [{
+     "customer_id": "cus_jamie", "program_id": "prg_rewards", "tier": "gold", "rank": 1, "since": "2026-06-01",
+     "source": "evaluation",                  // evaluation | event | manual_override | entry
+     "override": null,                        // 수동 지정이면 {reason, expires_at, after_expiry, by}
+     "why": {"rule": "spend >= 300.00 USD over the last 6 months", "value": {"value": 412.50, "currency": "USD"}, "evaluation_id": "tev_2606"},
+     "progress": [{"to_tier": "vip", "metric": "spend",
+                   "current": {"value": 412.50, "currency": "USD"}, "threshold": {"value": 800.00, "currency": "USD"},
+                   "remaining": {"value": 387.50, "currency": "USD"},
+                   "pending": {"value": 120.00, "currency": "USD", "detail": "Counts after the return window closes on Nov 17"}}],
+     "retention": {"status": "on_track", "retain_threshold": {"value": 300.00, "currency": "USD"}},   // on_track | at_risk | in_grace
+     "next_evaluation": "2026-12-01T03:00:00",
+     "has_tier_benefit": [{"type": "points_multiplier", "value": 1.5}, {"type": "coupon_on_entry", "coupon_id": "cpn_gold_welcome"}]}],
+   "total": 1}
+  ```
+- 정책: `tier.requirement`, `tier.evaluation`, `tier.movement`
+- 에러: `customer_not_found` → `search_members` · `no_tier` → (게스트·탈퇴 회원은 등급 없음)
+- 멱등성: 읽기.
+
+### `define_tier_program` — Kind: W$
+- 논리주소/REST: `customer.membership.define_tier_program` · `PUT /v1/customer/tier-programs/{program_id}` (없으면 만들고 있으면 새 버전)
+- 요약: 등급 프로그램과 등급을 만들거나 바꿉니다(등급 추가·삭제·이름·순서·요건·혜택·평가 일정·이동 규칙). 회원의 등급과 혜택이 바뀌므로 항상 승인. 프리뷰는 **지금 데이터로 평가했을 때 회원이 어느 등급에서 어느 등급으로 몇 명 움직이는지**를 `changes`에 보여 줍니다. 정의는 버전으로 남고 되돌릴 수 있습니다.
+- consumes → produces: (`program_id`, `coupon_id`) → `program_id`, `tier[]`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명·예 |
+  |------|------|:--:|--------|
+  | program_id | Text | ✓ | `"prg_rewards"` |
+  | name | Text | ✓ | `"Northwind Rewards"`(예시) |
+  | has_tiers | Object[] | ✓ | 위 정의 형식의 등급 전체 목록. 빠진 등급은 삭제로 봄 |
+  | evaluation | Object | | 생략 시 `tier.evaluation` 기본값 |
+  | movement | Object | | 생략 시 `tier.movement` 기본값 |
+  | tier_migrations | Object[] | 등급 삭제 시 ✓ | `[{from_tier: "silver", to_tier: "gold"}]` — 삭제할 등급의 회원이 갈 곳 |
+  | takes_effect | Text(enum) | | `next_evaluation`(기본) \| `immediately`(승인과 함께 평가 실행) |
+  | preview | Boolean | ✓ | `true` 먼저 |
+- 출력(프리뷰, 예시 — VIP 기준을 800 → 1000 USD로 올리고 Platinum 추가):
+  ```jsonc
+  {"preview_id": "pv_t01a",
+   "changes": [{"op": "update", "entity": "tier_requirement", "id": "vip", "from": 800.00, "to": 1000.00},
+               {"op": "create", "entity": "member_program_tier", "id": "platinum", "from": null, "to": "rank 3"},
+               {"op": "update", "entity": "membership", "id": "vip→gold", "from": "vip", "to": "gold", "count": 212},
+               {"op": "update", "entity": "membership", "id": "vip→platinum", "from": "vip", "to": "platinum", "count": 96}],
+   "checks": [{"rule": "tier_entry_present", "passed": true, "detail": "member is the entry tier", "fix_tool": null},
+              {"rule": "tier_rank_unique", "passed": true, "detail": "Ranks 0–3, no duplicates", "fix_tool": null},
+              {"rule": "tier_requirement_order", "passed": true, "detail": "Higher ranks need more spend", "fix_tool": "define_tier_program"},
+              {"rule": "tier_referenced", "passed": true, "detail": "No removed tier is used by promotions or coupons", "fix_tool": "search_promotions"},
+              {"rule": "tier_benefit_coupon", "passed": true, "detail": "cpn_platinum_welcome is active", "fix_tool": "create_coupon"},
+              {"rule": "tier_member_impact", "passed": true, "detail": "212 move down to gold and 96 up to platinum at the next evaluation (Dec 1); 14 manual overrides stay", "fix_tool": "preview_tier_evaluation"}],
+   "needs_approval": true,
+   "approval_reason": "Changes the VIP requirement and adds a tier; 308 members would change tier"}
+  ```
+- 출력(실행): `{"ok": true, "id": "prg_rewards", "undo": {"tool": "undo_change_set", "until": "2026-11-30T23:59:00"}}` — 되돌리면 이전 버전 정의로 돌아갑니다. 이미 실행된 평가는 `run_tier_evaluation`의 되돌리기로.
+- 정책: `tier.program_change`, `tier.programs_max`, `tier.tiers_max`, `tier.entry_tier`, `tier.rank`, [approval.yml](policies/approval.yml)
+- 에러: `tier_rank_conflict` → `define_tier_program` · `entry_tier_missing` → `define_tier_program` · `tier_in_use` → `search_promotions` · `migration_required` → `define_tier_program`(`tier_migrations`와 함께) · `coupon_not_found` → `create_coupon` · `tier_limit_exceeded` → `list_tiers`
+- 멱등성: `Idempotency-Key = hash(program_id + 정의)` — 같은 정의면 새 버전 없음.
+
+### `preview_tier_evaluation` — Kind: R
+- 논리주소/REST: `customer.membership.preview_tier_evaluation` · `GET /v1/customer/tier-programs/{program_id}/evaluation-preview`
+- 요약: 지금(또는 `as_of` 시점) 평가하면 누가 오르고 내리고 유예에 들어가는지. 아무것도 바꾸지 않습니다. `group_by: "move"`면 이동 경로별 인원만.
+- consumes → produces: `program_id` → `customer_id[]`
+- 입력: `program_id`(✓), `as_of`(DateTime, 기본 지금), `scope`(`all` \| `segment_id` \| `customer_ids[]`, 기본 `all`), `direction`(`up` \| `down` \| `grace` \| `any`), `group_by`(`member`(기본) \| `move`), `fields?[]`, `limit`(기본 20), `offset`
+- 출력(예시): `{"items": [{"customer_id": "cus_alex", "name": "A*** K***", "from": "gold", "to": "vip", "direction": "up", "reason": "spend 812.40 >= 800.00 USD over 6 months", "benefits_on_entry": [{"type": "coupon_on_entry", "coupon_id": "cpn_vip_welcome"}]}, {"customer_id": "cus_7710", "name": "R*** T***", "from": "vip", "to": "vip", "direction": "grace", "reason": "spend 540.00 below 600.00 retain threshold; 1 grace period left"}], "total": 518}` — `group_by: "move"`면 `{"items": [{"from": "gold", "to": "vip", "direction": "up", "members": 310}], "total": 4}`
+- 정책: `tier.evaluation.settle_days`, `tier.movement`, `tier.override.evaluation_respects_override`, `privacy.masking_default`
+- 에러: `program_not_found` → `list_tiers` · `as_of_in_future` → `preview_tier_evaluation`
+- 멱등성: 읽기.
+
+### `run_tier_evaluation` — Kind: W$
+- 논리주소/REST: `customer.membership.run_tier_evaluation` · `POST /v1/customer/tier-programs/{program_id}/evaluations`
+- 요약: 평가를 실제로 적용합니다 — 등급을 옮기고, 진입 혜택(쿠폰 등)을 발급하고, messaging으로 회원에게 알립니다. 정기·이벤트 평가는 승인된 프로그램 정의를 승인으로 삼아 스케줄러가 돌리고(`tier.evaluation.scheduled_runs`), 이 툴은 일정 밖에서 돌리는 임시 실행이라 항상 승인입니다.
+- consumes → produces: `program_id` → `evaluation_id`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명·예 |
+  |------|------|:--:|--------|
+  | program_id | Text | ✓ | `"prg_rewards"` |
+  | as_of | DateTime | | 기본 지금. 미래 불가 |
+  | scope | Object | | `{all: true}`(기본) \| `{segment_id}` \| `{customer_ids: [...]}` |
+  | notify | Boolean | | 기본 `tier.notify.on`대로 |
+  | preview | Boolean | ✓ | `true` 먼저 |
+- 출력(프리뷰, 예시): `{"preview_id": "pv_t02b", "changes": [{"op": "update", "entity": "membership", "id": "gold→vip", "from": "gold", "to": "vip", "count": 310}, {"op": "update", "entity": "membership", "id": "vip→gold", "from": "vip", "to": "gold", "count": 212}, {"op": "create", "entity": "coupon_issue", "id": "cpn_vip_welcome", "from": null, "to": "issued", "count": 310}, {"op": "create", "entity": "message", "id": "tpl_tier_change", "from": null, "to": "queued", "count": 522}], "checks": [{"rule": "tier_settle_window", "passed": true, "detail": "Orders delivered after Nov 16 count next cycle", "fix_tool": null}, {"rule": "tier_override_respected", "passed": true, "detail": "14 manual overrides left as they are", "fix_tool": null}, {"rule": "tier_evaluation_exclusive", "passed": true, "detail": "No other evaluation is running", "fix_tool": null}, {"rule": "customer_messages", "passed": true, "detail": "Tier notices are transactional; promotional wording would need marketing consent", "fix_tool": "create_message_template"}], "needs_approval": true, "approval_reason": "Moves 310 members up and 212 down, issues 310 coupons, sends 522 messages"}`
+- 출력(실행): `{"ok": true, "id": "tev_2612", "undo": {"tool": "undo_change_set", "until": "2026-12-08T23:59:00"}}` — 되돌리면 등급을 되돌리고 이 실행이 발급한 미사용 쿠폰을 회수합니다. 보낸 메시지는 되돌릴 수 없습니다.
+- 정책: `tier.evaluation`, `tier.movement`, `tier.override`, `tier.notify`, `tier.history`, [approval.yml](policies/approval.yml), `consent.marketing_gate`
+- 에러: `evaluation_in_progress` → `list_tier_history` · `program_not_found` → `list_tiers` · `as_of_in_future` → `run_tier_evaluation` · `coupon_unavailable` → `create_coupon`
+- 멱등성: `Idempotency-Key = hash(program_id + as_of + scope)` — 같은 시점 재실행은 첫 결과 반환.
+
+### `set_member_tier` — Kind: W$
+- 논리주소/REST: `customer.membership.set_member_tier` · `POST /v1/customer/people/{customer_id}/tier`
+- 요약: 회원 한 명의 등급을 손으로 지정합니다(보상·초대·오류 정정). 사유와 만료가 반드시 있고, 만료 전에는 평가가 바꾸지 않습니다. `metric: manual`인 등급은 이 툴로만 들어갑니다. `clear_override: true`면 수동 지정을 지우고 다음 평가(또는 즉시 재평가)로 돌아갑니다.
+- consumes → produces: `customer_id`, `tier` → `customer_id`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명·예 |
+  |------|------|:--:|--------|
+  | customer_id | Text | ✓ | `"cus_alex"` |
+  | tier | Text | ✓(해제 시 제외) | `"vip"`(예시) |
+  | reason | Text | ✓ | `"Compensation for lost parcel, inq_771"` |
+  | expires_at | DateTime | | 기본 지금 + `tier.override.max_days`, 그보다 길 수 없음 |
+  | after_expiry | Text(enum) | | `re_evaluate`(기본) \| `revert_to_previous` |
+  | issue_entry_benefits | Boolean | | 기본 `false` |
+  | clear_override | Boolean | | `true`면 수동 지정 해제 |
+  | preview | Boolean | ✓ | `true` 먼저 |
+- 출력(프리뷰): `{"preview_id": "pv_t03c", "changes": [{"op": "update", "entity": "membership", "id": "cus_alex", "from": "gold", "to": "vip"}], "checks": [{"rule": "tier_override_reason", "passed": true, "detail": "Reason recorded", "fix_tool": null}, {"rule": "tier_override_expiry", "passed": true, "detail": "Expires 2027-03-31, within the 365-day limit; then re-evaluated", "fix_tool": "set_member_tier"}], "needs_approval": true, "approval_reason": "Sets a member's tier by hand until 2027-03-31"}`
+- 출력(실행): `{"ok": true, "id": "cus_alex", "undo": {"tool": "undo_change_set", "until": "2026-11-14T23:59:00"}}`
+- 정책: `tier.override`, `tier.notify`, `tier.history`, [approval.yml](policies/approval.yml)
+- 에러: `tier_not_found` → `list_tiers` · `reason_required` → `set_member_tier` · `override_too_long` → `set_member_tier` · `member_not_active` → `get_member` · `customer_not_found` → `search_members`
+- 멱등성: `Idempotency-Key = hash(customer_id + tier + expires_at)`
+
+### `list_tier_history` — Kind: R
+- 논리주소/REST: `customer.membership.list_tier_history` · `GET /v1/customer/people/{customer_id}/tier-history`
+- 요약: 한 회원의 등급 변경 이력(append만). 각 변경의 원인, 그때의 실적, 누가·왜 바꿨는지. 상담에서 "왜 등급이 내려갔나요?"에 답할 때 씁니다.
+- consumes → produces: `customer_id` → history
+- 입력: `customer_id`(✓, 쇼퍼는 `me`), `program_id?`, `from`, `through`, `limit`(기본 20), `offset`
+- 출력(예시): `{"items": [{"at": "2026-06-01T03:00:00", "from": "member", "to": "gold", "cause": "evaluation", "evaluation_id": "tev_2606", "snapshot": {"metric": "spend", "value": {"value": 412.50, "currency": "USD"}}, "actor": "scheduler", "reason": null}, {"at": "2026-03-10T11:02:00", "from": "gold", "to": "vip", "cause": "manual_override", "actor": "adm_dana", "reason": "Compensation for lost parcel", "expires_at": "2026-05-31T23:59:00"}], "total": 4}` — `cause`: `entry` \| `evaluation` \| `event` \| `manual_override` \| `override_expired` \| `grace_started` \| `grace_ended` \| `program_change` \| `withdrawal`
+- 정책: `tier.history`
 - 에러: `customer_not_found` → `search_members`
 - 멱등성: 읽기.
 
@@ -521,12 +748,86 @@
 
 ## 사람 전용 엔드포인트
 
-회원 본인이 UI 버튼으로만 부르는 HTTP 엔드포인트입니다. **툴이 아니며 모델은 보지 못합니다**([plan.md §3.6](../plan.md), [README.md §2](README.md)).
+회원 본인(또는 로그인하지 못한 사람)이 UI 화면·버튼으로만 부르는 HTTP 엔드포인트입니다. **툴이 아니며 모델은 보지 못합니다**([plan.md §3.6](../plan.md), [README.md §2](README.md)). 에이전트는 비밀번호를 받거나 보거나 정하지 않습니다.
 
 | 엔드포인트 | 누가 | 무엇 |
 |---|---|---|
 | `POST /memories/{id}/undo` | 쇼퍼 | 기억한 선호 삭제. `memory_note` 블록의 Undo 버튼. 응답 `{"ok": true, "id": "mem_12"}` |
-| `POST /me/withdraw` `{verification_token, reason?}` | 회원 본인 | 탈퇴. 운영자·에이전트는 할 수 없음. 적립금 잔액·진행 중인 주문/클레임/상담이 있으면 거부(`loyalty_balance_positive`, `open_orders`, `open_claims`, `open_inquiries`). 통과하면 개인정보를 즉시 가리고 90일 보관 후 파기, 주문·클레임 기록은 법적 보존 기간 동안 유지 |
-| `POST /password-reset` `{verification_token, email, password}` | 회원 본인 | 비밀번호 재설정. `verify_identity` 토큰 필수, 모든 세션 토큰 폐기. 에러 `identity_not_verified`, `password_policy` |
+| `POST /me/withdrawal` | 회원 본인 | 탈퇴. 아래 상세 |
+| `POST /password-reset/requests` | 누구나(비로그인) | 비밀번호 재설정 요청. 계정 유무와 관계없이 같은 응답 |
+| `POST /password-reset/confirm` | 링크·코드를 받은 사람 | 새 비밀번호 설정, 세션 폐기 |
+| `POST /account-recovery/login-id` | 누구나(비로그인) | 로그인 id 찾기 |
+| `PUT /me/password` | 회원 본인 | 로그인한 상태에서 비밀번호 변경 |
 
-- 공통: `Idempotency-Key` 필수, 에러는 공통 형식. 정책 `withdrawal`, `identity_verification`, `member.password` ([customer.yml](policies/customer.yml)).
+- 공통: `Idempotency-Key` 필수(재설정 요청은 선택), 에러는 공통 형식(`next_tool` 대신 화면이 다음 단계를 안내하므로 `next_tool: null`). 정책 `withdrawal`, `identity_verification`, `account_recovery`, `password` ([customer.yml](policies/customer.yml)).
+- 비밀번호는 이 엔드포인트들의 본문으로만 오가고, 툴 입력·출력·액션 로그·변경셋 어디에도 남지 않습니다. 비밀번호 규칙은 화면이 `get_policy`(`customer.password`)로 읽어 미리 보여 줍니다.
+
+### `POST /me/withdrawal` — 사람 전용
+- 누가: 로그인한 회원 본인. 운영자·에이전트 토큰은 `forbidden_initiator`로 거부합니다(`withdrawal.initiator: self_only`).
+- 흐름: 탈퇴 화면이 `check_withdrawal_eligibility` 결과(막는 것·없어지는 것·남는 것)를 보여 줌 → 회원이 이유를 고르고 데이터 처리 요약에 동의 → 재인증 → 버튼.
+- 본문:
+  | 필드 | 타입 | 필수 | 설명·예 |
+  |------|------|:--:|--------|
+  | reasons | Text[] | ✓ | `withdrawal.reasons`의 값. 예 `["not_using", "too_many_messages"]` |
+  | reason_text | Text | | 자유 입력(선택, 500자) |
+  | confirmation | Object | ✓ | `{acknowledged_data_handling: true, eligibility_checked_at: "2026-11-07T14:30:00"}` — 확인한 자격 결과의 `checked_at`. `withdrawal.confirmation_max_age_minutes`보다 오래되면 거부 |
+  | reauthentication | Object | ✓ | `{method: "password", credential: "…"}`(현재 비밀번호, 화면에서만) 또는 `{method: "email_code", verification_token: "…"}`. 허용 방법은 `identity_verification.required_for.withdrawal_reauth` |
+- 응답 `200`:
+  ```jsonc
+  {"ok": true, "id": "cus_jamie",
+   "status": "withdrawn",                      // withdrawn | pending_cooling_off
+   "effective_at": "2026-11-07T14:36:00",
+   "cancel_until": null,                       // cooling_off_days > 0이면 그때까지 로그인하면 취소
+   "settled": [{"type": "store_credit", "amount": 25.00, "price_currency": "USD", "action": "pay_out"},
+               {"type": "coupons", "count": 3, "action": "void"}],
+   "data_retention": [{"data": "order_and_payment_records", "until": "2031-11-06", "why": "tax_and_consumer_protection"},
+                      {"data": "claims_and_inquiries", "until": "2029-11-06", "why": "dispute_handling"},
+                      {"data": "consent_history", "until": "2031-11-06", "why": "proof_of_consent"},
+                      {"data": "rejoin_check_fingerprint", "until": "2027-02-05", "why": "prevent_signup_benefit_abuse"}],
+   "rejoin_after": "2027-02-05", "login_id_reusable_after": "2027-02-05"}
+  ```
+- 에러: `withdrawal_blocked`(`detail`에 막는 항목 목록, 화면은 `check_withdrawal_eligibility` 결과로 안내) · `reauthentication_failed` · `reauthentication_locked`(`password.lockout`) · `confirmation_required` · `eligibility_changed`(확인 뒤 새 주문·상담이 생김, 다시 확인) · `already_withdrawn` · `forbidden_initiator`
+- 탈퇴 후(모두 정책 데이터, [customer.yml](policies/customer.yml) `withdrawal`):
+  - **상태**: 회원 상태 `withdrawn`, 세션·연결 로그인·기기 토큰 폐기, 마케팅 동의 철회, 등급 제거(`list_tier_history`에 `withdrawal`), 미사용 쿠폰 무효, 임직원 할인 한도 소멸, 구독은 정책대로 기간 끝에 해지. 완료 안내는 거래성 메시지로 한 번.
+  - **개인정보 가림**: `data_handling.mask_now`의 필드는 즉시 가리고, `delete_now`의 데이터는 즉시 삭제. 리뷰·글·댓글은 `authored_content`(기본 익명화).
+  - **보존**: 주문·결제·클레임·동의 기록은 `data_handling.retain`의 기간과 이유로 운영 데이터와 분리해 암호화 보관하고, 열람은 사유를 남깁니다. 재가입 확인용으로는 연락처·본인 확인 결과의 단방향 해시만 둡니다. 기간이 끝나면 `purge` 작업이 파기합니다. 기간은 스토어 관할 법령에 맞게 바꿉니다.
+  - **재가입·id 재사용**: 같은 사람은 `rejoin.block_days` 동안 재가입할 수 없고, 재가입해도 가입 혜택·등급·적립금·쿠폰은 이어지지 않습니다. 로그인 id·이메일은 `identifier_reuse`(기본: 보관 기간 뒤 재사용 가능).
+  - 막힌 시도는 사유와 함께 액션 로그에 남습니다(`on_withdraw.log_blocked_attempts`).
+- 멱등성: `Idempotency-Key` — 재시도는 첫 결과 반환.
+
+### `POST /password-reset/requests` — 사람 전용
+- 누가: 로그인하지 못한 누구나. **계정이 있든 없든 같은 응답**을 비슷한 시간에 돌려줘 계정 존재를 드러내지 않습니다(`account_recovery.uniform_response`).
+- 본문: `identifier`(✓, 이메일·로그인 id·전화번호 중 `account_recovery.identifiers`), `method?`(`identity_verification.required_for.password_reset` 중 하나, 기본 첫 항목 — 예 `email_link`, `sms_code`, 외부 제공자), `client_challenge?`(봇 확인 토큰)
+- 응답 `202` (항상):
+  ```jsonc
+  {"status": "accepted", "request_id": "rcv_9f31",
+   "message": "If an account matches, we sent instructions to its verified contact.",
+   "retry_after_seconds": 60}
+  ```
+  - 계정이 있으면 확인된 연락처로만 링크(토큰) 또는 코드를 보냅니다. 비밀번호 없이 연결 로그인만 쓰는 계정이면 그 사실과 비밀번호 설정 링크를 보냅니다. 사업자 회원은 지정 담당자 연락처로. 새 요청은 이전 링크·코드를 무효로 합니다.
+  - 계정이 없어도 `request_id`는 만들어 돌려줍니다(형태 동일).
+- 에러: `invalid_identifier_format`(형식만 검사) · `rate_limited`(`account_recovery.rate_limits`, 계정 유무와 무관하게 같은 응답, `retry_after_seconds` 포함)
+- 멱등성: 같은 식별자의 짧은 재시도는 같은 `request_id`.
+
+### `POST /password-reset/confirm` — 사람 전용
+- 누가: 링크 또는 코드를 받은 사람.
+- 본문: `token`(링크 방식) 또는 `{request_id, code}`(코드 방식) 중 하나(✓), `new_password`(✓, `password` 규칙)
+- 응답 `200`: `{"ok": true, "id": "cus_alex", "sessions_revoked": 4, "signed_in": false, "next": "sign_in"}` — `password.on_reset`대로 모든 세션 폐기, 로그인 잠금 해제, 완료 알림을 확인된 연락처로(`account_recovery.notify_on_reset`), 액션 로그에는 "재설정됨"만(비밀번호 없음).
+- 에러: `invalid_or_expired`(없는 토큰·만료·사용됨을 구분하지 않음) · `too_many_attempts`(`account_recovery.confirm_max_attempts`를 넘으면 요청 무효, 새 요청 필요) · `password_policy`(`detail`에 어긴 규칙 `["min_length", "contains_login_id"]`) · `password_reused`(`password.history_block`)
+- 멱등성: 토큰·코드는 1회용. 성공한 토큰의 재시도는 `invalid_or_expired`.
+
+### `POST /account-recovery/login-id` — 사람 전용
+- 누가: 로그인 id를 잊은 누구나.
+- 본문: `contact_type`(✓, `email` \| `telephone`), `contact`(✓), `verification_token?`(그 연락처로 받은 본인 확인 토큰, `identity_verification.required_for.login_id_recovery`)
+- 응답:
+  - 토큰 없음 → `202` 항상 같은 응답 `{"status": "accepted", "message": "If an account uses this contact, we sent its sign-in id there."}`. 등록된 연락처면 그곳으로 id를 보냅니다.
+  - 토큰 있음(연락처 소유가 확인됨) + `account_recovery.login_id_recovery.delivery: show_masked_after_verification` → `200` `{"items": [{"login_id": "ja***e", "joined_at": "2025-12", "login_methods": ["password", "linked_login"]}], "total": 1}` (일부 가림)
+- 에러: `invalid_contact_format` · `verification_expired` · `rate_limited`
+- 멱등성: 읽기와 같음(발송은 `rate_limits`로 제한).
+
+### `PUT /me/password` — 사람 전용
+- 누가: 로그인한 회원 본인.
+- 본문: `current_password`(✓, 비밀번호가 아직 없는 계정은 대신 `verification_token`), `new_password`(✓)
+- 응답 `200`: `{"ok": true, "id": "cus_alex", "sessions_revoked": 2}` — `password.on_change`(기본: 지금 세션 말고 모두 폐기). `password.rotation_reminder_days`가 있으면 그 날짜 계산을 다시 시작합니다(강제 변경은 없음).
+- 에러: `current_password_wrong`(로그인 실패와 같이 `password.lockout`에 셈) · `password_policy` · `password_reused`
+- 멱등성: `Idempotency-Key`.

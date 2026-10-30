@@ -4,7 +4,7 @@ Status: draft (Oct 28). This is the contract the four of us build against: what 
 
 All numbers below match the mockups in [design/](../design). Where the mockups disagree with each other, §7 lists the disagreement and the value this plan uses.
 
-Contents: 1 scope · 2 models · 3 tools · 4 seed data · 5 UI blocks · 6 roles and schedule · 7 mockup fixes
+Contents: 1 scope · 2 models · 3 tools · 4 seed data · 5 UI blocks · 6 roles and schedule · 7 mockup fixes · 8 changes
 
 ## 1. MVP scope
 
@@ -78,17 +78,17 @@ From [design.md §3](design.md). The shapes are fixed here so the back end, harn
 | Tool | Kind | Inputs | Returns | Consumes → produces |
 |---|---|---|---|---|
 | `get_policy` | read | `name?` (e.g. `"max_discount"`) | policy values with a one-line meaning each | → policy |
-| `search_products` | read | `query?`, `category?`, `tags?[]`, `min_stock?`, `max_stock?`, `audience?` (`"everyone"`, `"vip"`), `fields?[]`, `limit=20`, `offset=0` | products with price, cost, stock, and the price for `audience` | → `product_id[]` |
+| `search_products` | read | `query?`, `category?`, `tags?[]`, `min_stock?`, `max_stock?`, `valid_for_member_tier?` (`"everyone"` or a tier id such as `"vip"`), `fields?[]`, `limit=20`, `offset=0` | products with price, cost, stock, and the price for `valid_for_member_tier` | → `product_id[]` |
 | `get_product` | read | `product_id`, `fields?[]` | one product with variants and stock per size | `product_id` → product |
 | `list_tiers` | read | — | tiers with member counts (`vip`: 1,284) | → `tier` |
-| `list_active_promotions` | read | `starts_at`, `ends_at`, `audience?` | promotions overlapping the period | → `promotion_id[]` |
-| `list_display_slots` | read | `page` (`"main"`), `starts_at`, `ends_at` | slots with what is booked and for whom | → `slot_id` |
-| `set_sale_prices` | write | `name`, `audience` (`"vip"`), `starts_at`, `ends_at`, `items[]: {product_id, percent_off}`, `preview` | preview with checks `max_discount`, `price_floor`, `min_stock`, `promotion_overlap` | `product_id[]`, `tier` → `promotion_id` |
-| `create_coupon` | write | `code`, `promotion_id`, `audience`, `auto_apply`, `stacking` (`"no_tier_coupons"`), `preview` | preview with check `coupon_stacking` | `promotion_id`, `tier` → `coupon_id` |
-| `schedule_banner` | write | `slot_id`, `audience`, `starts_at`, `ends_at`, `eyebrow`, `headline`, `cta`, `link`, `preview` | preview with check `slot_free` | `slot_id`, `promotion_id` → `display_id` |
+| `list_active_promotions` | read | `valid_from`, `valid_through`, `valid_for_member_tier?` | promotions overlapping the period | → `promotion_id[]` |
+| `list_display_slots` | read | `page` (`"main"`), `valid_from`, `valid_through` | slots with what is booked and for whom | → `slot_id` |
+| `set_sale_prices` | write | `name`, `valid_for_member_tier` (a tier id, `"vip"` in the demo), `valid_from`, `valid_through`, `items[]: {product_id, percent_off}`, `preview` | preview with checks `max_discount`, `price_floor`, `min_stock`, `promotion_overlap` | `product_id[]`, `tier` → `promotion_id` |
+| `create_coupon` | write | `code`, `promotion_id`, `valid_for_member_tier`, `auto_apply`, `stacking` (`"no_tier_coupons"`), `preview` | preview with check `coupon_stacking` | `promotion_id`, `tier` → `coupon_id` |
+| `schedule_banner` | write | `slot_id`, `valid_for_member_tier`, `valid_from`, `valid_through`, `eyebrow`, `headline`, `cta`, `link`, `preview` | preview with check `slot_free` | `slot_id`, `promotion_id` → `display_id` |
 | `verify_change_set` | read | `change_set_id` | each change read back, `matches: true/false` per change | `change_set_id` → verification |
 
-`set_sale_prices` does not change list prices. It writes a promotion: per-product sale prices for an audience and a period. Sale price = list price × (1 − percent_off / 100), rounded to the cent. The coupon is how that same benefit is recorded on the order at checkout; **it never adds a second discount.** The cart shows one line, "VIP weekend −$17.80".
+`set_sale_prices` does not change list prices. It writes a promotion: per-product sale prices for a member tier and a period. Sale price = list price × (1 − percent_off / 100), rounded to the cent. The coupon is how that same benefit is recorded on the order at checkout; **it never adds a second discount.** The cart shows one line, "VIP weekend −$17.80".
 
 After approval the executor runs exactly four tools: `set_sale_prices`, `create_coupon`, `schedule_banner`, `verify_change_set` ("runs 4 tools after approval").
 
@@ -115,9 +115,9 @@ The shopper agent acts as the signed-in shopper. `my_*` tools are scoped to that
 | `compare_products` | read | `product_ids[]`, `attributes?[]` (`"packed"`, `"weight"`, `"warmth"`, `"light_rain"`, `"price"`) | one row per attribute, one column per product | `product_id[]` → comparison |
 | `get_my_profile` | read | — | preferences, tier, sizes, saved address and card (last 4 only) | → profile |
 | `update_my_preferences` | write, no approval | `add?[]`, `remove?[]` (`{key, value, source: "conversation"}`) | the memory line shown to the shopper and an undo id | → `memory_id` |
-| `add_to_cart` | write, no approval | `product_id`, `size`, `color`, `qty=1` | cart | `product_id` → `cart_id` |
+| `add_to_cart` | write, no approval | `product_id`, `size`, `color`, `order_quantity=1` | cart | `product_id` → `cart_id` |
 | `get_cart` | read | — | lines, subtotal, member benefit, shipping, total | `cart_id` → cart |
-| `prepare_order` | write, preview only | `cart_id`, `ship_to` (`"home"` or an address used once), `gift?` | order ready for the shopper to place | `cart_id` → `order_preview_id` |
+| `prepare_order` | write, preview only | `cart_id`, `delivery_address` (`"home"` or an address used once), `gift?` | order ready for the shopper to place | `cart_id` → `order_preview_id` |
 | `get_my_orders` (P1) | read | `limit` | orders with lines and delivery dates | → `order_id[]` |
 | `get_return_options` (P1) | read | `order_id`, `line_id`, `reason` | options (`"replacement"`, `"refund"`) with timing, cost to the shopper, and who confirms | `order_id` → options |
 | `get_product_measurements` (P2) | read | `product_id`, `sizes[]` | chest, shoulder, sleeve, length | |
@@ -145,6 +145,13 @@ Each edit by talking re-runs the previews and bumps the version (v1 → v2). The
 | `POST /orders` `{order_preview_id}` | shopper | Places the order |
 | `POST /returns` `{order_id, line_id, option}` | shopper | Sends the return request; it becomes a waiting return request in the back office |
 | `POST /memories/{id}/undo` | shopper | Removes a remembered preference |
+| `POST /orders/{order_id}/cancel` | shopper | Cancels the whole order or some lines, from the options `get_cancel_options` returned (P2) |
+| `POST /exchanges` | shopper | Requests an exchange, from the options `get_exchange_options` returned (P2) |
+| `POST /claims/{claim_id}/pay-charge` · `POST /claims/{claim_id}/withdraw` | shopper | Pays an extra claim charge; withdraws a return or exchange (P2) |
+| `POST /me/withdrawal` | member | Deletes the account after re-authentication (P2) |
+| `POST /password-reset/requests` · `POST /password-reset/confirm` · `POST /account-recovery/login-id` · `PUT /me/password` | member | Password reset, login id recovery, password change. No tool ever handles a password (P2) |
+
+The full list with bodies, responses and errors is in [api/README.md §2](api/README.md). A cancel, return or exchange request carries the amount the shopper saw; if the server's recalculation differs, it is refused with `estimate_changed`.
 
 Chat and blocks stream over SSE: `POST /bo/chat`, `POST /fo/chat`, both returning messages, agent steps and UI blocks (§5).
 
@@ -163,7 +170,7 @@ Store **Northwind Apparel**, `northwind.example`, store time US Eastern. Operato
 
 | Key | Value | Seen in |
 |---|---|---|
-| `max_discount.vip` | 30% | inbox policies, change set check |
+| `max_discount.by_tier.vip` | 30% | inbox policies, change set check |
 | `max_discount.everyone` | 20% | inbox policies |
 | `price_floor` | cost + 15% | change set check, product drafts |
 | `promo_min_stock` | 10 units (fewer are left out of sales) | change set check |
@@ -188,6 +195,8 @@ Store **Northwind Apparel**, `northwind.example`, store time US Eastern. Operato
 | Gold | generator | has "Gold tier 10%" coupon |
 | Member | generator | Alex |
 | Guest | — | Mina (no account) |
+
+These three tiers are demo seed data, not part of the design. A store defines any number of tiers, their requirements and their benefits as data (`define_tier_program`; [api/customer.md](api/customer.md), [api/policies/customer.yml](api/policies/customer.yml)). Tool inputs take a tier id (`valid_for_member_tier: "vip"`), never a fixed tier name.
 
 ### 4.3 Summer outerwear (category of 42 products)
 
@@ -410,9 +419,9 @@ Action: `approve_change_set` with label "Approve 9 refunds and send 3 messages".
 {"items": [{"product_id": "prd_windbreaker", "name": "Packable windbreaker", "price": 89.00, "facts": ["190 g", "packs into own pocket", "light rain", "recycled nylon", "4 colors"], "look": "Over a tee for windy days"}]}
 
 // cart
-{"lines": [{"name": "Packable windbreaker", "variant": "Slate · M", "qty": 1, "note": "Same size as your last 2 orders", "price": 89.00}],
+{"lines": [{"name": "Packable windbreaker", "variant": "Slate · M", "order_quantity": 1, "note": "Same size as your last 2 orders", "price": 89.00}],
  "subtotal": 89.00, "benefit": {"label": "VIP weekend", "amount": -17.80}, "shipping": 0.00, "total": 71.20,
- "ship_to": "Home · 12 Harbor St, Apt 3", "arrives": "Tue, Nov 10", "pay_with": "Card ending 4821",
+ "delivery_address": "Home · 12 Harbor St, Apt 3", "arrives": "Tue, Nov 10", "pay_with": "Card ending 4821",
  "notice": "Northwind can prepare your order, but only you can place it."}
 // action: place_order (shopper) → POST /orders
 
@@ -486,3 +495,16 @@ The plan uses the value on the right. The mockups should be updated to match.
 | 7 | Tool names | design.md §4: `set_price`, `schedule_price_change`, `create_promotion`, `issue_coupon`, `schedule_display`, `remember_preference`; option D: `set_sale_prices`, `create_coupon`, `schedule_banner`, `verify_change_set` | Option D's names plus §3. design.md §4 should be updated |
 | 8 | VIP price and coupon | The change set has both "sale prices" and an auto-applied 20% coupon, which reads as two discounts | One discount. The coupon records the VIP weekend benefit on the order (§3.2) |
 | 9 | Models | README and design.md: Spark through the Meta Model API, OpenRouter during development | Glimmer and Spark Open on partner inference servers (§2) |
+
+## 8. Changes
+
+This plan is not final. Changes are listed here, newest first, so everyone sees what moved.
+
+| Date | Section | Change | Why |
+|---|---|---|---|
+| Oct 30 | §3.2, §3.4, §5.5 | Inputs renamed to schema.org properties: `starts_at` → `valid_from`, `ends_at` → `valid_through`, `audience` → `valid_for_member_tier`, `ship_to` → `delivery_address`, `qty` → `order_quantity` | One vocabulary across tools, API and data model ([architecture.md §5.2](architecture.md)) |
+| Oct 30 | §3.6 | Person-only endpoints added for order cancel, exchange, claim charge and withdrawal, account deletion, password reset, login id recovery, password change (all P2) | Every action that commits money or changes an account is a person's tap; agents only prepare it with `get_cancel_options`, `get_exchange_options`, `check_withdrawal_eligibility` |
+| Oct 30 | §4.2 | Tiers marked as demo seed; the tier program is store-defined data | Tiers, requirements and benefits must not be hardcoded |
+| Oct 30 | `policy.yaml` keys | `max_discount.vip` becomes `max_discount.by_tier.vip`; `max_discount.everyone` stays | Discount limits follow the store's tier ids ([api/policies/promotion.yml](api/policies/promotion.yml)) |
+
+Full API specification for every domain: [api/README.md](api/README.md).

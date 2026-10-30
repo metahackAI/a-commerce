@@ -49,11 +49,11 @@
   | category | DefinedTerm | ✓ | 표준 카테고리, 예 `"summer_outerwear"` |
   | image | ImageObject[] | | 대표·상세 이미지 |
   | varies_by | PropertyValue[] | | 옵션 축(`color`, `size`) |
-  | acom:age_restriction | enum | | `all` \| `age_15_plus` \| `age_19_plus` |
+  | acom:min_age | Integer | | 구매 가능 최소 연령(세). 없거나 `0`이면 제한 없음. 허용 값·확인 방식은 스토어 설정([catalog.yml](policies/catalog.yml) `product.age_restriction`) |
   | preview | Boolean | ✓ | `true` 먼저 |
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "pgr_windbreaker", undo}`
 - 프리뷰: `changes`=`create` `product_group`. checks `required_on_create`(판매자·카테고리·이름). 콘텐츠 등록이라 `needs_approval: false`.
-- 정책: [catalog.yml](policies/catalog.yml) `product.required_on_create`, `variant.max_option_axes`
+- 정책: [catalog.yml](policies/catalog.yml) `product.required_on_create`, `product.age_restriction`, `variant.max_option_axes`
 - 에러: `missing_required_field` → `create_product_group` · `invalid_category` → `list_categories`
 - 멱등성: `Idempotency-Key`
 
@@ -127,12 +127,12 @@
   | acom:cost | acom:CostSpecification | | 원가(운영자 전용) |
   | acom:managed | Boolean | | 재고 관리 여부(기본 `true`) |
   | acom:sale_type | enum | | `always` \| `pre_order` \| `subscription` \| `gift_allowed` \| `digital_voucher` |
-  | acom:age_restriction | enum | | `all` \| `age_15_plus` \| `age_19_plus` |
+  | acom:min_age | Integer | | 구매 가능 최소 연령(세). 없거나 `0`이면 제한 없음. 허용 값·확인 방식은 스토어 설정([catalog.yml](policies/catalog.yml) `product.age_restriction`) |
   | preview | Boolean | ✓ | `true` 먼저 |
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "prd_windbreaker", undo}`
-- 프리뷰: `changes`=`create` `product`(+ `offer`, `inventory`). checks `required_on_create`, `price_floor`(가격이 있으면 원가 + 15% 이상, 실패 시 `fix_tool: "set_price"`), `digital_voucher_disallow`(`digital_voucher`일 때 금지 조합). 가격이 없으면 `needs_approval: false`, 있으면 구조 변경으로 `true`.
-- 정책: [catalog.yml](policies/catalog.yml) `product.required_on_create`, `pricing.margin_protection`, `variant.option_source`, `digital_voucher.disallow`
-- 에러: `duplicate_sku` → `get_product` · `below_price_floor` → `set_price` · `missing_required_field` → `create_product` · `invalid_sale_type` → `update_product`
+- 프리뷰: `changes`=`create` `product`(+ `offer`, `inventory`). checks `required_on_create`, `min_age_allowed`(`acom:min_age`가 스토어 허용 값인지), `price_floor`(가격이 있으면 원가 + 15% 이상, 실패 시 `fix_tool: "set_price"`), `digital_voucher_disallow`(`digital_voucher`일 때 금지 조합). 가격이 없으면 `needs_approval: false`, 있으면 구조 변경으로 `true`.
+- 정책: [catalog.yml](policies/catalog.yml) `product.required_on_create`, `product.age_restriction`, `pricing.margin_protection`, `variant.option_source`, `digital_voucher.disallow`
+- 에러: `duplicate_sku` → `get_product` · `below_price_floor` → `set_price` · `min_age_not_allowed` → `get_policy` · `missing_required_field` → `create_product` · `invalid_sale_type` → `update_product`
 - 멱등성: `Idempotency-Key = hash(tenant + sku)`. 같은 SKU로 다시 보내면 첫 결과를 돌려줌
 
 ### `update_product` — Kind: W
@@ -154,14 +154,14 @@
   | 필드 | 타입(schema.org/acom) | 필수 | 설명·예 |
   |------|----------------------|:--:|--------|
   | product_group_id | Text | ✓ | |
-  | varies_by | PropertyValue[] | ✓ | 축과 값, 예 `color: [slate, sand]`, `size: [S, M, L]`. 축은 10개 이하 |
+  | varies_by | PropertyValue[] | ✓ | 축과 값, 예 `color: [slate, sand]`, `size: [S, M, L]`. 축 수 상한은 스토어 설정 `variant.max_option_axes`(기본 제한 없음), 조합 수는 `variant.max_variants_per_group` |
   | has_variant | Product[] | ✓ | 조합별 `{sku, additional_property, offers?, acom:cost?, acom:managed?}` |
   | missing_combination | enum | | `create_all` \| `listed_only` |
   | preview | Boolean | ✓ | `true` 먼저 |
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "pgr_windbreaker", undo}`
-- 프리뷰: `changes`=조합별 `create`/`update`/`deactivate`. 입력에서 빠진 기존 변형은 삭제가 아니라 비활성. checks `max_option_axes`, `sku_unique`, `price_floor`(가격이 있는 변형). 판매 중인 상품이면 구조 변경으로 `needs_approval: true`.
-- 정책: [catalog.yml](policies/catalog.yml) `variant.max_option_axes`, `variant.option_source`, `product.approval.structural_changes`, `pricing.margin_protection`
-- 에러: `too_many_option_axes` → `set_variants` · `duplicate_sku` → `get_product` · `incomplete_combination` → `set_variants` · `below_price_floor` → `set_price`
+- 프리뷰: `changes`=조합별 `create`/`update`/`deactivate`. 입력에서 빠진 기존 변형은 삭제가 아니라 비활성. checks `max_option_axes`(설정했을 때), `max_variants`, `sku_unique`, `price_floor`(가격이 있는 변형). 판매 중인 상품이면 구조 변경으로 `needs_approval: true`.
+- 정책: [catalog.yml](policies/catalog.yml) `variant.max_option_axes`, `variant.max_variants_per_group`, `variant.option_source`, `product.approval.structural_changes`, `pricing.margin_protection`
+- 에러: `too_many_option_axes` → `set_variants` · `too_many_variants` → `set_variants` · `duplicate_sku` → `get_product` · `incomplete_combination` → `set_variants` · `below_price_floor` → `set_price`
 - 멱등성: `Idempotency-Key = hash(product_group_id + variants_digest)`. 같은 조합을 다시 적용하면 변경 없음
 
 ### `discontinue_product` — Kind: W
@@ -582,7 +582,7 @@
 
 ### `create_bundle` — Kind: W
 - 논리주소/REST: `catalog.bundle.create` · `POST /v1/catalog/bundles`
-- 요약: 묶음 상품을 만듭니다. 가격·재고는 구성품에서 파생하고, 구성품은 같은 판매자·같은 연령 제한이어야 합니다.
+- 요약: 묶음 상품을 만듭니다. 가격·재고는 구성품에서 파생하고, 구성품은 같은 판매자·같은 연령 제한(`acom:min_age`)이어야 합니다.
 - consumes → produces: `product_id[]` → `product_id`
 - 입력:
   | 필드 | 타입(schema.org/acom) | 필수 | 설명·예 |
