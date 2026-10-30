@@ -1,0 +1,80 @@
+# Store operations (orders, returns, customer service) tasks, design set. Format: eval/README.md §3.
+# Store clock for every task: Fri Nov 6 2026 11:00 America/New_York (docs/scenarios.md §1.1).
+# Expected facts were read from the demo store through the same tools on Oct 30 2026.
+
+- id: b2-returns-over-200
+  job: operations
+  persona: adm_sj
+  surface: bo
+  frequency: daily
+  kind: write_approval
+  scene: B2
+  phrasing: {how: ours}
+  sources: [R17, R19]
+  turns:
+    - "go through the return requests over $200 and tell me which ones to refund"
+    - "Why decline the cashmere sweater?"
+    - "Keep the decline, but be kind in the message."
+  tools:
+    required: [search_return_requests, evaluate_return_request, refund_return, send_customer_message]
+    allowed: [get_claim, get_order, get_return_history, get_return_policy, get_policy]
+  expect:
+    change_set:
+      state: drafting
+      items:
+        - {tool: refund_return, count: 9}
+        - {tool: send_customer_message, count: 3}
+      checks_needs_review: [return_history]
+    facts:
+      - "12 requests: refund 9 for $2,463.00, ask for photos on 2 (#20366, #20409), decline 1 (#20290)"
+      - "#20290 Cashmere sweater was delivered 39 days ago, past the 30 day window; store credit is outside policy"
+      - "#20431 is refundable but its customer has 4 returns in 90 days, so it is marked for a person to look at"
+      - "the 3 messages cannot be taken back once sent"
+    must_not_call: [approve_claim, reject_claim]
+  notes: >
+    Scene B2 in docs/scenarios.md §6 is the full expected result. Refunds and messages wait in one
+    change set for the operator; nothing is sent or paid during the conversation.
+
+- id: ops-wismo-tracking-stuck
+  job: operations
+  persona: adm_sj
+  surface: bo
+  frequency: daily
+  kind: read
+  phrasing: {how: ours}
+  sources: [R17, R18]
+  turns:
+    - "customer on order 27184 says tracking hasn't moved since monday. what's going on and what do I tell them"
+  tools:
+    required: [get_order, track_shipment]
+    allowed: [get_delivery, get_member, list_message_templates]
+  expect:
+    facts:
+      - "UPS 1ZNW271840001, the last scan is picked_up on Mon Nov 2"
+      - "the promised delivery date is today, Fri Nov 6"
+      - "the agent drafts a reply for the operator; it does not send one"
+    must_not_call: [send_customer_message]
+  notes: >
+    "Where is my order" is 18–40% of support tickets (R17). The operator asked what to say, not to
+    send it, so a sent message fails the task.
+  gaps:
+    - "data: every in-transit delivery checked (27184, 27300, 27500, 27859) has picked_up plus one in_transit event stamped Oct 30 06:52, the time the seed was loaded, which is before pickup. No carrier scans after pickup, so 'stuck' cannot be told from normal."
+
+- id: ops-frequent-returner
+  job: operations
+  persona: adm_sj
+  surface: bo
+  frequency: weekly
+  kind: read
+  phrasing: {how: ours}
+  sources: [R19]
+  turns:
+    - "the customer on 20431 is flagged for returns. how bad is it, should I still refund the overcoat?"
+  tools:
+    required: [get_return_history]
+    allowed: [get_order, get_claim, get_member, search_return_requests, get_return_policy, evaluate_return_request]
+  expect:
+    facts:
+      - "customer cus_4431 has 4 returns in the last 90 days: clm_20431 waiting, and 20311, 20324, 20298 already completed"
+      - "the overcoat return itself is inside the window and meets the policy; the history is a reason for a person to decide, not a rule that blocks it"
+    must_not_call: [refund_return, reject_claim]

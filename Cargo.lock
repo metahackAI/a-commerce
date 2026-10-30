@@ -3914,7 +3914,9 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "acom-auth",
+ "acom-contract",
  "acom-core",
+ "acom-registry",
  "serde",
  "serde_json",
  "serde_norway",

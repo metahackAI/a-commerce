@@ -7,12 +7,15 @@
 //!   regenerates the data dictionary and `vocab/acom.jsonld`, otherwise stale files are an error.
 //! - `check-seed`: the demo seed fits the migrations (columns, required values, words, keys,
 //!   references), without a database.
+//! - `check-eval`: the agent task set in `eval/tasks/` is well formed and names only tools that
+//!   are built or specified; prints each task's derived coverage (`eval/README.md`).
 //! - `hash-password <password>`: an argon2id hash for seed accounts.
 //! - `dev-token <persona> [--agent]`: an internal token signed with the local key
 //!   (`infra/secrets/gateway_signing_key.pem`), to call commerce without the gateway while
 //!   developing. Personas: `admin`, `jamie`, `alex`, `guest`; `--agent` makes the on-behalf
 //!   token a chat turn would carry.
 
+mod eval;
 mod schema;
 mod seed;
 mod vocab;
@@ -28,6 +31,7 @@ fn main() -> ExitCode {
         "check-docs" => check_docs(&repo_root()),
         "check-schema" => check_schema(&repo_root(), std::env::args().any(|a| a == "--write")),
         "check-seed" => check_seed(&repo_root()),
+        "check-eval" => check_eval(&repo_root()),
         "hash-password" => match std::env::args().nth(2) {
             Some(pw) => match acom_auth::password::hash(&pw) {
                 Ok(h) => {
@@ -51,7 +55,7 @@ fn main() -> ExitCode {
         ),
         _ => {
             eprintln!(
-                "usage: cargo xtask check-docs | check-schema [--write] | check-seed | hash-password <password> | dev-token <admin|jamie|alex|guest> [--agent]"
+                "usage: cargo xtask check-docs | check-schema [--write] | check-seed | check-eval | hash-password <password> | dev-token <admin|jamie|alex|guest> [--agent]"
             );
             ExitCode::FAILURE
         }
@@ -168,6 +172,74 @@ fn check_seed(root: &Path) -> ExitCode {
     }
     if report.problems.is_empty() {
         println!("seed fits the schema");
+        ExitCode::SUCCESS
+    } else {
+        println!("{} problem(s)", report.problems.len());
+        ExitCode::FAILURE
+    }
+}
+
+fn check_eval(root: &Path) -> ExitCode {
+    let registry = match acom_registry::build() {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("registry does not build: {e:?}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let mut specified = std::collections::BTreeSet::new();
+    let docs = match fs::read_dir(root.join("docs/api")) {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("cannot read docs/api/: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    for path in docs.filter_map(Result::ok).map(|e| e.path()) {
+        if path.extension().is_some_and(|x| x == "md") {
+            let text = fs::read_to_string(&path).unwrap_or_default();
+            specified.extend(parse_sections(&text).into_iter().map(|(tool, _)| tool));
+        }
+    }
+    let tools = eval::Tools {
+        built: registry
+            .iter()
+            .map(|op| (op.meta().tool.to_owned(), op.meta().audience))
+            .collect(),
+        specified,
+    };
+    let report = match eval::check(root, &tools) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("cannot read eval/: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    for r in &report.rows {
+        let unbuilt = if r.unbuilt.is_empty() {
+            String::new()
+        } else {
+            format!("  needs {}", r.unbuilt.join(", "))
+        };
+        println!(
+            "{:<9} {:<32} {:<13} {:<15} {:<9} {}{unbuilt}",
+            r.set, r.id, r.job, r.kind, r.phrasing, r.coverage
+        );
+    }
+    let mut by: BTreeMap<(&str, &str), usize> = BTreeMap::new();
+    for r in &report.rows {
+        *by.entry((r.set, r.coverage)).or_default() += 1;
+    }
+    let summary: Vec<String> = by
+        .iter()
+        .map(|((s, c), n)| format!("{s} {c} {n}"))
+        .collect();
+    println!("tasks: {} ({})", report.rows.len(), summary.join(", "));
+    for p in &report.problems {
+        println!("- {p}");
+    }
+    if report.problems.is_empty() {
+        println!("task set is consistent");
         ExitCode::SUCCESS
     } else {
         println!("{} problem(s)", report.problems.len());

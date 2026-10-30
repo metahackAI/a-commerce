@@ -1,0 +1,104 @@
+# Merchandiser tasks, held-out set: not looked at while building the agent. Format: eval/README.md §3.
+# Store clock for every task: Fri Nov 6 2026 11:00 America/New_York (docs/scenarios.md §1.1).
+# Expected facts were read from the demo store through the same tools on Oct 30 2026.
+
+- id: md-broken-sizes-outerwear
+  job: merchandiser
+  persona: adm_sj
+  surface: bo
+  frequency: weekly
+  kind: read
+  phrasing: {how: ours}
+  sources: [R12]
+  turns:
+    - "which outerwear styles have broken sizes right now?"
+  tools:
+    required: [search_products]
+    allowed: [get_inventory, list_categories]
+  expect:
+    facts:
+      - "5 of the 62 outerwear products have a sold-out size"
+      - "Cotton chore coat, Light rain parka and Denim jacket are out in M and L; Poplin shacket is out in M; Cotton overshirt is out in XL"
+    must_not_call: [set_variant_stock]
+  notes: >
+    "Broken sizes" is trade wording for a style missing core sizes; a style-level average hides it
+    (R12). M and L outages on the three best sellers are also the main cause in scene B3.
+
+- id: md-how-many-left
+  job: merchandiser
+  persona: adm_sj
+  surface: bo
+  frequency: daily
+  kind: read
+  phrasing: {how: verbatim, from: R1, original: "How many @PRODUCT remain in my inventory?"}
+  sources: [R1]
+  turns:
+    - "How many Light rain parka remain in my inventory?"
+  tools:
+    required: [get_inventory]
+    allowed: [search_products]
+  expect:
+    facts:
+      - "4 in total: S 2, M 0, L 0, XL 2 (all Stone)"
+      - "S and XL are at their safety stock of 2, so the parka is effectively sold out for new sales planning"
+    must_not_call: []
+
+- id: md-below-cost
+  job: merchandiser
+  persona: adm_sj
+  surface: bo
+  frequency: weekly
+  kind: read
+  phrasing: {how: ours}
+  sources: [R14]
+  turns:
+    - "anything priced below cost right now?"
+  tools:
+    required: [search_products]
+    allowed: [get_policy, get_price_breakdown, search_change_sets, get_change_set]
+  expect:
+    facts:
+      - "none: no offer is under the price floor (cost x 1.15)"
+      - "4 were this morning; the watcher raised them to the floor at 08:31 (cs_1040, undo until Nov 7 23:59)"
+    must_not_call: [set_price]
+  notes: The right answer is "none", and saying why it is none now.
+
+- id: md-best-sellers-this-month
+  job: merchandiser
+  persona: adm_sj
+  surface: bo
+  frequency: weekly
+  kind: read
+  phrasing: {how: verbatim, from: R1, original: "Show me my best-selling products this month"}
+  sources: [R1, R20]
+  turns:
+    - "Show me my best-selling products this month"
+  tools:
+    required: [get_sales_overview]
+    allowed: [search_products, get_inventory]
+  expect:
+    facts:
+      - "this month is Nov 1 – Nov 6 so far in store time; the agent says so"
+    must_not_call: []
+  gaps:
+    - "tool: get_sales_overview is in docs/api but not built. Expected top products are filled in once it exists."
+
+- id: md-out-of-stock-30-days
+  job: merchandiser
+  persona: adm_sj
+  surface: bo
+  frequency: monthly
+  kind: read
+  phrasing: {how: verbatim, from: R8, original: "Find all products that have been out of stock for more than 30 days"}
+  sources: [R8]
+  turns:
+    - "Find all products that have been out of stock for more than 30 days"
+  tools:
+    required: [search_products]
+    allowed: [get_inventory]
+  expect:
+    facts:
+      - "the store keeps current stock only, not since when a size has been out, so the agent cannot answer the 30 day part and says that"
+    must_not_call: []
+  gaps:
+    - "data: no stock history or out-of-stock date per variant."
