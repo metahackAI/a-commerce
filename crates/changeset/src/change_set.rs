@@ -131,13 +131,36 @@ async fn event(
     .fetch_one(&mut *tx.tx)
     .await
     .map_err(db_err)?;
-    let note = json!({"type": "change_set.updated", "tenant": tx.tenant.as_str(),
-                      "change_set_id": cs, "version": version, "state": to.as_str()});
-    sqlx::query("SELECT pg_notify('acom_events', $1)")
-        .bind(note.to_string())
-        .execute(&mut *tx.tx)
-        .await
-        .map_err(db_err)?;
+    crate::notify(
+        tx,
+        "change_set.updated",
+        json!({"change_set_id": cs, "version": version, "state": to.as_str()}),
+    )
+    .await?;
+    if matches!(to, ChangeSetState::Live | ChangeSetState::Rejected) {
+        close_tasks(tx, cs).await?;
+    }
+    Ok(())
+}
+
+/// A task is done once its change set is live or rejected (docs/api/platform.md#task).
+async fn close_tasks(tx: &mut TxCx, cs: &str) -> Result<(), ToolError> {
+    let now = tx.clock.now();
+    let closed: Vec<String> = sqlx::query_scalar(
+        "UPDATE platform.task SET task_state = 'done', end_time = $3, updated_at = $3,
+           version = version + 1
+         WHERE tenant_id = $1 AND change_set_id = $2 AND task_state IN ('needs_you', 'working')
+         RETURNING id",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(cs)
+    .bind(now)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db_err)?;
+    for id in closed {
+        crate::jobs::task_event(tx, &id, "done", Some(cs)).await?;
+    }
     Ok(())
 }
 
@@ -1007,7 +1030,33 @@ pub async fn approve(
         }
     }
 
-    // waiting_for_approval → running, only if nobody else got there first.
+    let approver = cx.principal.subject.clone();
+    start(
+        registry,
+        cx,
+        &runner,
+        cs,
+        version,
+        &list,
+        Some(&approver),
+        json!({"version": version}),
+    )
+    .await
+}
+
+/// waiting_for_approval → running (only if nobody else got there first), then the runner.
+/// `approved_by` is the person, or `None` under a standing approval.
+#[allow(clippy::too_many_arguments)]
+async fn start(
+    registry: &Registry<Cx>,
+    cx: &Cx,
+    runner: &Cx,
+    cs: &str,
+    version: i32,
+    list: &[Item],
+    approved_by: Option<&str>,
+    authorization: Value,
+) -> Result<Value, ToolError> {
     let now = cx.clock.now();
     let undo_until = undo_deadline(
         cx,
@@ -1028,7 +1077,7 @@ pub async fn approve(
     )
     .bind(cx.tenant.as_str())
     .bind(cs)
-    .bind(&cx.principal.subject)
+    .bind(approved_by)
     .bind(now)
     .bind(undo_until)
     .bind(version)
@@ -1047,9 +1096,9 @@ pub async fn approve(
         cs,
         ActionType::AUTHORIZE.0,
         ActionStatus::Completed,
-        Some(state),
+        Some(ChangeSetState::WaitingForApproval),
         ChangeSetState::Running,
-        Some(json!({"version": version})),
+        Some(authorization.clone()),
         None,
     )
     .await?;
@@ -1057,7 +1106,7 @@ pub async fn approve(
         &mut tx,
         LogEntry {
             object: Some(("change_set", cs)),
-            result: Some(json!({"version": version})),
+            result: Some(authorization),
             change_set_id: Some(cs),
             ..LogEntry::new(
                 ActionType::AUTHORIZE.0,
@@ -1069,16 +1118,65 @@ pub async fn approve(
     .await?;
     tx.commit().await.map_err(ToolError::from)?;
 
-    let outcome = run(registry, cx, &runner, cs, &list).await?;
+    let outcome = run(registry, cx, runner, cs, list).await?;
     let mut out = json!({
         "ok": true, "id": cs, "version": version,
-        "approved_by": cx.principal.subject, "approved_at": cx.time.format(now),
+        "approved_by": approved_by, "approved_at": cx.time.format(now),
         "undo_until": undo_until.map(|u| cx.time.format(u)),
     });
     if let (Value::Object(o), Value::Object(r)) = (&mut out, outcome) {
         o.extend(r);
     }
     Ok(out)
+}
+
+/// Runs a submitted set the store approved in advance: a watcher's fix under
+/// `platform.yml watchers.<key>.run_fix: standing_approval` (`policy_key`, without the file
+/// name). Nobody approves it here; the approval is the policy override, which itself went
+/// through a person. The set records `approved_by: null` and the policy key, and keeps its undo
+/// deadline.
+pub async fn run_with_standing_approval(
+    registry: &Registry<Cx>,
+    cx: &Cx,
+    cs: &str,
+    policy_key: &str,
+) -> Result<Value, ToolError> {
+    let standing = cx
+        .policy
+        .lookup(&format!("platform.{policy_key}"))
+        .and_then(Value::as_str)
+        .is_some_and(|v| v == "standing_approval");
+    if !standing {
+        return Err(ToolError::new(
+            ErrorCode::APPROVAL_REQUIRED,
+            format!("The store's policy gives {cs} no standing approval; a person approves it."),
+        )
+        .detail(json!({"change_set_id": cs, "state": "waiting_for_approval"})));
+    }
+    let runner = cx.as_system(RUNNER);
+    let mut tx = cx.begin().await.map_err(ToolError::from)?;
+    let head = lock(&mut tx, cs).await?;
+    let state = head.state();
+    if state != ChangeSetState::WaitingForApproval {
+        return Err(invalid_state(
+            cs,
+            state,
+            "only a submitted set can run under a standing approval",
+        ));
+    }
+    let list = items(&mut tx, cs).await?;
+    tx.commit().await.map_err(ToolError::from)?;
+    start(
+        registry,
+        cx,
+        &runner,
+        cs,
+        head.version,
+        &list,
+        None,
+        json!({"version": head.version, "standing_approval": policy_key}),
+    )
+    .await
 }
 
 /// The runner: commits every item in order, binding placeholders; on a failure takes back what

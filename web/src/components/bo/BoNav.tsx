@@ -1,7 +1,8 @@
 'use client';
 
-// The back office's side navigation: every section, the current one selected, a way to ask the
-// agent from anywhere, and who is signed in with a way to sign out.
+// The back office's side navigation: every section, the current one selected, the store's time
+// (movable in demo mode), a way to ask the agent from anywhere, and who is signed in with a way to
+// sign out.
 
 import {useState} from 'react';
 import {usePathname, useRouter} from 'next/navigation';
@@ -30,6 +31,7 @@ import {
 import {signOut} from '@/lib/session';
 
 import {useAgentDock} from './AgentDock';
+import {StoreClock} from './StoreClock';
 
 interface NavLink {
   label: string;
@@ -81,13 +83,16 @@ export function BoNav({userName, role}: {userName: string; role: string}) {
   return (
     <SideNav
       header={
-        <VStack gap={0}>
-          <Text type="label" weight="semibold">
-            Northwind Apparel
-          </Text>
-          <Text type="supporting" color="secondary">
-            Back office
-          </Text>
+        <VStack gap={2}>
+          <VStack gap={0}>
+            <Text type="label" weight="semibold">
+              Northwind Apparel
+            </Text>
+            <Text type="supporting" color="secondary">
+              Back office
+            </Text>
+          </VStack>
+          <StoreClock />
         </VStack>
       }
       topContent={

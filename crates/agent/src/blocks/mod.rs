@@ -9,6 +9,7 @@ pub mod change_set;
 pub mod insights;
 pub mod shop;
 pub mod table;
+pub mod tasks;
 
 use std::str::FromStr;
 
@@ -30,6 +31,7 @@ pub const KNOWN_BLOCKS: &[&str] = &[
     "return_options",
     "memory_note",
     "sales_explainer",
+    "task_list",
 ];
 
 /// Block data format version (`schema`).

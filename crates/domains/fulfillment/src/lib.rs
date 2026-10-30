@@ -19,6 +19,7 @@ mod refund;
 mod repo;
 #[cfg(test)]
 mod tests;
+mod watch;
 
 use acom_contract::{ErrorCode, RegistryBuilder, ToolError};
 use acom_sales::service::for_fulfillment as sales;
@@ -50,6 +51,8 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .person(person::SendReturnRequest)
         .person(person::CancelMyOrder)
         .person(person::WithdrawClaim);
+    // Scheduled work (platform.job): the watcher over waiting return requests.
+    b.job(watch::ReturnsOverRefundThreshold);
 }
 
 /// The store's fulfillment rules for this request.

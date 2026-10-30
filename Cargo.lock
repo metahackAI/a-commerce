@@ -136,8 +136,11 @@ dependencies = [
  "acom-testkit",
  "axum",
  "clap",
+ "futures",
  "serde_json",
+ "sqlx",
  "tokio",
+ "tower",
  "tracing",
 ]
 

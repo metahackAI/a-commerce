@@ -1,10 +1,12 @@
 'use client';
 
-// The operator's home: the inbox of tasks with a composer to give the agent a task, and the full
+// The operator's home: the inbox of tasks (read again when a task changes, for example when a
+// watcher refreshes one) with a composer to give the agent a task, and the full
 // workspace (conversation + canvas of blocks) one switch away. Sending from the inbox, or pressing
 // Ask on any task, switches to the conversation.
 
 import {useEffect, useState} from 'react';
+import {useRouter} from 'next/navigation';
 import {HStack, Layout, LayoutContent, LayoutHeader, StackItem, VStack} from '@astryxdesign/core/Layout';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/SegmentedControl';
@@ -18,6 +20,7 @@ import type {ChangeSet, TaskSummary} from '@/app/bo/_lib/types';
 import {AgentComposer, useAgentDock} from './AgentDock';
 import {ErrorState} from './ErrorState';
 import {TaskGroups} from './TaskTable';
+import {useStoreEvents} from './useStoreEvents';
 
 export function HomeView({
   tasks,
@@ -33,10 +36,13 @@ export function HomeView({
   initialView: 'inbox' | 'agent';
 }) {
   const ai = useAi();
+  const router = useRouter();
   const {takeOver} = useAgentDock();
   const [view, setView] = useState<'inbox' | 'agent'>(initialView);
 
   useEffect(() => takeOver(() => setView('agent')), [takeOver]);
+  // Watchers and change sets move tasks while the inbox is open: read the list again.
+  useStoreEvents(['task.updated'], () => router.refresh());
 
   const needsYou = tasks.filter(t => t.state === 'needs_you').length;
 

@@ -4,7 +4,7 @@
 >
 > **설계 축**: ① 사람의 로그인·세션은 게이트웨이가 하고, 서비스는 게이트웨이가 서명한 내부 토큰만 받습니다. 스토어(테넌트)는 토큰의 `tenant` 클레임 하나로 정해집니다. ② enum은 숫자·문자 코드 대신 의미 있는 단어로 주고, 각 값의 뜻과 허용 전이를 함께 노출(목록의 출처는 enums.md). ③ 정책은 데이터로, 값마다 사람이 읽는 표기와 함께. ④ 쓰기 프리뷰는 변경셋으로 묶이고, 승인·거절·되돌리기는 사람만 누르는 엔드포인트. ⑤ 운영자 홈의 할 일은 감시 작업(watcher)과 대화에서 생기고, 무시는 사람만. ⑥ 모든 툴 호출·프리뷰·승인·실행은 schema.org `Action`으로 액션 로그에 남음.
 
-리소스: [policy](#policy) · [change_set](#change_set) · [task](#task) · [action_log](#action_log) · [schema](#schema) · [enum](#enum) · [auth](#auth) · [tenant](#tenant) · [role](#role) · [menu](#menu) · [admin_user](#admin_user) · [org](#org) · [api_key](#api_key) · [내부 엔드포인트](#내부-엔드포인트)
+리소스: [policy](#policy) · [change_set](#change_set) · [task](#task) · [action_log](#action_log) · [schema](#schema) · [enum](#enum) · [auth](#auth) · [tenant](#tenant) · [role](#role) · [menu](#menu) · [admin_user](#admin_user) · [org](#org) · [api_key](#api_key) · [예약 작업](#예약-작업) · [데모 시계](#데모-시계) · [내부 엔드포인트](#내부-엔드포인트)
 
 ---
 
@@ -280,7 +280,18 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 | `agent_noticed` | 감시 작업이 기준을 넘는 것을 찾고 운영 에이전트가 맡음 | "$200 넘는 반품 요청 12건 대기"(10:40), "Linen shirt 약 4일 뒤 품절"(08:40) |
 | `automation` | 감시 작업이 찾은 것을 미리 승인된 자동 조치로 처리 | "원가 이하 상품 4개를 하한으로"(07:55 → 08:31, Nov 7까지 되돌리기) |
 
-**감시 작업(watcher).** `commerce`의 예약 작업(`platform.job`)이 정해진 주기마다 정책 기준을 읽어 데이터를 확인하고, 기준을 넘으면 할 일을 만들거나 갱신합니다. 기준과 주기는 코드가 아니라 [platform.yml](../../policies/platform.yml) `watchers`에 있습니다: 환불 임계(`approval.yml` `thresholds.refund`)를 넘는 반품 요청이 기다리는지(`returns_over_refund_threshold`), 최근 판매 속도로 며칠 안에 품절될 변형이 있는지(`stock_out_forecast`), 정가가 원가보다 낮은 상품이 있는지(`price_below_cost`). 같은 원인으로 열린 할 일이 있으면 새로 만들지 않고 그 할 일을 갱신합니다. 감지는 결정적이고 처리는 대화입니다: 할 일마다 요청 문장(`request`)이 있고, 운영자가 항목을 열면(`agent_noticed`는 감시 작업이 바로) 에이전트가 그 문장으로 새 턴을 시작합니다([../backend/agent.md](../backend/agent.md) §10). 할 일이 만든 쓰기는 모두 변경셋으로 가고(`change_set_id`), 할 일은 변경셋이 `live`·`rejected`가 되면 `done`이 됩니다. 운영자는 필요 없는 할 일을 사람 전용 `dismiss`로 치웁니다.
+**감시 작업(watcher).** `commerce`의 예약 작업(`platform.job`)이 정해진 주기마다 정책 기준을 읽어 데이터를 확인하고, 기준을 넘으면 할 일을 만들거나 갱신합니다. 기준과 주기는 코드가 아니라 [platform.yml](../../policies/platform.yml) `watchers`에 있습니다: 환불 임계(`approval.yml` `thresholds.refund`)를 넘는 반품 요청이 기다리는지(`returns_over_refund_threshold`), 최근 판매 속도로 며칠 안에 품절될 변형이 있는지(`stock_out_forecast`), 정가가 원가보다 낮은 상품이 있는지(`price_below_cost`). 같은 원인으로 열린 할 일이 있으면 새로 만들지 않고 그 할 일을 갱신합니다. 감지는 결정적이고 처리는 대화입니다: 할 일마다 요청 문장(`request`)이 있고, 운영자가 항목을 열면(`agent_noticed`는 감시 작업이 바로) 에이전트가 그 문장으로 새 턴을 시작합니다([../backend/agent.md](../backend/agent.md) §10). 할 일이 만든 쓰기는 모두 변경셋으로 가고(`change_set_id`), 할 일은 변경셋이 `live`·`rejected`가 되면 `done`이 됩니다(엔진이 옮기고 `task.updated`를 보냄). 운영자는 필요 없는 할 일을 사람 전용 `dismiss`로 치웁니다.
+
+**감시 작업이 할 일을 쓰는 방식.** 감지기는 데이터를 가진 도메인에 있습니다: 반품 요청은 `fulfillment`, 품절 예측은 `sales`(판매량, 재고는 `catalog`가 내놓는 `product_stock`), 원가 아래 정가는 `catalog`. 감지기는 할 일 초안만 돌려주고 `platform.task`는 작업 실행기(`acom-changeset::jobs`, [예약 작업](#예약-작업))가 씁니다. 원인은 `stock_out_forecast`가 상품 하나, 나머지 둘은 감시 작업 전체입니다. 같은 감시 작업·같은 원인의 열린 할 일(`needs_you`·`working`)이 있으면 그 할 일의 `title`·관찰값(`watcher.observed`)·관련 엔티티만 새로 쓰고(상태·요약·요청 문장·변경셋은 그대로, 버전 +1), 없을 때만 새로 만듭니다(`needs_you`로 시작). 기준을 넘는 것이 없으면 아무것도 바꾸지 않습니다. 데모 시계 Fri Nov 6 11:00에 세 감시 작업을 돌리면 시드의 할 일 둘이 같은 관찰값으로 갱신됩니다: 반품 요청 12건(가장 오래된 것 2026-11-04T09:12-05:00), Linen shirt 재고 38·최근 7일 61개 판매·4.4일. 원가 아래 상품은 없습니다(#1040이 08:31에 고침).
+
+**고침과 승인(`run_fix`).** 정책이 고침을 정한 감시 작업(`price_below_cost`의 `fix: raise_to_price_floor`)은 찾은 것과 함께 변경셋 초안을 냅니다: 원가 아래 변형마다 `set_price`, 가격은 [catalog.yml](../../policies/catalog.yml) `price_floor`(원가 × 1.15, 센트 반올림). 엔진은 시스템 주체 `sys_watcher`로 변경셋을 만들어 할 일에 붙이고 **제출까지만** 합니다. 시스템은 변경셋을 만들 수 있어도 승인할 수는 없습니다.
+
+| `run_fix` | 변경셋 | 할 일 |
+|---|---|---|
+| `ask`(기본값) | `waiting_for_approval`. 사람이 `approve`해야 실행 | `needs_you`, 요약 "Change set #N is waiting for your approval" |
+| `standing_approval` | 스토어가 정책 덮어쓰기(`platform.policy_override`, 그 자체가 승인을 거친 쓰기)로 이 고침을 미리 승인한 것으로 보고 제출 직후 실행. `approved_by: null`, 승인 이벤트와 `AuthorizeAction`의 결과에 `standing_approval: "watchers.price_below_cost.run_fix"`. 되돌리기 기한은 다른 변경셋과 같음 | `working` → 변경셋이 `live`면 `done`, 요약 "Raised to the price floor at 08:31; undo until Nov 7". 실패하면 `needs_you` |
+
+열린 할 일에 이미 변경셋이 있으면 다시 만들지 않습니다. 데모 스토어는 `standing_approval`입니다(장면 B5의 `task_below_cost`, #1040).
 
 ### `list_tasks` — Kind: R
 - 논리 주소 · REST: `platform.task.list` · `GET /v1/platform/tasks?state=needs_you&state=working`
@@ -314,6 +325,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
       "change_set_id": "cs_1039", "watcher": null}],
    "total": 5}
   ```
+  항목마다 `updated_at`(마지막으로 바뀐 시각, 감시 작업이 관찰값을 새로 쓴 때 포함)과 `conversation_id`도 있습니다(위 예에서는 생략).
 - 프리뷰: 해당 없음(읽기)
 - 정책: [platform.yml](../../policies/platform.yml) `watchers`
 - 에러: `invalid_filter` → `list_tasks`
@@ -746,6 +758,56 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 
 ---
 
+## 예약 작업
+
+`platform.job`의 행 하나가 예약 작업 하나입니다(`job_` id, `kind`, `run_at`, `payload`). 종류마다 처리기가 하나 있고, 처리기는 그 데이터를 가진 도메인이 오퍼레이션 옆에 등록합니다(`RegistryBuilder::job`). **툴이 아니며 모델은 보지 못합니다.**
+
+| `kind` | 도메인 | 하는 일 |
+|---|---|---|
+| `promotion.start`, `promotion.end` | promotion | `payload {promotion_id}`. 상태는 읽을 때마다 기간과 스토어 시계로 계산되므로 동작은 바뀌지 않습니다. 그 시각에 읽기가 보여 주는 상태(`running`, `ended`)를 `promotion_status`에 기록하고, 바뀌었으면 outbox에 `promotion.started`·`promotion.ended`(`{promotion_id, status, at}`)를 남깁니다. 멈춘·초안·끝난 프로모션은 그대로 둡니다 |
+| `watcher.returns_over_refund_threshold` | fulfillment | [task](#task)의 감시 작업. `claim_status`가 `requested`이고 금액이 `approval.thresholds.refund`를 넘는 반품 요청 |
+| `watcher.stock_out_forecast` | sales(재고는 catalog) | 오늘을 뺀 최근 `lookback_days`일(스토어 날짜)의 판매량(취소 줄 제외)으로 `재고 × 일수 ≤ days_until_stockout_lte × 판매량`인 상품 |
+| `watcher.price_below_cost` | catalog | 정가 < 원가인 변형. 고침은 `price_floor`까지 `set_price` |
+
+**실행기**(`acom-changeset::jobs`, `commerce`의 워커와 데모 시계가 같이 씀):
+
+- 스토어마다 `done_at IS NULL AND run_at <= 스토어 시계`인 작업을 `run_at` 순서로 하나씩 `FOR UPDATE SKIP LOCKED`로 잡고, 작업마다 스토어 범위 트랜잭션 하나에서 실행합니다. 작업의 시계는 그 작업이 기한이 된 시각(`run_at`)입니다. 두 실행기가 같은 작업을 돌리지 않습니다.
+- 성공하면 `done_at`·`attempts`를 기록합니다. 실패하면 처리기의 쓰기를 되돌리고 `attempts`·`last_error`를 남긴 뒤 1, 2, 4 … 분(최대 60분) 뒤로 `run_at`을 옮겨 다시 시도합니다. 한 번 부를 때 같은 작업은 한 번만 시도합니다.
+- 감시 작업은 되풀이됩니다: 끝나면 `every_minutes` 뒤에 다음 작업을 만듭니다(종류마다 기다리는 작업 하나). 시계가 건너뛰어(데모 시계, 워커 중단) 놓친 실행은 가장 늦은 한 번으로 합칩니다. 감시 작업이 하나도 없는 스토어에는 첫 작업을 만듭니다. `enabled: false`면 감지는 하지 않고 일정만 이어 갑니다.
+- 이벤트: 작업마다 `job.updated {job_id, kind, state, run_at}`(`state`: `scheduled` \| `retrying` \| `done`, [enums.md](enums.md) §1.14), 할 일마다 `task.updated`. 이벤트는 트랜잭션이 커밋될 때 나갑니다.
+- 워커(`acom-commerce work`)는 몇 초마다 `ACOM_STORE_ID`의 스토어마다 기한이 된 작업을 돌립니다. `commerce`는 RLS 아래의 `acom_app`으로 접속해 스토어 목록을 읽을 수 없으므로 돌릴 스토어를 설정으로 받습니다(게이트웨이와 같은 설정, 쉼표로 여러 개). 종료 신호를 받으면 잡은 작업을 끝내고 멈춥니다.
+
+---
+
+## 데모 시계
+
+데모 스토어의 시각(`platform.demo_clock`)을 읽고 옮기는 런타임 전용 엔드포인트입니다([README.md](README.md) §2.2). **툴이 아니며 모델은 보지 못합니다.** 채팅 턴의 토큰에는 `admin:*` 스코프가 없으므로 에이전트는 시간을 옮길 수 없습니다. 게이트웨이는 `/api/v1/platform/demo-clock`을 운영자 세션의 스코프 그대로 전달하고, 데모 모드의 플랫폼 관리자만 `admin:demo`를 받습니다([../backend/gateway.md](../backend/gateway.md) §2). 백오피스 머리글의 스토어 시각과 장면 시각 이동이 이것을 씁니다.
+
+| 엔드포인트 | 스코프 | 본문 | 응답 |
+|---|---|---|---|
+| `GET /v1/platform/demo-clock` | `tools:read:platform` | — | `{now, is_running, demo_mode}` |
+| `PUT /v1/platform/demo-clock` | `admin:demo`(운영자 본인의 요청만), 데모 모드에서만 | `{now, is_running?}` | `{now, is_running, demo_mode: true, previous, ran[]}` |
+
+- `now`: RFC 3339 또는 스토어 시간대의 로컬 시각(`"2026-11-07T10:00"`). `is_running`: `true`면 그때부터 실제 시간과 함께 흐르고(워커가 기한이 된 작업을 돌림), 기본 `false`면 멈춰 있습니다. 데모 모드가 아니면 `GET`은 시스템 시각과 `is_running: true, demo_mode: false`를 돌려줍니다.
+- `PUT`은 시계를 옮기기 **전에** `run_at <= now`인 예약 작업을 `run_at` 순서로 실행하고, 실행한 것을 `ran[]`에 적어 답합니다: `{job_id, kind, run_at, state: done | retrying, attempts, error?, result?, tasks?: [{task_id, state, created, change_set_id?}], next_run_at?}`. 같은 시각으로 다시 부르면 아무것도 실행하지 않습니다(`ran: []`). 뒤로 옮겨도 이미 실행된 것은 그대로입니다(장면을 처음부터 하려면 `acom-commerce seed --reset`).
+- 장면 시각: Fri Nov 6 11:00(B1·B2·B5), Sat Nov 7 10:00(쇼퍼 장면), Mon Nov 9 09:00(주말 뒤).
+- 에러: `forbidden`(`detail.reason: scope`, `detail.required_scope: "admin:demo"`) → `null` · `demo_mode_off`(class `invalid_state`, 실제 시간으로 도는 스토어) → `null` · `invalid_input`(`detail.field: now`) → `null`
+- 예: Fri Nov 6 11:00에서 `PUT {"now": "2026-11-07T10:00"}`
+  ```jsonc
+  {"now": "2026-11-07T10:00:00-05:00", "is_running": false, "demo_mode": true,
+   "previous": "2026-11-06T11:00:00-05:00",
+   "ran": [{"job_id": "job_watch_returns", "kind": "watcher.returns_over_refund_threshold", "run_at": "2026-11-07T09:40:00-05:00",
+            "state": "done", "attempts": 1, "tasks": [{"task_id": "task_returns_1106", "state": "working", "created": false}],
+            "next_run_at": "2026-11-07T10:10:00-05:00"},
+           {"job_id": "job_watch_stock", "kind": "watcher.stock_out_forecast", "run_at": "2026-11-07T09:40:00-05:00",
+            "state": "done", "attempts": 1, "next_run_at": "2026-11-07T10:40:00-05:00"},
+           {"job_id": "job_watch_price", "kind": "watcher.price_below_cost", "run_at": "2026-11-07T09:55:00-05:00",
+            "state": "done", "attempts": 1, "next_run_at": "2026-11-07T10:55:00-05:00"}]}
+  ```
+- 멱등성: 같은 `now`로 다시 불러도 결과 상태가 같습니다.
+
+---
+
 ## 내부 엔드포인트
 
 툴이 아니고 사람 전용도 아닌, 서비스끼리 쓰는 읽기입니다. 게이트웨이를 거친 웹(운영자 세션)과 agent 서비스만 부릅니다.
@@ -754,4 +816,4 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 |---|---|---|
 | `GET /v1/platform/store` | 토큰만 | 요청 문맥의 스토어: `{store_id, currency, time_zone, now}`. `now`는 데모 모드면 데모 시계. agent 서비스가 턴마다 스토어 시각·통화를 여기서 받습니다(commerce 테이블을 직접 읽지 않음) |
 | `GET /v1/platform/previews/{preview_id}` | `changeset:draft` 또는 `tools:read:platform` | 저장된 프리뷰 하나: `{preview_id, operation, input, changes[], checks[], needs_approval, approval_reason, expires_at, state, change_set_id, policy_version, created_at}`. `state`는 [enums.md](enums.md) §1.9. 런타임이 실행 전 확인하거나 화면이 프리뷰를 다시 그릴 때 |
-| `GET /v1/platform/events` (SSE) | `tools:read:platform` | 스토어의 진행 이벤트: `change_set.updated {change_set_id, version, state}`, `task.updated {task_id, state, change_set_id?}`, `job.updated {job_id, kind, state, run_at}`. 각 이벤트는 `id:`(스토어 안 순번)를 가지며 `Last-Event-ID`로 이어 받음. agent 서비스가 구독해 대화의 `change_set.updated`([chat.md](chat.md) §2)로 흘림 |
+| `GET /v1/platform/events` (SSE) | `tools:read:platform` | 스토어의 진행 이벤트: `change_set.updated {change_set_id, version, state}`, `task.updated {task_id, state, change_set_id?}`, `job.updated {job_id, kind, state, run_at}`([예약 작업](#예약-작업)). 각 이벤트는 `id:`(스토어 안 순번)를 가지며 `Last-Event-ID`로 이어 받음. agent 서비스가 구독해 대화의 `change_set.updated`([chat.md](chat.md) §2)로 흘림 |

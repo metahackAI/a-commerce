@@ -10,6 +10,7 @@
 
 mod change_sets;
 pub mod coerce;
+pub mod demo_clock;
 mod events;
 mod idempotency;
 mod ops;
@@ -57,6 +58,7 @@ pub fn router(api: Arc<Api>) -> Router {
     r.merge(change_sets::routes())
         .merge(events::routes())
         .merge(store::routes())
+        .merge(demo_clock::routes())
         .with_state(api)
 }
 

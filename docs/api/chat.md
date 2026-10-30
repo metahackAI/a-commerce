@@ -100,7 +100,7 @@ SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(
 | `refund_review` | 반품·환불 일괄 판단 | `summary{waiting, refund{count, amount}, ask_photos, decline}`, `requests[]{order_number, item, amount, reason, evidence, day, suggested, because}`, `checks[]`, `messages[]`, `change_set_id` | `person` 승인("Approve 9 refunds and send 3 messages"), `say` 메시지 수정 | `order_detail` |
 | `product_drafts` | 상품 초안 작성 진행 | `progress{total, ready, needs_you, working}`, `drafts[]{name, source_code, cost, price, sizes, status, note}`, `rules[]`, `checks[]` | `say` 일시 정지, `person` 준비된 초안 저장 | `product_table` |
 | `sales_explainer` | 매출 질문(읽기만). `explain_sales_change` + `get_sales_trend` | `period{valid_from, valid_through, label}`, `summary{revenue, baseline, baseline_label, difference, change_rate, basis, basis_label, orders{count, baseline}}`, `series[]{date, revenue}`, `causes[]{cause, title, detail, evidence, estimated, ids[]}`(마지막 행은 `cause: unexplained`), `next[]{label, request, cause}` | `say` 다음 행동 각각(`args.request`가 그 문장이고, 런타임은 사람이 그 문장을 말한 것으로 받아 다시 라우팅) | — |
-| `task_list` | 운영자 홈 | `groups[]{state: needs_you \| working \| done, items[]{task_id, title, origin, at, summary, tag, change_set_id?}}`, `agents[]{name, stats}` | `open` 항목, `person` 되돌리기(완료 항목) | — |
+| `task_list` | 운영자 홈(`list_tasks` 결과 그대로) | `groups[]{state: needs_you \| working \| done \| dismissed, items[]{task_id, title, origin, at, summary, tag, change_set_id?, watcher?, updated_at?}}`, `total`, `agents[]{name, stats}`(선택) | `open` 항목, `say` 더 보기. 치우기·되돌리기는 할 일·변경셋 화면의 `person` 버튼 | — |
 | `product_table` | 상품 목록 읽기 | `columns[]`, `rows[]`, `total` | `say` 더 보기·거르기 | `product_table` |
 | `action_log` | 감사 기록 | `entries[]{at, actor, action_type, tool, object, status, result}` | — | `action_log` |
 

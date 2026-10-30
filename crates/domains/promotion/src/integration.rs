@@ -315,7 +315,9 @@ async fn shoppers_see_the_sales_on_for_them() {
         .await
         .unwrap();
     assert!(
-        ids(&jamie).iter().all(|i| i != "promo_gold_10" && i != "promo_denim_bundle"),
+        ids(&jamie)
+            .iter()
+            .all(|i| i != "promo_gold_10" && i != "promo_denim_bundle"),
         "{jamie:#}"
     );
     let mut asked = period.clone();

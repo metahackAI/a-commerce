@@ -44,6 +44,17 @@ function dot(state: string) {
   }
 }
 
+/**
+ * When a watcher wrote what it observed again after the task appeared (docs/api/platform.md#task):
+ * the task keeps its state and summary, and its title and observation are the latest.
+ */
+function watcherLine(task: TaskSummary): string | null {
+  if (!task.watcher || !task.updated_at) return null;
+  const updated = Date.parse(task.updated_at);
+  if (Number.isNaN(updated) || updated <= Date.parse(task.at)) return null;
+  return `Watcher ${words(task.watcher)} checked again ${dateTime(task.updated_at)}`;
+}
+
 /** The line about a task's change set: its state and how its checks went. */
 function changeSetLine(cs: Pick<ChangeSet, 'number' | 'state' | 'version' | 'checks_summary'> | undefined) {
   if (!cs) return null;
@@ -76,6 +87,7 @@ function TaskRow({task, cs, blockId, intents}: {task: TaskSummary; cs?: ChangeSe
   const canDismiss = open && scopes.includes('human:task');
   const canUndo = task.state === 'done' && cs?.state === 'live' && cs.undo_until !== null && scopes.includes('human:undo');
   const review = task.change_set_id && (task.state === 'needs_you' || cs?.state === 'waiting_for_approval');
+  const watched = watcherLine(task);
 
   return (
     <TargetRow
@@ -101,6 +113,11 @@ function TaskRow({task, cs, blockId, intents}: {task: TaskSummary; cs?: ChangeSe
       <TableCell>
         <VStack gap={1}>
           {task.summary ? <Text>{task.summary}</Text> : null}
+          {watched ? (
+            <Text type="supporting" color="secondary">
+              {watched}
+            </Text>
+          ) : null}
           {changeSetLine(cs)}
         </VStack>
       </TableCell>

@@ -143,6 +143,7 @@
 | 채널 연결 | `connected`, `degraded`, `disconnected` |
 | 할 일 `acom:task_state` | `needs_you`, `working`, `done`, `dismissed` |
 | 할 일 출처 `acom:task_origin` | `you_asked`, `agent_noticed`, `automation` |
+| 예약 작업 `acom:job_state` (`job.updated` 이벤트, 열에서 계산) | `scheduled`, `retrying`, `done` |
 | 운영자 계정 `acom:admin_status` | `active`, `suspended`, `locked` |
 
 ### 1.15 에이전트

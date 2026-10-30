@@ -21,6 +21,7 @@ mod repo;
 mod rules;
 #[cfg(test)]
 mod testdb;
+mod watch;
 
 use acom_contract::{ApprovalNeed, ErrorClass, ErrorCode, RegistryBuilder, ToolError};
 use acom_store::Cx;
@@ -66,6 +67,8 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .read(order::GetOrder)
         .read(order::SearchOrders)
         .read(payment::GetPayment);
+    // Scheduled work (platform.job): the stock-out forecast over recent sales.
+    b.job(watch::StockOutForecast);
 }
 
 pub(crate) fn not_signed_in() -> ToolError {

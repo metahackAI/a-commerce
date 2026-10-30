@@ -8,6 +8,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::error::{ErrorCode, ToolError};
+use crate::job::{DynJob, Job, JobAdapter, JobMeta, kind_is_valid};
 use crate::meta::{Kind, OpMeta};
 use crate::op::{
     Committed, Ctx, Operation, PersonOp, Planned, ReadOp, UndoSupport, Verification, WriteOp,
@@ -248,9 +249,10 @@ impl<C: Ctx, O: PersonOp<C>> DynOp<C> for PersonAdapter<O> {
     }
 }
 
-/// Collects operations from every domain crate.
+/// Collects operations and job handlers from every domain crate.
 pub struct RegistryBuilder<C: Ctx> {
     ops: BTreeMap<&'static str, Arc<dyn DynOp<C>>>,
+    jobs: BTreeMap<&'static str, Arc<dyn DynJob<C>>>,
     problems: Vec<String>,
 }
 
@@ -258,6 +260,7 @@ impl<C: Ctx> Default for RegistryBuilder<C> {
     fn default() -> Self {
         Self {
             ops: BTreeMap::new(),
+            jobs: BTreeMap::new(),
             problems: Vec::new(),
         }
     }
@@ -267,6 +270,7 @@ impl<C: Ctx> std::fmt::Debug for RegistryBuilder<C> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RegistryBuilder")
             .field("ops", &self.ops.keys().collect::<Vec<_>>())
+            .field("jobs", &self.jobs.keys().collect::<Vec<_>>())
             .finish()
     }
 }
@@ -293,6 +297,26 @@ impl<C: Ctx> RegistryBuilder<C> {
         }
         let schema = closed_schema_for::<O::Input>();
         self.insert(O::META.tool, Arc::new(PersonAdapter { op, schema }))
+    }
+
+    /// A handler for one kind of scheduled work (`platform.job.kind`).
+    pub fn job<J: Job<C>>(&mut self, job: J) -> &mut Self {
+        let kind = J::META.kind;
+        if !kind_is_valid(kind) {
+            self.problems.push(format!(
+                "job {kind}: kinds are `domain.verb` in lowercase words"
+            ));
+        }
+        if let Some(w) = J::META.watcher
+            && kind != format!("watcher.{w}")
+        {
+            self.problems
+                .push(format!("job {kind}: a watcher's kind is `watcher.{w}`"));
+        }
+        if self.jobs.insert(kind, Arc::new(JobAdapter(job))).is_some() {
+            self.problems.push(format!("job {kind}: registered twice"));
+        }
+        self
     }
 
     fn check_kind<O: Operation>(&mut self, write: bool) {
@@ -323,7 +347,10 @@ impl<C: Ctx> RegistryBuilder<C> {
             }
         }
         if problems.is_empty() {
-            Ok(Registry { ops: self.ops })
+            Ok(Registry {
+                ops: self.ops,
+                jobs: self.jobs,
+            })
         } else {
             Err(problems)
         }
@@ -332,12 +359,14 @@ impl<C: Ctx> RegistryBuilder<C> {
 
 pub struct Registry<C: Ctx> {
     ops: BTreeMap<&'static str, Arc<dyn DynOp<C>>>,
+    jobs: BTreeMap<&'static str, Arc<dyn DynJob<C>>>,
 }
 
 impl<C: Ctx> std::fmt::Debug for Registry<C> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Registry")
             .field("ops", &self.ops.len())
+            .field("jobs", &self.jobs.len())
             .finish()
     }
 }
@@ -365,6 +394,16 @@ impl<C: Ctx> Registry<C> {
 
     pub fn is_empty(&self) -> bool {
         self.ops.is_empty()
+    }
+
+    /// The handler of a job kind.
+    pub fn job(&self, kind: &str) -> Option<&Arc<dyn DynJob<C>>> {
+        self.jobs.get(kind)
+    }
+
+    /// Every registered job kind, in name order.
+    pub fn jobs(&self) -> impl Iterator<Item = &'static JobMeta> + '_ {
+        self.jobs.values().map(|j| j.meta())
     }
 
     pub fn manifest(&self, visible: impl Fn(&OpMeta) -> bool) -> Vec<ManifestEntry> {
@@ -500,10 +539,71 @@ mod tests {
         }
     }
 
+    struct Tick;
+    impl crate::job::Job<TestCx> for Tick {
+        const META: JobMeta = JobMeta {
+            kind: "watcher.ticks",
+            summary: "Counts runs.",
+            watcher: Some("ticks"),
+        };
+        async fn run(
+            &self,
+            tx: &mut Vec<String>,
+            payload: &Value,
+        ) -> Result<crate::job::JobOutcome, ToolError> {
+            tx.push(payload.to_string());
+            Ok(crate::job::JobOutcome::Watched(Vec::new()))
+        }
+    }
+
+    struct Misnamed;
+    impl crate::job::Job<TestCx> for Misnamed {
+        const META: JobMeta = JobMeta {
+            kind: "watcher.other",
+            summary: "Kind and watcher key disagree.",
+            watcher: Some("ticks"),
+        };
+        async fn run(
+            &self,
+            _: &mut Vec<String>,
+            _: &Value,
+        ) -> Result<crate::job::JobOutcome, ToolError> {
+            Ok(crate::job::JobOutcome::done(Value::Null))
+        }
+    }
+
     fn registry() -> Registry<TestCx> {
         let mut b = RegistryBuilder::default();
-        b.read(Search).write(Remember);
+        b.read(Search).write(Remember).job(Tick);
         b.build().unwrap()
+    }
+
+    #[tokio::test]
+    async fn runs_job_handlers_by_kind() {
+        let r = registry();
+        assert_eq!(
+            r.jobs().map(|m| m.kind).collect::<Vec<_>>(),
+            ["watcher.ticks"]
+        );
+        let mut tx = Vec::new();
+        let out = r
+            .job("watcher.ticks")
+            .unwrap()
+            .run(&mut tx, &serde_json::json!({"n": 1}))
+            .await
+            .unwrap();
+        assert_eq!(out, crate::job::JobOutcome::Watched(Vec::new()));
+        assert_eq!(tx, vec![r#"{"n":1}"#]);
+        assert!(r.job("promotion.start").is_none());
+    }
+
+    #[test]
+    fn refuses_duplicate_and_misnamed_jobs() {
+        let mut b: RegistryBuilder<TestCx> = RegistryBuilder::default();
+        b.job(Tick).job(Tick).job(Misnamed);
+        let problems = b.build().unwrap_err();
+        assert!(problems.iter().any(|p| p.contains("registered twice")));
+        assert!(problems.iter().any(|p| p.contains("watcher.other")));
     }
 
     #[tokio::test]

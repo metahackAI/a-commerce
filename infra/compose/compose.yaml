@@ -95,6 +95,8 @@ services:
       <<: *rust-env
       ACOM_WORKER_ADDR: 0.0.0.0:7003
       DATABASE_URL: postgres://acom_app:${ACOM_APP_PASSWORD:-acom_app}@postgres:5432/acom
+      # The stores whose scheduled jobs it runs: the one the gateway serves.
+      ACOM_STORE_ID: ${ACOM_STORE_ID:-store_northwind}
     secrets: [gateway_public_key]
     healthcheck:
       test: ["CMD", "/usr/local/bin/acom-commerce", "healthcheck", "--worker"]

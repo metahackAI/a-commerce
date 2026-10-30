@@ -8,7 +8,7 @@ home_domains: [promotion, merchandising]
 tool_scope:
   domains: [promotion, merchandising, catalog, search, customer, platform]
   kinds: [read, write, write_approval]
-blocks: [change_set, product_table, action_log]
+blocks: [change_set, product_table, action_log, task_list]
 models: {worker: glimmer, planner: spark}
 instructions: promotion.md
 # What a person can say to fix a failed check (shown next to the check).

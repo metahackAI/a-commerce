@@ -53,6 +53,11 @@ impl Runtime {
         &self.defaults
     }
 
+    /// Whether stores run on their demo clock (`ACOM_DEMO_MODE`).
+    pub fn demo_mode(&self) -> bool {
+        self.demo_mode
+    }
+
     /// The context one request runs with.
     pub async fn context(&self, principal: Principal, request_id: String) -> Result<Cx, ToolError> {
         let tenant = principal.tenant.clone();

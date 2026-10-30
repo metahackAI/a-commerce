@@ -74,11 +74,13 @@ impl Principal {
         (self.subject.starts_with("cus_")).then_some(self.subject.as_str())
     }
 
-    /// The same person, acting through our agent: every `human:*` scope removed.
+    /// The same person, acting through our agent: every `human:*` scope removed, and the
+    /// `admin:*` controls (the demo clock) too.
     pub fn on_behalf(&self) -> Self {
         let mut p = self.clone();
         p.kind = ActorKind::AgentOnBehalf;
-        p.scopes.retain(|s| !s.starts_with("human:"));
+        p.scopes
+            .retain(|s| !s.starts_with("human:") && !s.starts_with("admin:"));
         if self.kind == ActorKind::Operator {
             p.scopes.insert("changeset:draft".to_owned());
         }
@@ -135,5 +137,9 @@ mod tests {
         assert_eq!(agent.kind, ActorKind::AgentOnBehalf);
         assert!(agent.scopes.iter().all(|s| !s.starts_with("human:")));
         assert!(agent.can_write("sales"));
+        let admin = principal(ActorKind::Operator, &["admin:demo", "tools:read:platform"]);
+        let agent = admin.on_behalf();
+        assert!(!agent.has_scope("admin:demo"));
+        assert!(agent.has_scope("tools:read:platform"));
     }
 }

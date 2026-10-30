@@ -2,7 +2,8 @@
 //!
 //! One image, four commands:
 //! - `serve` (default): the REST and MCP surfaces and person-only endpoints;
-//! - `work`: scheduled jobs and the outbox (deployed separately so it scales on its own);
+//! - `work`: scheduled jobs for the stores in `ACOM_STORE_ID` (deployed separately so it scales
+//!   on its own);
 //! - `migrate`: applies `migrations/` as the owner role, then exits (a Job before rollout);
 //! - `healthcheck`: container health probe.
 //!
@@ -13,6 +14,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use acom_auth::Verifier;
+use acom_core::TenantId;
 use acom_policy::{FILES, PolicySet};
 use acom_server::Readiness;
 use acom_store::{Db, Runtime};
@@ -43,6 +45,11 @@ struct Cli {
     /// Demo mode: the store's clock is the demo clock (`platform.demo_clock`).
     #[arg(long, env = "ACOM_DEMO_MODE", default_value_t = false)]
     demo_mode: bool,
+    /// The stores `work` runs scheduled jobs for: the store this deployment serves (the same
+    /// setting the gateway reads), or several, comma-separated. The service role cannot list
+    /// stores across row-level security, so the worker is told which ones.
+    #[arg(long, env = "ACOM_STORE_ID", value_delimiter = ',')]
+    store_id: Vec<String>,
     /// What `migrate` loads after the migrations: `none`, or `demo` (the demo store, once).
     #[arg(long, env = "ACOM_SEED", value_enum, default_value_t = SeedMode::None)]
     seed: SeedMode,
@@ -211,15 +218,84 @@ async fn run(cli: Cli, command: Command) -> Result<(), String> {
         }
         Command::Work => {
             let policy = load_policies(&cli.policy_dir)?;
+            let stores = store_ids(&cli.store_id)?;
+            let db = database(&cli).ok_or("DATABASE_URL is not set or not usable")?;
+            let registry = Arc::new(acom_registry::build().map_err(|e| e.join("; "))?);
             tracing::info!(
                 policy_version = policy.version(),
-                "worker started; jobs and the outbox run from M2"
+                stores = ?stores.iter().map(TenantId::as_str).collect::<Vec<_>>(),
+                job_kinds = registry.jobs().count(),
+                "worker started"
             );
-            let ready = Arc::new(DatabaseReady(database(&cli)));
+            let runtime = Arc::new(Runtime::new(db.clone(), policy, cli.demo_mode));
+            let (stop, stopped) = tokio::sync::watch::channel(false);
+            let jobs = tokio::spawn(work(runtime, registry, stores, stopped));
+            let ready = Arc::new(DatabaseReady(Some(db)));
             let app = acom_server::ops_router("commerce-worker", ready);
-            acom_server::serve("commerce-worker", &cli.worker_addr, app)
-                .await
-                .map_err(|e| e.to_string())
+            let served = acom_server::serve("commerce-worker", &cli.worker_addr, app).await;
+            // The signal stopped the HTTP side; let the job in hand finish, then stop.
+            let _ = stop.send(true);
+            if let Err(e) = jobs.await {
+                tracing::error!(error = %e, "the job loop ended abnormally");
+            }
+            served.map_err(|e| e.to_string())
+        }
+    }
+}
+
+/// How often the worker looks for due jobs.
+const POLL: std::time::Duration = std::time::Duration::from_secs(5);
+
+fn store_ids(ids: &[String]) -> Result<Vec<TenantId>, String> {
+    let ids: Vec<TenantId> = ids
+        .iter()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| TenantId::parse(s).map_err(|e| format!("ACOM_STORE_ID `{s}`: {e}")))
+        .collect::<Result<_, _>>()?;
+    if ids.is_empty() {
+        return Err("ACOM_STORE_ID is not set: the worker needs the stores to run jobs for".into());
+    }
+    Ok(ids)
+}
+
+/// The job loop: every few seconds, for each store, run what is due on its clock (the demo
+/// clock in demo mode). Stops between jobs when asked.
+async fn work(
+    runtime: Arc<Runtime>,
+    registry: Arc<acom_contract::Registry<acom_store::Cx>>,
+    stores: Vec<TenantId>,
+    mut stopped: tokio::sync::watch::Receiver<bool>,
+) {
+    loop {
+        for tenant in &stores {
+            if *stopped.borrow() {
+                return;
+            }
+            let principal =
+                acom_auth::Principal::system(tenant.clone(), acom_changeset::jobs::SCHEDULER);
+            let request_id = format!("req_{}", acom_core::id::new_suffix());
+            let cx = match runtime.context(principal, request_id).await {
+                Ok(cx) => cx,
+                Err(e) => {
+                    tracing::warn!(store = %tenant, error = %e.message, "store not reachable");
+                    continue;
+                }
+            };
+            let until = cx.clock.now();
+            match acom_changeset::jobs::run_due(&registry, &cx, until).await {
+                Ok(ran) => {
+                    for j in &ran {
+                        tracing::info!(store = %tenant, job = %j.job_id, kind = %j.kind,
+                                       state = j.state.as_str(), attempts = j.attempts, "job ran");
+                    }
+                }
+                Err(e) => tracing::warn!(store = %tenant, error = %e.message, "jobs not run"),
+            }
+        }
+        tokio::select! {
+            _ = tokio::time::sleep(POLL) => {}
+            _ = stopped.changed() => return,
         }
     }
 }
@@ -242,6 +318,9 @@ async fn main() -> ExitCode {
 }
 
 #[cfg(test)]
+mod it;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -251,5 +330,56 @@ mod tests {
         let p = load_policies(dir).unwrap();
         assert!(!p.version().is_empty());
         assert!(load_policies("/nonexistent").is_err());
+    }
+
+    #[test]
+    fn the_worker_needs_the_stores_it_runs_jobs_for() {
+        let ids = store_ids(&["store_northwind".into(), " store_b ".into()]).unwrap();
+        assert_eq!(
+            ids.iter().map(TenantId::as_str).collect::<Vec<_>>(),
+            ["store_northwind", "store_b"]
+        );
+        assert!(store_ids(&[]).is_err());
+        assert!(store_ids(&[" ".into()]).is_err());
+        assert!(store_ids(&["Northwind".into()]).is_err());
+    }
+
+    #[test]
+    fn every_job_kind_in_the_seed_has_a_handler() {
+        let registry = acom_registry::build().unwrap();
+        let kinds: Vec<&str> = registry.jobs().map(|m| m.kind).collect();
+        let seed = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../seed/demo/01_platform.yml"
+        ))
+        .unwrap();
+        let seeded: std::collections::BTreeSet<&str> = seed
+            .lines()
+            .filter(|l| l.contains("id: job_"))
+            .filter_map(|l| l.split("kind: ").nth(1))
+            .filter_map(|l| l.split([',', '}']).next())
+            .map(str::trim)
+            .collect();
+        assert!(!seeded.is_empty());
+        for k in &seeded {
+            assert!(kinds.contains(k), "no handler for seeded job kind {k}");
+        }
+        // Every watcher in the policy has a job, and every watcher job a policy entry.
+        let policy = load_policies(concat!(env!("CARGO_MANIFEST_DIR"), "/../../policies"))
+            .unwrap()
+            .watchers()
+            .unwrap();
+        for m in registry.jobs() {
+            if let Some(w) = m.watcher {
+                assert!(policy.schedule(w).is_some(), "{w} is not in platform.yml");
+            }
+        }
+        for w in [
+            "returns_over_refund_threshold",
+            "stock_out_forecast",
+            "price_below_cost",
+        ] {
+            assert!(kinds.contains(&format!("watcher.{w}").as_str()));
+        }
     }
 }
