@@ -135,6 +135,7 @@ return <tr ref={ref} data-acom-kind="change_row" data-acom-id="prd_seersucker_ov
 | `MemoryNote`·`ProfileFact` | 대화, profile_card | "이건 왜 기억했어?" | "이건 잊어" → 되돌리기 버튼 안내 | 기억 출처 설명 |
 | `SearchBox`·`NaturalInput` | 헤더, 필터, 기간 | — | 자연어 그대로 | 조건으로 풀어 칩으로 확인 |
 | `ProductImage` | 상품, 초안(운영자) | "이 사진 뭐가 문제야?" | (운영자) "배경 지워 줘" | catalog 이미지 오퍼레이션 프리뷰 |
+| `Figure`·`CauseRow`·`SeriesPoint` (`figure`, `cause`, `series_point`) | sales_explainer, `/bo/insights` | "이 날은 왜 낮아?", "−$660은 뭐야?" | 다음 행동 버튼("Send the weekly email today") | `explain_sales_change`·`get_sales_trend`로 설명. 다음 행동은 그 문장으로 새 턴(변경셋은 그 일을 맡은 에이전트가) |
 
 모든 요소는 이 표의 "묻기"를 기본으로 지원하고, "고치기"는 블록 데이터의 `suggested_intents`가 있을 때 보입니다.
 

@@ -39,6 +39,14 @@ export function count(n: number | null | undefined): string {
   return typeof n === 'number' ? integer.format(n) : '—';
 }
 
+/** A 0–1 rate from a tool as a signed percent: `-0.2035` → `−20%`. */
+export function percent(rate: number | null | undefined): string {
+  if (typeof rate !== 'number') return '—';
+  const whole = Math.round(Math.abs(rate) * 100);
+  if (whole === 0) return '0%';
+  return `${rate < 0 ? '−' : '+'}${whole}%`;
+}
+
 /** Whether a value looks like `{value, currency}`. */
 export function isMoney(v: unknown): v is Money {
   return (

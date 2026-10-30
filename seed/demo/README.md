@@ -79,7 +79,8 @@ Family names, addresses and cards of the shoppers other than those in §2; color
 splits; brand names Fieldstone Boot Co. and Ridgeline Outdoor; return policy `mrp_free_size_exchange`
 for the overcoat; birthday coupon $10.00 off; denim bundle $20.00 off; linen clearance 20%; the earlier
 hero banner "The October edit"; reorder split S 70 / M 90 / L 80; per-day revenue for Oct 23 – Nov 4
-in `generate.yml`.
+in `generate.yml`; the weekly email (template text, recipient counts 11,204–11,270, sends at 08:01–08:02) and the
+split of its 5,200.00 over the four Thursdays (1,240 / 1,410 / 1,180 / 1,370).
 
 ## Open points
 

@@ -14,6 +14,7 @@ import {Icon} from '@astryxdesign/core/Icon';
 import {
   ArrowPathRoundedSquareIcon,
   BuildingStorefrontIcon,
+  ChartBarIcon,
   ChatBubbleOvalLeftEllipsisIcon,
   CircleStackIcon,
   ClipboardDocumentListIcon,
@@ -49,6 +50,7 @@ const STORE: NavLink[] = [
   {label: 'Orders', href: '/bo/orders', icon: ShoppingBagIcon},
   {label: 'Returns', href: '/bo/returns', icon: ArrowPathRoundedSquareIcon},
   {label: 'Customers', href: '/bo/customers', icon: UsersIcon},
+  {label: 'Insights', href: '/bo/insights', icon: ChartBarIcon},
 ];
 
 const RULES: NavLink[] = [

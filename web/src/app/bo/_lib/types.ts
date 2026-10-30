@@ -663,3 +663,41 @@ export interface CommitResult {
   id: string;
   undo?: {by: 'person'; target: string; until: string | null} | null;
 }
+
+/** `explain_sales_change` (docs/api/analytics.md): a period against a basis, split into causes. */
+export interface SalesExplanation {
+  items: {
+    cause: string;
+    detail: string;
+    amount: Money | number;
+    evidence: string[];
+    expected?: Money | number;
+    actual?: Money | number;
+    since?: string | null;
+    products?: {product_id: string; name: string | null; sizes: string[]; availability_starts: string | null}[];
+    campaign?: {campaign_id: string; name: string; scheduled_time: string | null; error_message: string | null};
+  }[];
+  total: number;
+  'acom:metric': string;
+  period: {valid_from: string; valid_through: string; revenue: Money; order_count: number};
+  compare_to: {basis: string; observation_dates: string[]; revenue: Money; order_count: number};
+  gap: Money | number;
+  change_rate: number | null;
+  unexplained: Money | number;
+}
+
+/** One point of `get_sales_trend`. */
+export interface SalesTrendPoint {
+  observation_date: string;
+  'acom:metric': 'revenue' | 'order_count' | 'average_order_value';
+  value: Money | number | null;
+  'acom:dimension'?: Record<string, string | null>;
+}
+
+/** `GET /v1/platform/store`: the store's currency, zone and clock (the demo clock in demo mode). */
+export interface StoreClock {
+  store_id: string;
+  currency: string;
+  time_zone: string;
+  now: string;
+}

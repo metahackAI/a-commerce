@@ -59,10 +59,10 @@ examples: promotion.examples.yml               # 툴 검색·계획용 몇 개�
 | `orders` | bo | fulfillment, sales, messaging | ✓ |
 | `catalog` | bo | catalog, search | |
 | `care` | bo | customer, messaging, community | |
-| `insights` | bo | analytics (읽기만) | |
+| `insights` | bo | analytics (읽기만) | ✓ |
 | `shopper` | fo | search, catalog(읽기), sales(장바구니·주문 준비), fulfillment(반품 옵션), customer(내 정보) | ✓ |
 
-- **라우터**는 Glimmer에 에이전트 설명 목록과 요청을 주고 가이드 디코딩으로 `{agent, confidence}` 하나를 고르게 합니다. 확신이 낮으면 면(bo/fo)의 기본 에이전트로 갑니다.
+- **라우터**는 Glimmer에 에이전트 설명 목록과 요청을 주고 가이드 디코딩으로 `{agent, confidence}` 하나를 고르게 합니다. 확신이 낮으면 면(bo/fo)의 기본 에이전트로 갑니다. 그 전에, 요청에 한 에이전트의 `route_when_said` 문구(소문자, 예: insights의 `why did sales`)만 들어 있으면 모델 없이 그 에이전트로 보냅니다.
 - **한 요청이 여러 도메인에 걸치는 것은 정상입니다**(VIP 세일 = 회원가 + 쿠폰 + 배너). 특화 에이전트는 도메인 하나에 갇히지 않고 자기 `tool_scope` 안에서 홈 도메인을 우선할 뿐입니다.
 - **에이전트끼리 넘길 때는 id를 넘깁니다**(요약 텍스트가 아니라). 넘김은 같은 턴의 계획에 다른 에이전트의 단계를 붙이는 것으로 구현합니다.
 
