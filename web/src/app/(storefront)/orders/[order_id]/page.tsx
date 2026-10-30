@@ -86,7 +86,7 @@ export default async function OrderPage({params, searchParams}: {params: Params;
       </VStack>
       <Grid columns={{minWidth: 320, max: 2}} gap={6} align="start">
         <VStack gap={4}>
-          <OrderLines orderId={o.id} items={o.ordered_item} />
+          <OrderLines orderId={o.id} items={o.ordered_item} claims={o.claims} />
           {BEFORE_SHIPPING.has(o.order_status) ? <CancelPanel orderId={o.id} orderNumber={o.order_number} /> : null}
         </VStack>
         <VStack gap={4}>

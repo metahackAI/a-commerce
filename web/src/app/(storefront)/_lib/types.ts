@@ -434,6 +434,17 @@ export interface Order {
   payment?: {payment_method?: string; card_last4?: string | null; payment_status?: string} | null;
   totals: {subtotal: Money; discounts: Discount[]; shipping: Money; total: Money};
   coupons_recorded?: RecordedCoupon[];
+  /** Cancel, return and exchange requests on the order, oldest first. */
+  claims?: OrderClaim[];
+}
+
+/** One request on an order (`get_order` `claims[]`). */
+export interface OrderClaim {
+  id: string;
+  claim_type: 'cancel' | 'return' | 'exchange' | string;
+  claim_status: string;
+  order_item_ids: string[];
+  requested_at: string;
 }
 
 // ── Fulfillment ────────────────────────────────────────────────────────────────

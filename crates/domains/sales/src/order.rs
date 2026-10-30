@@ -799,6 +799,8 @@ pub enum OrderField {
     Totals,
     /// Coupons the order recorded.
     CouponsRecorded,
+    /// Cancel, return and exchange requests on the order.
+    Claims,
 }
 
 impl OrderField {
@@ -809,6 +811,7 @@ impl OrderField {
             OrderField::OrderStatus => "order_status",
             OrderField::OrderDate => "order_date",
             OrderField::CustomerId => "customer_id",
+            OrderField::Claims => "claims",
             OrderField::OrderedItem => "ordered_item",
             OrderField::Delivery => "delivery",
             OrderField::Payment => "payment",
@@ -866,6 +869,10 @@ impl ReadOp<Cx> for GetOrder {
         let parcel = match crate::service::providers::deliveries() {
             Some(read) => read(&mut tx, &o.id).await?,
             None => None,
+        };
+        let claims = match crate::service::providers::claims() {
+            Some(read) => read(&mut tx, &o.id).await?,
+            None => Vec::new(),
         };
         let payment = repo::payment(&mut tx, &o.id).await?;
         // Orders placed before discounts were recorded in full: one line per promotion.
@@ -961,6 +968,11 @@ impl ReadOp<Cx> for GetOrder {
                 "total": repo::money(o.total_payment_due_value, &o.total_payment_due_currency)?,
             },
             "coupons_recorded": coupons,
+            "claims": claims.iter().map(|c| json!({
+                "id": c.id, "claim_type": c.claim_type, "claim_status": c.claim_status,
+                "order_item_ids": c.order_item_ids,
+                "requested_at": cx.time.format(c.requested_at),
+            })).collect::<Vec<_>>(),
         });
         let fields: Vec<String> = input
             .fields

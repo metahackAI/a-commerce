@@ -250,8 +250,11 @@
               "discounts": [],
               "shipping": {"value": 0.00, "currency": "USD"},
               "total": {"value": 312.00, "currency": "USD"}},
-   "coupons_recorded": []}
+   "coupons_recorded": [],
+   "claims": [{"id": "clm_20402", "claim_type": "return", "claim_status": "requested",
+               "order_item_ids": ["oln_20402_1"], "requested_at": "2026-11-06T09:52:00-05:00"}]}
   ```
+  - `claims[]`: 이 주문의 취소·반품·교환 요청(오래된 순)과 각각이 걸린 줄. 쇼퍼 화면은 열린 요청이 있는 줄에 "반품 요청 중"을 보여 주고 새 요청 버튼을 내지 않습니다. 상태는 [enums.md](enums.md) §1.5.
   - 예: Alex의 #20402(F5, B2). Fri Nov 6 기준 배송 완료 6일째. 쿠폰을 쓴 주문이면 `totals.discounts[]`와 `coupons_recorded[]`가 채워집니다(예 `[{"coupon_id": "cpn_vipweekend20", "code": "VIPWEEKEND20", "promotion_id": "promo_1042"}]`).
   - `order_status`·`order_item_status`는 [enums.md](enums.md) §1.1, `delivery_state`는 §1.3, `payment_status`는 §1.4. 줄마다 상태가 따로 움직입니다.
 - 프리뷰: 해당 없음(읽기)

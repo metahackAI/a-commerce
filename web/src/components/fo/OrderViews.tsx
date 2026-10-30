@@ -15,6 +15,7 @@ import {useAiTarget} from '@/ai/useAiTarget';
 import {dateTime, longDate, money, words} from '@/app/(storefront)/_lib/format';
 import type {
   Delivery,
+  OrderClaim,
   OrderItem,
   OrderStatus,
   OrderSummary,
@@ -91,7 +92,10 @@ export function OrderList({orders}: {orders: OrderSummary[]}) {
   );
 }
 
-function OrderLineRow({orderId, item, canReturn}: {orderId: string; item: OrderItem; canReturn: boolean}) {
+/** Claim states that have ended (docs/api/enums.md §1.5); any other state is a request in progress. */
+const CLOSED_CLAIM = new Set(['completed', 'declined', 'withdrawn', 'converted']);
+
+function OrderLineRow({orderId, item, canReturn, claim}: {orderId: string; item: OrderItem; canReturn: boolean; claim?: OrderClaim}) {
   const options = [item.color, item.size ? `size ${item.size}` : null].filter(Boolean).join(' · ');
   const target = useAiTarget({
     kind: 'order_line',
@@ -119,7 +123,16 @@ function OrderLineRow({orderId, item, canReturn}: {orderId: string; item: OrderI
               .filter(Boolean)
               .join(' · ')}
           </Text>
-          {canReturn && item.order_item_status === 'delivered' ? <ReturnPanel orderId={orderId} item={item} /> : null}
+          {claim ? (
+            <HStack gap={2} vAlign="center">
+              <StatusBadge status={claim.claim_status} />
+              <Text type="supporting" color="secondary">
+                {`${words(claim.claim_type)} request sent ${dateTime(claim.requested_at)}`}
+              </Text>
+            </HStack>
+          ) : canReturn && item.order_item_status === 'delivered' ? (
+            <ReturnPanel orderId={orderId} item={item} />
+          ) : null}
         </VStack>
       }
       endContent={<AskButton target={target} label={item.name} />}
@@ -127,11 +140,13 @@ function OrderLineRow({orderId, item, canReturn}: {orderId: string; item: OrderI
   );
 }
 
-export function OrderLines({orderId, items}: {orderId: string; items: OrderItem[]}) {
+export function OrderLines({orderId, items, claims = []}: {orderId: string; items: OrderItem[]; claims?: OrderClaim[]}) {
+  // The latest open request on each line.
+  const open = (id: string) => [...claims].reverse().find(c => !CLOSED_CLAIM.has(c.claim_status) && c.order_item_ids.includes(id));
   return (
     <List hasDividers density="spacious">
       {items.map(i => (
-        <OrderLineRow key={i.id} orderId={orderId} item={i} canReturn />
+        <OrderLineRow key={i.id} orderId={orderId} item={i} canReturn claim={open(i.id)} />
       ))}
     </List>
   );
