@@ -4,7 +4,6 @@
 // Products are columns, attributes are rows; the table scrolls sideways on a phone. Every column
 // and row is an AI target, so "why does weight matter?" or "sort by price" point at something.
 
-import {Badge} from '@astryxdesign/core/Badge';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
 import {Link} from '@astryxdesign/core/Link';
 import {Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow} from '@astryxdesign/core/Table';
@@ -21,6 +20,7 @@ import type {BlockProps} from '../types';
 import {ActionButton, BlockActions, BlockFrame, dataOf, intentsFor, list} from './common';
 import type {CompareTableData} from './data';
 import {moneyText, textOf} from './values';
+import {StatusTag} from '@/components/fo/StatusTag';
 
 type Product = CompareTableData['products'][number];
 
@@ -39,7 +39,7 @@ function ColumnHeader({block, product}: {block: UiBlock; product: Product}) {
       <VStack gap={1.5}>
         {product.badge ? (
           <HStack>
-            <Badge label={product.badge} />
+            <StatusTag label={product.badge} tone="info" />
           </HStack>
         ) : null}
         {src ? <ProductImage src={src} alt={product.name} ratio={1} /> : null}

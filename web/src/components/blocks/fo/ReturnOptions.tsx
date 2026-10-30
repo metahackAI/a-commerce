@@ -4,7 +4,6 @@
 // F5): each choice with its facts as the store wrote them. Sending the request is the shopper's
 // own person-only button, carried by the block (POST /v1/fulfillment/returns).
 
-import {Badge} from '@astryxdesign/core/Badge';
 import {Card} from '@astryxdesign/core/Card';
 import {Grid} from '@astryxdesign/core/Grid';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
@@ -21,6 +20,7 @@ import type {BlockProps} from '../types';
 import {ActionButton, BlockActions, BlockFrame, dataOf, intentsFor, list} from './common';
 import type {ReturnOptionsData} from './data';
 import {moneyText, textOf} from './values';
+import {StatusTag} from '@/components/fo/StatusTag';
 
 type Option = ReturnOptionsData['options'][number];
 
@@ -48,7 +48,7 @@ function OptionCard({block, option, isSelected}: {block: UiBlock; option: Option
           <Text type="body" weight="semibold">
             {option.title ?? words(option.kind)}
           </Text>
-          {isSelected ? <Badge label="Chosen" variant="success" /> : null}
+          {isSelected ? <StatusTag label="Chosen" tone="success" /> : null}
         </HStack>
         {amount ? (
           <Text type="large" weight="semibold" hasTabularNumbers>

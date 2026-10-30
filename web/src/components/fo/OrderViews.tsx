@@ -4,7 +4,6 @@
 // delivery tracking (get_delivery, track_shipment). Each row is an AI target (`order_row`) so the
 // shopper can ask "where is it?" or "I want to return this".
 
-import {Badge} from '@astryxdesign/core/Badge';
 import {Card} from '@astryxdesign/core/Card';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
 import {Link} from '@astryxdesign/core/Link';
@@ -26,6 +25,7 @@ import type {
 
 import {AskButton} from './Ask';
 import {ReturnPanel} from './ReturnPanel';
+import {StatusTag} from './StatusTag';
 
 export function statusVariant(s: string): 'success' | 'warning' | 'error' | 'info' | 'neutral' {
   if (s === 'delivered' || s === 'completed') return 'success';
@@ -36,7 +36,7 @@ export function statusVariant(s: string): 'success' | 'warning' | 'error' | 'inf
 }
 
 export function StatusBadge({status}: {status: OrderStatus | string}) {
-  return <Badge label={words(status)} variant={statusVariant(status)} />;
+  return <StatusTag label={words(status)} tone={statusVariant(status)} />;
 }
 
 export function OrderRow({order}: {order: OrderSummary}) {

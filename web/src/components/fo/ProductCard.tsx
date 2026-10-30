@@ -4,7 +4,6 @@
 // (`product_card`, schema:Product): a shopper can ask "will this be fine in the rain?" or press a
 // suggested sentence the agent attached to it.
 
-import {Badge} from '@astryxdesign/core/Badge';
 import {Button} from '@astryxdesign/core/Button';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
 import {Link} from '@astryxdesign/core/Link';
@@ -18,6 +17,7 @@ import {AskButton, Intents} from './Ask';
 import {PriceTag} from './PriceTag';
 import {ProductImage} from './ProductImage';
 import {COMPARE_MAX, useStorefront} from './StorefrontContext';
+import {StatusTag} from './StatusTag';
 
 export interface ProductCardProps {
   productId: string;
@@ -102,7 +102,7 @@ export function ProductCard({
         ) : null}
         {availability && availability !== 'in_stock' ? (
           <HStack>
-            <Badge label={words(availability)} variant={availability === 'out_of_stock' ? 'warning' : 'neutral'} />
+            <StatusTag label={words(availability)} tone={availability === 'out_of_stock' ? 'warning' : 'neutral'} />
           </HStack>
         ) : null}
         {canCompare ? (

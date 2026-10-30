@@ -4,7 +4,6 @@
 // scene F4). The recipient's details are for this order only; the block says so. Ordering stays
 // with the shopper: the `open` button leads to the order confirmation.
 
-import {Badge} from '@astryxdesign/core/Badge';
 import {Card} from '@astryxdesign/core/Card';
 import {Grid} from '@astryxdesign/core/Grid';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
@@ -21,6 +20,7 @@ import type {BlockProps} from '../types';
 import {ActionButton, BlockActions, BlockFrame, dataOf, intentsFor, list} from './common';
 import type {GiftPickerData} from './data';
 import {cardPrice, moneyText, textOf} from './values';
+import {StatusTag} from '@/components/fo/StatusTag';
 
 type Pick = GiftPickerData['picks'][number];
 
@@ -45,7 +45,7 @@ function PickCard({block, pick}: {block: UiBlock; pick: Pick}) {
           canCompare={false}
         />
         <HStack gap={2} vAlign="center" wrap="wrap">
-          {pick.chosen_size ? <Badge label={`Chosen · ${pick.chosen_size}`} variant="success" /> : null}
+          {pick.chosen_size ? <StatusTag label={`Chosen · ${pick.chosen_size}`} tone="success" /> : null}
           {action && !pick.chosen_size ? <ActionButton action={action} /> : null}
         </HStack>
       </VStack>

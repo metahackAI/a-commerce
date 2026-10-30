@@ -121,14 +121,35 @@ function EndContent() {
           onClick={openAssistant}
         />
       )}
+      {isMobile ? null : <TopNavItem label="Orders" href="/orders" isSelected={pathname.startsWith('/orders')} />}
       <AccountItem />
       <CartItem />
     </HStack>
   );
 }
 
-function Shell({categories, children}: {categories: NavCategory[]; children: ReactNode}) {
+/** The store's display categories; on a phone (the menu drawer) also the shopper's own pages. */
+function NavLinks({categories}: {categories: NavCategory[]}) {
   const pathname = usePathname();
+  const {isMobile} = useAppShellMobile();
+  return (
+    <>
+      {categories.map(c => (
+        <TopNavItem key={c.id} label={c.name} href={`/c/${encodeURIComponent(c.id)}`} isSelected={pathname === `/c/${c.id}`} />
+      ))}
+      <TopNavItem label="Shop all" href="/search" isSelected={pathname === '/search'} />
+      {isMobile ? (
+        <>
+          <TopNavItem label="Ask Northwind" href="/ask" isSelected={pathname === '/ask'} />
+          <TopNavItem label="Orders" href="/orders" isSelected={pathname.startsWith('/orders')} />
+          <TopNavItem label="Account" href="/account" isSelected={pathname === '/account'} />
+        </>
+      ) : null}
+    </>
+  );
+}
+
+function Shell({categories, children}: {categories: NavCategory[]; children: ReactNode}) {
   return (
     <AppShell
       height="fill"
@@ -143,16 +164,7 @@ function Shell({categories, children}: {categories: NavCategory[]; children: Rea
               </Text>
             </Link>
           }
-          startContent={
-            <>
-              {categories.map(c => (
-                <TopNavItem key={c.id} label={c.name} href={`/c/${encodeURIComponent(c.id)}`} isSelected={pathname === `/c/${c.id}`} />
-              ))}
-              <TopNavItem label="Shop all" href="/search" isSelected={pathname === '/search'} />
-              <TopNavItem label="Orders" href="/orders" isSelected={pathname.startsWith('/orders')} />
-              <TopNavItem label="Account" href="/account" isSelected={pathname === '/account'} />
-            </>
-          }
+          startContent={<NavLinks categories={categories} />}
           endContent={<EndContent />}
         />
       }>

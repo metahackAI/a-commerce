@@ -5,7 +5,6 @@
 // get_my_profile, get_preferences, list_addresses, list_wishlist, list_member_coupons and
 // get_loyalty_balance returned.
 
-import {Badge} from '@astryxdesign/core/Badge';
 import {Button} from '@astryxdesign/core/Button';
 import {Icon} from '@astryxdesign/core/Icon';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
@@ -26,6 +25,7 @@ import {PersonButton} from '@/components/PersonButton';
 import {AskButton} from './Ask';
 import {ErrorNotice} from './ErrorNotice';
 import {errorBody, write} from './write';
+import {StatusTag} from './StatusTag';
 
 function MemoryRow({memory}: {memory: Preference}) {
   const router = useRouter();
@@ -83,7 +83,7 @@ function AddressRow({address}: {address: Address}) {
       label={
         <HStack gap={2} vAlign="center">
           <Text weight="semibold">{address.label ?? 'Address'}</Text>
-          {address.is_primary ? <Badge label="Primary" /> : null}
+          {address.is_primary ? <StatusTag label="Primary" /> : null}
         </HStack>
       }
       description={[address.street_address, address.address_locality, address.address_region, address.postal_code, address.address_country].filter(Boolean).join(', ')}
@@ -176,7 +176,7 @@ function CouponRow({coupon}: {coupon: MemberCoupon}) {
       description={[coupon.name && coupon.code ? coupon.name : null, coupon.valid_through ? `until ${day(coupon.valid_through)}` : null, coupon.order_id ? `used on ${coupon.order_id}` : null]
         .filter(Boolean)
         .join(' · ')}
-      endContent={<Badge label={words(coupon.status)} variant={coupon.status === 'available' || coupon.status === 'issued' ? 'success' : 'neutral'} />}
+      endContent={<StatusTag label={words(coupon.status)} tone={coupon.status === 'available' || coupon.status === 'issued' ? 'success' : 'neutral'} />}
     />
   );
 }

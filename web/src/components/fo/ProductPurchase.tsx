@@ -5,7 +5,6 @@
 // address from get_delivery_dates, then add_to_cart (preview → run; no approval) and
 // add_to_wishlist. Every number is the API's.
 
-import {Badge} from '@astryxdesign/core/Badge';
 import {Banner} from '@astryxdesign/core/Banner';
 import {Button} from '@astryxdesign/core/Button';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
@@ -26,6 +25,7 @@ import {ErrorNotice} from './ErrorNotice';
 import {PriceTag} from './PriceTag';
 import {COMPARE_MAX, useStorefront} from './StorefrontContext';
 import {errorBody, write} from './write';
+import {StatusTag} from './StatusTag';
 
 function unique(values: (string | null | undefined)[]): string[] {
   return [...new Set(values.filter((v): v is string => !!v))];
@@ -230,7 +230,7 @@ export function ProductPurchase({
 
       {variant ? (
         <HStack gap={2} vAlign="center" wrap="wrap">
-          <Badge label={words(variant.availability)} variant={variant.availability === 'in_stock' ? 'success' : 'warning'} />
+          <StatusTag label={words(variant.availability)} tone={variant.availability === 'in_stock' ? 'success' : 'warning'} />
           {typeof variant.inventory_level === 'number' && variant.availability === 'in_stock' ? (
             <Text type="supporting" color="secondary">
               {variant.inventory_level} available in {[variant.color, variant.size].filter(Boolean).join(', ')}

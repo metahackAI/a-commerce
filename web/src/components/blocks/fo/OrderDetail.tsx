@@ -4,7 +4,6 @@
 // delivery, payment, totals. Return or exchange questions go back to the assistant (`say`); the
 // full order page has the shopper's own cancel and return buttons.
 
-import {Badge} from '@astryxdesign/core/Badge';
 import {Button} from '@astryxdesign/core/Button';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
 import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
@@ -18,6 +17,7 @@ import {BlockActions, BlockFrame, dataOf, list} from './common';
 import type {OrderDetailData} from './data';
 import {Lines} from './Lines';
 import {Totals} from './Totals';
+import {StatusTag} from '@/components/fo/StatusTag';
 
 function statusVariant(status: string): 'success' | 'warning' | 'error' | 'info' | 'neutral' {
   if (status === 'delivered') return 'success';
@@ -75,7 +75,7 @@ export function OrderDetailBlock({block}: BlockProps) {
           <Text type="body" weight="semibold">
             Order #{data.order_number}
           </Text>
-          {status ? <Badge label={words(status)} variant={statusVariant(status)} /> : null}
+          {status ? <StatusTag label={words(status)} tone={statusVariant(status)} /> : null}
         </HStack>
       </VStack>
       <Lines block={block} lines={lines} kind="order_row" />
