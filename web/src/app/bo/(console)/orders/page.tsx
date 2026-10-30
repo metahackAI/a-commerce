@@ -12,12 +12,14 @@ export const metadata = {title: 'Orders'};
 const STATUSES = ['payment_due', 'processing', 'in_transit', 'delivered', 'returned', 'cancelled', 'problem'];
 const label = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ');
 
-// Orders (search_orders): by status, customer and date.
+// Orders (search_orders): by order number, customer (email or name, as people say it), status
+// and date.
 export default async function OrdersPage({searchParams}: {searchParams: SearchParams}) {
   const sp = await searchParams;
   const values = {
+    order_number: param(sp, 'order_number'),
+    customer: param(sp, 'customer') ?? param(sp, 'customer_id'),
     order_status: params(sp, 'order_status'),
-    customer_id: param(sp, 'customer_id'),
     order_date_from: param(sp, 'order_date_from'),
     order_date_to: param(sp, 'order_date_to'),
     sort: param(sp, 'sort'),
@@ -33,8 +35,9 @@ export default async function OrdersPage({searchParams}: {searchParams: SearchPa
         <FilterBar
           values={values}
           filters={[
+            {kind: 'text', key: 'order_number', label: 'Order number', placeholder: '20402', width: 140},
+            {kind: 'text', key: 'customer', label: 'Customer', placeholder: 'Email or name', width: 200},
             {kind: 'multi', key: 'order_status', label: 'Status', options: STATUSES.map(s => ({value: s, label: s === 'problem' ? 'Needs attention' : label(s)}))},
-            {kind: 'text', key: 'customer_id', label: 'Customer id', placeholder: 'cus_…', width: 180},
             {kind: 'date', key: 'order_date_from', label: 'Placed from'},
             {kind: 'date', key: 'order_date_to', label: 'Placed through'},
             {

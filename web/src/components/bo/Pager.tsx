@@ -8,6 +8,12 @@ import {Button} from '@astryxdesign/core/Button';
 import {count} from '@/app/bo/_lib/format';
 import {withParams} from '@/app/bo/_lib/links';
 
+/** `orders` → `order`, `categories` → `category`, for a count of one. */
+function one(noun: string): string {
+  if (noun.endsWith('ies')) return `${noun.slice(0, -3)}y`;
+  return noun.endsWith('s') ? noun.slice(0, -1) : noun;
+}
+
 export function Pager({
   base,
   params,
@@ -28,7 +34,9 @@ export function Pager({
     <HStack gap={2} vAlign="center" wrap="wrap">
       <StackItem size="fill">
         <Text type="supporting" color="secondary">
-          {shown === total && !onLaterPage ? `${count(total)} ${noun}` : `${count(shown)} shown of ${count(total)} ${noun}`}
+          {shown === total && !onLaterPage
+            ? `${count(total)} ${total === 1 ? one(noun) : noun}`
+            : `${count(shown)} shown of ${count(total)} ${total === 1 ? one(noun) : noun}`}
         </Text>
       </StackItem>
       {onLaterPage ? <Button label="First page" size="sm" variant="ghost" href={withParams(base, {...params, cursor: undefined})} /> : null}

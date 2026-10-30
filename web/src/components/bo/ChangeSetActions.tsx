@@ -63,6 +63,7 @@ export function ChangeSetActions({id, number, version, state, undoUntil, scopes,
               path: `/v1/platform/change-sets/${encodeURIComponent(id)}/undo`,
               confirm: `Undo every change of ${name} in reverse order?${undoUntil ? ` Undo is open until ${dateTime(undoUntil)}.` : ''}`,
             }}
+            variant="secondary"
             onDone={done}
           />
         ) : null}

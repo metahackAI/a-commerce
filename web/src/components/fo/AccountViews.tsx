@@ -49,6 +49,7 @@ function MemoryRow({memory}: {memory: Preference}) {
                 path: `/v1/customer/me/memories/${encodeURIComponent(memory.id)}/undo`,
                 confirm: `Forget “${memory.text}”? Northwind stops using it.`,
               }}
+              variant="secondary"
               onDone={() => {
                 setGone(true);
                 router.refresh();
@@ -196,6 +197,9 @@ export function LoyaltyView({balance}: {balance: LoyaltyBalance}) {
   const target = useAiTarget({kind: 'loyalty_balance', label: `Loyalty balance ${money(balance.balance)}`, ids: {customer_id: balance.customer_id}});
   return (
     <VStack gap={1} ref={target.ref} {...target.props}>
+      <Text type="supporting" color="secondary">
+        Reward balance
+      </Text>
       <HStack gap={2} vAlign="center">
         <Text type="large" weight="semibold" hasTabularNumbers>
           {money(balance.balance)}

@@ -12,6 +12,7 @@ use acom_contract::{
 use acom_core::Money;
 use acom_core::enums::{ActionStatus, OrderStatus, PaymentMethod};
 use acom_core::ids::{OrderId, OrderItemId, PaymentId};
+use acom_customer::service::for_sales as customer;
 use acom_promotion::service::for_sales as promotion;
 use acom_store::{Cx, Page, TxCx};
 use chrono::Duration;
@@ -1122,6 +1123,12 @@ pub struct SearchOrdersInput {
     /// Only this customer's orders.
     #[schemars(regex(pattern = r"^cus_[a-z0-9_]+$"), example = &"cus_alex")]
     pub customer_id: Option<String>,
+    /// The order number people see, with or without `#`.
+    #[schemars(regex(pattern = r"^#?[0-9]{1,12}$"), example = &"20402")]
+    pub order_number: Option<String>,
+    /// The customer as people say it: an email, a name, part of either, or a phone number.
+    #[schemars(length(min = 2, max = 100), example = &"alex@example.com")]
+    pub customer: Option<String>,
     /// Placed on or after this day (store time).
     #[schemars(example = &"2026-10-01")]
     pub order_date_from: Option<String>,
@@ -1147,6 +1154,9 @@ pub struct SearchOrdersInput {
 
 pub(crate) struct SearchOrders;
 
+/// How many people a `customer` filter may name before it is too broad to be what was meant.
+const MATCHED_PEOPLE: i64 = 500;
+
 impl Operation for SearchOrders {
     const META: OpMeta = OpMeta {
         address: "sales.order.search",
@@ -1155,7 +1165,7 @@ impl Operation for SearchOrders {
         kind: Kind::Read,
         method: Method::Get,
         path: "/v1/sales/orders",
-        summary: "Operators' order search by state, customer and date, sorted by date or total.",
+        summary: "Operators' order search by order number, customer (email or name), state and date, sorted by date or total.",
         consumes: &[],
         produces: &[Slot::many("order_id")],
         checks: &[],
@@ -1189,8 +1199,30 @@ impl ReadOp<Cx> for SearchOrders {
         let from = parse_time(cx, "order_date_from", input.order_date_from.as_deref())?;
         let until = parse_time(cx, "order_date_to", input.order_date_to.as_deref())?
             .map(|t| t + Duration::days(1));
+        let mut tx = cx.read().await.map_err(ToolError::from)?;
+        let customer_ids = match input.customer.as_deref().map(str::trim) {
+            Some(text) if !text.is_empty() => {
+                let (ids, more) = customer::people_matching(&mut tx, text, MATCHED_PEOPLE).await?;
+                if more {
+                    return Err(ToolError::new(
+                        INVALID_FILTER,
+                        format!(
+                            "“{text}” matches more than {MATCHED_PEOPLE} people; give an email or a fuller name."
+                        ),
+                    )
+                    .detail(json!({"field": "customer", "reason": "too_broad"}))
+                    .next("search_members"));
+                }
+                Some(ids)
+            }
+            _ => None,
+        };
         let filter = repo::OrderFilter {
             customer_id: input.customer_id,
+            order_number: input
+                .order_number
+                .map(|n| n.trim_start_matches('#').to_owned()),
+            customer_ids,
             statuses: input
                 .order_status
                 .unwrap_or_default()
@@ -1208,7 +1240,6 @@ impl ReadOp<Cx> for SearchOrders {
             limit: page.limit,
             offset: page.offset,
         };
-        let mut tx = cx.read().await.map_err(ToolError::from)?;
         let (orders, total) = repo::orders(&mut tx, &filter).await?;
         tx.commit().await.map_err(ToolError::from)?;
         let fields: Vec<String> = input
@@ -1384,6 +1415,61 @@ mod tests {
             .unwrap();
     }
 
+    /// Integration: an operator finds orders the way people name them: by number with or
+    /// without `#`, and by the customer's email or name (`DATABASE_URL`, demo seed).
+    #[tokio::test]
+    #[ignore = "integration: needs a PostgreSQL database"]
+    async fn operators_find_orders_by_number_and_customer() {
+        let sj = crate::testdb::cx("adm_sj").await;
+        let search = |order_number: Option<&str>, customer: Option<&str>| SearchOrdersInput {
+            order_status: None,
+            customer_id: None,
+            order_number: order_number.map(str::to_owned),
+            customer: customer.map(str::to_owned),
+            order_date_from: None,
+            order_date_to: None,
+            seller_id: None,
+            sort: None,
+            limit: None,
+            cursor: None,
+            fields: None,
+        };
+        let ids = |v: &Value| -> Vec<String> {
+            v["items"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter_map(|o| o["id"].as_str().map(str::to_owned))
+                .collect()
+        };
+        let by_number = SearchOrders
+            .read(&sj, search(Some("#20402"), None))
+            .await
+            .unwrap();
+        assert_eq!(ids(&by_number), ["ord_20402"]);
+        let by_email = SearchOrders
+            .read(&sj, search(None, Some("ALEX.KIM@example.com")))
+            .await
+            .unwrap();
+        assert!(
+            ids(&by_email).contains(&"ord_20402".to_owned()),
+            "{by_email}"
+        );
+        let both = SearchOrders
+            .read(&sj, search(Some("20402"), Some("Morgan Reyes")))
+            .await
+            .unwrap();
+        assert_eq!(both["total"], 0, "the number is Alex's, not Morgan's");
+        let broad = SearchOrders
+            .read(&sj, search(None, Some("example")))
+            .await
+            .unwrap_err();
+        assert_eq!(
+            broad.detail.as_deref().map(|d| d["reason"].clone()),
+            Some(json!("too_broad"))
+        );
+    }
+
     /// Integration: order reads for Alex's #20402 (`DATABASE_URL`, demo seed).
     #[tokio::test]
     #[ignore = "integration: needs a PostgreSQL database"]
@@ -1438,6 +1524,8 @@ mod tests {
                 SearchOrdersInput {
                     order_status: Some(vec![OrderStatus::Delivered]),
                     customer_id: Some("cus_alex".into()),
+                    order_number: None,
+                    customer: None,
                     order_date_from: None,
                     order_date_to: None,
                     seller_id: None,

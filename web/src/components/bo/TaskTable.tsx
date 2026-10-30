@@ -62,7 +62,7 @@ function changeSetLine(cs: Pick<ChangeSet, 'number' | 'state' | 'version' | 'che
   return (
     <HStack gap={1} vAlign="center" wrap="wrap">
       <StateToken state={cs.state} />
-      {checks ? (
+      {checks && checks.total > 0 ? (
         <StateToken
           state={checks.failed > 0 ? 'failed' : 'passed'}
           label={checks.failed > 0 ? `${checks.failed} of ${checks.total} checks failed` : `${checks.passed} of ${checks.total} checks passed`}
@@ -138,6 +138,7 @@ function TaskRow({task, cs, blockId, intents}: {task: TaskSummary; cs?: ChangeSe
                 path: `/v1/platform/change-sets/${encodeURIComponent(cs.id)}/undo`,
                 confirm: `Undo every change of #${cs.number} in reverse order?${cs.undo_until ? ` Undo is open until ${dateTime(cs.undo_until)}.` : ''}`,
               }}
+              variant="secondary"
               onDone={() => router.refresh()}
             />
           ) : null}
@@ -149,6 +150,7 @@ function TaskRow({task, cs, blockId, intents}: {task: TaskSummary; cs?: ChangeSe
                 path: `/v1/platform/tasks/${encodeURIComponent(task.id)}/dismiss`,
                 confirm: `Dismiss “${task.title}”? A linked change set that is still waiting is rejected too. If the same thing happens again, a new task appears.`,
               }}
+              variant="secondary"
               onDone={() => router.refresh()}
             />
           ) : null}
