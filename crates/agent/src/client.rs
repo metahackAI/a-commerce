@@ -87,6 +87,17 @@ pub trait ToolClient: Send + Sync {
         version: i32,
     ) -> BoxFuture<'a, Result<ChangeSetHead, ToolError>>;
 
+    /// `PATCH /v1/platform/change-sets/{id}`: a correction made by talking joins the set's
+    /// request text.
+    fn append_request<'a>(
+        &'a self,
+        change_set_id: &'a str,
+        sentence: &'a str,
+    ) -> BoxFuture<'a, Result<(), ToolError>> {
+        let _ = (change_set_id, sentence);
+        Box::pin(async { Ok(()) })
+    }
+
     /// `GET /v1/platform/store`: the store's currency, time zone and current time (the demo
     /// clock in demo mode), as commerce sees them. The agent never reads commerce's tables.
     fn store(&self) -> BoxFuture<'_, Result<crate::store::StoreSettings, ToolError>> {
@@ -271,6 +282,22 @@ impl ToolClient for HttpToolClient {
                 )
                 .await?;
             decode(v, "change set")
+        })
+    }
+
+    fn append_request<'a>(
+        &'a self,
+        change_set_id: &'a str,
+        sentence: &'a str,
+    ) -> BoxFuture<'a, Result<(), ToolError>> {
+        Box::pin(async move {
+            self.send(
+                reqwest::Method::PATCH,
+                &format!("/v1/platform/change-sets/{change_set_id}"),
+                Some(json!({"append_request_text": sentence})),
+            )
+            .await
+            .map(|_| ())
         })
     }
 

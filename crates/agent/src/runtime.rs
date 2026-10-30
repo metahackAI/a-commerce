@@ -349,6 +349,8 @@ struct Draft {
     items: Vec<DraftItem>,
     /// Whether this turn changed it.
     touched: bool,
+    /// Whether this turn's sentence is already in the set's request text.
+    request_noted: bool,
     mismatches: Vec<String>,
 }
 
@@ -371,6 +373,7 @@ impl Draft {
                 })
                 .collect(),
             touched: false,
+            request_noted: false,
             mismatches: Vec::new(),
         }
     }
@@ -1513,6 +1516,7 @@ impl<'r> Turn<'r> {
                     state: head.state,
                     items: Vec::new(),
                     touched: true,
+                    request_noted: true,
                     mismatches: Vec::new(),
                 });
                 Ok(head.id)
@@ -1680,9 +1684,15 @@ impl<'r> Turn<'r> {
             })
             .collect();
         let head = self.tools.replace_items(cs, &refs).await?;
+        let note = self.draft.as_ref().is_some_and(|d| !d.request_noted);
         if let Some(d) = self.draft.as_mut() {
             d.version = head.version;
             d.state.clone_from(&head.state);
+            d.request_noted = true;
+        }
+        // The correction joins what the person asked, so the card shows both sentences.
+        if note && let Err(e) = self.tools.append_request(cs, &self.text).await {
+            tracing::warn!(error = %e.message, "could not add the correction to the request");
         }
         self.emit.send(Event::ChangeSetUpdated {
             change_set_id: head.id,
