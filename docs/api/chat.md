@@ -27,6 +27,15 @@ Accept: text/event-stream
 {"conversation_id": "conv_01jc8...", "ui_event": {"block_id": "blk_31", "action_id": "add_m", "args": {"product_id": "prd_seersucker_overshirt", "size": "M", "color": "clay"}}}
 ```
 
+사람이 화면의 요소를 골라 물으면(웹의 "이것에 대해 묻기", [../frontend/README.md](../frontend/README.md) §3.2) `message`와 함께 `context`가 실립니다. 에이전트는 "이것"을 추측하지 않고 `context`를 씁니다.
+
+```json
+{"conversation_id": "conv_01jc8...", "message": "Why is this one only 15%?",
+ "context": [{"element_ref": "blk_12#change_row:prd_seersucker_overshirt", "kind": "change_row",
+              "label": "Seersucker overshirt · 15% · $67.15",
+              "ids": {"product_id": "prd_seersucker_overshirt", "change_set_id": "cs_1042"}}]}
+```
+
 `GET /api/chat/{surface}/conversations/{id}`는 지난 턴과 블록을 돌려줍니다(새로고침·다른 기기).
 
 ## 2. 이벤트 스트림
@@ -41,6 +50,7 @@ SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(
 | `message.done` | `{message_id, text}` | 답 텍스트 끝 |
 | `ui.block` | 블록(§3) | 블록 추가. 같은 `block_id`가 다시 오면 교체 |
 | `memory.saved` | `{memory_id, text}` | 기억이 생김. 웹은 한 줄과 되돌리기 버튼을 보여 줌 |
+| `ui.command` | `{command, target, note?}` | 에이전트가 화면을 가리킴. `command`: `highlight` · `scroll_to` · `open` · `focus_input`. `target`은 `element_ref`, 블록 id, 또는 경로. `person` 버튼은 대상이 될 수 없음 |
 | `change_set.updated` | `{change_set_id, version, state}` | 변경셋 상태 변화(승인 뒤 실행·검증 포함, 턴 밖에서도 대화 구독으로 옴) |
 | `error` | `{code, message}` | 턴을 끝내는 오류. 코드는 [errors.md](errors.md) |
 | `turn.done` | `{turn_id, usage: {model_calls, tool_calls, input_tokens, output_tokens, ms, cost_usd}, models: [...]}` | 턴 끝. 화면의 "9 tool calls · Muse Glimmer 30B · 3.8s" |
@@ -59,9 +69,14 @@ SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(
   "title": "Packs smallest · 3 compared",
   "why": "Shown as a table because you compare specs. Say \"show photos\" to change it.",   // 선택
   "data": { },                    // 블록별 형식 (§3.3). 숫자는 모두 툴 출력에서 옴
-  "actions": [ ]                  // §3.2
+  "actions": [ ],                 // §3.2
+  "suggested_intents": [          // 선택. 요소별 추천 말 (웹이 그 요소 옆에 보여 줌)
+    {"element": "change_row:prd_seersucker_overshirt", "say": "Make this 20%"}
+  ]
 }
 ```
+
+블록 안의 의미 있는 요소(행, 가격, 체크, 칩, 카드)는 `element_ref` = `<block_id>#<kind>:<id>`로 가리킵니다. 요소 종류(`kind`)는 [../frontend/README.md](../frontend/README.md) §4의 표와 같습니다.
 
 ### 3.2 버튼(actions)
 

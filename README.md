@@ -99,7 +99,23 @@ Numbers will be added here once measured.
               Commerce back-end services
 ```
 
-Full architecture (services and trust boundaries, API hierarchy, agent-friendly interface, schema.org data model, AI-native features): [docs/architecture.md](docs/architecture.md). Rust implementation design (workspace, commerce service, agent runtime, gateway, testing): [docs/backend/](docs/backend/README.md). Full API specification (every operation, by group → domain → resource, with conventions, enumerations, errors, the chat stream, and the data model): [docs/api/](docs/api/README.md); policies as data: [policies/](policies/README.md). Demo store and scenes with expected results: [docs/scenarios.md](docs/scenarios.md). Design details: [docs/design.md](docs/design.md). Build plan: [docs/plan.md](docs/plan.md). Research (what AI-native commerce means, who else is building it, with source captures): [docs/research.md](docs/research.md). UI mockups: [design/mockups](design/mockups), layout options and UI per intent: [design/options](design/options), storefront plan: [design/storefront](design/storefront).
+## How to read the docs
+
+Start with the row that matches what you are about to do. Each document links to the next one it depends on.
+
+| If you want to… | Read, in this order |
+|---|---|
+| Understand the product | This README → [docs/design.md](docs/design.md) (rules for AI-friendly tools, harness, UI protocol) → [docs/research.md](docs/research.md) → mockups in [design/](design) |
+| See the whole system | [docs/architecture.md](docs/architecture.md) (services and trust boundaries, API hierarchy, schema.org data model, AI-native features) |
+| Know what we ship and when | [docs/plan.md](docs/plan.md) (scope, milestones M0–M6, definition of done) |
+| Know the demo store and scenes | [docs/scenarios.md](docs/scenarios.md) (people, products, policies, each scene with expected results) |
+| Build back-end code | [AGENTS.md](AGENTS.md) → [docs/backend/README.md](docs/backend/README.md) (workspace, crates, rules) → [docs/backend/database.md](docs/backend/database.md) (schema.org tables and columns) → [docs/backend/commerce.md](docs/backend/commerce.md) → [docs/backend/agent.md](docs/backend/agent.md) → [docs/backend/gateway.md](docs/backend/gateway.md) → [docs/backend/testing.md](docs/backend/testing.md) |
+| Add or change an operation (tool) | [docs/api/README.md](docs/api/README.md) (hierarchy, kinds, index) → [docs/api/conventions.md](docs/api/conventions.md) → [docs/api/vocabulary.md](docs/api/vocabulary.md) (schema.org types and our extensions) → the domain file (for example [docs/api/promotion.md](docs/api/promotion.md)) → [docs/api/enums.md](docs/api/enums.md) and [docs/api/errors.md](docs/api/errors.md) → [policies/](policies/README.md) |
+| Build front-end code | [docs/frontend/README.md](docs/frontend/README.md) (AI layer, elements, person buttons) → [docs/api/chat.md](docs/api/chat.md) (stream and blocks) → [design/](design) |
+| Look up a table, column, or term | [docs/backend/schema.generated.md](docs/backend/schema.generated.md) (generated from the migrations), [vocab/acom.jsonld](vocab/acom.jsonld) (every `acom:` term), or the `describe_data` tool |
+| Load or change demo data | [docs/scenarios.md](docs/scenarios.md) → [seed/demo/README.md](seed/demo/README.md) |
+
+Specifications that implementers read daily (`docs/api/`, `docs/backend/`, `docs/frontend/`, `docs/scenarios.md`) are written in Korean; the overview documents are in English.
 
 ## Getting started
 
@@ -116,6 +132,8 @@ docker compose -f deploy/docker-compose.yml up -d postgres
 cargo build --workspace
 cargo test --workspace          # unit and contract tests
 cargo xtask check-docs          # the code and docs/api must agree
+cargo xtask check-schema        # migrations follow docs/backend/database.md
+cargo xtask check-seed          # the demo seed fits the schema
 cargo run -p acom-commerce      # :7001
 cargo run -p acom-agent-svc     # :7002
 cargo run -p acom-gateway       # :7000, the one address for the web app and outside agents
@@ -147,6 +165,7 @@ Everything in this repository was created between Oct 27 and Nov 4, 2026. The co
 | Oct 28 | Build plan: MVP scope, tool signatures, seed data, UI block schema, roles and schedule |
 | Oct 30 | Architecture document: back-end structure, API hierarchy, schema.org data model, AI-native features |
 | Oct 30 | API specification: 13 domains, every operation, data model, policies |
+| Oct 30 | Data foundation (M1): 12 migrations with schema.org tables and columns, a comment with its term on every table and column, a generated data dictionary and vocabulary, a rule checker, and the demo store seed (812 rows) |
 | Oct 30 | Direction set: the whole server side in Rust (gateway, commerce, agent). Rust workspace with the contract, money, time, policy loader, and a docs checker; implementation design; demo scenarios from the mockups; conventions, enumerations, errors, and the chat stream |
 
 ## References

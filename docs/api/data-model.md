@@ -9,13 +9,13 @@
 
 ```
 schema:  https://schema.org/            (표준, 먼저 사용)
-acom:    https://a-commerce.dev/ns#     (우리 확장, schema.org에 없는 것만)
+acom:    https://metahackai.github.io/a-commerce/vocab#   (우리 확장, vocab/acom.jsonld가 정의. 규칙은 vocabulary.md)
 ```
 
-1. **타입**: schema.org 타입 이름을 PascalCase 그대로 씁니다(`ProductGroup`, `Product`, `Offer`, `Order`, `OrderItem`, `Person`, `PostalAddress`, `ParcelDelivery`, `MerchantReturnPolicy`). 없으면 `acom:Coupon`처럼 확장합니다.
+1. **타입**: schema.org 타입 이름을 PascalCase 그대로 씁니다(`ProductGroup`, `Product`, `Offer`, `Order`, `OrderItem`, `Person`, `PostalAddress`, `ParcelDelivery`, `MerchantReturnPolicy`). schema.org 타입의 한 종류는 그 타입에 `additionalType`을 답니다(쿠폰 = `Offer` + `acom:Coupon`, §4).
 2. **속성**: schema.org 속성 이름을 쓰되, API(wire)와 DB에서는 **snake_case**로 적습니다(`validFrom` → `valid_from`, `priceCurrency` → `price_currency`, `validForMemberTier` → `valid_for_member_tier`). 공개하는 JSON-LD 컨텍스트가 각 이름을 schema.org 용어로 되돌려 매핑하므로, 모든 응답은 그대로 유효한 JSON-LD입니다.
 3. **열거값**: schema.org 열거 멤버를 snake_case 단어로 씁니다(`InStock` → `in_stock`, `OrderDelivered` → `delivered`, `FreeReturn` → `free_return`, `SalePrice` → `sale_price`). schema.org에 없으면 `acom:` 열거를 정의합니다. **코드값은 쓰지 않습니다.** 값 목록은 [enums.md](enums.md).
-4. **확장**: 맞는 것이 없을 때만 `acom:` 네임스페이스에 만들고, 가장 가까운 schema.org 타입의 subtype으로 선언해 그 속성을 재사용합니다. 확장 속성도 snake_case입니다(`acom:percent_off`, `acom:safety_stock`).
+4. **확장**: schema.org 타입을 먼저 쓰고, 특수화는 `@type`(schema.org) + `additionalType`(`acom:`)으로 씁니다. 새 프로퍼티·타입은 마지막 수단이며 `vocab/acom.jsonld`에 상위 타입과 함께 정의합니다([vocabulary.md](vocabulary.md)). 전선 위에서는 확장 프로퍼티도 snake_case입니다(`percent_off`, `safety_stock`).
 5. **식별자**: 접두 id(`prd_windbreaker`, `var_windbreaker_m_slate`, `cs_1042`). 접두 표와 규칙은 [conventions.md](conventions.md) §2·§9. 엔티티 자신의 id 필드는 `id`, 다른 엔티티를 가리키면 `<entity>_id`입니다. 회원 등급 id는 스토어가 정한 단어(`vip`, `gold`)이고 `"everyone"`은 예약어입니다([enums.md](enums.md) §5). 사람에게 보이는 번호는 따로 둡니다(`order_number: "20402"`, 변경셋 `number: 1042`).
 6. **금액**: schema.org `MonetaryAmount` 형태 `{value, currency}`. 가격 필드는 schema.org를 따라 `price` + `price_currency`로 펼쳐 쓸 수 있습니다(`Offer`, `UnitPriceSpecification`). 정확한 십진수, 센트 반올림([conventions.md](conventions.md) §3).
 7. **비율**: 툴 입력의 `percent_off`·`*_percent`는 0–100, 정책 파일과 `*_rate`는 0–1([conventions.md](conventions.md) §4).
@@ -171,150 +171,56 @@ acom:    https://a-commerce.dev/ns#     (우리 확장, schema.org에 없는 것
 
 ---
 
-## 4. `acom:` 확장 요약
+## 4. 확장 (`acom:`)
 
-schema.org에 없어 새로 만든 것은 대부분 정책·상태·커머스 특유의 개념입니다. 각 확장은 가장 가까운 schema.org 타입의 subtype이며 그 속성을 최대한 재사용합니다.
+확장 규칙은 [vocabulary.md](vocabulary.md)에 있습니다.
+1. schema.org 타입이 있으면 그대로 씁니다.
+2. 그 타입의 한 종류이면 `@type`은 schema.org 타입으로 두고 우리 용어는 `additionalType`에 답니다.
+3. 새 프로퍼티와 새 타입은 마지막 수단입니다.
 
-| 확장 | subtype of | schema.org만으로 부족한 이유 |
-|---|---|---|
-| `acom:Promotion` | `Offer` | 기간 동안의 회원 판매가를 묶는 프로모션이 없음 |
-| `acom:Coupon` | `Offer` | 주문의 `discount_code`만 있고 중복 적용·발급 규칙이 없음 |
-| `acom:Cart` | `Order` | 장바구니 타입이 없음. 결제 전의 주문으로 표현 |
-| `acom:Refund` | `MoneyTransfer` | 수단과 상태를 가진 환불 타입이 없음 |
-| `acom:ChangeSet`, `acom:Preview` | `ItemList`, `Action` | 검사와 되돌리기 기한을 가진, 버전 있는 프리뷰 묶음 |
-| `acom:Task` | `Action` | 감시 기준과 출처를 가진 운영자 할 일 |
-| `acom:Preference` | `PropertyValue` | 알게 된 경로(`source`)와 되돌리기를 가진 쇼퍼 선호 기억 |
-| `acom:CompareAction`, `acom:RefundAction` | `AssessAction`, `PayAction` | `compare_products`, `refund_return`의 동사 |
-| `acom:ExchangeAction` | `ReturnAction` | 회수와 재배송을 함께 가진 교환 |
-| `acom:InventoryLevel`, `acom:CostSpecification` | `QuantitativeValue`, `PriceSpecification` | 안전 재고, 내부 전용 원가 |
-| `acom:DisplaySlot`, `acom:DisplayBooking`, `acom:Segment` | `ItemList`, `Schedule`, `Audience` | 페이지의 진열 자리와 그 예약, 조건으로 정의한 고객 묶음 |
-| `acom:percent_off` | `UnitPriceSpecification`의 속성 | 계산된 판매가 뒤에 있는 요청 할인율 |
-| `acom:coupon_status`, `acom:delivery_state`, `acom:approval_status`, `acom:claim_status` 등 | 열거 | schema.org에 해당 상태 열거가 없음. 값은 enums.md |
-| `acom:EventTypeDefinition`, `acom:RewardTypeDefinition` | `DefinedTerm` | 스토어가 늘릴 수 있는 이벤트·보상 유형 레지스트리 |
-| `acom:EventEntry`, `acom:EventReward`, `acom:DrawRecord` | `JoinAction`, `Offer`, `ChooseAction` | 응모, 등수별 보상, 재현 가능한 추첨 감사 기록 |
-| `acom:TierRequirement`, `acom:TierBenefit` | `StructuredValue`, `Offer` | 스토어가 정의하는 등급 요건·혜택 |
-| `acom:ComplianceRule` | `PropertyValue` | 관할별 경품 신고·원천징수·정보 수집 요구 |
+정식 정의는 [`vocab/acom.jsonld`](../../vocab/acom.jsonld)에 있습니다.
 
-schema.org 열거(`OrderStatus`, `ItemAvailability`, `ActionStatusType`, `PriceTypeEnumeration`, `ReturnFeesEnumeration`, `PaymentStatusType`)는 그대로 재사용합니다. 확장 정의는 JSON-LD 컨텍스트 파일로 공개합니다.
+| 개념 | `@type` (schema.org) | `additionalType` | 메모 |
+|---|---|---|---|
+| 프로모션 | `OfferCatalog` | `acom:Promotion` | 기간·대상 등급이 있는 판매가 묶음 |
+| 회원가·기간가 | `UnitPriceSpecification` | — | `valid_for_member_tier`, `price_type: sale_price`, `acom:percent_off` |
+| 쿠폰 | `Offer` | `acom:Coupon` | 코드는 `discount_code`(schema:discountCode), 중복·적용 규칙은 정책 |
+| 발급된 쿠폰 | `OwnershipInfo` | `acom:MemberCoupon` | `owned_from`, `owned_through` |
+| 장바구니 / 줄 | `Order` / `OrderItem` | `acom:Cart` / `acom:CartLine` | 결제 전의 주문 |
+| 결제 | `PayAction` | — | |
+| 반품·교환 / 취소 | `ReturnAction` / `CancelAction` | `acom:Claim` | `claim_type`이 `@type`을 정함 |
+| 검수 | `CheckAction` | — | |
+| 환불 | `MoneyTransfer` | `acom:Refund` | 오퍼레이션의 액션은 `PayAction` |
+| 비교 | `AssessAction` | — | `compare_products`의 액션 |
+| 진열 슬롯 | `WebPageElement` | — | |
+| 배너 | `CreativeWork` | `acom:Banner` | `headline`, `alternative_headline`, `image`, `url` |
+| 진열 예약 | `Schedule` | `acom:DisplayBooking` | 슬롯 × 대상 × 기간 |
+| 세그먼트 | `Audience` | `acom:Segment` | 조건으로 정의한 고객 묶음 |
+| 원가 / 안전 재고 | — | — | `Offer`의 프로퍼티 `acom:inventory_cost`(MonetaryAmount), `acom:safety_stock` |
+| 기억(쇼퍼 선호) | `PropertyValue` | `acom:Preference` | `property_id` = `acom:preference_key` |
+| 변경셋 | `ItemList` | `acom:ChangeSet` | 항목은 `ListItem` → `Action` |
+| 프리뷰 | `Action` (PotentialActionStatus) | — | 오퍼레이션이 Action 하위 타입을 정함 |
+| 할 일 | `Action` | `acom:Task` | |
+| 이벤트 유형·보상 유형 레지스트리 | `DefinedTerm` | — | `in_defined_term_set`: `event_types`, `reward_types` |
+| 응모 | `JoinAction` | — | |
+| 등수별 보상 | `Offer` | `acom:EventReward` | |
+| 추첨 기록 | `ChooseAction` | `acom:DrawRecord` | 재현 가능한 감사 기록 |
+| 등급 요건 / 혜택 | `StructuredValue` / `TierBenefitEnumeration` 멤버 | `acom:TierRequirement` / — | 혜택 종류는 schema.org `TierBenefitLoyaltyPrice` 등, 세부는 우리 프로퍼티 |
+| 경품 컴플라이언스 규칙 | `PropertyValue` | `acom:ComplianceRule` | |
+| 상태·사유 열거 | `Enumeration` 하위 | — | schema.org 열거(`OrderStatus`, `ItemAvailability`, `ActionStatusType`, `PriceTypeEnumeration`, `ReturnFeesEnumeration`, `PaymentStatusType`, `RefundTypeEnumeration`)는 그대로, 나머지는 `acom:ClaimStatus` 등 |
+
+응답을 JSON-LD로 읽기 위한 컨텍스트는 M2에서 API 계약 타입을 원천으로 생성합니다([vocabulary.md](vocabulary.md) §5).
 
 ---
 
-## 5. DB 명명 규칙
+## 5. 데이터베이스
 
-저장소는 PostgreSQL 하나이고, 도메인별 스키마(`catalog`, `merchandising`, `search`, `promotion`, `customer`, `sales`, `fulfillment`, `messaging`, `platform`)와 에이전트용 `agent`를 둡니다([../backend/commerce.md](../backend/commerce.md) §5).
+물리 설계(스키마, 테이블·컬럼 이름, 공통 컬럼, 주석, RLS, 이벤트 테이블, 검색)는 [../backend/database.md](../backend/database.md)에 있습니다. 요점:
 
-### 5.1 규칙
-1. **테이블**: schema.org 타입의 snake_case, 단수(`product_group`, `product`, `offer`, `unit_price_specification`, `order_item`, `merchant_return_policy`, `parcel_delivery`, `claim`).
-2. **SQL 예약어**: 도메인 접두를 붙입니다(`Order` → `sales_order`).
-3. **컬럼**: schema.org 속성의 snake_case(`price_currency`, `valid_from`, `valid_for_member_tier`, `order_status`). 확장 속성은 접두 없이 snake_case로 두고(`percent_off`, `safety_stock`) 문서에서 `acom:`임을 표시합니다.
-4. **키**: PK는 `id`(시간순 UUID). 접두 식별자(`prd_windbreaker`)는 `identifier` unique 컬럼이며 API의 `id`로 나갑니다. 사람에게 보이는 번호(`order_number`, 변경셋 `number`)도 별도 unique 컬럼입니다. FK는 `<type>_id`(`product_id`, `order_id`).
-5. **열거**: 열거 단어를 저장하고 [enums.md](enums.md)의 목록으로 `check` 제약을 둡니다(`'in_stock'`, `'delivered'`, `'sale_price'`). 코드값은 쓰지 않습니다.
-6. **금액**: `numeric(12,2)` + 통화 컬럼(`price_currency char(3)`). float 금지.
-7. **시각**: UTC로 저장(`timestamptz`). 모든 행에 `created_at`, `updated_at`.
-8. **스토어 범위**: 스토어에 속한 모든 테이블에 `tenant_id`(not null)와 행 수준 보안(RLS). 트랜잭션마다 `app.tenant_id`를 설정합니다.
-9. **상태 이력**: 상태가 있는 집계는 현재 상태 열 + 이벤트 테이블(`order_status_event`, `claim_event`, `change_set_event`, `action_log`)을 같은 트랜잭션에서 쓰고, 이벤트는 추가만 합니다.
-10. **가변 속성**: 옵션 조합, 세그먼트 조건, 정책 스냅샷, 프리뷰의 `changes`·`checks`처럼 형태가 바뀌는 값은 `jsonb`. 자주 조회하는 값은 일반 컬럼으로.
-
-### 5.2 예시 DDL (명명 규칙 예시)
-
-```sql
--- catalog.product  ← Product (변형 단위, API id 접두 var_)
-create table catalog.product (
-  id               uuid primary key,
-  tenant_id        uuid not null,
-  identifier       text not null,                                 -- id: 'var_windbreaker_m_slate'
-  product_group_id uuid references catalog.product_group(id),     -- is_variant_of: prd_windbreaker
-  sku              text not null,                                 -- sku
-  name             text not null,                                 -- name
-  color            text,                                          -- color
-  size             text,                                          -- size
-  approval_status  text not null default 'draft'                  -- acom:approval_status (enums §1.10)
-                   check (approval_status in ('draft','pending_review','active','rejected','discontinued')),
-  created_at       timestamptz not null default now(),
-  updated_at       timestamptz not null default now(),
-  unique (tenant_id, identifier),
-  unique (tenant_id, sku)
-);
-
--- catalog.offer  ← Offer (변형별 판매 조건)
-create table catalog.offer (
-  id              uuid primary key,
-  tenant_id       uuid not null,
-  product_id      uuid not null references catalog.product(id),
-  price           numeric(12,2) not null,                         -- price: 89.00
-  price_currency  char(3) not null default 'USD',                 -- price_currency
-  availability    text not null default 'in_stock'                -- availability (enums §1.10)
-                  check (availability in ('in_stock','out_of_stock','pre_order','back_order','discontinued')),
-  inventory_level integer not null default 0,                     -- inventory_level
-  created_at      timestamptz not null default now(),
-  updated_at      timestamptz not null default now()
-);
-
--- promotion.unit_price_specification  ← UnitPriceSpecification (회원 판매가)
-create table promotion.unit_price_specification (
-  id                    uuid primary key,
-  tenant_id             uuid not null,
-  promotion_id          uuid not null references promotion.promotion(id),
-  offer_id              uuid not null references catalog.offer(id),
-  price                 numeric(12,2) not null,                   -- price: 71.20
-  price_currency        char(3) not null default 'USD',           -- price_currency
-  price_type            text not null default 'sale_price',       -- price_type (PriceTypeEnumeration)
-  valid_for_member_tier text,                                     -- valid_for_member_tier: 'vip' (null = everyone)
-  valid_from            timestamptz not null,                     -- valid_from
-  valid_through         timestamptz not null,                     -- valid_through
-  percent_off           numeric(5,2) not null,                    -- acom:percent_off: 20.00
-  created_at            timestamptz not null default now(),
-  updated_at            timestamptz not null default now()
-);
-
--- sales.sales_order  ← Order (예약어라 접두)
-create table sales.sales_order (
-  id            uuid primary key,
-  tenant_id     uuid not null,
-  identifier    text not null,                                    -- id: 'ord_20402'
-  order_number  text not null,                                    -- order_number: '20402'
-  order_date    timestamptz not null,                             -- order_date
-  order_status  text not null                                     -- order_status (enums §1.1)
-                check (order_status in ('payment_due','processing','in_transit','delivered','returned','cancelled','problem')),
-  customer_id   uuid references customer.person(id),              -- customer
-  discount_code text,                                             -- discount_code: 'VIPWEEKEND20'
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now(),
-  unique (tenant_id, identifier),
-  unique (tenant_id, order_number)
-);
-
--- fulfillment.claim  ← ReturnAction / CancelAction (취소·반품·교환 클레임)
-create table fulfillment.claim (
-  id            uuid primary key,
-  tenant_id     uuid not null,
-  identifier    text not null,                                    -- id: 'clm_20402'
-  claim_type    text not null check (claim_type in ('cancel','return','exchange')),
-  order_item_id uuid not null references sales.order_item(id),    -- object
-  agent_id      uuid not null references customer.person(id),     -- agent
-  claim_status  text not null default 'requested'                 -- acom:claim_status (enums §1.5)
-                check (claim_status in ('charge_due','requested','photos_requested','approved','pickup_instructed',
-                                        'picked_up','inspected','reship_requested','completed','declined','withdrawn','converted')),
-  reason        text not null,                                    -- acom:claim_reason: 'defect' (enums §2.2)
-  liability     text not null                                     -- acom:liability (enums §2.1)
-                check (liability in ('store_fault','seller_fault','customer_fault','carrier_fault','none')),
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now(),
-  unique (tenant_id, identifier)
-);
-
--- sales.order_status_event  ← 상태 이력(추가만, 덮어쓰지 않음)
-create table sales.order_status_event (
-  id          uuid primary key,
-  tenant_id   uuid not null,
-  order_id    uuid not null references sales.sales_order(id),
-  from_status text,
-  to_status   text not null,
-  agent_id    uuid,
-  reason      text,
-  start_time  timestamptz not null default now()
-);
-```
+- 테이블은 schema.org 타입, 컬럼은 schema.org 프로퍼티의 snake_case. 모든 테이블·컬럼에 schema.org 용어가 적힌 주석.
+- 기본 키는 API와 같은 접두 id(`text`) 하나. 따로 숨은 키가 없습니다.
+- API와 이름이 다른 곳: 상품 `product_id`(`prd_`)는 DB `catalog.product_group`, 변형 `variant_id`(`var_`)는 DB `catalog.product`(schema.org `Product`)입니다. 전체 대응표는 [../backend/database.md](../backend/database.md) §11.
+- 실제 DDL은 `migrations/*.sql`, 컬럼 사전은 [../backend/schema.generated.md](../backend/schema.generated.md).
 
 ---
 
@@ -322,4 +228,4 @@ create table sales.order_status_event (
 
 - 도메인 API의 입력·출력은 이 모델의 타입과 속성을 씁니다([README.md](README.md)). 형식 규약은 [conventions.md](conventions.md), 값 목록은 [enums.md](enums.md), 에러는 [errors.md](errors.md).
 - 정책(할인 상한, 가격 하한, 반품 기간, 승인 임계)은 데이터이며 [policies/](../../policies/README.md)에 있습니다. 상태와 규칙은 이 모델의 이벤트와 제약으로 강제됩니다.
-- 스토어 범위·스키마 분리·행 수준 보안은 [../architecture.md](../architecture.md) §2.4·§5.6과 [../backend/commerce.md](../backend/commerce.md) §5를 따릅니다.
+- 스토어 범위·스키마 분리·행 수준 보안은 [../backend/database.md](../backend/database.md)를 따릅니다.

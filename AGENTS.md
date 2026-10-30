@@ -37,3 +37,24 @@ The whole server side is one Cargo workspace: `crates/` (libraries), `services/`
 - `core`, `contract`, and `policy` do no I/O. Domain crates call each other only through exported service traits, never each other's tables. The agent crate never depends on a domain crate.
 - The agent can preview and draft change sets; it can never approve, run an approved change set, or call a person-only endpoint.
 - Before pushing: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`.
+
+## Database
+
+Rules: `docs/backend/database.md`.
+
+- Tables are schema.org types and columns are schema.org properties, in snake_case. Only concepts schema.org lacks get our own `acom:` names.
+- Every table and column gets a `COMMENT` that starts with its term (`schema:…`, `acom:…`, or `-` for technical columns) followed by one English sentence.
+- The primary key is the prefixed text id the API uses. Status columns store words under a `CHECK` list taken from `docs/api/enums.md`.
+- Money is `price` + `price_currency` or `*_value` + `*_currency`. Quantities are `*_value` + `*_unit_text`. No abbreviations.
+- Every store-scoped table has `tenant_id` and a row-level security policy.
+- Run `cargo xtask check-schema --write` after changing a migration and commit the generated dictionary.
+
+## Front end (Next.js)
+
+Rules: `docs/frontend/README.md`.
+
+- One component per UI block name. Data types come from `web/src/contract/` (generated, do not edit).
+- Every meaningful element (row, price, check, chip, card, input) calls `useAiTarget` so people can ask about it and the agent can point at it.
+- Elements that the agent may change also show the block's `suggested_intents`.
+- State changes made by a person (approve, place order, send a return request, undo) go through `PersonButton` only. They are never reachable from `ui.command` or page tools.
+- The web never computes business numbers. Prices, totals, and stock come from tool results.

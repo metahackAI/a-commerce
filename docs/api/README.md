@@ -5,6 +5,7 @@ A-Commerce의 전체 API(에이전트가 호출하는 툴, 사람 전용 엔드�
 | 문서 | 내용 |
 |---|---|
 | [conventions.md](conventions.md) | 공통 규약: 이름, 식별자 접두, 금액, 비율, 시간, 읽기·쓰기 형식, 툴 스키마, 헤더 |
+| [vocabulary.md](vocabulary.md) | schema.org 위의 확장 규칙(`@type` + `additionalType`), 우리 용어. 정의는 `vocab/acom.jsonld` |
 | [enums.md](enums.md) | 상태·종류·사유 값 목록의 단일 출처 |
 | [errors.md](errors.md) | 에러 모양, 분류(class) → HTTP 상태, 도메인 코드 |
 | [chat.md](chat.md) | 사람 ↔ 에이전트: 채팅 SSE 이벤트와 UI 블록 |
@@ -56,7 +57,7 @@ a-commerce API
 | 툴 이름(모델이 보는 이름) | `verb_noun`, 평이한 영어 | `set_sale_prices` |
 | REST 경로 | `METHOD /v1/{domain}/{resources}/...` | `POST /v1/promotion/sale-prices` |
 
-툴 검색은 이 계층을 씁니다. 요청 → 해당 도메인 → 리소스 → 후보 툴 몇 개 + 툴 그래프 이웃. 모델은 286개 목록이 아니라 소수 후보만 봅니다([../backend/agent.md](../backend/agent.md) §3).
+툴 검색은 이 계층을 씁니다. 요청 → 해당 도메인 → 리소스 → 후보 툴 몇 개 + 툴 그래프 이웃. 모델은 287개 목록이 아니라 소수 후보만 봅니다([../backend/agent.md](../backend/agent.md) §3).
 
 ## 2. 오퍼레이션 종류
 
@@ -169,7 +170,7 @@ a-commerce API
 
 ## 4. 전체 오퍼레이션 인덱스
 
-툴 **286개**(R 129 · W 117 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 5개(§2.2). **굵게** 표시한 28개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
+툴 **287개**(R 130 · W 117 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 5개(§2.2). **굵게** 표시한 28개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
 
 ### Offer
 
@@ -279,6 +280,7 @@ a-commerce API
 | change_set | **`get_change_set`** R · `search_change_sets` R · **`verify_change_set`** R · 사람 전용 `POST /v1/platform/change-sets/{id}/approve`, `…/reject`, `…/undo` · 런타임 전용 만들기·항목·제출(§2.2) |
 | task | `list_tasks` R · `get_task` R · 사람 전용 `POST /v1/platform/tasks/{task_id}/dismiss` |
 | action_log | `search_action_log` R · `get_action_log` R |
+| schema | `describe_data` R (DB 데이터 사전) |
 | enum | `list_enums` R |
 | auth | `login` W · `refresh_token` W · `logout` W |
 | tenant | `get_tenant` R · `list_tenants` R |

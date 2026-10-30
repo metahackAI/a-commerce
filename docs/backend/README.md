@@ -2,11 +2,13 @@
 
 A-Commerce의 서버 측은 **전부 Rust**로 만듭니다. 게이트웨이, 커머스 백엔드(툴 레이어·정책 엔진·변경셋·저장소), 에이전트 런타임(하네스), 평가 러너까지 한 Cargo 워크스페이스에 있습니다. 프런트엔드는 Next.js이고 이 워크스페이스가 생성한 타입을 씁니다.
 
-이 폴더는 **구현 설계**입니다. 무엇을 만드는지(오퍼레이션·입출력·정책)는 [../api/](../api/README.md), 왜 이렇게 만드는지는 [../design.md](../design.md)와 [../architecture.md](../architecture.md)에 있습니다.
+이 폴더는 **백엔드 구현 설계**입니다. 무엇을 만드는지(오퍼레이션·입출력·정책)는 [../api/](../api/README.md), 왜 이렇게 만드는지는 [../design.md](../design.md)와 [../architecture.md](../architecture.md), 웹은 [../frontend/](../frontend/README.md)에 있습니다.
 
 | 문서 | 내용 |
 |---|---|
 | (이 파일) | 서비스·크레이트 구성, 의존 규칙, 기술 스택, 로컬 실행 |
+| [database.md](database.md) | PostgreSQL: schema.org 이름, 주석, 공통 컬럼, RLS, 이벤트, 검색, API ↔ DB 이름, 테이블 목록 |
+| [schema.generated.md](schema.generated.md) | 마이그레이션에서 생성한 컬럼 사전 |
 | [commerce.md](commerce.md) | 오퍼레이션 트레이트, 프리뷰·실행·검증·되돌리기, 변경셋 엔진, 정책 엔진, 저장소·이벤트·작업 |
 | [agent.md](agent.md) | 에이전트 런타임: 라우터·특화 에이전트·툴 검색·플래너·실행기·체커·UI 블록·기억·모델 클라이언트 |
 | [gateway.md](gateway.md) | 인증·주체·스코프·내부 토큰·라우팅·레이트 리밋·SSE 중계 |
@@ -59,7 +61,6 @@ MCP는 별도 서비스가 아니라 `commerce`가 REST와 함께 내놓는 또 
 a-commerce/
 ├── Cargo.toml                    # [workspace], 공통 의존성 버전, lints
 ├── rust-toolchain.toml           # stable 고정
-├── .sqlx/                        # sqlx 오프라인 쿼리 캐시 (커밋함: DB 없이 빌드)
 ├── crates/
 │   ├── core/          acom-core          id·Money·시간·schema.org enum·테넌트·시계. I/O 없음
 │   ├── contract/      acom-contract      오퍼레이션 메타·봉투·에러·JSON Schema(닫힌 형식)·레지스트리 트레이트
@@ -139,7 +140,7 @@ llm ◀── agent ◀── services/agent
 |---|---|---|
 | 런타임·HTTP | tokio, axum 0.8, tower, tower-http | 미들웨어(추적·타임아웃·압축·CORS)는 tower 레이어 |
 | 게이트웨이 프록시 | hyper-util 클라이언트 + axum | 스트리밍 바디 그대로 중계(SSE 포함) |
-| DB | PostgreSQL 17, pgvector, sqlx 0.9 | 컴파일 시 쿼리 검증, 오프라인 캐시 `.sqlx/` |
+| DB | PostgreSQL 17, pgvector, sqlx 0.9 | 마이그레이션은 바이너리에 포함(`sqlx::migrate!`). 쿼리는 런타임 바인딩 + `FromRow`로 시작하고, DB를 띄우는 통합 단계에서 컴파일 시 검증(`query!`, 오프라인 캐시 `.sqlx/`)으로 옮김 |
 | 직렬화 | serde, serde_json(`arbitrary_precision`) | 금액을 정확한 십진수로 읽고 씀 |
 | 금액·시간 | rust_decimal, chrono, chrono-tz | float 금지 |
 | 스키마 | schemars 1.x → 닫힌 JSON Schema 후처리 | [../api/conventions.md](../api/conventions.md) §툴 스키마 |
@@ -162,7 +163,8 @@ MVP 인프라는 **PostgreSQL 하나**입니다. 멱등 키·락·작업 큐·�
 
 | 변수 | 쓰는 곳 | 예 |
 |---|---|---|
-| `DATABASE_URL` | commerce, agent | `postgres://acom:acom@localhost:5432/acom` |
+| `DATABASE_URL` | commerce, agent | `postgres://acom_app:acom_app@localhost:5432/acom` (RLS가 적용되는 서비스 역할) |
+| `MIGRATION_DATABASE_URL` | `xtask db` | `postgres://acom_owner:acom_owner@localhost:5432/acom` (마이그레이션 역할, [database.md](database.md) §8) |
 | `ACOM_GATEWAY_SIGNING_KEY` / `ACOM_GATEWAY_PUBLIC_KEY` | gateway / commerce·agent | Ed25519 PEM |
 | `ACOM_COMMERCE_URL`, `ACOM_AGENT_URL`, `ACOM_WEB_URL` | gateway, agent | `http://localhost:7001` |
 | `ACOM_DEMO_MODE` | 전부 | `true`면 데모 로그인·데모 시계 활성 |
@@ -176,7 +178,10 @@ cargo run -p acom-commerce        # :7001
 cargo run -p acom-agent-svc       # :7002
 cargo run -p acom-gateway         # :7000  (웹·API 단일 출처)
 cargo xtask codegen               # tools.json · openapi.json · ui-blocks.schema.json · web/src/contract/*.ts
-cargo test --workspace            # 단위·계약·시나리오 테스트
+cargo test --workspace            # 단위·계약 테스트 (DB 없이)
+cargo test --workspace -- --ignored   # 통합 테스트 (DB 필요, 요청 시)
+cargo xtask check-schema --write  # 마이그레이션 규칙 검사 + 컬럼 사전·어휘(vocab/acom.jsonld) 생성
+cargo xtask check-seed            # 데모 시드가 스키마에 맞는지 (DB 없이)
 ```
 
 ---
@@ -187,4 +192,4 @@ cargo test --workspace            # 단위·계약·시나리오 테스트
 - 오퍼레이션 하나 = `Operation` 구현 하나 + 계약 테스트 하나 이상([commerce.md](commerce.md) §1, [testing.md](testing.md) §1).
 - 툴 체크리스트는 [../../AGENTS.md](../../AGENTS.md)를 따릅니다(한 동사, 단어 enum, 필드 설명·예시, 프리뷰, consumes/produces, 실행 가능한 에러, 정책은 데이터).
 - 마이그레이션은 되돌릴 수 있게 쓰고(확장 → 이전 → 축소), 테이블·컬럼 이름은 [../api/data-model.md](../api/data-model.md) §DB 명명을 따릅니다.
-- `cargo fmt --check`, `cargo clippy --workspace -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`가 CI 게이트입니다.
+- `cargo fmt --check`, `cargo clippy --workspace -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`, `cargo xtask check-schema`, `cargo xtask check-seed`가 CI 게이트입니다.

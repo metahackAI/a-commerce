@@ -401,7 +401,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 
 ### `refund_return` — Kind: W
 - 논리주소/REST: `fulfillment.refund.create` · `POST /v1/fulfillment/refunds`
-- 요약: 반품 클레임 한 건을 환불합니다. 환불액은 입력이 아니라 서버가 클레임에서 계산합니다(`evaluate_return_request`의 `refund_amount`와 같은 계산, 쿠폰 차감 포함). 사람 승인 여부는 [approval.yml](../../policies/approval.yml) `thresholds.refund`가 정합니다: **환불액이 $200.00를 넘으면 `needs_approval: true`**(변경셋에서 사람이 승인한 뒤 실행기가 `preview_id`로 실행), **$200.00 이하면 `needs_approval: false`**(사람 없이 실행). 환불은 원결제수단으로만 가고, 돈이 나간 뒤에는 되돌릴 수 없습니다. schema.org `acom:RefundAction`(`PayAction`의 확장), 결과는 `acom:Refund`. MVP 툴.
+- 요약: 반품 클레임 한 건을 환불합니다. 환불액은 입력이 아니라 서버가 클레임에서 계산합니다(`evaluate_return_request`의 `refund_amount`와 같은 계산, 쿠폰 차감 포함). 사람 승인 여부는 [approval.yml](../../policies/approval.yml) `thresholds.refund`가 정합니다: **환불액이 $200.00를 넘으면 `needs_approval: true`**(변경셋에서 사람이 승인한 뒤 실행기가 `preview_id`로 실행), **$200.00 이하면 `needs_approval: false`**(사람 없이 실행). 환불은 원결제수단으로만 가고, 돈이 나간 뒤에는 되돌릴 수 없습니다. schema.org `PayAction`(결과는 `MoneyTransfer` + `additionalType: acom:Refund`), 결과는 `acom:Refund`. MVP 툴.
 - consumes → produces: `claim_id` → `refund_id`
 - 입력:
   | 필드 | 타입 | 필수 | 설명 | 예 |
