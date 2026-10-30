@@ -1,0 +1,75 @@
+# Keep at least one pod of each Deployment during node drains and upgrades.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gateway
+  labels:
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway
+      app.kubernetes.io/part-of: a-commerce
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: commerce
+  labels:
+    app.kubernetes.io/name: commerce
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: commerce
+      app.kubernetes.io/part-of: a-commerce
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: commerce-worker
+  labels:
+    app.kubernetes.io/name: commerce-worker
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: commerce-worker
+      app.kubernetes.io/part-of: a-commerce
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agent
+  labels:
+    app.kubernetes.io/name: agent
+    app.kubernetes.io/component: agent
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agent
+      app.kubernetes.io/part-of: a-commerce
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: web
+  labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: web
+      app.kubernetes.io/part-of: a-commerce

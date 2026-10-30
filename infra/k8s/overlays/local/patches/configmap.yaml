@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: acom-config
+data:
+  ACOM_ENV: local
+  ACOM_DEMO_MODE: "true"

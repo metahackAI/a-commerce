@@ -1,0 +1,18 @@
+# Optional: expose the app through the Gateway API instead of the base Ingress.
+# A Gateway with one HTTP listener on port 80 and an HTTPRoute sending every path / to the
+# gateway Service (port 7000). Needs the Gateway API CRDs and a controller that implements them.
+#
+# Using it:
+#   1. Add `- ../../components/gateway-api` (path relative to the overlay) under `components:`,
+#      and usually delete the base Ingress in that overlay (`$patch: delete`).
+#   2. Set gatewayClassName to the GatewayClass of your controller. `eg` (Envoy Gateway) is only
+#      a placeholder.
+#   3. Label the namespace where the controller runs its proxies with acom.dev/ingress=true
+#      (base/networkpolicies.yaml admits traffic to gateway:7000 only from such namespaces).
+#   4. For a public host, add `hostnames` to the HTTPRoute, and an HTTPS listener with
+#      certificateRefs to the Gateway (cert-manager can fill the certificate).
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+resources:
+  - gateway.yaml

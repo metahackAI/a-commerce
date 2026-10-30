@@ -1,4 +1,4 @@
--- deploy/postgres/init.sql
+-- infra/postgres/init.sql
 -- Run once, as a superuser, in a new database before the migrations (for example from
 -- /docker-entrypoint-initdb.d). Creates the three roles of docs/backend/database.md §8; the
 -- migrations never create roles. The passwords below are for local development only: set real ones
@@ -23,7 +23,7 @@ COMMENT ON ROLE acom_readonly IS 'Read-only access to analytics views, scoped by
 -- pgvector usually needs a superuser to install; 0001_foundation.sql then finds it in place.
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- The local database is named acom (deploy/docker-compose.yml); change the name for other setups.
+-- The local database is named acom (infra/compose/compose.yaml, infra/postgres for Kubernetes); change the name for other setups.
 GRANT CONNECT ON DATABASE acom TO acom_app, acom_readonly;
 GRANT CREATE ON DATABASE acom TO acom_owner;
 

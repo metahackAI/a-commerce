@@ -1,0 +1,11 @@
+# Production availability: CPU autoscaling (needs metrics-server), disruption budgets, and
+# spreading replicas across zones and nodes.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+resources:
+  - hpa.yaml
+  - pdb.yaml
+
+patches:
+  - path: topology-spread.yaml

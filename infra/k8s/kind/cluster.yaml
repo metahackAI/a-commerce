@@ -1,0 +1,9 @@
+# Local kind cluster for A-Commerce: a single node. No ingress controller is installed; reach the
+# app with a port-forward to the gateway Service (see ../README.md):
+#   kind create cluster --config infra/k8s/kind/cluster.yaml
+#   kubectl -n a-commerce port-forward svc/gateway 8080:7000
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: a-commerce
+nodes:
+  - role: control-plane

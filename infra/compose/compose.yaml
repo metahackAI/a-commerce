@@ -1,0 +1,226 @@
+# A-Commerce on Docker Compose: the same topology as production (infra/README.md), on one host.
+#
+#   make up            # build images, run migrations, start everything at http://localhost:8080
+#   make up-debug      # also publish postgres and each service's port, with readable logs
+#   make down          # stop (keeps the database volume); make clean also drops it
+#
+# Only the gateway publishes a port. Services talk over internal networks:
+#   edge   gateway ↔ host
+#   app    gateway, web, commerce, commerce-worker, agent   (no internet)
+#   data   postgres, migrate, commerce, commerce-worker, agent (no internet)
+#   egress agent → model endpoints on the internet
+# Optional profiles: `models` (self-hosted worker model on a GPU), `observability`
+# (Prometheus + Grafana).
+
+name: acom
+
+x-rust-service: &rust-service
+  restart: unless-stopped
+  read_only: true
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: ["ALL"]
+  environment: &rust-env
+    RUST_LOG: ${RUST_LOG:-info}
+    ACOM_LOG_FORMAT: ${ACOM_LOG_FORMAT:-json}
+    ACOM_ENV: ${ACOM_ENV:-local}
+    ACOM_DEMO_MODE: ${ACOM_DEMO_MODE:-true}
+    ACOM_GATEWAY_PUBLIC_KEY_FILE: /run/secrets/gateway_public_key
+
+x-commerce-build: &commerce-build
+  context: ../..
+  dockerfile: infra/docker/rust.Dockerfile
+  target: commerce
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: acom
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-acom}
+      POSTGRES_DB: acom
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acom -d acom"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks: [data]
+
+  migrate:
+    image: acom/acom-commerce:${ACOM_TAG:-local}
+    build: *commerce-build
+    command: ["migrate"]
+    restart: "no"
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    environment:
+      <<: *rust-env
+      MIGRATION_DATABASE_URL: postgres://acom_owner:${ACOM_OWNER_PASSWORD:-acom_owner}@postgres:5432/acom
+    depends_on:
+      postgres: {condition: service_healthy}
+    networks: [data]
+
+  commerce:
+    <<: *rust-service
+    image: acom/acom-commerce:${ACOM_TAG:-local}
+    build: *commerce-build
+    command: ["serve"]
+    environment:
+      <<: *rust-env
+      ACOM_COMMERCE_ADDR: 0.0.0.0:7001
+      DATABASE_URL: postgres://acom_app:${ACOM_APP_PASSWORD:-acom_app}@postgres:5432/acom
+    secrets: [gateway_public_key]
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/acom-commerce", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    networks: [app, data]
+
+  commerce-worker:
+    <<: *rust-service
+    image: acom/acom-commerce:${ACOM_TAG:-local}
+    build: *commerce-build
+    command: ["work"]
+    environment:
+      <<: *rust-env
+      ACOM_WORKER_ADDR: 0.0.0.0:7003
+      DATABASE_URL: postgres://acom_app:${ACOM_APP_PASSWORD:-acom_app}@postgres:5432/acom
+    secrets: [gateway_public_key]
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/acom-commerce", "healthcheck", "--worker"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    networks: [app, data]
+
+  agent:
+    <<: *rust-service
+    image: acom/acom-agent:${ACOM_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/docker/rust.Dockerfile
+      target: agent
+    environment:
+      <<: *rust-env
+      ACOM_AGENT_ADDR: 0.0.0.0:7002
+      ACOM_COMMERCE_URL: http://commerce:7001
+      DATABASE_URL: postgres://acom_app:${ACOM_APP_PASSWORD:-acom_app}@postgres:5432/acom
+      GLIMMER_BASE_URL: ${GLIMMER_BASE_URL:-}
+      GLIMMER_MODEL: ${GLIMMER_MODEL:-}
+      META_API_BASE_URL: ${META_API_BASE_URL:-}
+      META_API_KEY: ${META_API_KEY:-}
+      SPARK_MODEL: ${SPARK_MODEL:-}
+    secrets: [gateway_public_key]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    networks: [app, data, egress]
+
+  web:
+    image: acom/acom-web:${ACOM_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/docker/web.Dockerfile
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp", "/app/.next/cache:uid=1000,gid=1000"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    environment:
+      ACOM_GATEWAY_INTERNAL_URL: http://gateway:7000
+      NEXT_TELEMETRY_DISABLED: "1"
+    networks: [app]
+
+  gateway:
+    <<: *rust-service
+    image: acom/acom-gateway:${ACOM_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/docker/rust.Dockerfile
+      target: gateway
+    environment:
+      <<: *rust-env
+      ACOM_GATEWAY_ADDR: 0.0.0.0:7000
+      ACOM_COMMERCE_URL: http://commerce:7001
+      ACOM_AGENT_URL: http://agent:7002
+      ACOM_WEB_URL: http://web:3000
+      ACOM_GATEWAY_SIGNING_KEY_FILE: /run/secrets/gateway_signing_key
+    secrets: [gateway_signing_key, gateway_public_key]
+    ports:
+      - "${ACOM_HTTP_PORT:-8080}:7000"
+    depends_on:
+      web: {condition: service_started}
+      commerce: {condition: service_started}
+      agent: {condition: service_started}
+    networks: [edge, app]
+
+  # --- profile: models (needs an NVIDIA GPU and the NVIDIA container toolkit) ---------------
+  models:
+    profiles: [models]
+    image: ${VLLM_IMAGE:-vllm/vllm-openai:v0.11.0}
+    command: ["--model", "${VLLM_MODEL:-set-me}", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - model-cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks: [app, egress]
+
+  # --- profile: observability ---------------------------------------------------------------
+  prometheus:
+    profiles: [observability]
+    image: prom/prometheus:v3.7.0
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=7d"]
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks: [edge, app]
+
+  grafana:
+    profiles: [observability]
+    image: grafana/grafana:12.2.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./observability/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    networks: [edge, app]
+
+secrets:
+  gateway_signing_key:
+    file: ../secrets/gateway_signing_key.pem
+  gateway_public_key:
+    file: ../secrets/gateway_public_key.pem
+
+networks:
+  edge: {}
+  app: {internal: true}
+  data: {internal: true}
+  egress: {}
+
+volumes:
+  postgres-data: {}
+  model-cache: {}
+  prometheus-data: {}
+  grafana-data: {}

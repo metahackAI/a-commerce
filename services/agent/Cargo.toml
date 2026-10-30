@@ -7,15 +7,22 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[[bin]]
+name = "acom-agent"
+path = "src/main.rs"
+
 [dependencies]
-acom-core.workspace = true
-acom-auth.workspace = true
 acom-agent.workspace = true
+acom-auth.workspace = true
+acom-core.workspace = true
 acom-llm.workspace = true
+acom-server.workspace = true
+acom-store.workspace = true
 axum.workspace = true
+clap.workspace = true
+serde_json.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
 
 [lints]
 workspace = true

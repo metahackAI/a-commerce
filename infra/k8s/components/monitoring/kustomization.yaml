@@ -1,0 +1,9 @@
+# For clusters running the Prometheus Operator: one ServiceMonitor per Rust service, scraping
+# /metrics on the Service port named `http`. Prometheus must select these objects (for many
+# installs that means a matching `release` label; add it with a patch in the overlay) and run in
+# the `monitoring` namespace, which base/networkpolicies.yaml allows to scrape.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+resources:
+  - servicemonitors.yaml

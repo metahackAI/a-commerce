@@ -1,0 +1,40 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: a-commerce
+  labels:
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/component: gateway-api
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  gatewayClassName: eg # placeholder: set to your controller's GatewayClass
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+# Every path goes to the gateway service, which routes /api/* and /mcp to the services and the
+# rest to web.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: a-commerce
+  labels:
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/component: gateway-api
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  parentRefs:
+    - name: a-commerce
+      sectionName: http
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: gateway
+          port: 7000

@@ -1,0 +1,19 @@
+# Base: every A-Commerce workload, environment-neutral.
+# Secrets are referenced, never defined here (see ../secrets.example.yaml and ../README.md).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: a-commerce
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - serviceaccounts.yaml
+  - gateway.yaml
+  - commerce.yaml
+  - commerce-worker.yaml
+  - agent.yaml
+  - web.yaml
+  - migrate-job.yaml
+  - ingress.yaml
+  - networkpolicies.yaml

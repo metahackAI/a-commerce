@@ -1,0 +1,29 @@
+# One public entry: every path goes to the gateway, which routes /api/* and /mcp to the services
+# and everything else to web. Overlays add the host (and TLS in production).
+#
+# ingressClassName is a placeholder: set it in your overlay to your controller's class
+# (Traefik, HAProxy, F5 NGINX, ...). The controller's namespace must carry the label
+# acom.dev/ingress: "true", or base/networkpolicies.yaml keeps it from reaching the gateway.
+# Chat turns stream over SSE: if your controller buffers responses or closes idle upstream
+# connections early, turn buffering off and raise the read timeout with its own annotations.
+# For the Gateway API instead of Ingress, see components/gateway-api.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: a-commerce
+  labels:
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  ingressClassName: nginx # placeholder: set to your controller's class (Traefik, HAProxy, F5 NGINX, ...)
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 7000

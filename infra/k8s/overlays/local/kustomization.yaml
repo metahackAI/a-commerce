@@ -1,0 +1,94 @@
+# Local cluster (kind): images built and loaded locally, one replica each, in-cluster PostgreSQL,
+# demo mode on, no Ingress (port-forward to the gateway instead), Secrets generated from
+# git-ignored files in ./secrets (copy the *.example files):
+#   secrets/database.env  secrets/models.env  secrets/postgres.env
+#   secrets/gateway_signing_key.pem  secrets/gateway_public_key.pem
+#   kubectl kustomize infra/k8s/overlays/local     # render
+#   kubectl apply -k infra/k8s/overlays/local      # apply
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: a-commerce
+
+resources:
+  - ../../base
+
+components:
+  - ../../../postgres
+
+images:
+  - name: ghcr.io/metahackai/a-commerce/acom-gateway
+    newName: acom/acom-gateway
+    newTag: local
+  - name: ghcr.io/metahackai/a-commerce/acom-commerce
+    newName: acom/acom-commerce
+    newTag: local
+  - name: ghcr.io/metahackai/a-commerce/acom-agent
+    newName: acom/acom-agent
+    newTag: local
+  - name: ghcr.io/metahackai/a-commerce/acom-web
+    newName: acom/acom-web
+    newTag: local
+
+replicas:
+  - name: gateway
+    count: 1
+  - name: commerce
+    count: 1
+  - name: commerce-worker
+    count: 1
+  - name: agent
+    count: 1
+  - name: web
+    count: 1
+
+# Fixed names (no hash suffix) so they match the names the base references.
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    app.kubernetes.io/name: a-commerce
+    app.kubernetes.io/component: secret
+    app.kubernetes.io/part-of: a-commerce
+
+secretGenerator:
+  - name: acom-database
+    envs:
+      - secrets/database.env
+  - name: acom-models
+    envs:
+      - secrets/models.env
+  - name: acom-gateway-keys
+    files:
+      - secrets/gateway_signing_key.pem
+      - secrets/gateway_public_key.pem
+  - name: acom-postgres
+    envs:
+      - secrets/postgres.env
+
+patches:
+  - path: patches/configmap.yaml
+  # No ingress controller on the local cluster: reach the app with
+  #   kubectl -n a-commerce port-forward svc/gateway 8080:7000   ->  http://localhost:8080
+  - patch: |-
+      $patch: delete
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: a-commerce
+  # Images loaded with `kind load docker-image` are used as they are, never pulled.
+  - target:
+      group: apps
+      kind: Deployment
+      labelSelector: app.kubernetes.io/part-of=a-commerce
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: IfNotPresent
+  - target:
+      group: batch
+      kind: Job
+      name: migrate
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: IfNotPresent

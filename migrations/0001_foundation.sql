@@ -1,6 +1,6 @@
 -- 0001_foundation.sql
 -- Extensions and schemas. One schema per domain (docs/backend/database.md §2); tables follow
--- in 0002-0012. Roles are created by deploy/postgres/init.sql, never by migrations.
+-- in 0002-0012. Roles are created by infra/postgres/init.sql, never by migrations.
 
 CREATE EXTENSION IF NOT EXISTS vector;
 

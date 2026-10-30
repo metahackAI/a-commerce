@@ -1,0 +1,67 @@
+# Production: released images, two replicas plus autoscaling, TLS on the public host, larger
+# resources, ServiceMonitors. The database is a managed PostgreSQL outside the cluster (no postgres
+# component). Secrets acom-database, acom-gateway-keys and acom-models must already exist in the
+# namespace (External Secrets or sealed-secrets; see ../../README.md); nothing is generated here.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: a-commerce
+
+resources:
+  - ../../base
+
+components:
+  - ../../components/production
+  - ../../components/monitoring
+  # Alternative to the Ingress: the Gateway API (Gateway + HTTPRoute). To switch, uncomment this
+  # line, set the gatewayClassName and hostname there, and delete the Ingress with the
+  # commented-out `$patch: delete` patch below.
+  # - ../../components/gateway-api
+
+# Release tag placeholder. To pin by digest instead, replace newTag with
+#   digest: sha256:<digest of the pushed image>
+images:
+  - name: ghcr.io/metahackai/a-commerce/acom-gateway
+    newTag: "0.1.0"
+  - name: ghcr.io/metahackai/a-commerce/acom-commerce
+    newTag: "0.1.0"
+  - name: ghcr.io/metahackai/a-commerce/acom-agent
+    newTag: "0.1.0"
+  - name: ghcr.io/metahackai/a-commerce/acom-web
+    newTag: "0.1.0"
+
+# Starting size; the HorizontalPodAutoscalers (components/production) scale from here.
+replicas:
+  - name: gateway
+    count: 2
+  - name: commerce
+    count: 2
+  - name: commerce-worker
+    count: 2
+  - name: agent
+    count: 2
+  - name: web
+    count: 2
+
+patches:
+  # Ingress: controller class (example: Traefik), host, TLS.
+  - path: patches/ingress.yaml
+  - target:
+      group: networking.k8s.io
+      kind: Ingress
+      name: a-commerce
+    patch: |-
+      - op: replace
+        path: /spec/ingressClassName
+        value: traefik
+      - op: add
+        path: /spec/rules/0/host
+        value: shop.example.com
+  # With components/gateway-api, remove the Ingress:
+  # - patch: |-
+  #     $patch: delete
+  #     apiVersion: networking.k8s.io/v1
+  #     kind: Ingress
+  #     metadata:
+  #       name: a-commerce
+  - path: patches/resources.yaml

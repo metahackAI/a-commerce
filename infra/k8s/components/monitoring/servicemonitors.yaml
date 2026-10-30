@@ -1,0 +1,75 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gateway
+  labels:
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway
+      app.kubernetes.io/part-of: a-commerce
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: commerce
+  labels:
+    app.kubernetes.io/name: commerce
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: commerce
+      app.kubernetes.io/part-of: a-commerce
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: commerce-worker
+  labels:
+    app.kubernetes.io/name: commerce-worker
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: commerce-worker
+      app.kubernetes.io/part-of: a-commerce
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: agent
+  labels:
+    app.kubernetes.io/name: agent
+    app.kubernetes.io/component: agent
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agent
+      app.kubernetes.io/part-of: a-commerce
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s

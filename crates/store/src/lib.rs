@@ -55,10 +55,44 @@ impl Db {
         Ok(Self { pool })
     }
 
-    /// Applies pending migrations. Run by the commerce service at start and by `xtask db reset`.
+    /// A pool that connects on first use, so a service can start (and report "not ready")
+    /// while the database is still coming up.
+    pub fn connect_lazy(url: &str, max_connections: u32) -> Result<Self, StoreError> {
+        let pool = PgPoolOptions::new()
+            .max_connections(max_connections)
+            .acquire_timeout(std::time::Duration::from_secs(3))
+            .connect_lazy(url)?;
+        Ok(Self { pool })
+    }
+
+    /// Applies pending migrations (`acom-commerce migrate`, run as the owner role). sqlx holds
+    /// an advisory lock while it runs, so two runners at once are safe.
     pub async fn migrate(&self) -> Result<(), StoreError> {
         MIGRATOR.run(&self.pool).await?;
         Ok(())
+    }
+
+    /// `Ok` when the database answers and every embedded migration has been applied.
+    /// Services use this as their readiness check.
+    pub async fn migrations_applied(&self) -> Result<(), String> {
+        let expected = MIGRATOR.iter().map(|m| m.version).max().unwrap_or(0);
+        let applied: Option<i64> =
+            sqlx::query_scalar("SELECT max(version) FROM _sqlx_migrations WHERE success")
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|e| match e {
+                    sqlx::Error::Database(d) if d.code().as_deref() == Some("42P01") => {
+                        "migrations have not run yet".to_owned()
+                    }
+                    other => format!("database unreachable: {other}"),
+                })?;
+        match applied {
+            Some(v) if v >= expected => Ok(()),
+            v => Err(format!(
+                "migrations pending: applied {}, expected {expected}",
+                v.unwrap_or(0)
+            )),
+        }
     }
 
     pub fn pool(&self) -> &PgPool {

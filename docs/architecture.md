@@ -71,7 +71,7 @@ crates/   core · contract · policy · store · auth · changeset
           domains/{catalog, search, merchandising, promotion, customer, sales, fulfillment, messaging, platform, ...}
           registry · http · mcp · llm · agent · facade · testkit
 services/ gateway · commerce · agent
-policies/ agents/ seed/ eval/ migrations/ deploy/ xtask/
+policies/ agents/ seed/ eval/ migrations/ infra/ xtask/
 web/      Next.js: /bo and /fo, one component per UI block
 ```
 

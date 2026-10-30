@@ -1,0 +1,40 @@
+# Non-secret settings. Every app container loads all keys with envFrom.
+# Overlays change values with a strategic-merge patch on this object.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: acom-config
+  labels:
+    app.kubernetes.io/name: a-commerce
+    app.kubernetes.io/component: config
+    app.kubernetes.io/part-of: a-commerce
+data:
+  ACOM_ENV: production
+  ACOM_DEMO_MODE: "false"
+  RUST_LOG: info
+  ACOM_LOG_FORMAT: json
+
+  # Listen addresses (one per process).
+  ACOM_GATEWAY_ADDR: 0.0.0.0:7000
+  ACOM_COMMERCE_ADDR: 0.0.0.0:7001
+  ACOM_WORKER_ADDR: 0.0.0.0:7003
+  ACOM_AGENT_ADDR: 0.0.0.0:7002
+
+  # In-cluster service URLs.
+  ACOM_COMMERCE_URL: http://commerce:7001
+  ACOM_AGENT_URL: http://agent:7002
+  ACOM_WEB_URL: http://web:3000
+
+  # Policy files are baked into the Rust images.
+  ACOM_POLICY_DIR: /app/policies
+
+  # Gateway token keys, mounted from Secret acom-gateway-keys at /run/secrets/acom.
+  # Only the gateway mounts the signing key; the other services mount the public key only.
+  ACOM_GATEWAY_PUBLIC_KEY_FILE: /run/secrets/acom/gateway_public_key.pem
+  ACOM_GATEWAY_SIGNING_KEY_FILE: /run/secrets/acom/gateway_signing_key.pem
+
+  # Web (Next.js standalone server).
+  PORT: "3000"
+  HOSTNAME: 0.0.0.0
+  NEXT_TELEMETRY_DISABLED: "1"
+  ACOM_GATEWAY_INTERNAL_URL: http://gateway:7000
