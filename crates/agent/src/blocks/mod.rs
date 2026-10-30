@@ -6,7 +6,9 @@
 //! prefixes the block id to make the `element_ref`.
 
 pub mod change_set;
+pub mod review;
 pub mod shop;
+pub mod shopper;
 pub mod table;
 
 use std::str::FromStr;
@@ -28,6 +30,11 @@ pub const KNOWN_BLOCKS: &[&str] = &[
     "checkout_card",
     "return_options",
     "memory_note",
+    "fit_check",
+    "gift_picker",
+    "looking_for",
+    "profile_card",
+    "refund_review",
 ];
 
 /// Block data format version (`schema`).

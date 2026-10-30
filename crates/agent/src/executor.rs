@@ -137,10 +137,12 @@ pub struct Bound {
 
 /// Fills a step's consumed slots and missing required fields from earlier steps.
 ///
-/// Sources, in order: the steps it `uses`, the ids the person pointed at, then the latest
-/// earlier step that produced the slot. A list field takes every value; a single field takes
-/// the first (search results come best first). A required field that is still missing takes a
-/// same-named field of a used step's result (`client_total` from a cart's `total`).
+/// Sources, in order: the steps it `uses`, the ids the person pointed at, then (only for a step
+/// that names no `uses`) the latest earlier step that produced the slot. A step that names its
+/// sources gets nothing from elsewhere, so a missing id is asked for instead of guessed. A list
+/// field takes every value; a single field takes the first (search results come best first). A
+/// required field that is still missing takes a same-named field of a used step's result
+/// (`client_total` from a cart's `total`).
 pub fn bind(
     step: &PlanStep,
     tool: &ToolSpec,
@@ -174,6 +176,9 @@ pub fn bind(
             })
         };
         let from_latest = || {
+            if !step.uses.is_empty() {
+                return None;
+            }
             order
                 .iter()
                 .rev()
@@ -203,7 +208,11 @@ pub fn bind(
         if !is_empty(input.get(field)) {
             continue;
         }
-        let short = field.split_once('_').map(|(_, rest)| rest);
+        // `client_total` may take a result's `total`; an id never takes another entity's `id`.
+        let short = field
+            .split_once('_')
+            .map(|(_, rest)| rest)
+            .filter(|_| !field.ends_with("_id"));
         let found = used.iter().find_map(|r| {
             let out = r.output.as_ref()?;
             out.get(field)
@@ -214,6 +223,77 @@ pub fn bind(
         if let Some((source, v)) = found {
             notes.push(format!("{field}: from {source}'s result"));
             input.insert(field.to_owned(), v);
+        }
+    }
+    Bound {
+        input: Value::Object(input),
+        notes,
+    }
+}
+
+/// The rows of a result a step can run once per row for (`each`): its `items` (or a block's
+/// `requests`, `picks`, `lines`), or the result itself when it is one object.
+pub fn rows(output: &Value) -> Vec<Value> {
+    for key in ["items", "requests", "picks", "lines", "products"] {
+        if let Some(Value::Array(a)) = output.get(key) {
+            return a.iter().filter(|r| r.is_object()).cloned().collect();
+        }
+    }
+    match output {
+        Value::Array(a) => a.iter().filter(|r| r.is_object()).cloned().collect(),
+        Value::Object(_) => vec![output.clone()],
+        _ => Vec::new(),
+    }
+}
+
+/// Whether a row has every field `when` names, with the same value.
+pub fn row_matches(row: &Value, when: Option<&Value>) -> bool {
+    let Some(Value::Object(w)) = when else {
+        return true;
+    };
+    w.iter().all(|(k, v)| row.get(k) == Some(v))
+}
+
+/// The ids a list of rows carries, by field name (`claim_id` → […]): what rows from a block
+/// shown earlier produce when a step uses them.
+pub fn slots_from_rows(rows: &[Value]) -> BTreeMap<String, Vec<Value>> {
+    let mut out: BTreeMap<String, Vec<Value>> = BTreeMap::new();
+    for r in rows {
+        for (k, v) in r.as_object().into_iter().flatten() {
+            if k.ends_with("_id") && v.is_string() {
+                push_unique(out.entry(k.clone()).or_default(), v.clone());
+            }
+        }
+    }
+    out
+}
+
+/// One run of an `each` step: the step's own arguments, then its consumed slots and missing
+/// required fields from the row's same-named fields (`claim_id`, `customer_id`).
+pub fn bind_row(step: &PlanStep, tool: &ToolSpec, row: &Value) -> Bound {
+    let mut input = match &step.args {
+        Value::Object(o) => o.clone(),
+        _ => Map::new(),
+    };
+    let mut notes = Vec::new();
+    for slot in &tool.consumes {
+        let Some((field, is_list)) = tool.field_for_slot(&slot.name) else {
+            continue;
+        };
+        if !is_empty(input.get(&field)) {
+            continue;
+        }
+        if let Some(v) = row.get(&slot.name).filter(|v| v.is_string()) {
+            input.insert(field.clone(), if is_list { json!([v]) } else { v.clone() });
+            notes.push(format!("{field}: from the row"));
+        }
+    }
+    for field in tool.required() {
+        if is_empty(input.get(field))
+            && let Some(v) = row.get(field).filter(|v| !v.is_null())
+        {
+            input.insert(field.to_owned(), v.clone());
+            notes.push(format!("{field}: from the row"));
         }
     }
     Bound {
@@ -282,6 +362,8 @@ mod tests {
             tool: tool.into(),
             args,
             uses: uses.iter().map(|u| (*u).to_owned()).collect(),
+            each: None,
+            when: None,
         }
     }
 
@@ -408,6 +490,76 @@ mod tests {
             ),
             json!({"percent_off": 20, "name": "VIP weekend", "exclude_low_stock": true})
         );
+    }
+
+    #[test]
+    fn a_step_that_names_its_sources_takes_ids_only_from_them() {
+        let m = manifest();
+        let search = record(
+            "s1",
+            get(&m, "search_products"),
+            json!({"items": [{"product_id": "prd_wool_overcoat"}]}),
+        );
+        let cart = record(
+            "s2",
+            get(&m, "get_cart"),
+            json!({"id": "cart_1", "lines": []}),
+        );
+        let done = BTreeMap::from([("s1".to_owned(), search), ("s2".to_owned(), cart)]);
+        let order = vec!["s1".to_owned(), "s2".to_owned()];
+        let named = bind(
+            &step("s3", "add_to_cart", json!({"size": "M"}), &["s2"]),
+            get(&m, "add_to_cart"),
+            &done,
+            &order,
+            &BTreeMap::new(),
+        );
+        assert!(
+            named.input.get("product_id").is_none(),
+            "s2 has no product; s1's is not taken"
+        );
+        let unnamed = bind(
+            &step("s3", "add_to_cart", json!({"size": "M"}), &[]),
+            get(&m, "add_to_cart"),
+            &done,
+            &order,
+            &BTreeMap::new(),
+        );
+        assert_eq!(unnamed.input["product_id"], "prd_wool_overcoat");
+    }
+
+    #[test]
+    fn rows_fan_out_with_their_own_ids() {
+        let m = manifest();
+        let queue = json!({"items": [
+            {"claim_id": "clm_20402", "suggested": "refund", "customer_id": "cus_alex"},
+            {"claim_id": "clm_20366", "suggested": "ask_for_photos"},
+            "not a row"], "total": 2});
+        let rows = rows(&queue);
+        assert_eq!(rows.len(), 2);
+        let refunds: Vec<&Value> = rows
+            .iter()
+            .filter(|r| row_matches(r, Some(&json!({"suggested": "refund"}))))
+            .collect();
+        assert_eq!(refunds.len(), 1);
+        assert!(row_matches(&rows[1], None));
+        let slots = slots_from_rows(&rows);
+        assert_eq!(slots["claim_id"].len(), 2);
+        assert_eq!(slots["customer_id"], [json!("cus_alex")]);
+        let b = bind_row(
+            &step("s2", "add_to_cart", json!({"size": "L"}), &[]),
+            get(&m, "add_to_cart"),
+            &json!({"product_id": "prd_windbreaker"}),
+        );
+        assert_eq!(
+            b.input,
+            json!({"size": "L", "product_id": "prd_windbreaker"})
+        );
+        assert_eq!(rows_of_one(), 1);
+    }
+
+    fn rows_of_one() -> usize {
+        rows(&json!({"product_id": "prd_a"})).len()
     }
 
     #[test]

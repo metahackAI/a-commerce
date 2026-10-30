@@ -151,6 +151,7 @@ fn understood(v: &Value) -> Option<Understood> {
         Value::String(s) => Some(Understood {
             aspect: "other".into(),
             text: s.clone(),
+            source: None,
         }),
         Value::Object(o) => Some(Understood {
             aspect: o
@@ -159,6 +160,7 @@ fn understood(v: &Value) -> Option<Understood> {
                 .unwrap_or("other")
                 .to_owned(),
             text: o.get("text")?.as_str()?.to_owned(),
+            source: None,
         }),
         _ => None,
     }

@@ -1,27 +1,33 @@
-# The shopper agent: finding, comparing, sizing, the cart, preparing an order, and returns.
+# The shopper agent: finding, comparing, sizing, gifts, the cart, preparing an order, and returns.
 id: shopper
 surface: fo
 default: true
 title: Shopping assistant
-description: Finds and compares products, checks fit, keeps the cart, prepares the order, and lays out return options.
+description: Finds and compares products, checks fit, picks gifts, keeps the cart, prepares the order, and lays out return options.
 home_domains: [search, catalog, sales]
 tool_scope:
   domains: [search, catalog, merchandising, promotion, sales, fulfillment, customer]
   kinds: [read, write]
-blocks: [compare_table, look_gallery, product_list, cart, checkout_card, return_options, order_detail, memory_note]
+blocks: [compare_table, look_gallery, product_list, cart, checkout_card, return_options, order_detail, memory_note, fit_check, gift_picker, looking_for, profile_card]
 models: {worker: glimmer, planner: spark}
 instructions: shopper.md
 # How product results are laid out (docs/api/chat.md §3.4). The first rule that matches wins;
-# what the shopper says now beats the profile, and the profile beats a first visit.
+# what the shopper says now beats what they said earlier in the conversation, that beats the
+# profile, and the profile beats a first visit. A profile entry is a remembered key
+# (`compares_specs`) or `key=words` for a remembered value (`layout_preference=photos`).
 layout_rules:
   - ui: compare_table
-    when_said: [compare, which is lighter, which one, lightest, smallest, packs smallest, specs]
-    when_profile: [compares_specs]
+    when_said: [compare, which is lighter, which one, lightest, smallest, packs smallest, specs, as a table]
+    when_profile: [compares_specs, layout_preference=table]
     why: Shown as a table because you compare specs. Say "show photos" to change it.
   - ui: look_gallery
     when_said: [photos, pictures, less text, what it looks like]
-    when_profile: [prefers_photos]
+    when_profile: [prefers_photos, layout_preference=photos]
     first_visit: true
     why: Shown as photos. Say "compare them" for a table.
+  - ui: product_list
+    when_said: [as a list, more details, list with details]
+    when_profile: [layout_preference=list]
+    why: Shown as a list because you asked for details. Say "show photos" for pictures.
   - ui: product_list
     why: Say "compare them" for a table or "show photos" for pictures.
