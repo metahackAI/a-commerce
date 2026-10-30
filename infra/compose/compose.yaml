@@ -75,6 +75,9 @@ services:
       <<: *rust-env
       ACOM_COMMERCE_ADDR: 0.0.0.0:7001
       DATABASE_URL: postgres://acom_app:${ACOM_APP_PASSWORD:-acom_app}@postgres:5432/acom
+      # Demo stacks only: lets an operator with admin:demo load the demo store again
+      # (POST /v1/platform/demo/reset). Production configuration does not set it.
+      MIGRATION_DATABASE_URL: postgres://acom_owner:${ACOM_OWNER_PASSWORD:-acom_owner}@postgres:5432/acom
     secrets: [gateway_public_key]
     healthcheck:
       test: ["CMD", "/usr/local/bin/acom-commerce", "healthcheck"]

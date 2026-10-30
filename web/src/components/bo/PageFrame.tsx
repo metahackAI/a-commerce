@@ -1,6 +1,9 @@
+'use client';
+
 // The frame of every back-office page, after the Astryx `detail-page` and `table-page` templates:
 // a header with the way back, the title, a line of facts and the page's actions; the content
-// scrolls under it; an optional side panel holds supporting facts.
+// scrolls under it; an optional side panel holds supporting facts. A client component: the way
+// back passes an icon component to Astryx's Icon, which a server page cannot hand to the client.
 
 import type {ReactNode} from 'react';
 import {HStack, Layout, LayoutContent, LayoutHeader, LayoutPanel, StackItem, VStack} from '@astryxdesign/core/Layout';

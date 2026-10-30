@@ -8,6 +8,8 @@ home_domains: [promotion, merchandising]
 tool_scope:
   domains: [promotion, merchandising, catalog, search, customer, platform]
   kinds: [read, write, write_approval]
+  # Always among the candidates: the work waiting and the reads most requests start from.
+  always: [list_tasks, list_active_promotions, search_products, list_tiers]
 blocks: [change_set, product_table, action_log, task_list]
 models: {worker: glimmer, planner: spark}
 instructions: promotion.md
@@ -19,3 +21,18 @@ check_intents:
   promotion_overlap: Show me the promotions it overlaps with
   member_benefits_per_order: Make the coupon not stack with tier coupons
   slot_free: Find a free slot for the banner
+# Phrases that name this agent's work: a request containing one (and no longer phrase of another
+# agent) comes here without asking the router model. "What needs me" is answered here too.
+route_when_said:
+  - weekend sale
+  - "% sale"
+  - "% off"
+  - sale on
+  - coupon
+  - banner
+  - promotion
+  - member price
+  - main page
+  - needs me
+  - my tasks
+  - inbox

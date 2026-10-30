@@ -17,6 +17,7 @@ import {StatusDot} from '@astryxdesign/core/StatusDot';
 
 import {PersonButton} from '@/components/PersonButton';
 import {api} from '@/lib/api';
+import {signOut} from '@/lib/session';
 import {dateTime, words} from '@/app/bo/_lib/format';
 
 import {useBoSession} from './BoSession';
@@ -127,6 +128,37 @@ function MoveDialog({clock, onClose, onMoved}: {clock: StoreClockState; onClose:
             onDone={r => onMoved(r as ClockMoved)}
           />
         </TargetField>
+        <TargetRegion target={{kind: 'demo_reset', label: 'Start the demo over: load the demo store again', ids: {demo: 'reset'}}}>
+          <HStack gap={3} vAlign="center">
+            <StackItem size="fill">
+              <VStack gap={0}>
+                <Text type="label" weight="semibold">
+                  Start the demo over
+                </Text>
+                <Text type="supporting" color="secondary">
+                  Load the demo store again, as on Fri Nov 6, 11:00. What was done in the demo is lost and everyone signs in again.
+                </Text>
+              </VStack>
+            </StackItem>
+            <PersonButton
+              variant="secondary"
+              action={{
+                label: 'Load the demo store again',
+                method: 'POST',
+                path: '/v1/platform/demo/reset',
+                confirm:
+                  'Empty the store and load the demo data again? Orders, change sets and conversations made in the demo are deleted, and every session ends. It takes about 20 seconds.',
+              }}
+              onDone={() => {
+                // Every session ended with the store (the gateway may still hold this one for a
+                // few seconds): drop the cookie, then sign in again.
+                void signOut()
+                  .catch(() => undefined)
+                  .finally(() => window.location.assign('/bo/login'));
+              }}
+            />
+          </HStack>
+        </TargetRegion>
       </VStack>
     </Dialog>
   );

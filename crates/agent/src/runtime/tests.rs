@@ -612,15 +612,16 @@ async fn b1_drafts_a_change_set_through_tools_and_never_approves() {
 
     let (usage, models) = done(&events);
     assert_eq!(usage.tool_calls, 6);
-    assert_eq!(usage.model_calls, 3);
-    assert_eq!(usage.input_tokens, 300);
+    // The request names the promotion agent's work ("weekend sale"), so no router call.
+    assert_eq!(usage.model_calls, 2);
+    assert_eq!(usage.input_tokens, 200);
     assert_eq!(models, ["Muse Glimmer 30B"]);
-    assert_eq!(glimmer.asked(), ["route", "plan", "reply"]);
+    assert_eq!(glimmer.asked(), ["plan", "reply"]);
 
     let calls = log.model_calls();
     assert_eq!(
         calls.iter().map(|c| c.purpose.as_str()).collect::<Vec<_>>(),
-        ["route", "plan", "reply"]
+        ["plan", "reply"]
     );
     let steps = log.steps();
     assert!(steps.iter().any(|s| s.kind == "call_tool"
@@ -1296,4 +1297,81 @@ async fn b4_turns_the_supplier_sheet_into_drafts_and_leaves_saving_to_a_person()
             .iter()
             .any(|s| s.kind == "call_tool" && s.change_set_id.as_deref() == Some("cs_1042"))
     );
+}
+
+#[tokio::test]
+async fn an_empty_plan_is_planned_again_and_the_answer_comes_from_the_store() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            ("plan", json!({"interpretation": [], "about": "self", "reply_plan": "text", "steps": []}).to_string()),
+            ("plan", json!({"interpretation": [{"aspect": "products", "text": "light jackets"}], "about": "self",
+                "reply_plan": "product_list", "steps": [
+                {"id": "s1", "tool": "search_products", "args": {"query": "light jacket"}, "uses": []}]})
+            .to_string()),
+            ("reply", "Here are three light jackets.".into()),
+        ],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let commerce = Commerce::new();
+    let events = turn(
+        &rt,
+        principal("cus_jamie", Surface::Fo),
+        ChatSurface::Fo,
+        say("I need a light jacket for spring trips"),
+        commerce.clone(),
+    )
+    .await;
+    assert_eq!(
+        glimmer.asked().iter().filter(|p| *p == "plan").count(),
+        2,
+        "{:?}",
+        glimmer.asked()
+    );
+    assert!(
+        commerce
+            .calls()
+            .iter()
+            .any(|c| c.contains("search_products"))
+    );
+    assert_eq!(blocks(&events)[0].ui, "product_list");
+    assert_eq!(message(&events), "Here are three light jackets.");
+}
+
+#[tokio::test]
+async fn a_reply_with_made_up_numbers_is_written_again_and_what_was_read_is_shown() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            ("plan", json!({"interpretation": [{"aspect": "who", "text": "VIP members"}], "about": "self",
+                "reply_plan": "text", "steps": [
+                {"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
+            .to_string()),
+            ("reply", "You have 9,999 VIP members.".into()),
+            ("reply", "You have 1,284 VIP members.".into()),
+        ],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let commerce = Commerce::new();
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say("Show me our member tiers."),
+        commerce,
+    )
+    .await;
+    assert_eq!(message(&events), "You have 1,284 VIP members.");
+    let b = blocks(&events);
+    assert_eq!(b.len(), 1, "the tiers read, shown as a table");
+    assert_eq!(b[0].ui, "product_table");
+    assert_eq!(glimmer.asked().iter().filter(|p| *p == "reply").count(), 2);
 }

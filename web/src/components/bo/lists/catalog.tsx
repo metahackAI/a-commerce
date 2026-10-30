@@ -9,7 +9,13 @@ import {Text} from '@astryxdesign/core/Text';
 import {StateToken} from '../StateToken';
 import {DataTable, Figure, RecordCell} from '../tables';
 
-export function ProductList({items}: {items: ProductGroupSummary[]}) {
+/** Category and brand names by id, so rows read as words rather than ids. */
+export interface ProductNames {
+  categories?: Record<string, string>;
+  brands?: Record<string, string>;
+}
+
+export function ProductList({items, names = {}}: {items: ProductGroupSummary[]; names?: ProductNames}) {
   return (
     <DataTable
       rows={items}
@@ -27,8 +33,8 @@ export function ProductList({items}: {items: ProductGroupSummary[]}) {
         {header: 'Availability', cell: r => (r.availability ? <StateToken state={r.availability} /> : <Text color="secondary">—</Text>)},
         {header: 'List price', cell: r => <Figure>{price(r.price, r.price_currency)}</Figure>},
         {header: 'Stock', cell: r => <Figure>{count(r.inventory_level)}</Figure>},
-        {header: 'Category', cell: r => <Text color="secondary">{r.category_id ?? '—'}</Text>},
-        {header: 'Brand', cell: r => <Text color="secondary">{r.brand_id ?? '—'}</Text>},
+        {header: 'Category', cell: r => <Text color="secondary">{(r.category_id && names.categories?.[r.category_id]) ?? r.category_id ?? '—'}</Text>},
+        {header: 'Brand', cell: r => <Text color="secondary">{(r.brand_id && names.brands?.[r.brand_id]) ?? r.brand_id ?? '—'}</Text>},
       ]}
     />
   );

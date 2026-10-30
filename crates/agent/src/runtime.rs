@@ -36,6 +36,11 @@ use crate::stream::{Command, Emitter, Event, StepKind, StepStatus, TurnUsage};
 use crate::tools::{ToolKind, ToolSpec};
 use crate::toolsearch;
 
+/// What the planner is told when its plan has no steps.
+const EMPTY_PLAN: &str = "The plan has no steps, so the answer would come from nothing. \
+The person asked about the store: plan at least one read from the tools listed (search, list or get) \
+that answers it, and pick the block that shows the result. Only a greeting or thanks needs no step.";
+
 /// A block button's intent (`ui_event`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -274,10 +279,26 @@ impl Runtime {
         &self,
         principal: &Principal,
         conversation_id: &str,
+        with_log: bool,
     ) -> Result<Value, ToolError> {
         let tenant = principal.tenant.as_str();
         match self.log.history(tenant, conversation_id).await {
-            Ok(Some((owner, turns))) if owner.same_person(&Owner::of(principal)) => {
+            Ok(Some((owner, mut turns))) if owner.same_person(&Owner::of(principal)) => {
+                // The turn log: what each step read and wrote, and every model call with its
+                // error (an unusable plan, a reply that cited numbers no tool returned).
+                if with_log {
+                    let logs = self
+                        .log
+                        .turn_logs(tenant, conversation_id)
+                        .await
+                        .unwrap_or_default();
+                    for t in &mut turns {
+                        let id = t["turn_id"].as_str().unwrap_or_default().to_owned();
+                        if let Some((_, log)) = logs.iter().find(|(turn, _)| *turn == id) {
+                            t["log"] = log.clone();
+                        }
+                    }
+                }
                 Ok(json!({"conversation_id": conversation_id, "turns": turns}))
             }
             Ok(_) => Err(not_found(conversation_id)),
@@ -845,16 +866,28 @@ impl<'r> Turn<'r> {
         let button_intent =
             self.request.ui_event.is_some() && self.request.button_request().is_none();
         let attached = self.request.attachment_kinds();
+        // A conversation with an open change set stays with its agent: what is said next is
+        // most likely a correction to it ("drop the low-stock ones").
+        let continuing = previous
+            .as_ref()
+            .filter(|p| self.open_change_set().is_some() && agents.iter().any(|a| &a.id == *p))
+            .map(|p| router::Route {
+                agent: p.clone(),
+                confidence: 1.0,
+                reason: "continues the open change set",
+            });
         let shortcut = if button_intent {
             None
         } else {
-            router::hinted(
-                &profiles.runtime.router.hints,
-                &agents,
-                &self.text,
-                &attached,
-            )
-            .or_else(|| router::by_phrase(&agents, &self.text))
+            continuing.or_else(|| {
+                router::hinted(
+                    &profiles.runtime.router.hints,
+                    &agents,
+                    &self.text,
+                    &attached,
+                )
+                .or_else(|| router::by_phrase(&agents, &self.text))
+            })
         };
         if shortcut.is_none()
             && !self.rt.models.is_empty()
@@ -1136,7 +1169,7 @@ impl<'r> Turn<'r> {
             }
             Err(s) => Err(s),
         };
-        let (mut plan, alias) = match first {
+        let (mut plan, mut alias) = match first {
             Ok(p) => p,
             Err(Stop(why)) => {
                 self.end_step(
@@ -1151,6 +1184,22 @@ impl<'r> Turn<'r> {
                 return Err(Stop(why));
             }
         };
+        // A plan with no steps answers from nothing: a question about the store is answered
+        // from its tools. Ask once more, saying so (a greeting may still need no step).
+        if plan.steps.is_empty()
+            && self.request.ui_event.is_none()
+            && self.usage.len() < self.limits.model_calls as usize
+            && let Ok(again) = self
+                .plan_once(
+                    &[&worker, &planner_alias],
+                    Some(EMPTY_PLAN.to_owned()),
+                    serde_json::to_value(&plan).ok(),
+                )
+                .await
+            && !again.0.steps.is_empty()
+        {
+            (plan, alias) = again;
+        }
         let specs = self.candidate_specs();
         let refs: Vec<&ToolSpec> = specs.iter().collect();
         let big = plan.steps.len() > self.rt.profiles.runtime.planner.worker_max_steps
@@ -2501,6 +2550,14 @@ impl<'r> Turn<'r> {
             "refund_review" => self.refund_review_block(),
             _ => None,
         };
+        // The plan's block could not be made from what was read, or the plan chose text: when
+        // nothing else is shown, show the last list read as it is, so the person sees what the
+        // turn found (products as a list on the storefront, anything else as a table).
+        let block = if block.is_none() && out.is_empty() && cards.is_empty() {
+            self.found_block(&allowed)
+        } else {
+            block
+        };
         // A gift is reviewed in its picker first; the card with the Place order button follows.
         if reply_plan == "gift_picker" {
             out.extend(block);
@@ -2559,6 +2616,30 @@ impl<'r> Turn<'r> {
                "interpretation": self.plan.as_ref().map(|p| p.interpretation.iter().map(|u| u.text.clone()).collect::<Vec<_>>())})
     }
 
+    /// The last list a read returned, as a block this agent may show.
+    fn found_block(&self, allowed: &dyn Fn(&str) -> bool) -> Option<Block> {
+        let read = self.last_output(|r| {
+            r.kind == ToolKind::Read
+                && r.output
+                    .as_ref()
+                    .is_some_and(|o| !shop::items_of(o).is_empty())
+        })?;
+        let output = read.output.as_ref()?;
+        let products = shop::items_of(output).iter().all(|i| {
+            i.get("product_id")
+                .or_else(|| i.get("id"))
+                .and_then(Value::as_str)
+                .is_some_and(|id| id.starts_with("prd_"))
+        });
+        if products && allowed("product_list") {
+            shop::products("product_list", output, None)
+        } else if allowed("product_table") {
+            table::product_table(output)
+        } else {
+            None
+        }
+    }
+
     fn fallback_text(&self) -> String {
         let mut parts: Vec<String> = Vec::new();
         if let Some(v) = &self.view {
@@ -2610,12 +2691,20 @@ impl<'r> Turn<'r> {
                     "I turned the sheet into drafts. Shoppers do not see them; publishing is a separate change set."
                         .into(),
                 ),
-                _ => {}
+                "task_list" => parts.push("Here is what is waiting and what is in progress.".into()),
+                "change_set" => {}
+                _ => parts.push("Here is what I found.".into()),
             }
         }
+        parts.dedup();
         parts.extend(self.problems.iter().cloned());
         if parts.is_empty() {
-            parts.push("I could not find anything to show for that.".into());
+            let read = self.history.iter().any(|r| r.kind == ToolKind::Read);
+            parts.push(if read {
+                "I looked this up, but nothing matched.".into()
+            } else {
+                "I could not find anything to show for that.".into()
+            });
         }
         parts.join(" ")
     }
@@ -2640,24 +2729,46 @@ impl<'r> Turn<'r> {
         )
         .max_tokens(200);
         let worker = self.worker().to_owned();
-        let Some(text) = self.model_text("reply", &[&worker], req).await else {
+        let Some(mut text) = self.model_text("reply", &[&worker], req.clone()).await else {
             return fallback;
         };
-        let outputs: Vec<&Value> = self
+        // Owned copies: the retry below calls the model, which needs `self` mutably.
+        let mut owned: Vec<Value> = self
             .history
             .iter()
-            .filter_map(|r| r.output.as_ref())
-            .chain(std::iter::once(&facts))
+            .filter_map(|r| r.output.clone())
             .collect();
-        let previews: Vec<Value> = self
-            .history
-            .iter()
-            .filter_map(|r| r.preview.as_ref())
-            .filter_map(|p| serde_json::to_value(p).ok())
-            .collect();
-        let mut sources = outputs;
-        sources.extend(previews.iter());
-        let unsupported = checker::unsupported_numbers(&text, &sources, &[&self.text]);
+        owned.extend(
+            self.history
+                .iter()
+                .filter_map(|r| r.preview.as_ref())
+                .filter_map(|p| serde_json::to_value(p).ok()),
+        );
+        owned.push(facts);
+        let sources: Vec<&Value> = owned.iter().collect();
+        let asked = self.text.clone();
+        let mut unsupported = checker::unsupported_numbers(&text, &sources, &[&asked]);
+        // One more try, naming the numbers no result holds (a sum the model did itself, a
+        // number it guessed); a second miss falls back to the plain reply.
+        if !unsupported.is_empty() && self.usage.len() < self.limits.model_calls as usize {
+            if let Some(last) = self.usage.last_mut() {
+                last.succeeded = false;
+                last.error = Some(format!(
+                    "numbers not in the results: {}",
+                    unsupported.join(", ")
+                ));
+            }
+            let mut again = req;
+            again.messages.push(Message::assistant(text.clone()));
+            again.messages.push(Message::user(format!(
+                "These numbers are not in the results: {}. Write the reply again using only numbers that appear in the results, or none.",
+                unsupported.join(", ")
+            )));
+            if let Some(t) = self.model_text("reply", &[&worker], again).await {
+                unsupported = checker::unsupported_numbers(&t, &sources, &[&asked]);
+                text = t;
+            }
+        }
         if unsupported.is_empty() {
             text
         } else {

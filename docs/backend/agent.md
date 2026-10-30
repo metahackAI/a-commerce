@@ -62,7 +62,7 @@ examples: promotion.examples.yml               # 툴 검색·계획용 몇 개�
 | `insights` | bo | analytics (읽기만) | ✓ |
 | `shopper` | fo | search, catalog(읽기), sales(장바구니·주문 준비), fulfillment(반품 옵션), customer(내 정보) | ✓ |
 
-- **라우터**는 Glimmer에 에이전트 설명 목록과 요청을 주고 가이드 디코딩으로 `{agent, confidence}` 하나를 고르게 합니다. 확신이 낮으면 면(bo/fo)의 기본 에이전트로 갑니다. 그 전에 아래 라우팅 힌트를 보고, 다음으로 요청에 한 에이전트의 `route_when_said` 문구(소문자, 예: insights의 `why did sales`)만 들어 있으면 모델 없이 그 에이전트로 보냅니다. 문장을 말하지 않는 버튼(`ui_event`)은 대화의 에이전트가 이어 받습니다.
+- **라우터**는 Glimmer에 에이전트 설명 목록과 요청을 주고 가이드 디코딩으로 `{agent, confidence}` 하나를 고르게 합니다. 확신이 낮으면 면(bo/fo)의 기본 에이전트로 갑니다. 그 전에 아래 라우팅 힌트를 보고, 다음으로 요청에 든 에이전트별 `route_when_said` 문구(소문자: insights의 `why did sales`, orders의 `return request`, catalog의 `low on stock`, promotion의 `weekend sale`·`needs me`) 중 가장 긴 것의 에이전트로 모델 없이 보냅니다(두 에이전트가 같은 길이로 맞으면 모델이 고름). 열린 변경셋이 있는 대화는 그 에이전트가 이어 받고(다음 말은 대개 고침), 문장을 말하지 않는 버튼(`ui_event`)도 대화의 에이전트가 이어 받습니다.
 - **라우팅 힌트**(`agents/runtime.yml` `router.hints`): 요청에 든 말(대소문자 무시, 예 "supplier sheet")이나 첨부 종류(`sheet`)가 그 면의 에이전트 하나만 가리키면 모델을 부르지 않고 그 에이전트로 갑니다. 버튼 의도(`ui_event`)는 힌트를 쓰지 않습니다.
 - **첨부**: 턴 요청의 `attachments[]{kind, upload_id}`의 `upload_id`는 가리킨 id처럼 툴의 `upload_id` 슬롯을 채웁니다(`batch_import`의 `acom:file`은 `x-slot: upload_id`).
 - **한 요청이 여러 도메인에 걸치는 것은 정상입니다**(VIP 세일 = 회원가 + 쿠폰 + 배너). 특화 에이전트는 도메인 하나에 갇히지 않고 자기 `tool_scope` 안에서 홈 도메인을 우선할 뿐입니다.
@@ -74,7 +74,7 @@ examples: promotion.examples.yml               # 툴 검색·계획용 몇 개�
 
 모델은 전체 툴 목록을 보지 않습니다. 매니페스트(`GET /v1/tools`, 스코프로 이미 걸러짐)에서 후보를 고릅니다.
 
-1. **범위:** 에이전트의 `tool_scope`와 호출자 스코프의 교집합. `tool_scope.always`의 툴(쇼퍼의 `search_products`, `get_my_profile`)은 말과 상관없이 늘 후보입니다.
+1. **범위:** 에이전트의 `tool_scope`와 호출자 스코프의 교집합. `tool_scope.always`의 툴은 말과 상관없이 늘 후보입니다(에이전트마다 대부분의 요청이 시작하는 읽기: 쇼퍼의 `search_products`·`get_my_profile`·`get_cart`·`get_my_orders`, 운영 에이전트의 `list_tasks` 등). 사람의 말("light jacket")은 툴 설명에 없는 말이라 BM25만으로는 상품 검색을 놓치기 때문입니다.
 2. **점수:** 이름·설명·필드 설명의 BM25 + 설명 임베딩 유사도(pgvector, 매니페스트가 바뀔 때만 재계산) + 홈 도메인 가중치. 사람이 쓰는 말과 툴이 쓰는 말이 다른 경우는 `runtime.yml`의 `tool_search.related_words`(데이터)가 검색어를 넓힙니다("fit" → measurements, reviews, orders; 이어서 따라감). 맞는 말이 하나도 없으면 홈 도메인의 읽기부터 채웁니다.
 3. **그래프 확장:** 상위 후보의 `consumes`를 생산하는 툴(앞 단계)과 `produces`를 소비하는 툴(뒤 단계)을 1홉 추가. 예: `set_sale_prices` → 앞에 `search_products`, `list_tiers`, 뒤에 `create_coupon`, `schedule_banner`.
 4. **자르기:** 5~8개. 결과는 결정적(같은 입력 → 같은 후보)이고 턴 로그에 남깁니다.
@@ -108,6 +108,7 @@ examples: promotion.examples.yml               # 툴 검색·계획용 몇 개�
 - **블록 문구(`notes`)와 출처(`source`):** 모델은 블록 요소에 붙일 짧은 말(`{"element": "size:L", "text": "Over a hoodie"}`, 첫째가 추천)과 이해한 줄의 출처(`said`·`profile`·`his`·`hers`, 칩)를 냅니다. 둘 다 툴 결과나 사람의 말에 없는 숫자가 들면 쓰지 않습니다.
 - **모델 선택:** 단계 ≤ 3이고 한 도메인이면 Glimmer, 아니면 Spark. 에이전트 정의의 `models`로 바꿀 수 있습니다. 모든 결정은 턴 로그에 남아 평가에서 비교됩니다.
 - **계획 수정:** 읽기 결과가 다음 인자를 바꿔야 할 때(예: 하한을 넘는 상품 2개는 15%로) 플래너를 한 번 더 부릅니다. 턴당 2회까지.
+- **빈 계획:** 단계가 없는 계획은 아무것도 읽지 않고 답하게 됩니다. 버튼(`ui_event`)이 아닌 요청에서 단계가 없으면 그 이유를 적어 플래너를 한 번 더 부르고, 다시 계획한 쪽에 단계가 있으면 그것을 씁니다(인사·감사는 단계 없이 끝날 수 있음).
 
 ---
 
@@ -146,7 +147,8 @@ examples: promotion.examples.yml               # 툴 검색·계획용 몇 개�
 - 블록 데이터는 Rust 타입(`acom-agent::blocks`)이고, 툴 출력에서 변환하는 함수가 블록마다 있습니다. 모델은 어떤 블록을 쓸지와 짧은 문구(`title`, `why`)만 정합니다. **숫자는 모델이 쓰지 않습니다.**
 - 블록마다 `actions[]`가 있습니다. `say`(대화로 돌아오는 의도), `person`(사람 전용 엔드포인트, 웹이 직접 호출), `open`(다른 블록·화면 열기).
 - 쇼퍼 블록의 형태는 기억된 선호를 따릅니다(스펙을 비교하는 쇼퍼에게 `compare_table`, 사진으로 보는 쇼퍼에게 `look_gallery`). 형태를 바꾼 이유는 `why`에 한 줄로 씁니다.
-- 텍스트 답은 짧게(두세 문장). 툴 결과에 없는 사실을 말하지 않도록, 텍스트에 나온 숫자·상품명을 이번 턴의 툴 출력과 대조하는 후처리 검사를 둡니다.
+- 텍스트 답은 짧게(두세 문장). 툴 결과에 없는 사실을 말하지 않도록, 텍스트에 나온 숫자·상품명을 이번 턴의 툴 출력과 대조하는 후처리 검사를 둡니다. 결과에 없는 숫자가 있으면 그 숫자를 알려 주고 한 번 다시 쓰게 하고, 그래도 있으면 결정적인 짧은 답("Here is what I found.")을 씁니다.
+- **읽은 것은 늘 보입니다:** 계획의 블록을 결과로 만들 수 없거나 계획이 `text`를 골랐고 다른 블록도 없으면, 마지막으로 읽은 목록을 그대로 보여 줍니다(상품이면 `product_list`, 그 밖은 `product_table`, 에이전트가 쓸 수 있는 블록일 때). 무엇을 읽었는데 "찾지 못했다"고 답하는 일은 없습니다.
 - **요소 문맥:** 턴 요청의 `context[]`(사람이 고른 화면 요소의 `element_ref`·`ids`)는 계획의 첫 입력입니다. "이것", "이 상품"은 `context`의 id로 풀고, 슬롯 값으로 바로 씁니다.
 - **추천 말:** 블록을 만들 때 요소마다 다음에 할 만한 말(`suggested_intents`)을 붙입니다. 실패한 체크에는 `fix_tool`에서 나온 수정 문장, 변경 행에는 "빼 줘"·"20%로" 같은 문장입니다.
 - **화면 가리키기:** 설명이 특정 요소에 관한 것이면 `ui.command`(`highlight`, `scroll_to`)를 함께 보냅니다. `person` 버튼은 가리킬 수 없습니다.
@@ -187,7 +189,7 @@ examples: promotion.examples.yml               # 툴 검색·계획용 몇 개�
 
 ### 8.4 기록
 
-모든 모델 호출을 `agent.model_call`(모델, 목적, 입력·출력 토큰, 지연, 비용, 성공 여부)에 남깁니다. 턴(`agent.turn`)과 단계(`agent.step`)는 `request_id`로 `commerce`의 액션 로그와 이어져, 한 요청의 모든 모델 호출과 툴 호출을 한 줄로 볼 수 있습니다. 평가 지표(완료율, 툴 선택 정확도, 과업당 호출·비용, 반복 일관성)는 이 기록에서 계산합니다.
+모든 모델 호출을 `agent.model_call`(모델, 목적, 입력·출력 토큰, 지연, 비용, 성공 여부, 실패 이유: 쓸 수 없는 계획, 결과에 없는 숫자)에 남깁니다. 대화의 주인은 `GET /api/chat/{surface}/conversations/{id}?log=true`로 턴마다 단계(입력·출력·에러)와 모델 호출을 봅니다. 턴(`agent.turn`)과 단계(`agent.step`)는 `request_id`로 `commerce`의 액션 로그와 이어져, 한 요청의 모든 모델 호출과 툴 호출을 한 줄로 볼 수 있습니다. 평가 지표(완료율, 툴 선택 정확도, 과업당 호출·비용, 반복 일관성)는 이 기록에서 계산합니다.
 
 ---
 

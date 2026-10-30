@@ -7,6 +7,8 @@ home_domains: [fulfillment, sales, messaging]
 tool_scope:
   domains: [fulfillment, sales, messaging, customer, catalog, platform]
   kinds: [read, write, write_approval]
+  # Always among the candidates: the work waiting and the reads most requests start from.
+  always: [list_tasks, search_return_requests, search_orders, get_order]
 blocks: [change_set, refund_review, order_detail, action_log, product_table, task_list]
 models: {worker: glimmer, planner: spark}
 instructions: orders.md
@@ -14,3 +16,16 @@ check_intents:
   return_window_days: Show me why this one is outside the return window
   damage_claim_needs_photo: Ask the customer for photos instead
   return_suggestions.flag_return_history: Show me this customer's return history
+# Phrases that name this agent's work: a request containing one (and no longer phrase of another
+# agent) comes here without asking the router model.
+route_when_said:
+  - return request
+  - returns
+  - refund
+  - "order #"
+  - orders
+  - delivery
+  - deliveries
+  - shipment
+  - tracking
+  - message the customer
