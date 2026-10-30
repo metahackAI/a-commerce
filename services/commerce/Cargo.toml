@@ -1,0 +1,26 @@
+[package]
+name = "acom-commerce"
+description = "The commerce service: every operation, the policy engine, previews, and change sets."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+acom-core.workspace = true
+acom-contract.workspace = true
+acom-policy.workspace = true
+acom-store.workspace = true
+acom-auth.workspace = true
+acom-changeset.workspace = true
+acom-registry.workspace = true
+acom-http.workspace = true
+acom-mcp.workspace = true
+axum.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

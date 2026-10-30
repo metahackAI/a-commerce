@@ -1,0 +1,16 @@
+[package]
+name = "acom-agent"
+description = "Agent runtime: router, specialist agents, tool search, planner, executor, checker, UI blocks, memory."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+acom-core.workspace = true
+acom-contract.workspace = true
+acom-llm.workspace = true
+
+[lints]
+workspace = true

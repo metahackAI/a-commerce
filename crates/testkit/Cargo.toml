@@ -1,0 +1,15 @@
+[package]
+name = "acom-testkit"
+description = "Demo seed loader, demo clock helpers, and scenario replay for tests."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+acom-core.workspace = true
+acom-contract.workspace = true
+
+[lints]
+workspace = true

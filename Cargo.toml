@@ -1,0 +1,82 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/agent",
+    "crates/auth",
+    "crates/changeset",
+    "crates/contract",
+    "crates/core",
+    "crates/facade",
+    "crates/http",
+    "crates/llm",
+    "crates/mcp",
+    "crates/policy",
+    "crates/registry",
+    "crates/store",
+    "crates/testkit",
+    "crates/domains/*",
+    "services/*",
+    "xtask",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+license = "Apache-2.0"
+publish = false
+
+[workspace.dependencies]
+# internal
+acom-core = { path = "crates/core" }
+acom-contract = { path = "crates/contract" }
+acom-policy = { path = "crates/policy" }
+acom-store = { path = "crates/store" }
+acom-auth = { path = "crates/auth" }
+acom-changeset = { path = "crates/changeset" }
+acom-registry = { path = "crates/registry" }
+acom-http = { path = "crates/http" }
+acom-mcp = { path = "crates/mcp" }
+acom-llm = { path = "crates/llm" }
+acom-agent = { path = "crates/agent" }
+acom-facade = { path = "crates/facade" }
+acom-testkit = { path = "crates/testkit" }
+acom-catalog = { path = "crates/domains/catalog" }
+acom-search = { path = "crates/domains/search" }
+acom-merchandising = { path = "crates/domains/merchandising" }
+acom-promotion = { path = "crates/domains/promotion" }
+acom-customer = { path = "crates/domains/customer" }
+acom-sales = { path = "crates/domains/sales" }
+acom-fulfillment = { path = "crates/domains/fulfillment" }
+acom-messaging = { path = "crates/domains/messaging" }
+acom-platform = { path = "crates/domains/platform" }
+
+# external
+axum = "0.8"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+chrono-tz = { version = "0.10", features = ["serde"] }
+futures = "0.3"
+rust_decimal = { version = "1.43", features = ["serde-with-arbitrary-precision"] }
+schemars = { version = "1.2", features = ["chrono04"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["arbitrary_precision", "preserve_order"] }
+serde_norway = "0.9"
+sha2 = "0.10"
+thiserror = "2"
+tokio = { version = "1.54", features = ["macros", "rt-multi-thread", "net", "signal"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+ulid = "3"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+dbg_macro = "warn"
+todo = "warn"
+
+[profile.dev.package."*"]
+opt-level = 1

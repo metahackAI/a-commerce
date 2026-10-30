@@ -1,0 +1,19 @@
+[package]
+name = "acom-gateway"
+description = "Entry point for people and outside agents: sessions, scopes, internal tokens, routing, rate limits."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+acom-core.workspace = true
+acom-auth.workspace = true
+axum.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

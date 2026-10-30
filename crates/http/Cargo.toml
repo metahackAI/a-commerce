@@ -1,0 +1,15 @@
+[package]
+name = "acom-http"
+description = "REST surface generated from the registry: routes, internal-token extractor, error mapping."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+acom-contract.workspace = true
+acom-auth.workspace = true
+
+[lints]
+workspace = true
