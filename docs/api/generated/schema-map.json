@@ -5815,6 +5815,13 @@
         "nullable": false,
         "term": "-",
         "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      },
+      {
+        "name": "seed_fingerprint",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "fingerprint (SHA-256 of the rows) of the demo seed this store was loaded from; NULL for a store not loaded from a seed."
       }
     ]
   },
