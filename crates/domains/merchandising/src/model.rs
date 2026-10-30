@@ -123,10 +123,8 @@ pub fn free_spans(
         if b.from > c {
             out.push((c, (b.from - minute).min(through)));
         }
-        cursor = match b.through {
-            None => None,
-            Some(t) => Some(c.max(t + minute)),
-        };
+        // An open-ended booking takes the rest of the window.
+        cursor = b.through.map(|t| c.max(t + minute));
     }
     if let Some(c) = cursor
         && c <= through
@@ -195,7 +193,7 @@ pub fn count_text(n: i64) -> String {
     let digits = n.abs().to_string();
     let mut out = String::new();
     for (i, c) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i) % 3 == 0 {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
             out.push(',');
         }
         out.push(c);

@@ -92,13 +92,16 @@ fn applies_to(r: &PromotionRow, product_count: Option<i64>) -> Value {
            "category_ids": a.category_ids, "product_count": product_count})
 }
 
+/// A period from an input; either end may be open.
+type Period = (Option<DateTime<Utc>>, Option<DateTime<Utc>>);
+
 fn period(
     cx: &Cx,
     from: Option<&str>,
     through: Option<&str>,
     code: ErrorCode,
     next: &'static str,
-) -> Result<(Option<DateTime<Utc>>, Option<DateTime<Utc>>), ToolError> {
+) -> Result<Period, ToolError> {
     let bad = |field: &str, e: ToolError| {
         ToolError::new(code, e.message)
             .detail(json!({"field": field, "reason": "format"}))
@@ -457,7 +460,12 @@ async fn preview_status(
 }
 
 async fn commit_status(tx: &mut TxCx, plan: &StatusPlan) -> Result<Committed, ToolError> {
-    let moved = repo::set_status(tx, &plan.promotion_id, &plan.stored_from, &plan.to).await?;
+    // Nothing to change when the preview found it there already.
+    let moved = if plan.stored_from == plan.to {
+        0
+    } else {
+        repo::set_status(tx, &plan.promotion_id, &plan.stored_from, &plan.to).await?
+    };
     if moved == 0 {
         // Already there (the same plan ran before, or nothing had to change) is fine.
         let now = repo::promotion(tx, &plan.promotion_id).await?;

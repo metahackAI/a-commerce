@@ -14,6 +14,15 @@ mod display_slot;
 mod model;
 mod repo;
 
+#[cfg(test)]
+mod b1;
+#[cfg(test)]
+mod contract;
+#[cfg(test)]
+mod integration;
+#[cfg(test)]
+mod testing;
+
 use acom_contract::{ErrorClass, ErrorCode, RegistryBuilder, ToolError};
 use acom_core::StoreTime;
 use acom_customer::service::for_merchandising::{self as customers, Tier};

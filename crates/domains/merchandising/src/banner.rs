@@ -173,7 +173,7 @@ fn content_error(field: &str, reason: &str, message: String) -> ToolError {
 }
 
 /// Text limits and the fields each image source needs.
-fn check_content(rules: &DisplayRules, c: &BannerContent) -> Result<(), ToolError> {
+pub(crate) fn check_content(rules: &DisplayRules, c: &BannerContent) -> Result<(), ToolError> {
     let limits = [
         (
             "eyebrow",

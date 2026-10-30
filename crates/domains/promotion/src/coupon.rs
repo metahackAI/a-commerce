@@ -530,7 +530,7 @@ impl Operation for IssueCoupon {
             ErrorCode::NOT_FOUND,
         ],
         audience: Audience::Operator,
-        action_type: ActionType::SEND,
+        action_type: ActionType::CREATE,
         person_scope: "",
     };
     type Input = IssueCouponInput;

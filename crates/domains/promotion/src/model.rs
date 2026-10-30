@@ -618,7 +618,7 @@ pub fn count_text(n: i64) -> String {
     let digits = n.abs().to_string();
     let mut out = String::new();
     for (i, c) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i) % 3 == 0 {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
             out.push(',');
         }
         out.push(c);
@@ -629,28 +629,8 @@ pub fn count_text(n: i64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testing::policies;
     use acom_catalog::service::for_promotion::VariantOffer;
-
-    pub(crate) fn policies(demo: bool) -> PolicySet {
-        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../policies");
-        let texts: Vec<(&str, String)> = acom_policy::FILES
-            .iter()
-            .map(|f| {
-                (
-                    *f,
-                    std::fs::read_to_string(format!("{dir}/{f}.yml")).unwrap(),
-                )
-            })
-            .collect();
-        let p = PolicySet::from_defaults(texts.iter().map(|(f, t)| (*f, t.as_str()))).unwrap();
-        if demo {
-            // The demo store's override (seed/demo/01_platform.yml, docs/scenarios.md §5).
-            p.with_overrides([("promotion", "max_discount:\n  by_tier:\n    vip: 0.30\n")])
-                .unwrap()
-        } else {
-            p
-        }
-    }
 
     fn d(s: &str) -> Decimal {
         Decimal::from_str(s).unwrap()
