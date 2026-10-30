@@ -1,6 +1,8 @@
 // Client for the chat stream (docs/api/chat.md §2): POST a turn, read SSE events as they arrive.
 // Same-origin through the gateway (`/api/chat/...`), so cookies and CSRF work without CORS.
 
+import {writeHeaders} from '@/lib/api';
+
 import type {ElementContext, StreamEvent, Surface} from './types';
 
 export interface TurnRequest {
@@ -46,7 +48,8 @@ export async function* readEvents(body: ReadableStream<Uint8Array>): AsyncGenera
 export async function* sendTurn(surface: Surface, turn: TurnRequest, signal?: AbortSignal): AsyncGenerator<StreamEvent> {
   const res = await fetch(`/api/chat/${surface}/turns`, {
     method: 'POST',
-    headers: {'content-type': 'application/json', accept: 'text/event-stream'},
+    headers: writeHeaders({accept: 'text/event-stream'}),
+    credentials: 'same-origin',
     body: JSON.stringify(turn),
     signal,
   });

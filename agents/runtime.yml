@@ -1,0 +1,34 @@
+# How every turn runs (docs/backend/agent.md §1–§4). These are harness settings, not store
+# rules: business numbers come from policies through the tools.
+
+# A turn stops with what it has so far, and says why, when it reaches one of these.
+limits:
+  model_calls: 12
+  tool_calls: 20
+  plan_revisions: 2
+  seconds: 60
+
+tool_search:
+  min_candidates: 5
+  max_candidates: 8
+  # Added to a tool's score (as a share of it) when its domain is one of the agent's home domains.
+  home_domain_boost: 0.5
+
+router:
+  # Below this the surface's default agent (or the conversation's last agent) takes the turn.
+  min_confidence: 0.5
+
+planner:
+  # A worker plan with more steps than this, or with steps in more than one domain, is planned
+  # again by the agent's planner model (§4).
+  worker_max_steps: 3
+
+context:
+  # Earlier turns of the conversation shown to the planner.
+  recent_turns: 4
+
+prompts:
+  router: prompts/router.md
+  planner: prompts/planner.md
+  arguments: prompts/arguments.md
+  reply: prompts/reply.md

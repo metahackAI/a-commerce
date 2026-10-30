@@ -217,7 +217,7 @@
   | 필드 | 타입 | 필수 | 설명 | 예 |
   |------|------|:--:|------|----|
   | code | Text, `^[A-Z0-9]{4,20}$` | ✓ | 스토어 안에서 하나뿐인 코드 | `"VIPWEEKEND20"` |
-  | promotion_id | Text, `^promo_[a-z0-9_]+$` | ✓ | 연결할 프로모션(`set_sale_prices`, `list_active_promotions`). 같은 변경셋에서 아직 실행 전인 `set_sale_prices`를 가리키면 런타임이 항목 플레이스홀더(`$item[0].promotion_id`)로 저장하고 실행 때 바인딩 | `"promo_1042"` |
+  | promotion_id | Text, `^promo_[a-z0-9_]+$` | ✓ | 연결할 프로모션(`set_sale_prices`, `list_active_promotions`). 같은 변경셋에서 아직 실행 전인 `set_sale_prices`를 가리키면 런타임이 항목 플레이스홀더(`$item[1].promotion_id`, 항목 `position`은 1부터)로 저장하고 실행 때 바인딩 | `"promo_1042"` |
   | valid_for_member_tier | Text | ✓ | 프로모션의 대상 등급과 같아야 함(`coupon.tier_match`) | `"vip"` |
   | application | enum | ✓ | `automatic_at_checkout` \| `code_entry` \| `download` | `"automatic_at_checkout"` |
   | stacking | enum | | `no_tier_coupons`(등급 쿠폰과 함께 안 씀) \| `with_tier_coupons` \| `no_other_coupons`. 기본 `coupon.stacking.default` | `"no_tier_coupons"` |
@@ -225,7 +225,7 @@
   ```jsonc
   {"preview_id": "pv_8f31", "expires_at": "2026-11-06T11:33:00-05:00", "change_set_id": "cs_1042",
    "changes": [{"op": "create", "entity": "coupon", "id": null, "from": null,
-                "to": {"code": "VIPWEEKEND20", "promotion_id": "$item[0].promotion_id", "valid_for_member_tier": "vip",
+                "to": {"code": "VIPWEEKEND20", "promotion_id": "$item[1].promotion_id", "valid_for_member_tier": "vip",
                        "application": "automatic_at_checkout", "stacking": "no_tier_coupons",
                        "valid_from": "2026-11-07T00:00:00-05:00", "valid_through": "2026-11-08T23:59:00-05:00",
                        "eligible_members": 1284}}],

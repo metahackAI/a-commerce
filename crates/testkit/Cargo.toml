@@ -10,6 +10,13 @@ publish.workspace = true
 [dependencies]
 acom-core.workspace = true
 acom-contract.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+rand.workspace = true
+rand_chacha.workspace = true
+serde_json.workspace = true
+serde_norway.workspace = true
+sqlx.workspace = true
 
 [lints]
 workspace = true

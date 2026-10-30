@@ -9,6 +9,8 @@ import {useState} from 'react';
 import {Button} from '@astryxdesign/core/Button';
 import {AlertDialog} from '@astryxdesign/core/AlertDialog';
 
+import {type ApiErrorBody, writeHeaders} from '@/lib/api';
+
 export interface PersonAction {
   label: string;
   method: string;
@@ -19,7 +21,21 @@ export interface PersonAction {
   confirm: string;
 }
 
-export function PersonButton({action, onDone}: {action: PersonAction; onDone?: (result: unknown) => void}) {
+export interface PersonButtonProps {
+  action: PersonAction;
+  onDone?: (result: unknown) => void;
+  /**
+   * Called when the endpoint refuses (for example `estimate_changed` with `detail.new_preview`), so
+   * the page can show the new numbers. The dialog closes; return `true` to keep it open with the
+   * error sentence instead.
+   */
+  onError?: (error: ApiErrorBody, status: number) => boolean | void;
+  /** `secondary` for a decision that isn't the main one on the page (Reject next to Approve). */
+  variant?: 'primary' | 'secondary';
+  isDisabled?: boolean;
+}
+
+export function PersonButton({action, onDone, onError, variant = 'primary', isDisabled}: PersonButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,13 +46,23 @@ export function PersonButton({action, onDone}: {action: PersonAction; onDone?: (
     try {
       const res = await fetch(`/api${action.path}`, {
         method: action.method,
-        headers: {'content-type': 'application/json', 'idempotency-key': crypto.randomUUID()},
+        headers: writeHeaders({'idempotency-key': crypto.randomUUID()}),
+        credentials: 'same-origin',
         body: action.body === undefined ? undefined : JSON.stringify(action.body),
       });
       const result: unknown = await res.json().catch(() => null);
       if (!res.ok) {
-        const message = (result as {error?: {message?: string}} | null)?.error?.message;
-        setError(message ?? `The request failed (${res.status}).`);
+        const body = (result as {error?: ApiErrorBody} | null)?.error ?? {
+          code: 'upstream_unavailable',
+          class: 'upstream_unavailable',
+          message: `The request failed (${res.status}).`,
+          next_tool: null,
+        };
+        if (onError && onError(body, res.status) !== true) {
+          setIsOpen(false);
+          return;
+        }
+        setError(body.message);
         return;
       }
       setIsOpen(false);
@@ -48,14 +74,14 @@ export function PersonButton({action, onDone}: {action: PersonAction; onDone?: (
 
   return (
     <>
-      <Button label={action.label} variant="primary" onClick={() => setIsOpen(true)} />
+      <Button label={action.label} variant={variant} isDisabled={isDisabled} onClick={() => setIsOpen(true)} />
       <AlertDialog
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         title={action.label}
         description={error ?? action.confirm}
         actionLabel={action.label}
-        actionVariant="primary"
+        actionVariant={variant === 'secondary' ? 'secondary' : 'primary'}
         isActionLoading={isSending}
         onAction={send}
       />

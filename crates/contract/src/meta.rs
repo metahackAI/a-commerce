@@ -24,6 +24,9 @@ pub enum Kind {
     Write,
     /// Moves money or reaches customers: always waits for a person's approval.
     WriteApproval,
+    /// A person-only endpoint (approve, place an order, send a return request). Never a tool:
+    /// it is left out of every tool manifest and needs a `human:*` scope.
+    Person,
 }
 
 impl Kind {
@@ -32,6 +35,7 @@ impl Kind {
             Kind::Read => "R",
             Kind::Write => "W",
             Kind::WriteApproval => "W$",
+            Kind::Person => "person",
         }
     }
 }
@@ -91,6 +95,12 @@ impl ActionType {
     pub const SEND: Self = Self("SendAction");
     pub const ORDER: Self = Self("OrderAction");
     pub const PAY: Self = Self("PayAction");
+    pub const AUTHORIZE: Self = Self("AuthorizeAction");
+    pub const REJECT: Self = Self("RejectAction");
+    pub const RETURN: Self = Self("ReturnAction");
+    pub const CANCEL: Self = Self("CancelAction");
+    pub const REGISTER: Self = Self("RegisterAction");
+    pub const REVIEW: Self = Self("ReviewAction");
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -113,11 +123,17 @@ pub struct OpMeta {
     pub errors: &'static [ErrorCode],
     pub audience: Audience,
     pub action_type: ActionType,
+    /// The `human:*` scope a person-only endpoint needs; empty for tools.
+    pub person_scope: &'static str,
 }
 
 impl OpMeta {
     pub fn domain(&self) -> &'static str {
         self.address.split('.').next().unwrap_or(self.address)
+    }
+
+    pub fn is_tool(&self) -> bool {
+        self.kind != Kind::Person
     }
 
     pub fn resource(&self) -> &'static str {

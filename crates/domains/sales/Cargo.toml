@@ -8,13 +8,26 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
-acom-core.workspace = true
-acom-contract.workspace = true
-acom-policy.workspace = true
-acom-store.workspace = true
+acom-auth.workspace = true
 acom-catalog.workspace = true
-acom-promotion.workspace = true
+acom-changeset.workspace = true
+acom-contract.workspace = true
+acom-core.workspace = true
 acom-customer.workspace = true
+acom-policy.workspace = true
+acom-promotion.workspace = true
+acom-store.workspace = true
+chrono.workspace = true
+rust_decimal.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+chrono-tz.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true

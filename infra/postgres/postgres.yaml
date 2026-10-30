@@ -173,7 +173,7 @@ spec:
             matchExpressions:
               - key: app.kubernetes.io/name
                 operator: In
-                values: ["commerce", "commerce-worker", "agent", "migrate"]
+                values: ["gateway", "commerce", "commerce-worker", "agent", "migrate"]
       ports:
         - protocol: TCP
           port: 5432

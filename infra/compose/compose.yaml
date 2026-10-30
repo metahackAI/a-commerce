@@ -7,7 +7,7 @@
 # Only the gateway publishes a port. Services talk over internal networks:
 #   edge   gateway ↔ host
 #   app    gateway, web, commerce, commerce-worker, agent   (no internet)
-#   data   postgres, migrate, commerce, commerce-worker, agent (no internet)
+#   data   postgres, migrate, gateway, commerce, commerce-worker, agent (no internet)
 #   egress agent → model endpoints on the internet
 # Optional profiles: `models` (self-hosted worker model on a GPU), `observability`
 # (Prometheus + Grafana).
@@ -60,6 +60,8 @@ services:
     environment:
       <<: *rust-env
       MIGRATION_DATABASE_URL: postgres://acom_owner:${ACOM_OWNER_PASSWORD:-acom_owner}@postgres:5432/acom
+      # demo: after migrating, load the demo store once (seed/demo). none: migrations only.
+      ACOM_SEED: ${ACOM_SEED:-demo}
     depends_on:
       postgres: {condition: service_healthy}
     networks: [data]
@@ -155,14 +157,19 @@ services:
       ACOM_AGENT_URL: http://agent:7002
       ACOM_WEB_URL: http://web:3000
       ACOM_GATEWAY_SIGNING_KEY_FILE: /run/secrets/gateway_signing_key
+      # Sessions and sign-in (platform.session, platform.admin_user).
+      DATABASE_URL: postgres://acom_app:${ACOM_APP_PASSWORD:-acom_app}@postgres:5432/acom
+      ACOM_STORE_ID: ${ACOM_STORE_ID:-store_northwind}
+      ACOM_COOKIE_SECURE: ${ACOM_COOKIE_SECURE:-false}
     secrets: [gateway_signing_key, gateway_public_key]
     ports:
       - "${ACOM_HTTP_PORT:-8080}:7000"
     depends_on:
+      migrate: {condition: service_completed_successfully}
       web: {condition: service_started}
       commerce: {condition: service_started}
       agent: {condition: service_started}
-    networks: [edge, app]
+    networks: [edge, app, data]
 
   # --- profile: models (needs an NVIDIA GPU and the NVIDIA container toolkit) ---------------
   models:

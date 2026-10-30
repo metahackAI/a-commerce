@@ -73,6 +73,7 @@ impl ErrorCode {
         Self::new("preview_input_conflict", ErrorClass::InvalidInput);
     pub const INVALID_STATE: Self = Self::new("invalid_state", ErrorClass::InvalidState);
     pub const RATE_LIMITED: Self = Self::new("rate_limited", ErrorClass::RateLimited);
+    pub const POLICY_VIOLATION: Self = Self::new("policy_violation", ErrorClass::PolicyViolation);
     pub const PREVIEW_EXPIRED: Self = Self::new("preview_expired", ErrorClass::PreviewExpired);
     pub const PREVIEW_NOT_FOUND: Self = Self::new("preview_not_found", ErrorClass::PreviewExpired);
     pub const PREVIEW_SUPERSEDED: Self =

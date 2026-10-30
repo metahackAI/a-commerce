@@ -12,11 +12,11 @@
 use std::process::ExitCode;
 use std::sync::Arc;
 
+use acom_auth::Verifier;
 use acom_policy::{FILES, PolicySet};
 use acom_server::Readiness;
-use acom_store::Db;
+use acom_store::{Db, Runtime};
 use axum::Router;
-use axum::routing::get;
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
@@ -37,8 +37,26 @@ struct Cli {
     /// Folder with the policy files.
     #[arg(long, env = "ACOM_POLICY_DIR", default_value = "policies")]
     policy_dir: String,
+    /// The gateway's public key (PEM). Every request must carry a token it signed.
+    #[arg(long, env = "ACOM_GATEWAY_PUBLIC_KEY_FILE")]
+    gateway_public_key_file: Option<String>,
+    /// Demo mode: the store's clock is the demo clock (`platform.demo_clock`).
+    #[arg(long, env = "ACOM_DEMO_MODE", default_value_t = false)]
+    demo_mode: bool,
+    /// What `migrate` loads after the migrations: `none`, or `demo` (the demo store, once).
+    #[arg(long, env = "ACOM_SEED", value_enum, default_value_t = SeedMode::None)]
+    seed: SeedMode,
+    /// Folder with the demo store files (`seed/demo`).
+    #[arg(long, env = "ACOM_SEED_DIR", default_value = "seed/demo")]
+    seed_dir: String,
     #[command(subcommand)]
     command: Option<Command>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+enum SeedMode {
+    None,
+    Demo,
 }
 
 #[derive(Debug, Clone, Copy, Subcommand)]
@@ -47,8 +65,15 @@ enum Command {
     Serve,
     /// Run scheduled jobs and the outbox.
     Work,
-    /// Apply migrations as the owner role, then exit.
+    /// Apply migrations as the owner role, then exit. With `ACOM_SEED=demo`, also load the demo
+    /// store if it is not there yet.
     Migrate,
+    /// Load the demo store (named rows and generated history) as the owner role.
+    Seed {
+        /// Empty every store table first, then load again.
+        #[arg(long)]
+        reset: bool,
+    },
     /// Exit 0 when this container's /healthz answers.
     Healthcheck {
         /// Probe the worker's port instead of the API's.
@@ -94,10 +119,60 @@ fn database(cli: &Cli) -> Option<Db> {
     }
 }
 
-/// The tool manifest. Operations are registered from M2; the surface exists from the start so
-/// the gateway, the agent, and the web can be wired against it.
-async fn tools() -> axum::Json<serde_json::Value> {
-    axum::Json(serde_json::json!({"items": [], "total": 0}))
+/// The REST surface: every operation, the change-set endpoints, and the event stream.
+fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
+    let key = cli
+        .gateway_public_key_file
+        .as_deref()
+        .ok_or("ACOM_GATEWAY_PUBLIC_KEY_FILE is not set")?;
+    let verifier = Verifier::from_pem_file(key, "commerce").map_err(|e| e.to_string())?;
+    let registry = acom_registry::build().map_err(|e| e.join("; "))?;
+    tracing::info!(
+        operations = registry.len(),
+        demo_mode = cli.demo_mode,
+        "registry built"
+    );
+    let api = acom_http::Api {
+        runtime: Arc::new(Runtime::new(db, policy, cli.demo_mode)),
+        registry: Arc::new(registry),
+        verifier: Arc::new(verifier),
+    };
+    Ok(acom_http::router(Arc::new(api)))
+}
+
+/// Loads the demo store: the named rows in `dir`, then the history `dir/generate.yml` describes.
+/// A store that is already there is left alone unless `reset`.
+async fn seed(db: &Db, dir: &str, reset: bool) -> Result<(), String> {
+    use acom_testkit::{generate, load, named};
+    let rows = named::load(std::path::Path::new(dir))?;
+    let tenant = rows
+        .iter()
+        .find(|(t, _)| t == "platform.online_store")
+        .and_then(|(_, r)| r.get("id").and_then(|v| v.as_str()))
+        .ok_or("the seed has no platform.online_store row")?
+        .to_owned();
+    if reset {
+        let n = load::reset(db.pool()).await?;
+        tracing::info!(tables = n, "store tables emptied");
+    } else if load::is_seeded(db.pool(), &tenant).await? {
+        tracing::info!(store = %tenant, "demo store already loaded; nothing to do");
+        return Ok(());
+    }
+    let spec = std::fs::read_to_string(format!("{dir}/generate.yml"))
+        .map_err(|e| format!("{dir}/generate.yml: {e}"))?;
+    let generated = generate::generate(&rows, &spec)?;
+    let mut all = rows;
+    all.extend(generated);
+    let started = std::time::Instant::now();
+    let report = load::load(db.pool(), &all).await?;
+    tracing::info!(
+        store = %tenant,
+        rows = report.total(),
+        tables = report.tables.len(),
+        seconds = started.elapsed().as_secs_f32(),
+        "demo store loaded"
+    );
+    Ok(())
 }
 
 async fn run(cli: Cli, command: Command) -> Result<(), String> {
@@ -111,14 +186,25 @@ async fn run(cli: Cli, command: Command) -> Result<(), String> {
             let db = Db::connect(url, 1).await.map_err(|e| e.to_string())?;
             db.migrate().await.map_err(|e| e.to_string())?;
             tracing::info!("migrations applied");
+            if cli.seed == SeedMode::Demo {
+                seed(&db, &cli.seed_dir, false).await?;
+            }
             Ok(())
+        }
+        Command::Seed { reset } => {
+            let url = cli
+                .migration_database_url
+                .as_deref()
+                .ok_or("MIGRATION_DATABASE_URL is not set")?;
+            let db = Db::connect(url, 1).await.map_err(|e| e.to_string())?;
+            seed(&db, &cli.seed_dir, reset).await
         }
         Command::Serve => {
             let policy = load_policies(&cli.policy_dir)?;
             tracing::info!(policy_version = policy.version(), "policies loaded");
-            let ready = Arc::new(DatabaseReady(database(&cli)));
-            let app = acom_server::ops_router("commerce", ready)
-                .merge(Router::new().route("/v1/tools", get(tools)));
+            let db = database(&cli).ok_or("DATABASE_URL is not set or not usable")?;
+            let ready = Arc::new(DatabaseReady(Some(db.clone())));
+            let app = acom_server::ops_router("commerce", ready).merge(api(&cli, db, policy)?);
             acom_server::serve("commerce", &cli.addr, app)
                 .await
                 .map_err(|e| e.to_string())

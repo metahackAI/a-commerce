@@ -2,14 +2,19 @@
 //!
 //! The gateway is the only signer of internal tokens; commerce and agent only verify them.
 //! `human:*` scopes are never present on tokens minted for chat turns, so no prompt can make an
-//! agent approve, order, return, or undo. Design: `docs/backend/gateway.md`. Token signing and
-//! verification arrive in M3; the principal type is shared from the start.
+//! agent approve, order, return, or undo. Design: `docs/backend/gateway.md`.
+
+pub mod password;
+pub mod scopes;
+pub mod token;
 
 use std::collections::BTreeSet;
 
 use acom_core::TenantId;
 use acom_core::enums::ActorKind;
 use serde::{Deserialize, Serialize};
+
+pub use token::{Claims, Signer, TokenError, Verifier};
 
 /// Which surface a request came from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,6 +39,12 @@ pub struct Principal {
     pub tenant: TenantId,
     pub surface: Surface,
     pub scopes: BTreeSet<String>,
+    /// Name to show in logs and the action log (`Son SeongJun`, `Jamie`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// The browser session behind this request, when there is one (guest carts hang on it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
 }
 
 impl Principal {
@@ -58,6 +69,22 @@ impl Principal {
             && self.has_scope(scope)
     }
 
+    /// The customer this principal is, when it is a signed-in shopper.
+    pub fn customer_id(&self) -> Option<&str> {
+        (self.subject.starts_with("cus_")).then_some(self.subject.as_str())
+    }
+
+    /// The same person, acting through our agent: every `human:*` scope removed.
+    pub fn on_behalf(&self) -> Self {
+        let mut p = self.clone();
+        p.kind = ActorKind::AgentOnBehalf;
+        p.scopes.retain(|s| !s.starts_with("human:"));
+        if self.kind == ActorKind::Operator {
+            p.scopes.insert("changeset:draft".to_owned());
+        }
+        p
+    }
+
     /// The system actor that runs approved change sets and scheduled jobs.
     pub fn system(tenant: TenantId, subject: &str) -> Self {
         Self {
@@ -65,7 +92,9 @@ impl Principal {
             kind: ActorKind::System,
             tenant,
             surface: Surface::System,
-            scopes: BTreeSet::new(),
+            scopes: scopes::all_tool_scopes(),
+            name: None,
+            session_id: None,
         }
     }
 }
@@ -81,6 +110,8 @@ mod tests {
             tenant: TenantId::parse("store_northwind").unwrap(),
             surface: Surface::Fo,
             scopes: scopes.iter().map(|s| (*s).to_owned()).collect(),
+            name: None,
+            session_id: None,
         }
     }
 
@@ -95,5 +126,14 @@ mod tests {
         let shopper = principal(ActorKind::Shopper, &["human:order"]);
         assert!(shopper.can_act_as_person("human:order"));
         assert!(!shopper.can_act_as_person("tools:write:sales"));
+    }
+
+    #[test]
+    fn on_behalf_drops_every_person_scope() {
+        let shopper = principal(ActorKind::Shopper, &["human:order", "tools:write:sales"]);
+        let agent = shopper.on_behalf();
+        assert_eq!(agent.kind, ActorKind::AgentOnBehalf);
+        assert!(agent.scopes.iter().all(|s| !s.starts_with("human:")));
+        assert!(agent.can_write("sales"));
     }
 }

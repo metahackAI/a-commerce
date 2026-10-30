@@ -40,3 +40,28 @@ export interface StreamEvent {
   event: string;
   data: unknown;
 }
+
+/** Progress of one step of a turn (`agent.step`). */
+export interface AgentStep {
+  step_id: string;
+  kind: 'route' | 'search_tools' | 'plan' | 'call_tool' | 'check' | string;
+  summary: string;
+  tool?: string;
+  status: 'running' | 'done' | 'failed' | string;
+}
+
+/** A preference the agent remembered (`memory.saved`); a person can undo it. */
+export interface SavedMemory {
+  memory_id: string;
+  text: string;
+}
+
+/** What a finished turn cost (`turn.done`). */
+export interface TurnUsage {
+  model_calls?: number;
+  tool_calls?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+  ms?: number;
+  cost_usd?: number;
+}

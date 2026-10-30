@@ -1,6 +1,6 @@
 [package]
 name = "acom-gateway"
-description = "Entry point for people and outside agents: routing, request ids, streaming proxy; sessions and internal tokens in M3."
+description = "Entry point for people and outside agents: sessions, sign-in, internal tokens, routing, streaming proxy."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,10 +11,16 @@ publish.workspace = true
 acom-auth.workspace = true
 acom-core.workspace = true
 acom-server.workspace = true
+acom-store.workspace = true
 axum.workspace = true
+chrono.workspace = true
 clap.workspace = true
 hyper-util.workspace = true
+rand = { workspace = true, features = ["std", "std_rng", "thread_rng"] }
+serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
+sqlx.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 

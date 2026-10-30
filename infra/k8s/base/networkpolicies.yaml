@@ -3,7 +3,7 @@
 # Calls allowed:
 #   ingress controller / Gateway API proxy -> gateway:7000   (namespaces labeled acom.dev/ingress=true)
 #   web -> gateway:7000 (server-side rendering)
-#   gateway -> web:3000, commerce:7001, agent:7002
+#   gateway -> web:3000, commerce:7001, agent:7002, postgres:5432 (sessions)
 #   agent -> commerce:7001
 #   monitoring namespace -> metrics port of gateway, commerce, commerce-worker, agent
 # Components add their own (postgres, models).

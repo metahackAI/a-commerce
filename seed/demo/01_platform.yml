@@ -1,4 +1,5 @@
-# Platform: the demo store (tenant), operator SJ with the merchandiser role and its scopes, store
+# Platform: the demo store (tenant), the demo administrator (admin / admin123), operator SJ with the
+# merchandiser role and its scopes, store
 # policy overrides (docs/scenarios.md §5), the demo clock (Fri Nov 6 2026 11:00), the change sets
 # that exist before the scenes (#1039 Fall layers banner, #1040 below-cost fix, #1041 linen reorder
 # draft) with their previews, items, events and action log, the home tasks of scene B5, and jobs.
@@ -8,6 +9,8 @@ tables:
     - {id: store_northwind, name: Northwind Apparel, url: northwind.example, currency: USD, time_zone: America/New_York, in_language: en}
   platform.admin_user:
     - {tenant_id: store_northwind, id: adm_sj, name: Son SeongJun, alternate_name: SJ, email: "sj@northwind.example", job_title: Merchandiser, admin_status: active, last_login_at: "2026-11-06T07:50:00-05:00"}
+    # Demo administrator. Sign in at /login with admin / admin123 (demo only; the hash is of "admin123").
+    - {tenant_id: store_northwind, id: adm_admin, name: Administrator, alternate_name: Admin, email: "admin@northwind.example", job_title: Store administrator, admin_status: active, login_id: admin, password_hash: "$argon2id$v=19$m=19456,t=2,p=1$Zx0oEiPZFlNF6ugh5Hgyqw$2VJg1SY4v4wWKpM+UzhyUnP6mLBMKEM71Ioi7mPT0pI"}
   platform.role:
     - {tenant_id: store_northwind, id: rol_merchandiser, name: Merchandiser, description: "Runs promotions and the storefront, and handles returns and customer messages.", approver_roles: [merchandiser, operator], is_system: true}
     - {tenant_id: store_northwind, id: rol_operator, name: Operator, description: "Handles orders, returns, refunds and customer messages.", approver_roles: [operator], is_system: true}
@@ -73,8 +76,44 @@ tables:
     - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:reject"}
     - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:undo"}
     - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "admin:demo"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:read:catalog"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:write:catalog"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:read:merchandising"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:write:merchandising"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:read:search"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:write:search"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:read:sales"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:write:sales"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:read:fulfillment"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:write:fulfillment"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:read:promotion"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:write:promotion"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:read:customer"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:write:customer"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:read:messaging"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:write:messaging"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:read:community"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:write:community"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:read:analytics"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:write:analytics"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:read:partner"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:write:partner"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:read:integration"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:write:integration"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:task"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:order"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:cancel"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:return"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:exchange"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:claim"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:account"}
   platform.admin_user_role:
     - {tenant_id: store_northwind, admin_user_id: adm_sj, role_id: rol_merchandiser}
+    - {tenant_id: store_northwind, admin_user_id: adm_admin, role_id: rol_platform_admin}
+    - {tenant_id: store_northwind, admin_user_id: adm_admin, role_id: rol_merchandiser}
+    - {tenant_id: store_northwind, admin_user_id: adm_admin, role_id: rol_operator}
+    - {tenant_id: store_northwind, admin_user_id: adm_admin, role_id: rol_catalog_admin}
+    - {tenant_id: store_northwind, admin_user_id: adm_admin, role_id: rol_payout_approver}
   platform.policy_override:
     - {tenant_id: store_northwind, file: promotion, partial: {max_discount: {by_tier: {vip: 0.30}}}, policy_version: 3}
     - {tenant_id: store_northwind, file: platform, partial: {watchers: {price_below_cost: {run_fix: standing_approval}}}, policy_version: 1}

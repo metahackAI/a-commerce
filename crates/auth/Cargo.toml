@@ -1,6 +1,6 @@
 [package]
 name = "acom-auth"
-description = "Principals, scopes, and the gateway-signed internal token shared by all services."
+description = "Principals, scopes, password hashes, and the gateway-signed internal token shared by all services."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,7 +9,10 @@ publish.workspace = true
 
 [dependencies]
 acom-core.workspace = true
+argon2 = "0.6"
+jsonwebtoken = { version = "11", default-features = false, features = ["rust_crypto", "use_pem"] }
 serde.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true

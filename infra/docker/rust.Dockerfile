@@ -21,6 +21,7 @@ COPY crates crates
 COPY services services
 COPY xtask xtask
 COPY migrations migrations
+COPY docs/api/generated docs/api/generated
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,target=/src/target,sharing=locked \
@@ -46,7 +47,9 @@ FROM runtime AS commerce
 LABEL org.opencontainers.image.title="acom-commerce"
 COPY --from=builder /out/acom-commerce /usr/local/bin/acom-commerce
 COPY policies /app/policies
-ENV ACOM_COMMERCE_ADDR=0.0.0.0:7001 ACOM_WORKER_ADDR=0.0.0.0:7003 ACOM_POLICY_DIR=/app/policies
+COPY seed /app/seed
+ENV ACOM_COMMERCE_ADDR=0.0.0.0:7001 ACOM_WORKER_ADDR=0.0.0.0:7003 ACOM_POLICY_DIR=/app/policies \
+    ACOM_SEED_DIR=/app/seed/demo
 EXPOSE 7001 7003
 ENTRYPOINT ["/usr/local/bin/acom-commerce"]
 CMD ["serve"]
@@ -54,7 +57,8 @@ CMD ["serve"]
 FROM runtime AS agent
 LABEL org.opencontainers.image.title="acom-agent"
 COPY --from=builder /out/acom-agent /usr/local/bin/acom-agent
-ENV ACOM_AGENT_ADDR=0.0.0.0:7002
+COPY agents /app/agents
+ENV ACOM_AGENT_ADDR=0.0.0.0:7002 ACOM_AGENTS_DIR=/app/agents
 EXPOSE 7002
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 CMD ["/usr/local/bin/acom-agent", "healthcheck"]
 ENTRYPOINT ["/usr/local/bin/acom-agent"]

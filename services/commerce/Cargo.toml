@@ -18,6 +18,7 @@ acom-policy.workspace = true
 acom-registry.workspace = true
 acom-server.workspace = true
 acom-store.workspace = true
+acom-testkit.workspace = true
 axum.workspace = true
 clap.workspace = true
 serde_json.workspace = true

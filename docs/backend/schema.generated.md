@@ -253,8 +253,23 @@
 | `author_height_value` | numeric(5,1) | ✓ | `acom:authorHeight` | reviewer height. |
 | `author_height_unit_text` | text | ✓ | `acom:authorHeight` | unit of author_height_value, cm. |
 | `keywords` | text[] |  | `schema:keywords` | repeated phrases found in the review, counted as mentions, for example size up for a hoodie. |
+| `image` | text[] |  | `schema:image` | URLs of photos the reviewer added; empty when none. |
 | `creative_work_status` | text |  | `schema:creativeWorkStatus` | moderation state. values: review_status Values: `visible` · `hidden` · `reported`. |
 | `date_published` | date |  | `schema:datePublished` | date the review was posted. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `catalog.review_vote`
+
+`schema:VoteAction/acom:ReviewVote` — one shopper's helpful vote on a review; a review's helpful count is its rows with is_helpful true.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `review_id` | text |  | `schema:object` | review voted on (rev_ id). → `catalog.review` |
+| `customer_id` | text |  | `schema:agent` | shopper who voted (cus_ id). → `customer.person` |
+| `is_helpful` | boolean |  | `acom:isHelpful` | true while the shopper marks the review helpful; false after they take the vote back. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
@@ -375,6 +390,19 @@
 | `tier_since` | timestamptz |  | `acom:tierSince` | when the member entered the current tier. |
 | `tier_override` | jsonb | ✓ | `acom:tierOverride` | manual tier set by an operator: {reason, expires_at, after_expiry, by}; NULL when the tier comes from evaluation. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `customer.wishlist_item`
+
+`schema:ListItem/acom:WishlistItem` — one product a shopper keeps for later; the product id names the item, there is no id of its own.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `customer_id` | text |  | `schema:customer` | shopper whose wishlist this is (cus_ id). → `customer.person` |
+| `product_group_id` | text |  | `schema:item` | the product kept (prd_ id; API product_id). → `catalog.product_group` |
+| `created_at` | timestamptz |  | `-` | when the shopper added the product (API added_at). |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
@@ -638,6 +666,26 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `messaging.message_template`
+
+`schema:CreativeWork/acom:MessageTemplate` — a reusable message for one channel, with named variables; creating one sends nothing. id prefix tpl_. · id `tpl_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix tpl_; the same value the API, logs and events use. |
+| `name` | text |  | `schema:name` | name operators pick the template by, for example Back in stock. |
+| `message_channel` | text |  | `acom:messageChannel` | channel the template is written for; a campaign must use the same channel. values: message_channel Values: `email` · `sms` · `push` · `in_app`. |
+| `message_purpose` | text |  | `acom:messagePurpose` | marketing (needs opt-in consent, held in quiet hours) or transactional (about an order or claim). |
+| `headline` | text | ✓ | `schema:headline` | subject line for email and push; NULL for sms and in-app. |
+| `text` | text |  | `schema:text` | body with variables written as {{name}}, up to 2,000 characters. |
+| `variables` | text[] |  | `acom:variables` | variable names the headline and text may use, for example {customer_name,product_name}. |
+| `in_language` | text |  | `schema:inLanguage` | BCP 47 language tag of the text, for example en-US. |
+| `template_status` | text |  | `acom:templateStatus` | draft until a campaign uses the template. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ## `platform`
 
 ### `platform.action_log`
@@ -683,6 +731,7 @@
 | `email` | text |  | `schema:email` | sign-in email address, unique in the store. |
 | `job_title` | text | ✓ | `schema:jobTitle` | job title shown next to the name. |
 | `admin_status` | text |  | `acom:adminStatus` | whether the account can sign in. values: admin_status Values: `active` · `suspended` · `locked`. |
+| `login_id` | text | ✓ | `acom:loginId` | what the operator types to sign in (for example admin); NULL means the account cannot sign in with a password. |
 | `password_hash` | text | ✓ | `-` | argon2 hash of the password; NULL until the person sets one (demo login does not use it). |
 | `last_login_at` | timestamptz | ✓ | `acom:lastLoginAt` | last successful sign-in; NULL if never. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |

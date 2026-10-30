@@ -171,7 +171,7 @@ drafting ──submit──▶ waiting_for_approval ──approve(version)──
 
 승인되면 `commerce` 안의 실행기(시스템 주체)가 항목을 **선언 순서대로** 실행합니다. 에이전트는 실행하지 않고 이벤트로 진행을 받습니다.
 
-1. 각 항목: §2.2의 실행 경로(재검증 포함). 항목 사이 의존(`create_coupon`이 `set_sale_prices`의 `promotion_id`를 소비)은 프리뷰 때 플레이스홀더(`$item[0].promotion_id`)로 저장했다가 실행 때 바인딩합니다.
+1. 각 항목: §2.2의 실행 경로(재검증 포함). 항목 사이 의존(`create_coupon`이 `set_sale_prices`의 `promotion_id`를 소비)은 프리뷰 때 플레이스홀더(`$item[1].promotion_id`, `n`은 항목의 `position`이며 1부터)로 저장했다가 실행 때 바인딩합니다.
 2. 한 항목이 실패하면 멈추고, 이미 실행한 항목은 역순으로 `undo` → 변경셋 `failed`(어느 항목이 왜 실패했는지 기록).
 3. 모두 성공하면 `verifying`: 항목마다 `verify` → 결과를 `verify_change_set`이 돌려주는 형태로 저장 → 전부 일치하면 `live`, 아니면 `failed`.
 4. 상태가 바뀔 때마다 `change_set_event`를 append하고 아웃박스로 알립니다. 에이전트는 이를 구독해 대화에 `change_set.updated`를 흘립니다([../api/chat.md](../api/chat.md)).
