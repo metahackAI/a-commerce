@@ -162,6 +162,15 @@
       "rdfs:comment": "Money paid back to a shopper for a claim. Used as additionalType on a MoneyTransfer."
     },
     {
+      "@id": "acom:ReviewVote",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ReviewVote",
+      "rdfs:subClassOf": {
+        "@id": "schema:VoteAction"
+      },
+      "rdfs:comment": "one shopper's helpful vote on a review; a review's helpful count is its rows with is_helpful true."
+    },
+    {
       "@id": "acom:Segment",
       "@type": "rdfs:Class",
       "rdfs:label": "Segment",
@@ -1349,6 +1358,22 @@
         }
       ],
       "rdfs:comment": "false hides the category and its children."
+    },
+    {
+      "@id": "acom:isHelpful",
+      "@type": "rdf:Property",
+      "rdfs:label": "isHelpful",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ReviewVote"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Boolean"
+        }
+      ],
+      "rdfs:comment": "true while the shopper marks the review helpful; false after they take the vote back."
     },
     {
       "@id": "acom:isPrimary",

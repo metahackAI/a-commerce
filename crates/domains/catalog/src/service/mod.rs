@@ -4,3 +4,4 @@
 
 pub mod for_merchandising;
 pub mod for_promotion;
+pub mod for_search;

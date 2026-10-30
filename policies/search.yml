@@ -18,6 +18,13 @@ compare:                                 # compare_products
   max_products: 6
   attributes: [weight, packed_size, packing, warmth, rain, material, price]   # 비교할 수 있는 속성. 값은 상품 데이터(additional_property)에서 옴
 
+facets:                                  # get_facets
+  price_range_width: { value: 50.00, currency: USD }   # 가격대 묶음 폭: 0.00-50.00, 50.00-100.00, …
+
+autocomplete:                            # autocomplete
+  default_limit: 10
+  max_limit: 20
+
 ranking:
   signals: [text_relevance, vector_similarity, best_seller, best_rated, newest, trending, personalization]
   recalc: daily_batch
@@ -31,6 +38,14 @@ lexicon:                                 # update_lexicon
   replace_whole_set: true                # 사전은 통째로 교체(부분 수정 없음)
   no_circular_synonym: true              # check: lexicon.no_circular_synonym
   no_self_reference: true                # check: lexicon.no_self_reference
+  synonyms:                              # 언어별 동의어 묶음(query.expansion의 synonym_dictionary). 질의어가 묶음의 한 단어면 묶음 전체로 넓혀 찾는다
+    en:
+      - [jacket, coat, overshirt, windbreaker, parka, anorak, shacket, outerwear]
+      - [light, lightweight, packable]
+      - [trip, travel, vacation]
+      - [rain, waterproof, shower]
+      - [warm, insulated, fleece]
+      - [tee, shirt]
 
 index:
   naming: "{type}-{tenant}-{lang}-{version}"   # 색인 이름 패턴(식이 아니라 이름 틀)

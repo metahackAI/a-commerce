@@ -1,6 +1,6 @@
 -- 0004_catalog.sql
 -- Catalog: brands, return policies, products (ProductGroup), variants (Product), offers,
--- garment measurements and reviews.
+-- garment measurements, reviews and shoppers' helpful votes on reviews.
 -- Rules: docs/backend/database.md. Order: tables, indexes, comments, row-level security.
 
 
@@ -152,6 +152,7 @@ CREATE TABLE catalog.review (
   author_height_value numeric(5,1),
   author_height_unit_text text,
   keywords text[] NOT NULL DEFAULT '{}',
+  image text[] NOT NULL DEFAULT '{}',
   creative_work_status text NOT NULL DEFAULT 'visible',
   date_published date NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -168,6 +169,19 @@ CREATE TABLE catalog.review (
   CONSTRAINT review_creative_work_status_check CHECK (creative_work_status IN ('visible', 'hidden', 'reported'))
 );
 
+CREATE TABLE catalog.review_vote (
+  tenant_id text NOT NULL REFERENCES platform.online_store(id),
+  review_id text NOT NULL,
+  customer_id text NOT NULL,
+  is_helpful boolean NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  version integer NOT NULL DEFAULT 1,
+  CONSTRAINT review_vote_pkey PRIMARY KEY (tenant_id, review_id, customer_id),
+  CONSTRAINT review_vote_review_id_fkey FOREIGN KEY (tenant_id, review_id) REFERENCES catalog.review (tenant_id, id),
+  CONSTRAINT review_vote_customer_id_fkey FOREIGN KEY (tenant_id, customer_id) REFERENCES customer.person (tenant_id, id)
+);
+
 CREATE INDEX product_group_approval_status_idx ON catalog.product_group (tenant_id, approval_status);
 CREATE INDEX product_group_brand_id_idx ON catalog.product_group (tenant_id, brand_id);
 CREATE INDEX product_group_has_merchant_return_policy_id_idx ON catalog.product_group (tenant_id, has_merchant_return_policy_id);
@@ -177,6 +191,7 @@ CREATE INDEX review_product_id_idx ON catalog.review (tenant_id, product_id);
 CREATE INDEX review_author_id_idx ON catalog.review (tenant_id, author_id);
 CREATE INDEX review_creative_work_status_idx ON catalog.review (tenant_id, creative_work_status);
 CREATE INDEX review_product_group_id_idx ON catalog.review (tenant_id, product_group_id);
+CREATE INDEX review_vote_customer_id_idx ON catalog.review_vote (tenant_id, customer_id);
 
 COMMENT ON TABLE catalog.brand IS
   'schema:Brand — a brand products are sold under. id prefix brn_.';
@@ -382,6 +397,8 @@ COMMENT ON COLUMN catalog.review.author_height_unit_text IS
   'acom:authorHeight — unit of author_height_value, cm.';
 COMMENT ON COLUMN catalog.review.keywords IS
   'schema:keywords — repeated phrases found in the review, counted as mentions, for example size up for a hoodie.';
+COMMENT ON COLUMN catalog.review.image IS
+  'schema:image — URLs of photos the reviewer added; empty when none.';
 COMMENT ON COLUMN catalog.review.creative_work_status IS
   'schema:creativeWorkStatus — moderation state. values: review_status';
 COMMENT ON COLUMN catalog.review.date_published IS
@@ -391,6 +408,23 @@ COMMENT ON COLUMN catalog.review.created_at IS
 COMMENT ON COLUMN catalog.review.updated_at IS
   '- when the row was last changed.';
 COMMENT ON COLUMN catalog.review.version IS
+  '- row version, +1 on every change; previews record it in basis and execution compares it.';
+
+COMMENT ON TABLE catalog.review_vote IS
+  'schema:VoteAction/acom:ReviewVote — one shopper''s helpful vote on a review; a review''s helpful count is its rows with is_helpful true.';
+COMMENT ON COLUMN catalog.review_vote.tenant_id IS
+  '- store (tenant) that owns this row; row-level security key.';
+COMMENT ON COLUMN catalog.review_vote.review_id IS
+  'schema:object — review voted on (rev_ id).';
+COMMENT ON COLUMN catalog.review_vote.customer_id IS
+  'schema:agent — shopper who voted (cus_ id).';
+COMMENT ON COLUMN catalog.review_vote.is_helpful IS
+  'acom:isHelpful — true while the shopper marks the review helpful; false after they take the vote back.';
+COMMENT ON COLUMN catalog.review_vote.created_at IS
+  '- when the row was created.';
+COMMENT ON COLUMN catalog.review_vote.updated_at IS
+  '- when the row was last changed.';
+COMMENT ON COLUMN catalog.review_vote.version IS
   '- row version, +1 on every change; previews record it in basis and execution compares it.';
 
 ALTER TABLE catalog.brand ENABLE ROW LEVEL SECURITY;
@@ -432,5 +466,11 @@ CREATE POLICY measurement_tenant_isolation ON catalog.measurement
 ALTER TABLE catalog.review ENABLE ROW LEVEL SECURITY;
 ALTER TABLE catalog.review FORCE ROW LEVEL SECURITY;
 CREATE POLICY review_tenant_isolation ON catalog.review
+  USING (tenant_id = current_setting('app.tenant_id', true))
+  WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
+
+ALTER TABLE catalog.review_vote ENABLE ROW LEVEL SECURITY;
+ALTER TABLE catalog.review_vote FORCE ROW LEVEL SECURITY;
+CREATE POLICY review_vote_tenant_isolation ON catalog.review_vote
   USING (tenant_id = current_setting('app.tenant_id', true))
   WITH CHECK (tenant_id = current_setting('app.tenant_id', true));

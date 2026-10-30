@@ -253,8 +253,23 @@
 | `author_height_value` | numeric(5,1) | ✓ | `acom:authorHeight` | reviewer height. |
 | `author_height_unit_text` | text | ✓ | `acom:authorHeight` | unit of author_height_value, cm. |
 | `keywords` | text[] |  | `schema:keywords` | repeated phrases found in the review, counted as mentions, for example size up for a hoodie. |
+| `image` | text[] |  | `schema:image` | URLs of photos the reviewer added; empty when none. |
 | `creative_work_status` | text |  | `schema:creativeWorkStatus` | moderation state. values: review_status Values: `visible` · `hidden` · `reported`. |
 | `date_published` | date |  | `schema:datePublished` | date the review was posted. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `catalog.review_vote`
+
+`schema:VoteAction/acom:ReviewVote` — one shopper's helpful vote on a review; a review's helpful count is its rows with is_helpful true.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `review_id` | text |  | `schema:object` | review voted on (rev_ id). → `catalog.review` |
+| `customer_id` | text |  | `schema:agent` | shopper who voted (cus_ id). → `customer.person` |
+| `is_helpful` | boolean |  | `acom:isHelpful` | true while the shopper marks the review helpful; false after they take the vote back. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |

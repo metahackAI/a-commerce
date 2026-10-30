@@ -2,4 +2,5 @@
 //! this domain's tables directly. A domain that needs something adds its own file here
 //! (`for_<that_domain>.rs`) and one `pub mod` line below.
 
+pub mod for_catalog;
 pub mod for_promotion;
