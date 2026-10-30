@@ -61,6 +61,8 @@ export interface ChangeSetItem {
   changes: Change[];
   changes_total?: number;
   checks: Check[];
+  /** The tool input the preview was made from. */
+  input?: Record<string, unknown>;
 }
 
 export interface LeftOut {

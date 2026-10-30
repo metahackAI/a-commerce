@@ -320,8 +320,11 @@ impl WriteOp<Cx> for SetPrice {
         let s = state
             .ok_or_else(|| product_not_found("variant", &input.variant_id, "search_products"))?;
         let (plan, check) = plan_price(&rule, &input, &s)?;
-        let mut from = json!({"price": num(plan.from_price.value)});
-        let mut to = json!({"price": num(plan.price.value)});
+        // Money is a value and its currency (docs/api/conventions.md).
+        let mut from = json!({"price": num(plan.from_price.value),
+                              "price_currency": plan.from_price.currency.as_str()});
+        let mut to = json!({"price": num(plan.price.value),
+                            "price_currency": plan.price.currency.as_str()});
         if let Some(c) = plan.cost {
             from["cost"] = plan.from_cost.map_or(Value::Null, |f| num(f.value));
             to["cost"] = num(c.value);
