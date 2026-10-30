@@ -28,12 +28,21 @@ product:
   approval:
     content_changes: auto                # 설명·이미지·문구 = 자동
     structural_changes: review           # 가격·카테고리·구조·삭제 = 승인 필요
-  age_restriction:
-    levels: [everyone, age_18_plus, age_21_plus]
-    verify_at: order
+  age_restriction:                       # 상품별 min_age(정수, 세). 0 또는 없음 = 연령 제한 없음
+    field: min_age
+    allowed_values: any                  # [default] 0 이상 정수 아무 값. 스토어가 목록으로 좁힐 수 있음
+    # 예시: allowed_values: [0, 15, 19]  — 관할·업종에 맞춰 스토어가 정함
+    by_category: {}                      # [default] 카테고리별 최소 min_age(스토어 정의). 예시: { spirits: <값> }
+    verification:
+      method: self_declared_birth_date   # [default] 다른 값: id_document, third_party_identity, manual_review
+      verify_at: order                   # [default] order | cart | product_view
+      reverify_after_days: null          # [default] 재확인하지 않음
+    on_fail: block_purchase
 
 variant:
-  max_option_axes: 3                     # 예: color, size, length
+  max_option_axes: null                  # [default] null = 제한 없음. 스토어가 정수로 상한을 둘 수 있음
+  # 성능 참고: 조합 수 = 축별 값 수의 곱. 축이 늘면 변형 수가 급증하므로 max_variants_per_group으로 함께 제한한다.
+  max_variants_per_group: 1000           # [default] 조합 폭증 방지(check: max_variants)
   option_source: inline                  # 입력할 때 만들고, 백엔드가 중복 제거
 
 inventory:

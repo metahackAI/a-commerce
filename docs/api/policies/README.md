@@ -10,7 +10,7 @@
 
 | 키 | 값 | 파일 |
 |---|---|---|
-| `max_discount.vip` | 0.30 (30%) | [promotion.yml](promotion.yml) |
+| `max_discount.by_tier.vip` | 0.30 (30%, 데모 스토어 등급) | [promotion.yml](promotion.yml) |
 | `max_discount.everyone` | 0.20 (20%) | [promotion.yml](promotion.yml) |
 | `price_floor` | `cost * 1.15` (원가 + 15%) | [catalog.yml](catalog.yml) |
 | `promo_min_stock` | 10 (미만은 세일에서 제외) | [promotion.yml](promotion.yml) |
