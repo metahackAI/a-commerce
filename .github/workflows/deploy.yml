@@ -1,13 +1,13 @@
 name: deploy
 
-# Builds the images for one git sha, pushes them to GHCR, and records a GitHub deployment for the
-# `demo` environment. The demo server pulls deployments (infra/deploy/deployer.sh): nothing here
-# connects to the server, and the server needs no inbound port. Details: infra/deploy/README.md.
+# Records a GitHub deployment for the `demo` environment. The demo server polls deployments
+# (infra/deploy/deployer.sh), builds the images for that sha itself and restarts what changed:
+# nothing here connects to the server, the server needs no inbound port, and no runner runs on it.
+# Building on the server keeps its layer cache between deploys, which a hosted runner cannot.
+# Details: infra/deploy/README.md.
 #
-# - Push to main: rebuild only what changed (Rust or web); unchanged images are re-tagged from the
-#   previous commit, so their digest stays the same and their containers are not restarted.
-# - Run workflow (Actions tab): deploy main's head, or an earlier sha to roll back. Images that
-#   already exist for that sha are reused unless `rebuild` is checked.
+# - Push to main: deploy the new head.
+# - Run workflow (Actions tab): deploy main's head again, or an earlier sha to roll back.
 
 on:
   push:
@@ -18,152 +18,28 @@ on:
         description: "Commit to deploy (empty = head of the selected branch). Use an earlier main sha to roll back."
         required: false
         default: ""
-      rebuild:
-        description: "Rebuild every image even if it exists"
-        type: boolean
-        default: false
 
 concurrency:
   group: deploy-demo
   cancel-in-progress: false
 
-env:
-  REGISTRY: ghcr.io/metahackai/a-commerce
-
 jobs:
-  images:
+  record:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
-    outputs:
-      sha: ${{ steps.plan.outputs.sha }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.sha || github.sha }}
-          fetch-depth: 0
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Decide what to build
-        id: plan
-        env:
-          EVENT: ${{ github.event_name }}
-          BEFORE: ${{ github.event.before }}
-          REBUILD: ${{ inputs.rebuild || false }}
-        run: |
-          sha=$(git rev-parse HEAD)
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          has() { docker buildx imagetools inspect "$REGISTRY/acom-$1:$2" >/dev/null 2>&1; }
-
-          rust=false; web=false; base=""
-          if [[ "$REBUILD" == "true" ]]; then
-            rust=true; web=true
-          elif [[ "$EVENT" == "push" && -n "$BEFORE" && "$BEFORE" != 0000000000000000000000000000000000000000 ]] \
-               && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
-            base=$BEFORE
-            changed=$(git diff --name-only "$BEFORE" "$sha")
-            grep -qE '^(Cargo\.(toml|lock)|rust-toolchain\.toml|clippy\.toml|\.cargo/|crates/|services/|xtask/|migrations/|policies/|infra/docker/rust\.Dockerfile)' <<<"$changed" && rust=true
-            grep -qE '^(web/|infra/docker/web\.Dockerfile)' <<<"$changed" && web=true
-          fi
-          # Anything we cannot re-tag from the previous commit, and does not exist yet, is built.
-          for img in gateway commerce agent; do
-            if [[ $rust == false ]] && ! has "$img" "$sha" && { [[ -z $base ]] || ! has "$img" "$base"; }; then rust=true; fi
-          done
-          if [[ $web == false ]] && ! has web "$sha" && { [[ -z $base ]] || ! has web "$base"; }; then web=true; fi
-
-          echo "rust=$rust" >> "$GITHUB_OUTPUT"
-          echo "web=$web" >> "$GITHUB_OUTPUT"
-          echo "base=$base" >> "$GITHUB_OUTPUT"
-          echo "sha $sha  build rust=$rust web=$web  re-tag from ${base:-none}" | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - name: Build gateway
-        if: steps.plan.outputs.rust == 'true'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: infra/docker/rust.Dockerfile
-          target: gateway
-          push: true
-          provenance: false
-          tags: ${{ env.REGISTRY }}/acom-gateway:${{ steps.plan.outputs.sha }}
-          cache-from: type=gha,scope=rust
-          cache-to: type=gha,scope=rust,mode=max
-
-      - name: Build commerce
-        if: steps.plan.outputs.rust == 'true'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: infra/docker/rust.Dockerfile
-          target: commerce
-          push: true
-          provenance: false
-          tags: ${{ env.REGISTRY }}/acom-commerce:${{ steps.plan.outputs.sha }}
-          cache-from: type=gha,scope=rust
-
-      - name: Build agent
-        if: steps.plan.outputs.rust == 'true'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: infra/docker/rust.Dockerfile
-          target: agent
-          push: true
-          provenance: false
-          tags: ${{ env.REGISTRY }}/acom-agent:${{ steps.plan.outputs.sha }}
-          cache-from: type=gha,scope=rust
-
-      - name: Build web
-        if: steps.plan.outputs.web == 'true'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: infra/docker/web.Dockerfile
-          push: true
-          provenance: false
-          tags: ${{ env.REGISTRY }}/acom-web:${{ steps.plan.outputs.sha }}
-          cache-from: type=gha,scope=web
-          cache-to: type=gha,scope=web,mode=max
-
-      - name: Re-tag unchanged images from the previous commit
-        env:
-          SHA: ${{ steps.plan.outputs.sha }}
-          BASE: ${{ steps.plan.outputs.base }}
-          RUST: ${{ steps.plan.outputs.rust }}
-          WEB: ${{ steps.plan.outputs.web }}
-        run: |
-          retag() {
-            docker buildx imagetools inspect "$REGISTRY/acom-$1:$SHA" >/dev/null 2>&1 && return 0
-            docker buildx imagetools create -t "$REGISTRY/acom-$1:$SHA" "$REGISTRY/acom-$1:$BASE"
-          }
-          if [[ $RUST == false ]]; then for img in gateway commerce agent; do retag "$img"; done; fi
-          if [[ $WEB == false ]]; then retag web; fi
-          for img in gateway commerce agent web; do
-            docker buildx imagetools inspect "$REGISTRY/acom-$img:$SHA" --format '{{json .Manifest.Digest}}' \
-              | sed "s|^|acom-$img $SHA |" | tee -a "$GITHUB_STEP_SUMMARY"
-          done
-
-  record:
-    needs: images
-    runs-on: ubuntu-latest
-    permissions:
       deployments: write
     steps:
       - name: Record a deployment for the demo server to pick up
         env:
           GH_TOKEN: ${{ github.token }}
-          SHA: ${{ needs.images.outputs.sha }}
+          REPO: ${{ github.repository }}
+          REF: ${{ inputs.sha || github.sha }}
+          BY: ${{ github.actor }}
         run: |
-          jq -n --arg sha "$SHA" --arg by "${{ github.actor }}" \
+          sha=$(gh api "repos/$REPO/commits/$REF" --jq .sha)
+          jq -n --arg sha "$sha" --arg by "$BY" \
             '{ref: $sha, environment: "demo", auto_merge: false, required_contexts: [],
-              description: ("requested by " + $by), payload: {tag: $sha}}' \
-            | gh api "repos/${{ github.repository }}/deployments" --input - --jq '"deployment \(.id) for \(.sha)"' \
+              description: ("requested by " + $by)}' \
+            | gh api "repos/$REPO/deployments" --input - --jq '"deployment \(.id) for \(.sha)"' \
             | tee -a "$GITHUB_STEP_SUMMARY"
