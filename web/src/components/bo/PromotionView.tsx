@@ -23,7 +23,7 @@ import {ErrorState} from './ErrorState';
 import {PageFrame, PageSection} from './PageFrame';
 import {StateToken} from './StateToken';
 import {appliesToText, CouponList} from './lists/promotion';
-import {TargetCard, TargetFact} from './targets';
+import {TargetCard, TargetFact, TargetField} from './targets';
 import {WriteFlow} from './WriteFlow';
 
 type Verb = 'pause' | 'end';
@@ -163,7 +163,9 @@ export function PromotionView({
               applyLabel={verb === 'pause' ? 'Pause it' : 'End it'}
               askWhenApprovalNeeded={`Prepare a change set to ${verb} the promotion ${p.name} (${p.id})${reason.trim() ? ` because ${reason.trim()}` : ''}.`}
               onApplied={() => router.refresh()}>
-              <TextInput label="Reason" isOptional value={reason} onChange={setReason} placeholder="Stock ran out early" width={480} />
+              <TargetField target={{kind: 'reason_input', label: `Reason to ${verb} ${p.name}: ${reason || 'empty'}`, ids: {promotion_id: p.id}}}>
+                <TextInput label="Reason" isOptional value={reason} onChange={setReason} placeholder="Stock ran out early" width={480} />
+              </TargetField>
             </WriteFlow>
           </VStack>
         </Dialog>

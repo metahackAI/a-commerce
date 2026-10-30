@@ -62,10 +62,12 @@ export function AgentDockProvider({children}: {children: ReactNode}) {
   );
 }
 
+// Outside the back office (a block rendered in another surface's workspace) the conversation is
+// already on screen, so there is nothing to open.
+const NO_DOCK: DockState = {isOpen: false, open: () => {}, close: () => {}, takeOver: () => () => {}};
+
 export function useAgentDock(): DockState {
-  const ctx = useContext(DockContext);
-  if (!ctx) throw new Error('useAgentDock must be used inside <AgentDockProvider>');
-  return ctx;
+  return useContext(DockContext) ?? NO_DOCK;
 }
 
 /** A composer that sends to the agent, with the picked elements as removable chips. */

@@ -21,6 +21,7 @@ import {count, price} from '@/app/bo/_lib/format';
 import type {PriceBreakdown, Variant} from '@/app/bo/_lib/types';
 
 import {ErrorState} from './ErrorState';
+import {TargetField} from './targets';
 import {WriteFlow} from './WriteFlow';
 
 export type EditMode = 'price' | 'stock';
@@ -113,17 +114,25 @@ export function VariantEditor({
                 applyLabel="Apply the price"
                 askWhenApprovalNeeded={`Prepare a change set to set the list price of ${name} (${variant.variant_id}) to ${price(newPrice, currency)}.`}
                 onApplied={() => router.refresh()}>
-                <NumberInput
-                  label="New list price"
-                  value={newPrice}
-                  onChange={v => setNewPrice(Number.isFinite(v) ? v : null)}
-                  min={0}
-                  step={0.01}
-                  units={currency}
-                  hasClear
-                  description="The server checks it against the price floor and says whether a person has to approve it."
-                  width={280}
-                />
+                <TargetField
+                  target={{
+                    kind: 'price_input',
+                    label: `New list price for ${name}: ${newPrice === null ? 'empty' : price(newPrice, currency)}`,
+                    ids: {variant_id: variant.variant_id},
+                    term: 'schema:price',
+                  }}>
+                  <NumberInput
+                    label="New list price"
+                    value={newPrice}
+                    onChange={v => setNewPrice(Number.isFinite(v) ? v : null)}
+                    min={0}
+                    step={0.01}
+                    units={currency}
+                    hasClear
+                    description="The server checks it against the price floor and says whether a person has to approve it."
+                    width={280}
+                  />
+                </TargetField>
               </WriteFlow>
             ) : null}
           </VStack>
@@ -145,16 +154,24 @@ export function VariantEditor({
                 applyLabel="Apply the stock"
                 askWhenApprovalNeeded={`Prepare a change set to set the stock of ${name} (${variant.variant_id}) to ${stock ?? ''}.`}
                 onApplied={() => router.refresh()}>
-                <NumberInput
-                  label="Available quantity"
-                  value={stock}
-                  onChange={v => setStock(Number.isFinite(v) ? v : null)}
-                  min={0}
-                  isIntegerOnly
-                  hasClear
-                  description="Set the quantity you can sell, not a difference."
-                  width={280}
-                />
+                <TargetField
+                  target={{
+                    kind: 'stock_input',
+                    label: `New stock for ${name}: ${stock === null ? 'empty' : stock}`,
+                    ids: {variant_id: variant.variant_id},
+                    term: 'schema:inventoryLevel',
+                  }}>
+                  <NumberInput
+                    label="Available quantity"
+                    value={stock}
+                    onChange={v => setStock(Number.isFinite(v) ? v : null)}
+                    min={0}
+                    isIntegerOnly
+                    hasClear
+                    description="Set the quantity you can sell, not a difference."
+                    width={280}
+                  />
+                </TargetField>
                 <TextInput label="Reason" isOptional value={reason} onChange={setReason} placeholder="Stock count after delivery" width={420} />
               </WriteFlow>
             )}

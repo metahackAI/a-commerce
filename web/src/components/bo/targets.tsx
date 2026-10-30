@@ -124,15 +124,39 @@ export function TargetInline({target, children, intents}: {target: AiTarget; chi
 }
 
 /** A labelled fact (MetadataListItem) that is an AI target. */
-export function TargetFact({target, label, children}: {target: AiTarget; label: string; children: ReactNode}) {
+export function TargetFact({target, label, children, intents}: {target: AiTarget; label: string; children: ReactNode; intents?: string[]}) {
   const t = useAiTarget(target);
   return (
     <MetadataListItem ref={t.ref} {...t.props} label={label}>
-      <HStack gap={1} vAlign="center" wrap="wrap">
-        {children}
-        <AskButton target={t} label={target.label} />
-      </HStack>
+      <VStack gap={1}>
+        <HStack gap={1} vAlign="center" wrap="wrap">
+          {children}
+          <AskButton target={t} label={target.label} />
+        </HStack>
+        <SuggestedIntents intents={intents} target={t} />
+      </VStack>
     </MetadataListItem>
+  );
+}
+
+/** A form field that is an AI target: the input, and Ask beside it at the field's baseline. */
+export function TargetField({target, children}: {target: AiTarget; children: ReactNode}) {
+  const t = useAiTarget(target);
+  return (
+    <HStack ref={t.ref} {...t.props} gap={1} vAlign="end" wrap="wrap">
+      {children}
+      <AskButton target={t} label={target.label} />
+    </HStack>
+  );
+}
+
+/** Registers a region the agent can point at, without an Ask button (filters, toolbars). */
+export function TargetRegion({target, children}: {target: AiTarget; children: ReactNode}) {
+  const t = useAiTarget(target);
+  return (
+    <VStack ref={t.ref} {...t.props} gap={0}>
+      {children}
+    </VStack>
   );
 }
 

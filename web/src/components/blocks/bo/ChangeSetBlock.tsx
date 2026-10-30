@@ -89,7 +89,8 @@ export function ChangeSetBlock({block}: BlockProps) {
               <TargetFact
                 key={k}
                 label={label}
-                target={{kind: 'understood_field', label: `${label}: ${main}${detail ? ` (${detail})` : ''}`, ids: {slot: k, ...ids}, blockId: block.block_id}}>
+                target={{kind: 'understood_field', label: `${label}: ${main}${detail ? ` (${detail})` : ''}`, ids: {slot: k, ...ids}, blockId: block.block_id}}
+                intents={intentsFor('understood_field', k)}>
                 <VStack gap={0}>
                   <Text weight="medium">{main}</Text>
                   {detail ? (
