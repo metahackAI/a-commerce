@@ -24,6 +24,7 @@ PUBLIC_URL=${ACOM_PUBLIC_URL:-}                         # shown as the environme
 READY_URL=${ACOM_READY_URL:-http://127.0.0.1:8080/readyz}
 INTERVAL=${ACOM_DEPLOY_INTERVAL:-20}
 HEALTH_TIMEOUT=${ACOM_DEPLOY_HEALTH_TIMEOUT:-240}
+RUN_TAG=${ACOM_DEPLOY_RUN_TAG:-$PROJECT}                 # tag the running containers use (see deploy)
 KEEP=${ACOM_DEPLOY_KEEP_IMAGES:-5}                       # recent deployed shas whose images stay (fast rollback)
 
 mkdir -p "$STATE/logs"
@@ -56,8 +57,14 @@ deploy() { # <deployment id> <sha>
     cd "$DIR" || exit 1
     git fetch --quiet origin "$sha" || exit 1
     git -c advice.detachedHead=false checkout --quiet --detach "$sha" || exit 1
-    export ACOM_TAG=$sha
-    compose build || { echo "image build failed for $sha"; exit 1; }
+    # Build as :<sha> (kept for rollback), then run from one fixed tag: compose recreates a
+    # container when its image *name* changes, so a per-sha name would restart every service on
+    # every deploy. With a fixed name only services whose image id changed are recreated.
+    ACOM_TAG=$sha compose build || { echo "image build failed for $sha"; exit 1; }
+    for img in $(ACOM_TAG=$sha compose config --images | grep '^acom/'); do
+      docker tag "$img" "${img%:*}:$RUN_TAG" || exit 1
+    done
+    export ACOM_TAG=$RUN_TAG
     compose up -d --no-build --remove-orphans || { echo "compose up failed"; exit 1; }
     waited=0
     until healthy; do
@@ -68,11 +75,11 @@ deploy() { # <deployment id> <sha>
   ) >"$out" 2>&1
 }
 
-prune_images() { # keep the images of the last $KEEP deployed shas (`local` is the dev tag)
+prune_images() { # keep the images of the last $KEEP deployed shas and $RUN_TAG (`local` is the dev tag)
   local keep
   keep=$(tail -n "$KEEP" "$STATE/deployed" 2>/dev/null | tr '\n' ' ')
   docker image ls --filter 'reference=acom/acom-*' --format '{{.Repository}} {{.Tag}}' \
-    | awk -v keep=" $keep " '$2 != "local" && $2 != "<none>" && index(keep, " " $2 " ") == 0 {print $1 ":" $2}' \
+    | awk -v keep=" $keep " -v run="$RUN_TAG" '$2 != "local" && $2 != "<none>" && $2 != run && index(keep, " " $2 " ") == 0 {print $1 ":" $2}' \
     | xargs -r docker image rm >/dev/null 2>&1 || true
 }
 

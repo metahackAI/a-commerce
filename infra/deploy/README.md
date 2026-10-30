@@ -14,8 +14,9 @@ main 머지 / Run workflow
    │
    ▼  데모 서버의 배포기 (infra/deploy/deployer.sh, 20초마다 확인)
    ├─ 배포 clone을 그 sha로 checkout
-   ├─ docker compose build → acom/acom-{gateway,commerce,agent,web}:<sha>
-   │   (서버의 BuildKit 캐시가 남아 있어서 안 바뀐 서비스는 같은 이미지가 나옴 → 그 컨테이너는 재시작 안 됨)
+   ├─ docker compose build → acom/acom-{gateway,commerce,agent,web}:<sha>, 그리고 같은 이미지에 :acom-demo 태그
+   │   (서버의 BuildKit 캐시가 남아 있어서 안 바뀐 서비스는 같은 이미지가 나옴. 컨테이너는 고정 태그
+   │    :acom-demo 로 띄우므로 이미지 id 가 바뀐 서비스만 재시작됨)
    ├─ docker compose up -d (compose.yaml + compose.deploy.yaml)
    ├─ 모든 서비스 healthy + gateway /readyz 확인 (최대 240초)
    └─ 결과를 deployment 상태로 보고 → 저장소 오른쪽 Environments 의 demo 에 표시
