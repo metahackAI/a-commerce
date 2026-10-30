@@ -33,7 +33,8 @@ struct Cli {
     /// Service connection (role acom_app; row-level security applies).
     #[arg(long, env = "DATABASE_URL")]
     database_url: Option<String>,
-    /// Migration connection (role acom_owner), used only by `migrate`.
+    /// Migration connection (role acom_owner), used by `migrate` and `seed`, and by `serve` in
+    /// demo mode to load the demo store again on request (`POST /v1/platform/demo/reset`).
     #[arg(long, env = "MIGRATION_DATABASE_URL")]
     migration_database_url: Option<String>,
     /// Folder with the policy files.
@@ -127,6 +128,79 @@ fn database(cli: &Cli) -> Option<Db> {
     }
 }
 
+/// Where `POST /v1/platform/demo/reset` loads the demo store from: only in demo mode, and only
+/// when this service was given the owner connection (the demo Compose stack gives it; production
+/// does not).
+#[derive(Debug, Clone)]
+struct DemoReset {
+    owner_url: Option<String>,
+    seed_dir: String,
+    demo_mode: bool,
+}
+
+/// One reset at a time.
+static RESETTING: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// `POST /v1/platform/demo/reset`: empties the store and loads the demo seed again, so the
+/// scenes can be shown from the start (docs/api/platform.md#데모-시계). Runtime-only, never a
+/// tool; an operator's own request with `admin:demo`. Every session ends with it.
+fn demo_reset(api: Arc<acom_http::Api>, reset: DemoReset) -> Router {
+    use acom_contract::{ErrorClass, ErrorCode, ToolError};
+    use axum::extract::State;
+    use axum::response::IntoResponse;
+    use serde_json::json;
+    const UNAVAILABLE: ErrorCode =
+        ErrorCode::new("demo_reset_unavailable", ErrorClass::InvalidState);
+    Router::new()
+        .route(
+            "/v1/platform/demo/reset",
+            axum::routing::post(
+                move |State(_): State<Arc<acom_http::Api>>, caller: acom_http::Caller| {
+                    let reset = reset.clone();
+                    async move {
+                        let refuse = |e: ToolError| acom_http::ApiError(e).into_response();
+                        if caller.principal.kind != acom_core::enums::ActorKind::Operator
+                            || !caller.principal.has_scope("admin:demo")
+                        {
+                            return refuse(
+                                ToolError::new(ErrorCode::FORBIDDEN, "This needs the `admin:demo` permission.")
+                                    .detail(json!({"reason": "scope", "required_scope": "admin:demo"})),
+                            );
+                        }
+                        let Some(url) = reset.owner_url.filter(|_| reset.demo_mode) else {
+                            return refuse(
+                                ToolError::new(
+                                    UNAVAILABLE,
+                                    "Only a demo store can be loaded again, and only where the demo stack runs it.",
+                                )
+                                .detail(json!({"entity": "online_store", "reason": "demo_reset_unavailable"})),
+                            );
+                        };
+                        let _one = RESETTING.lock().await;
+                        let started = std::time::Instant::now();
+                        let loaded = match Db::connect(&url, 1).await {
+                            Ok(db) => seed(&db, &reset.seed_dir, SeedWhen::Reset).await,
+                            Err(e) => Err(e.to_string()),
+                        };
+                        match loaded {
+                            Ok(()) => {
+                                tracing::warn!(by = %caller.principal.subject, "demo store loaded again");
+                                axum::Json(json!({"ok": true, "store_id": caller.principal.tenant.as_str(),
+                                    "seconds": started.elapsed().as_secs()}))
+                                .into_response()
+                            }
+                            Err(e) => {
+                                tracing::error!(error = %e, "demo reset failed");
+                                refuse(ToolError::new(ErrorCode::INTERNAL, format!("The demo store could not be loaded: {e}")))
+                            }
+                        }
+                    }
+                },
+            ),
+        )
+        .with_state(api)
+}
+
 /// The REST surface: every operation, the change-set endpoints, and the event stream.
 fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
     let key = cli
@@ -140,12 +214,17 @@ fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
         demo_mode = cli.demo_mode,
         "registry built"
     );
-    let api = acom_http::Api {
+    let api = Arc::new(acom_http::Api {
         runtime: Arc::new(Runtime::new(db, policy, cli.demo_mode)),
         registry: Arc::new(registry),
         verifier: Arc::new(verifier),
+    });
+    let reset = DemoReset {
+        owner_url: cli.migration_database_url.clone(),
+        seed_dir: cli.seed_dir.clone(),
+        demo_mode: cli.demo_mode,
     };
-    Ok(acom_http::router(Arc::new(api)))
+    Ok(acom_http::router(api.clone()).merge(demo_reset(api, reset)))
 }
 
 /// When `seed` loads the demo store.

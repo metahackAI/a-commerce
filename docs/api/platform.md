@@ -787,6 +787,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 |---|---|---|---|
 | `GET /v1/platform/demo-clock` | `tools:read:platform` | — | `{now, is_running, demo_mode}` |
 | `PUT /v1/platform/demo-clock` | `admin:demo`(운영자 본인의 요청만), 데모 모드에서만 | `{now, is_running?}` | `{now, is_running, demo_mode: true, previous, ran[]}` |
+| `POST /v1/platform/demo/reset` | `admin:demo`(운영자 본인의 요청만), 데모 모드에서만, `commerce`에 소유자 연결(`MIGRATION_DATABASE_URL`)이 주어진 데모 스택에서만 | — | `{ok: true, store_id, seconds}`. 스토어 테이블을 비우고 데모 시드를 다시 적재(약 15초). 데모에서 한 일과 모든 세션이 지워지므로 다시 로그인합니다. 그 밖의 곳에서는 `demo_reset_unavailable`(invalid_state) |
 
 - `now`: RFC 3339 또는 스토어 시간대의 로컬 시각(`"2026-11-07T10:00"`). `is_running`: `true`면 그때부터 실제 시간과 함께 흐르고(워커가 기한이 된 작업을 돌림), 기본 `false`면 멈춰 있습니다. 데모 모드가 아니면 `GET`은 시스템 시각과 `is_running: true, demo_mode: false`를 돌려줍니다.
 - `PUT`은 시계를 옮기기 **전에** `run_at <= now`인 예약 작업을 `run_at` 순서로 실행하고, 실행한 것을 `ran[]`에 적어 답합니다: `{job_id, kind, run_at, state: done | retrying, attempts, error?, result?, tasks?: [{task_id, state, created, change_set_id?}], next_run_at?}`. 같은 시각으로 다시 부르면 아무것도 실행하지 않습니다(`ran: []`). 뒤로 옮겨도 이미 실행된 것은 그대로입니다(장면을 처음부터 하려면 `acom-commerce seed --reset`).
