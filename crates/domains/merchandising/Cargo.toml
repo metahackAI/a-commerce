@@ -13,10 +13,12 @@ acom-catalog.workspace = true
 acom-changeset.workspace = true
 acom-contract.workspace = true
 acom-core.workspace = true
+acom-customer.workspace = true
 acom-policy.workspace = true
 acom-promotion.workspace = true
 acom-store.workspace = true
 chrono.workspace = true
+chrono-tz.workspace = true
 rust_decimal.workspace = true
 schemars.workspace = true
 serde.workspace = true
@@ -25,6 +27,7 @@ sqlx.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
+acom-testkit.workspace = true
 tokio.workspace = true
 
 [lints]
