@@ -1,0 +1,76 @@
+# Marketer tasks, design set. Format and fields: eval/README.md §3.
+# Store clock for every task: Fri Nov 6 2026 11:00 America/New_York (docs/scenarios.md §1.1).
+# Expected facts were read from the demo store through the same tools on Oct 30 2026.
+
+- id: b1-vip-weekend-sale
+  job: marketer
+  persona: adm_sj
+  surface: bo
+  frequency: weekly
+  kind: write_approval
+  scene: B1
+  phrasing: {how: adapted, from: R4, original: "Help me launch a product promotion."}
+  sources: [R6, R16]
+  turns:
+    - "Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page."
+    - "Drop the low-stock ones. Give the overshirt 15% instead."
+  tools:
+    required: [search_products, list_tiers, set_sale_prices, create_coupon, schedule_banner]
+    allowed: [get_policy, list_active_promotions, list_display_slots, list_categories]
+  expect:
+    change_set:
+      state: drafting
+      version: 2
+      items:
+        - {tool: set_sale_prices, args: {valid_for_member_tier: vip, percent_off: 20}}
+        - {tool: create_coupon}
+        - {tool: schedule_banner, args: {slot_id: slot_home_hero}}
+      checks_passed: [max_discount, price_floor, promo_min_stock, promotion_overlap, member_benefits_per_order, slot_free]
+    facts:
+      - "40 of 42 summer outerwear products; chore coat (7) and rain parka (4) are left out for low stock"
+      - "the overshirt is at 15% ($67.15) to stay above the price floor"
+    must_not_call: []
+  notes: Scene B1 in docs/scenarios.md §6 is the full expected result.
+
+- id: mk-whats-running-this-weekend
+  job: marketer
+  persona: adm_sj
+  surface: bo
+  frequency: weekly
+  kind: read
+  phrasing: {how: ours}
+  sources: [R16]
+  turns:
+    - "what promos are live this weekend? I don't want to stack anything on top of the knit sale"
+  tools:
+    required: [list_active_promotions]
+    allowed: [get_promotion, search_promotions]
+  expect:
+    facts:
+      - "four promotions overlap Sat Nov 7 – Sun Nov 8: Autumn knitwear 15% (everyone, until Nov 15), Birthday coupon (members), Free shipping over $80 (everyone), Gold tier 10% (gold)"
+      - "the knit sale covers 26 knitwear products"
+    must_not_call: []
+  notes: >
+    "This weekend" has to become Sat Nov 7 00:00 – Sun Nov 8 23:59 from the store clock, and the
+    agent should say the dates it used.
+
+- id: mk-hero-free-next-weekend
+  job: marketer
+  persona: adm_sj
+  surface: bo
+  frequency: weekly
+  kind: read
+  phrasing: {how: ours}
+  sources: [R16]
+  turns:
+    - "is the homepage hero open next weekend? want to run something for VIPs"
+  tools:
+    required: [list_display_slots]
+    allowed: [get_display_slot, list_banners]
+  expect:
+    facts:
+      - "next weekend is Sat Nov 14 – Sun Nov 15"
+      - "the home hero shows Fall layers to everyone with no end date, and is free for VIP, Gold and Member audiences all of Nov 14–15"
+    must_not_call: [schedule_banner]
+  notes: >
+    Checking the calendar before booking is the planning step; booking is a separate request.

@@ -1,0 +1,62 @@
+# Store owner / manager tasks, held-out set: not looked at while building the agent. Format: eval/README.md §3.
+# Store clock for every task: Fri Nov 6 2026 11:00 America/New_York (docs/scenarios.md §1.1).
+# Expected facts were read from the demo store through the same tools on Oct 30 2026.
+
+- id: mgr-undo-banner
+  job: owner
+  persona: adm_sj
+  surface: bo
+  frequency: occasional
+  kind: read
+  phrasing: {how: ours}
+  sources: [R14]
+  turns:
+    - "actually put the old homepage banner back"
+  tools:
+    required: [search_change_sets]
+    allowed: [get_change_set, list_display_slots, get_display_slot]
+  expect:
+    facts:
+      - "the swap is cs_1039, live since 10:00; it can be undone until Nov 7 23:59"
+      - "undo is a person's button on the change set; the agent points to it instead of booking a new banner"
+    must_not_call: [set_banner, schedule_banner]
+
+- id: mgr-weekly-summary
+  job: owner
+  persona: adm_sj
+  surface: bo
+  frequency: weekly
+  kind: read
+  phrasing: {how: verbatim, from: R2, original: "Give me a weekly performance summary"}
+  sources: [R2, R20, R24]
+  turns:
+    - "Give me a weekly performance summary"
+  tools:
+    required: [get_sales_overview]
+    allowed: [get_sales_trend, explain_sales_change, get_cs_overview]
+  expect:
+    facts:
+      - "the window is stated (Sat Oct 31 – Fri Nov 6 so far, or the last 7 full days) with the week before for comparison"
+    must_not_call: []
+  gaps:
+    - "tool: get_sales_overview, get_sales_trend and get_cs_overview are in docs/api but not built."
+
+- id: mgr-how-is-business
+  job: owner
+  persona: adm_sj
+  surface: bo
+  frequency: weekly
+  kind: read
+  phrasing: {how: verbatim, from: R5, original: "How is my business doing?"}
+  sources: [R5, R20, R22]
+  turns:
+    - "How is my business doing?"
+  tools:
+    required: [get_sales_overview]
+    allowed: [get_sales_trend, explain_sales_change, get_customer_overview, list_tasks]
+  expect:
+    facts:
+      - "yesterday (Thu Nov 5) was $18,240, 20% under the Thursday average; the agent leads with that and its causes"
+    must_not_call: []
+  gaps:
+    - "tool: get_sales_overview, get_sales_trend, explain_sales_change and get_customer_overview are in docs/api but not built."

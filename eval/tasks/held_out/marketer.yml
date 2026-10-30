@@ -1,0 +1,86 @@
+# Marketer tasks, held-out set: not looked at while building the agent. Format: eval/README.md §3.
+# Store clock for every task: Fri Nov 6 2026 11:00 America/New_York (docs/scenarios.md §1.1).
+# Expected facts were read from the demo store through the same tools on Oct 30 2026.
+
+- id: mk-pause-knit-until-monday
+  job: marketer
+  persona: adm_sj
+  surface: bo
+  frequency: occasional
+  kind: write
+  phrasing: {how: ours}
+  sources: [R16]
+  turns:
+    - "pause the knit sale until monday, we're out of the good sizes"
+  tools:
+    required: [pause_promotion]
+    allowed: [list_active_promotions, search_promotions, get_promotion, search_products, get_inventory]
+  expect:
+    change_set:
+      items:
+        - {tool: pause_promotion, args: {promotion_id: promo_autumn_knit}}
+    facts:
+      - "Autumn knitwear 15% (promo_autumn_knit, running until Nov 15) is paused"
+      - "pausing has no end time: the agent says someone has to resume it on Mon Nov 9"
+    must_not_call: [end_promotion]
+  notes: Ending the sale instead of pausing it fails the task; it cannot be resumed.
+
+- id: mk-category-promotion
+  job: marketer
+  persona: adm_sj
+  surface: bo
+  frequency: weekly
+  kind: write_approval
+  phrasing: {how: adapted, from: R6, original: "Create Promotion for [Category Name], offering $50 off, on transactions above $250, valid for 2 weeks"}
+  sources: [R6]
+  turns:
+    - "Create a promotion for Outerwear, $50 off orders above $250, valid for 2 weeks"
+  tools:
+    required: [create_promotion]
+    allowed: [list_categories, list_active_promotions, get_policy]
+  expect:
+    facts:
+      - "2 weeks from today is Fri Nov 6 – Thu Nov 19 23:59 store time"
+    must_not_call: []
+  gaps:
+    - "tool: create_promotion is in docs/api but not built."
+
+- id: mk-winback
+  job: marketer
+  persona: adm_sj
+  surface: bo
+  frequency: monthly
+  kind: write_approval
+  phrasing: {how: adapted, from: R8, original: "win-back campaign"}
+  sources: [R7, R8]
+  turns:
+    - "set up a win-back for customers who haven't ordered in 90 days. 15% off, email"
+  tools:
+    required: [define_segment, send_bulk]
+    allowed: [preview_segment, search_members, create_coupon, list_message_templates]
+  expect:
+    facts:
+      - "the segment size is shown before anything is sent"
+    must_not_call: []
+  gaps:
+    - "tool: define_segment, preview_segment and send_bulk are in docs/api but not built."
+
+- id: mk-viewed-not-purchased
+  job: marketer
+  persona: adm_sj
+  surface: bo
+  frequency: occasional
+  kind: read
+  phrasing: {how: verbatim, from: R7, original: "Someone who has viewed a product and not made a purchase in the last 60 days"}
+  sources: [R7]
+  turns:
+    - "Someone who has viewed a product and not made a purchase in the last 60 days"
+  tools:
+    required: []
+    allowed: [search_members, define_segment]
+  expect:
+    facts:
+      - "the store does not record product views, so this audience cannot be built; the agent says so"
+    must_not_call: []
+  gaps:
+    - "data: no browse or product-view events."

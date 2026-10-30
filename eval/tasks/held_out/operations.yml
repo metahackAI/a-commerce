@@ -1,0 +1,83 @@
+# Store operations tasks, held-out set: not looked at while building the agent. Format: eval/README.md §3.
+# Store clock for every task: Fri Nov 6 2026 11:00 America/New_York (docs/scenarios.md §1.1).
+# Expected facts were read from the demo store through the same tools on Oct 30 2026.
+
+- id: ops-unfulfilled-3-days
+  job: operations
+  persona: adm_sj
+  surface: bo
+  frequency: daily
+  kind: read
+  phrasing: {how: ours}
+  sources: [R17]
+  turns:
+    - "any orders sitting unfulfilled for more than 3 days?"
+  tools:
+    required: [search_orders]
+    allowed: [get_order]
+  expect:
+    facts:
+      - "none: 412 orders are processing and the oldest was placed Wed Nov 4 00:09"
+    must_not_call: []
+  notes: Another "none" answer; listing the 412 processing orders is not an answer.
+
+- id: ops-photo-request
+  job: operations
+  persona: adm_sj
+  surface: bo
+  frequency: daily
+  kind: write_approval
+  phrasing: {how: ours}
+  sources: [R19]
+  turns:
+    - "ask the customer on 20366 for photos of the damage"
+  tools:
+    required: [send_customer_message]
+    allowed: [get_claim, get_order, search_return_requests, list_message_templates, get_return_policy]
+  expect:
+    change_set:
+      state: drafting
+      items:
+        - {tool: send_customer_message, args: {customer_id: cus_riley, kind: photo_request}}
+      irreversible: true
+    facts:
+      - "#20366 is a damaged-in-transit claim on Light rain parka x2 ($236.00) with no photos"
+    must_not_call: [refund_return, reject_claim]
+
+- id: ops-cancel-delivered
+  job: operations
+  persona: adm_sj
+  surface: bo
+  frequency: daily
+  kind: read
+  phrasing: {how: ours}
+  sources: [R19]
+  turns:
+    - "customer wants to cancel order 20402, can we still do that?"
+  tools:
+    required: [get_order]
+    allowed: [search_return_requests, get_claim, get_return_policy]
+  expect:
+    facts:
+      - "no: 20402 is already delivered, so it can only be returned"
+      - "a return request for it is already waiting (#20402 in the over-$200 review)"
+    must_not_call: [cancel_order_lines, approve_claim]
+
+- id: ops-change-address-in-transit
+  job: operations
+  persona: adm_sj
+  surface: bo
+  frequency: weekly
+  kind: read
+  phrasing: {how: ours}
+  sources: [R19]
+  turns:
+    - "customer on 27184 moved, can you change the shipping address?"
+  tools:
+    required: [get_order]
+    allowed: [track_shipment, get_delivery]
+  expect:
+    facts:
+      - "no: the order is already with UPS (in transit since Nov 2); an address can only change before it ships"
+    must_not_call: [change_shipping_address, update_address]
+  notes: Address edits are allowed only while unfulfilled (R19); updating the customer's address book does not move this parcel.

@@ -1,0 +1,74 @@
+# Store owner / manager tasks, design set. Format: eval/README.md §3.
+# Store clock for every task: Fri Nov 6 2026 11:00 America/New_York (docs/scenarios.md §1.1).
+# Expected facts were read from the demo store through the same tools on Oct 30 2026.
+
+- id: mgr-what-needs-me-today
+  job: owner
+  persona: adm_sj
+  surface: bo
+  frequency: daily
+  kind: read
+  phrasing: {how: adapted, from: R5, original: "What are the top things I need to do to prepare for the holiday season?"}
+  sources: [R8]
+  turns:
+    - "what needs my attention today?"
+  tools:
+    required: [list_tasks]
+    allowed: [get_task, search_change_sets, get_change_set, search_return_requests]
+  expect:
+    facts:
+      - "one task needs you: the Linen shirt reorder draft (task_linen_reorder, draft cs_1041: 3 sizes, 240 units)"
+      - "two are still working: the over-$200 returns review (task_returns_1106) and the size chart check (task_size_charts)"
+      - "two finished this morning: below-cost prices raised to the floor (cs_1040, undo until Nov 7 23:59) and the Fall layers banner (cs_1039, live since 10:00)"
+    must_not_call: []
+  gaps:
+    - "data: cs_1041 says 3 sizes, 240 units but has no items, and there is no purchase order tool to put them in."
+  notes: >
+    The operator home answers this without a model. The task checks that the agent ranks what needs
+    a person first instead of listing everything.
+
+- id: mgr-what-changed-this-morning
+  job: owner
+  persona: adm_sj
+  surface: bo
+  frequency: daily
+  kind: read
+  phrasing: {how: ours}
+  sources: [R14, R22]
+  turns:
+    - "what did the agent change in the store this morning, and who signed off on it?"
+  tools:
+    required: [search_action_log]
+    allowed: [get_action_log, search_change_sets, get_change_set, get_change_history]
+  expect:
+    facts:
+      - "08:31 the watcher's change set raised 4 products to the price floor (9 set_price calls, verified 08:31:30); it was made by the watcher (sys_watcher) and no person approved it"
+      - "09:35 adm_sj approved the home banner swap to Fall layers; scheduled and verified 09:35–09:36"
+    must_not_call: []
+  gaps:
+    - "data: action log rows carry change_set_id = null, so the log cannot be joined to its change set; the agent has to match by time."
+
+- id: b3-why-sales-dropped
+  job: owner
+  persona: adm_sj
+  surface: bo
+  frequency: weekly
+  kind: read
+  scene: B3
+  phrasing: {how: adapted, from: R4, original: "Why are my sales down this week?"}
+  sources: [R8, R20, R24]
+  turns:
+    - "Why did sales drop yesterday?"
+  tools:
+    required: [explain_sales_change]
+    allowed: [get_sales_trend, get_sales_overview, search_products, get_inventory]
+  expect:
+    facts:
+      - "Thu Nov 5: $18,240 against a Thursday average of $22,900 (-$4,660, -20%); 201 orders against 247"
+      - "M and L sold out on the three best sellers (chore coat, rain parka, denim jacket): about -$2,700"
+      - "the weekly email did not go out (Thu 08:00 list import failed): about -$1,300; -$660 is not explained"
+    must_not_call: []
+  notes: >
+    Owners want the comparison window stated and the unexplained part admitted (R20, R22). Dates are
+    store time: counting by UTC day gives wrong totals (R24, and our own first count did exactly
+    that).

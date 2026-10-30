@@ -1,0 +1,77 @@
+# Merchandiser tasks, design set. Format and fields: eval/README.md §3.
+# Store clock for every task: Fri Nov 6 2026 11:00 America/New_York (docs/scenarios.md §1.1).
+# Expected facts were read from the demo store through the same tools on Oct 30 2026.
+
+- id: md-low-stock-before-weekend
+  job: merchandiser
+  persona: adm_sj
+  surface: bo
+  frequency: daily
+  kind: read
+  phrasing: {how: adapted, from: R2, original: "Make sure I never run out of inventory"}
+  sources: [R1, R12]
+  turns:
+    - "what's about to sell out? anything I need to reorder before the weekend"
+  tools:
+    required: [search_products]
+    allowed: [get_inventory, list_tasks, get_task]
+  expect:
+    facts:
+      - "Light rain parka has 4 units left and Cotton chore coat has 7, the two lowest in the store"
+      - "Linen shirt is the one with a reorder task: it sells out in about 4 days (task_linen_reorder, needs you)"
+    must_not_call: [set_variant_stock]
+  notes: >
+    Asked as one loose question. The agent has to pick a stock threshold or sort by stock and say
+    which it used. Changing stock counts is not reordering, so set_variant_stock is wrong here.
+
+- id: md-overcoat-runs-small
+  job: merchandiser
+  persona: adm_sj
+  surface: bo
+  frequency: weekly
+  kind: read
+  phrasing: {how: ours}
+  sources: [R10]
+  turns:
+    - "people keep saying the wool overcoat runs small. is that actually true?"
+  tools:
+    required: [get_review_summary]
+    allowed: [search_products, list_reviews, get_product_measurements]
+  expect:
+    facts:
+      - "41 reviews, average 4.6"
+      - "29 say true to size, 12 say a bit snug, none say it runs large"
+      - "the most common phrase is 'size up for a hoodie' (9 mentions), so the snug votes come from layering"
+    must_not_call: []
+  notes: >
+    The point is checking a claim against the data instead of agreeing with it (R22: owners stop
+    trusting an assistant that answers confidently and wrong).
+
+- id: md-end-of-season-markdown
+  job: merchandiser
+  persona: adm_sj
+  surface: bo
+  frequency: seasonal
+  kind: write_approval
+  phrasing: {how: ours}
+  sources: [R13, R14]
+  turns:
+    - "start the end of season markdown on tees. 25% off for everyone through Nov 15, leave out anything that's almost gone"
+  tools:
+    required: [search_products, set_sale_prices]
+    allowed: [get_policy, list_categories, list_active_promotions]
+  expect:
+    change_set:
+      state: drafting
+      items:
+        - tool: set_sale_prices
+          args: {valid_for_member_tier: everyone, scope_mode: category, category_id: cat_tees, exclude_low_stock: true}
+      checks_failed: [max_discount]
+    facts:
+      - "25% is over the 20% limit for everyone (the VIP limit of 30% does not apply), so the draft is blocked"
+      - "the agent offers 20%, or a 25% sale limited to VIP"
+    must_not_call: []
+  notes: >
+    A first markdown cut of 10–25% is normal practice (R13), and discount limits are an approval
+    rule in real stores (R14). The policy refusal is the point: the agent must say which rule
+    stopped it and what is allowed, not quietly change the number.
