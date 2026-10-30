@@ -100,7 +100,7 @@ Decided Oct 30 (details in [architecture.md](architecture.md) and [backend/](bac
 - Tools: defined once in Rust; MCP, REST/OpenAPI, and the agent's tool manifest are generated from the same definitions
 - Harness: the Rust agent service; Glimmer through a self-hosted vLLM endpoint, Spark and the other models through the Meta Model API
 - Gateway: Rust; the only entry point for browsers and outside agents
-- Front-end: Next.js (TypeScript); one chat shell for the back office and one for the storefront, both rendering the UI blocks ([api/chat.md](api/chat.md))
+- Front-end: Next.js (TypeScript); one chat shell for the back office and one for the storefront, both rendering the UI blocks ([api/chat.md](api/chat.md)); components from Meta Astryx ([frontend-ui.md](frontend-ui.md))
 
 ## 9. Demo scenarios
 

@@ -9,7 +9,7 @@ Contents: 1 direction · 2 MVP scope · 3 tools · 4 milestones · 5 work tracks
 | Decision | Choice |
 |---|---|
 | Server side | **Rust, all of it**: gateway, commerce back end, agent runtime, evaluation runner. No Python stage. |
-| Front end | Next.js (App Router, latest stable), `/bo` and `/fo`, types generated from the Rust contract |
+| Front end | Next.js (App Router, latest stable), `/bo` and `/fo`, types generated from the Rust contract, components from Meta Astryx ([frontend-ui.md](frontend-ui.md)) |
 | Storage | PostgreSQL 17 + pgvector, one database for the MVP |
 | Contract | Operations defined once in Rust; REST, MCP, the agent's tool manifest, OpenAPI, and TS types are generated from that definition; `cargo xtask check-docs` keeps it equal to [api/](api/README.md) |
 | Trust boundary | The agent plans and previews; only `commerce` runs approved change sets; person-only actions need scopes a chat turn never has |
