@@ -19,6 +19,7 @@ acom-promotion.workspace = true
 acom-sales.workspace = true
 acom-store.workspace = true
 chrono.workspace = true
+chrono-tz.workspace = true
 rust_decimal.workspace = true
 schemars.workspace = true
 serde.workspace = true

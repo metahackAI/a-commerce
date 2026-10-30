@@ -653,6 +653,26 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `messaging.message_template`
+
+`schema:CreativeWork/acom:MessageTemplate` — a reusable message for one channel, with named variables; creating one sends nothing. id prefix tpl_. · id `tpl_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix tpl_; the same value the API, logs and events use. |
+| `name` | text |  | `schema:name` | name operators pick the template by, for example Back in stock. |
+| `message_channel` | text |  | `acom:messageChannel` | channel the template is written for; a campaign must use the same channel. values: message_channel Values: `email` · `sms` · `push` · `in_app`. |
+| `message_purpose` | text |  | `acom:messagePurpose` | marketing (needs opt-in consent, held in quiet hours) or transactional (about an order or claim). |
+| `headline` | text | ✓ | `schema:headline` | subject line for email and push; NULL for sms and in-app. |
+| `text` | text |  | `schema:text` | body with variables written as {{name}}, up to 2,000 characters. |
+| `variables` | text[] |  | `acom:variables` | variable names the headline and text may use, for example {customer_name,product_name}. |
+| `in_language` | text |  | `schema:inLanguage` | BCP 47 language tag of the text, for example en-US. |
+| `template_status` | text |  | `acom:templateStatus` | draft until a campaign uses the template. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ## `platform`
 
 ### `platform.action_log`

@@ -1,5 +1,5 @@
 -- 0009_messaging.sql
--- Messaging: transactional messages to shoppers.
+-- Messaging: transactional messages to shoppers and the message templates operators write.
 -- Rules: docs/backend/database.md. Order: tables, indexes, comments, row-level security.
 
 
@@ -30,10 +30,31 @@ CREATE TABLE messaging.message (
   CONSTRAINT message_text_check CHECK (char_length(text) BETWEEN 1 AND 2000)
 );
 
+CREATE TABLE messaging.message_template (
+  tenant_id text NOT NULL REFERENCES platform.online_store(id),
+  id text NOT NULL,
+  name text NOT NULL,
+  message_channel text NOT NULL,
+  message_purpose text NOT NULL,
+  headline text,
+  text text NOT NULL,
+  variables text[] NOT NULL DEFAULT '{}',
+  in_language text NOT NULL DEFAULT 'en-US',
+  template_status text NOT NULL DEFAULT 'draft',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  version integer NOT NULL DEFAULT 1,
+  CONSTRAINT message_template_pkey PRIMARY KEY (tenant_id, id),
+  CONSTRAINT message_template_id_check CHECK (id ~ '^tpl_[a-z0-9_]+$'),
+  CONSTRAINT message_template_message_channel_check CHECK (message_channel IN ('email', 'sms', 'push', 'in_app')),
+  CONSTRAINT message_template_text_check CHECK (char_length(text) BETWEEN 1 AND 2000)
+);
+
 CREATE INDEX message_recipient_id_date_sent_idx ON messaging.message (tenant_id, recipient_id, date_sent);
 CREATE INDEX message_about_id_idx ON messaging.message (tenant_id, about_id);
 CREATE INDEX message_change_set_id_idx ON messaging.message (tenant_id, change_set_id);
 CREATE INDEX message_preview_id_idx ON messaging.message (tenant_id, preview_id);
+CREATE INDEX message_template_message_channel_idx ON messaging.message_template (tenant_id, message_channel);
 
 COMMENT ON TABLE messaging.message IS
   'schema:Message — a transactional message to one shopper about an order or claim; a sent message cannot be taken back. id prefix msg_.';
@@ -70,8 +91,43 @@ COMMENT ON COLUMN messaging.message.updated_at IS
 COMMENT ON COLUMN messaging.message.version IS
   '- row version, +1 on every change; previews record it in basis and execution compares it.';
 
+COMMENT ON TABLE messaging.message_template IS
+  'schema:CreativeWork/acom:MessageTemplate — a reusable message for one channel, with named variables; creating one sends nothing. id prefix tpl_.';
+COMMENT ON COLUMN messaging.message_template.tenant_id IS
+  '- store (tenant) that owns this row; row-level security key.';
+COMMENT ON COLUMN messaging.message_template.id IS
+  '- id with prefix tpl_; the same value the API, logs and events use.';
+COMMENT ON COLUMN messaging.message_template.name IS
+  'schema:name — name operators pick the template by, for example Back in stock.';
+COMMENT ON COLUMN messaging.message_template.message_channel IS
+  'acom:messageChannel — channel the template is written for; a campaign must use the same channel. values: message_channel';
+COMMENT ON COLUMN messaging.message_template.message_purpose IS
+  'acom:messagePurpose — marketing (needs opt-in consent, held in quiet hours) or transactional (about an order or claim).';
+COMMENT ON COLUMN messaging.message_template.headline IS
+  'schema:headline — subject line for email and push; NULL for sms and in-app.';
+COMMENT ON COLUMN messaging.message_template.text IS
+  'schema:text — body with variables written as {{name}}, up to 2,000 characters.';
+COMMENT ON COLUMN messaging.message_template.variables IS
+  'acom:variables — variable names the headline and text may use, for example {customer_name,product_name}.';
+COMMENT ON COLUMN messaging.message_template.in_language IS
+  'schema:inLanguage — BCP 47 language tag of the text, for example en-US.';
+COMMENT ON COLUMN messaging.message_template.template_status IS
+  'acom:templateStatus — draft until a campaign uses the template.';
+COMMENT ON COLUMN messaging.message_template.created_at IS
+  '- when the row was created.';
+COMMENT ON COLUMN messaging.message_template.updated_at IS
+  '- when the row was last changed.';
+COMMENT ON COLUMN messaging.message_template.version IS
+  '- row version, +1 on every change; previews record it in basis and execution compares it.';
+
 ALTER TABLE messaging.message ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messaging.message FORCE ROW LEVEL SECURITY;
 CREATE POLICY message_tenant_isolation ON messaging.message
+  USING (tenant_id = current_setting('app.tenant_id', true))
+  WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
+
+ALTER TABLE messaging.message_template ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messaging.message_template FORCE ROW LEVEL SECURITY;
+CREATE POLICY message_template_tenant_isolation ON messaging.message_template
   USING (tenant_id = current_setting('app.tenant_id', true))
   WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
