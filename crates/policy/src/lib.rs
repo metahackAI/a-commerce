@@ -5,11 +5,15 @@
 //! the rules changed under it. Typed views (one struct per file) are added per domain as the
 //! operations that read them are built. Design: `docs/backend/commerce.md` §4.
 
+pub mod approval;
+
 use std::collections::BTreeMap;
 
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+
+pub use approval::Approval;
 
 /// The policy files every store has, one per domain plus `approval`, in load order.
 pub const FILES: &[&str] = &[
@@ -146,7 +150,7 @@ fn merge(base: &mut Value, over: Value) {
 mod tests {
     use super::*;
 
-    fn defaults() -> PolicySet {
+    pub(crate) fn defaults() -> PolicySet {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../policies");
         let texts: Vec<(&str, String)> = FILES
             .iter()
