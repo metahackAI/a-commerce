@@ -6,9 +6,23 @@ version = 4
 name = "acom-agent"
 version = "0.1.0"
 dependencies = [
+ "acom-auth",
  "acom-contract",
  "acom-core",
  "acom-llm",
+ "acom-store",
+ "chrono",
+ "chrono-tz",
+ "futures",
+ "reqwest",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "serde_norway",
+ "sqlx",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -17,14 +31,19 @@ version = "0.1.0"
 dependencies = [
  "acom-agent",
  "acom-auth",
+ "acom-contract",
  "acom-core",
  "acom-llm",
  "acom-server",
  "acom-store",
  "axum",
+ "chrono-tz",
  "clap",
+ "futures",
+ "reqwest",
  "serde_json",
  "tokio",
+ "tower",
  "tracing",
 ]
 
