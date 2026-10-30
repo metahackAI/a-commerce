@@ -12,6 +12,7 @@ pub mod service;
 mod cart;
 mod checkout;
 mod delivery;
+mod gift;
 mod merge;
 mod order;
 mod owner;
@@ -46,6 +47,8 @@ pub const ADDRESS_NOT_FOUND: ErrorCode = ErrorCode::new("address_not_found", Err
 /// Neither a signed-in shopper nor a browser session (or a guest asking for orders).
 pub const NOT_SIGNED_IN: ErrorCode = ErrorCode::new("not_signed_in", ErrorClass::Unauthenticated);
 pub const INVALID_FILTER: ErrorCode = ErrorCode::new("invalid_filter", ErrorClass::InvalidInput);
+/// A gift's recipient did not accept it in time (`gift.auto_cancel_if_no_address_days`).
+pub const GIFT_EXPIRED: ErrorCode = ErrorCode::new("gift_expired", ErrorClass::Domain);
 
 /// Adds every sales operation to the registry, and installs the readers other domains use to
 /// see sales data (they cannot depend on sales): the cart for promotion's
@@ -65,7 +68,9 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .read(order::GetMyOrders)
         .read(order::GetOrder)
         .read(order::SearchOrders)
-        .read(payment::GetPayment);
+        .read(payment::GetPayment)
+        .write(gift::PrepareGiftOrder)
+        .person(gift::AcceptGiftOrder);
 }
 
 pub(crate) fn not_signed_in() -> ToolError {
@@ -126,7 +131,7 @@ mod tests {
         let mut b = RegistryBuilder::default();
         super::register(&mut b);
         let registry = b.build().unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(registry.len(), 12);
+        assert_eq!(registry.len(), 14);
         for op in registry.iter() {
             let m = op.meta();
             assert_eq!(m.domain(), "sales", "{}", m.tool);

@@ -532,6 +532,10 @@ pub(crate) struct NewOrder<'a> {
     pub shipping: Money,
     pub total: Money,
     pub preview_id: &'a str,
+    pub is_gift: bool,
+    /// `{card_message, gift_receipt, receipt_hides_prices, exchange_until, recipient}` of a gift.
+    pub gift_options: Option<&'a Value>,
+    pub gift_wrap: Option<Money>,
 }
 
 pub(crate) async fn insert_order(tx: &mut TxCx, o: &NewOrder<'_>) -> Result<(), ToolError> {
@@ -539,8 +543,9 @@ pub(crate) async fn insert_order(tx: &mut TxCx, o: &NewOrder<'_>) -> Result<(), 
         "INSERT INTO sales.sales_order (tenant_id, id, order_number, order_date, order_status,
            customer_id, sales_channel, discount_code, coupon_id, subtotal_value, subtotal_currency,
            discount_value, discount_currency, shipping_value, shipping_currency,
-           total_payment_due_value, total_payment_due_currency, preview_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)",
+           total_payment_due_value, total_payment_due_currency, preview_id, is_gift, gift_options,
+           gift_wrap_value, gift_wrap_currency)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)",
     )
     .bind(tx.tenant.as_str())
     .bind(o.id)
@@ -560,6 +565,10 @@ pub(crate) async fn insert_order(tx: &mut TxCx, o: &NewOrder<'_>) -> Result<(), 
     .bind(o.total.value)
     .bind(o.total.currency.as_str())
     .bind(o.preview_id)
+    .bind(o.is_gift)
+    .bind(o.gift_options)
+    .bind(o.gift_wrap.map(|m| m.value))
+    .bind(o.gift_wrap.map(|m| m.currency.as_str().to_owned()))
     .execute(&mut *tx.tx)
     .await
     .map_err(db)?;
@@ -688,6 +697,150 @@ pub(crate) async fn set_quantity(tx: &mut TxCx, id: &str, quantity: u32) -> Resu
     .bind(tx.tenant.as_str())
     .bind(id)
     .bind(i32::try_from(quantity).unwrap_or(i32::MAX))
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------- gifts the recipient accepts
+
+/// A gift waiting for (or done with) its recipient (`sales.gift_order`).
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub(crate) struct GiftOrderRow {
+    pub id: String,
+    pub order_id: String,
+    pub recipient_name: String,
+    pub action_status: String,
+    pub expires: DateTime<Utc>,
+}
+
+pub(crate) async fn insert_gift_order(
+    tx: &mut TxCx,
+    id: &str,
+    order_id: &str,
+    recipient_name: &str,
+    recipient_contact: &str,
+    expires: DateTime<Utc>,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "INSERT INTO sales.gift_order (tenant_id, id, order_id, recipient_name, recipient_contact,
+           expires)
+         VALUES ($1, $2, $3, $4, $5, $6)",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(order_id)
+    .bind(recipient_name)
+    .bind(recipient_contact)
+    .bind(expires)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// The gift, locked for its acceptance.
+pub(crate) async fn gift_order_for_update(
+    tx: &mut TxCx,
+    id: &str,
+) -> Result<Option<GiftOrderRow>, ToolError> {
+    sqlx::query_as::<_, GiftOrderRow>(
+        "SELECT id, order_id, recipient_name, action_status, expires FROM sales.gift_order
+         WHERE tenant_id = $1 AND id = $2 FOR UPDATE",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// Ends the acceptance: `completed` when the recipient accepted, `failed` when it lapsed.
+pub(crate) async fn finish_gift_order(
+    tx: &mut TxCx,
+    id: &str,
+    status: &str,
+    accepted_at: Option<DateTime<Utc>>,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE sales.gift_order SET action_status = $3, accepted_at = $4, updated_at = now(),
+           version = version + 1
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(status)
+    .bind(accepted_at)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// Moves an order and all its items to `status` (a held gift order once it is accepted).
+pub(crate) async fn set_order_and_items_status(
+    tx: &mut TxCx,
+    order_id: &str,
+    status: &str,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE sales.sales_order SET order_status = $3, updated_at = now(), version = version + 1
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(order_id)
+    .bind(status)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    sqlx::query(
+        "UPDATE sales.order_item SET order_item_status = $3, updated_at = now(),
+           version = version + 1
+         WHERE tenant_id = $1 AND order_id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(order_id)
+    .bind(status)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// Swaps an item to another variant of the same product (the recipient chose a size or color).
+pub(crate) async fn set_item_variant(
+    tx: &mut TxCx,
+    item_id: &str,
+    variant_id: &str,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE sales.order_item SET product_id = $3, updated_at = now(), version = version + 1
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(item_id)
+    .bind(variant_id)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// Records that a held payment went through.
+pub(crate) async fn complete_payment(
+    tx: &mut TxCx,
+    payment_id: &str,
+    paid_at: DateTime<Utc>,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE sales.payment SET payment_status = 'payment_complete', paid_at = $3,
+           updated_at = now(), version = version + 1
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(payment_id)
+    .bind(paid_at)
     .execute(&mut *tx.tx)
     .await
     .map_err(db)?;

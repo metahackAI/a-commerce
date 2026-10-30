@@ -154,9 +154,67 @@ pub(crate) fn payment_rules(policy: &PolicySet) -> Result<PaymentRules, ToolErro
     })
 }
 
+/// `order.gift` and `fulfillment.gift_exchange_until`: how gift orders work in this store.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct GiftRules {
+    /// `address_known`, `recipient_accepts`.
+    pub recipient_modes: Vec<String>,
+    pub recipient_per_order: u32,
+    /// Added once per wrapped gift.
+    pub wrap_fee: Money,
+    pub receipt_hides_prices: bool,
+    /// How long a `recipient_accepts` gift waits for its recipient.
+    pub accept_days: u32,
+    /// What a recipient may still change (`acceptance`, `address`, `options`); never the price.
+    pub recipient_can_change: Vec<String>,
+    /// Month and day of the size-exchange deadline, in the year of the order.
+    pub exchange_until: (u32, u32),
+}
+
+pub(crate) fn gift_rules(policy: &PolicySet) -> Result<GiftRules, ToolError> {
+    let wrap_fee = policy
+        .lookup("order.gift.wrap_fee")
+        .and_then(|v| serde_json::from_value::<Money>(v.clone()).ok())
+        // In cents, like every amount the order shows ("5.00", not "5.0").
+        .map(|m| acom_promotion::service::for_sales::money(m.value, m.currency))
+        .ok_or_else(|| missing("order.gift.wrap_fee"))?;
+    let modes = words(policy, "order.gift.recipient_modes");
+    if modes.is_empty() {
+        return Err(missing("order.gift.recipient_modes"));
+    }
+    let exchange_until = (
+        count(policy, "fulfillment.gift_exchange_until.month")?,
+        count(policy, "fulfillment.gift_exchange_until.day")?,
+    );
+    Ok(GiftRules {
+        recipient_modes: modes,
+        recipient_per_order: count(policy, "order.gift.recipient_per_order")?,
+        wrap_fee,
+        receipt_hides_prices: policy
+            .lookup("order.gift.gift_receipt_hides_prices")
+            .and_then(Value::as_bool)
+            .unwrap_or(true),
+        accept_days: count(policy, "order.gift.auto_cancel_if_no_address_days")?,
+        recipient_can_change: words(policy, "order.gift.recipient_can_change"),
+        exchange_until,
+    })
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+
+    #[test]
+    fn reads_the_gift_policy() {
+        let g = gift_rules(&defaults()).unwrap();
+        assert_eq!(g.wrap_fee.value.to_string(), "5.00");
+        assert_eq!(g.recipient_modes, ["address_known", "recipient_accepts"]);
+        assert_eq!(g.recipient_per_order, 1);
+        assert_eq!(g.accept_days, 3);
+        assert_eq!(g.exchange_until, (12, 31));
+        assert!(g.receipt_hides_prices);
+        assert!(g.recipient_can_change.iter().any(|c| c == "options"));
+    }
 
     pub(crate) fn defaults() -> PolicySet {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../policies");
