@@ -42,6 +42,8 @@ Contents: 1–4 what AI-native commerce is · 5–7 the landscape · 8–10 wher
 
 ## 3. Our definition
 
+> The working principles that came out of this research are in [design.md § Principles](design.md#principles) (set Oct 31). This section keeps the research view.
+
 **AI-native commerce is a store whose work can be done by agents, where people decide and agents carry it out, and where every screen is assembled for the task and the person in front of it.**
 
 Five properties, each with what we build:

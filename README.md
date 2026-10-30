@@ -30,14 +30,15 @@ Shoppers get the same treatment. The storefront is the same set of pages for eve
 
 Most commerce platforms bolt a chatbot onto screens built for people. A-Commerce starts from the other side: AI agents do the work, and people step in only where judgment is needed.
 
-The principles we hold to:
+**People state the goal and approve the result; the system does the rest. Intelligence comes from the model; trust comes from the structure.** That is why a small open-weight model can do routine work here.
 
-- **Tools, not screens.** Every capability is a tool an agent can call, with a clear name, typed inputs, and declared connections (which tool's output feeds which tool).
-- **Small model first.** The tool layer and the harness are designed so that a small open-weight model can do routine work. A larger model is used only for steps that need it.
-- **Do the work, not just answer.** A request ends when the task is done, not when a reply is written.
-- **People approve; they don't operate.** Actions that move money or reach customers need a person's confirmation. Every action is logged.
-- **UI on demand.** The agent picks components from a fixed library and fills them with data. It does not write free-form HTML.
-- **The conversation is the personalization.** On the storefront, what the shopper says shapes both what is shown and how it is shown.
+1. **Tools work in the units people use.** Find by an order number, an email, a product name; get back what the decision needs.
+2. **Every change is a proposal first.** The agent drafts a change set; a person approves it where the rules require, like a pull request.
+3. **Rules are data, and the system checks them.** Discount limits and approval thresholds are enforced by the back-end, not by the prompt.
+4. **The system brings the work.** Low stock or a spike in returns becomes a task with a draft ready before anyone asks.
+5. **The screen is the result of the work.** The UI for the task at hand appears, fitted to the person; there are no menus to navigate.
+
+Each principle has a sign that it is broken, and we claim one only with numbers from the shared task set. Full text: [docs/design.md § Principles](docs/design.md#principles).
 
 ## Back office and storefront
 
