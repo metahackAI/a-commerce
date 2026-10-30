@@ -375,3 +375,31 @@ get_my_orders ──order_id──▶ get_return_options ──▶ (사람) POST
 | `consent.marketing_gate` ([customer.yml](../../policies/customer.yml)), `messaging.quiet_hours`, `messaging.daily_send_cap` | [messaging.yml](../../policies/messaging.yml) | `send_bulk`, `create_campaign` | `get_consent`, `create_campaign` |
 | 승인 판정 `thresholds.*`, `customer_messages`, `no_approval`, `preview_only` | [approval.yml](../../policies/approval.yml) | 모든 W·W$ (체크가 아니라 `needs_approval`·`approval_reason`) | (사람 승인) |
 | 할 일 감시 `watchers.*` | [platform.yml](../../policies/platform.yml) | `list_tasks`, `get_task`(감시 작업이 만듦) | — |
+
+## 7. 평가용 화면형 파사드
+
+[../design.md](../design.md) §7의 대조 실험 **전용**입니다. 제품의 일부가 아니고, 툴 인덱스(§4)·MCP·에이전트의 보통 턴에는 나오지 않습니다. 같은 백엔드 위에 [../design.md](../design.md) §2의 패턴을 우리가 직접 쓴 일반적인 예로 재현합니다(`acom-facade`). 화면마다 실제 오퍼레이션을 레지스트리로 불러서, 두 툴 세트가 같은 데이터를 읽고 바꿉니다.
+
+- **서빙:** 같은 엔드포인트에 `set=facade`를 붙입니다. 매니페스트 `GET /v1/tools?set=facade`, 호출 `POST /v1/tools/{screen}?set=facade` + `{"input": {...}}`. `set` 없이는 화면 이름을 찾지 못하고(`not_found`), `set=facade`로는 A-Commerce 툴을 찾지 못합니다.
+- **문:** 데모 모드(`ACOM_DEMO_MODE`)에서만 답하고, 아니면 `demo_mode_off`. 백오피스·스토어프론트의 사람(과 그 사람을 대신하는 우리 에이전트)만 쓰고 외부 에이전트·시스템은 `forbidden`. 매니페스트와 호출은 보통 툴처럼 대상(audience)·도메인 스코프로 거르고, 화면이 부르는 실제 오퍼레이션마다 같은 검사를 다시 합니다. 행 수준 보안도 그대로입니다.
+- **쓰기:** 레거시 백엔드처럼 바로 실행합니다. 프리뷰를 돌려주지 않고 변경셋·사람 승인이 없으며, 실제 오퍼레이션의 정책 체크도 적용하지 않습니다(액션 로그에는 `via`와 적용하지 않은 체크 수를 남김). 주문하기만은 예외로, 주문서(`getOrdShtInitData`)는 `prepare_order` 프리뷰를 만들 뿐이고 주문은 쇼퍼의 버튼(사람 전용)만 합니다. 같은 스토어를 쓰는 안전은 평가가 실행 사이마다 데모 스토어를 다시 적재(`POST /v1/platform/demo/reset`)해서 지킵니다.
+- **턴:** 턴 요청의 `tool_set: "facade"`([chat.md](chat.md) §1)가 런타임을 이 매니페스트로 바꿉니다. 턴 기록의 `usage.tool_set`이 어느 세트를 썼는지 남깁니다.
+
+| 화면 | 종류 | 실제 오퍼레이션 | 보여 주는 패턴 |
+|---|---|---|---|
+| `getPrdGridList` · `getPrdGridListCnt` | R | `search_products` | POST 읽기와 따로 부르는 개수(목록에는 합계 없음), 코드(`sellStatCd`) |
+| `getPrdDtlInfo` · `getPrdDtlInfoV2` | R | `get_product` | 버전 중복(V2는 옵션·속성을 더함) |
+| `getMbrGrdList` | R | `list_tiers` | 코드(`mbrGrdCd` `G01`…, `G00` = 모두) |
+| `getPrmtTgtMbrList` · `getPrmtTgtMbrListCnt` | R | `search_members` | 축약 이름, 따로 부르는 개수 |
+| `getPrmtGridList` · `getPrmtGridListCnt` | R | `search_promotions` | 코드(`prmtTpCd` `T01`–`T05`, `prmtStatCd`), 따로 부르는 개수 |
+| `savePrmtList` | W | `set_sale_prices` · `pause_promotion` · `end_promotion` | 행 상태(`rowStat` I/U/D)가 있는 일괄 저장, 머릿속에만 있는 규칙(체크 없음) |
+| `saveCpnList` | W | `create_coupon` | 일괄 저장, 코드(`cpnAplyTpCd`, `dupAplyCd`) |
+| `getDispCornerList` · `saveDispBnrList` | R · W | `list_display_slots` · `schedule_banner` | 화면 단위, 일괄 저장 |
+| `getClmGridList` · `getClmGridListCnt` | R | `search_return_requests` | 그리드 + 개수, 코드(`clmStatCd`, `clmRsnCd`) |
+| `getRfndPopInitData` · `saveRfndProc` | R · W | `get_claim` + `get_order` · `refund_return` | 환불 하나가 그리드·팝업 초기화·저장으로 나뉨 |
+| `saveCustMsgSend` | W | `send_customer_message` | 축약 이름, 코드(`msgTpCd`, `sndChnlCd`) |
+| `getCartList` · `saveCartList` | R · W | `get_cart` · `add_to_cart` · `update_cart_item` · `remove_cart_item` | 일괄 저장 하나에 담기·바꾸기·빼기 |
+| `getOrdShtInitData` | R(부작용 있음) | `get_cart` + `prepare_order` 프리뷰 | 안전한지 알 수 없는 POST 읽기 |
+| `getSaleAnlsGridList` | R | `explain_sales_change` | 코드(`cmprBaseCd`), 그리드 한 줄 |
+
+코드표(`crates/facade/src/codes.rs`)는 스키마와 설명 어디에도 없습니다. 설명은 화면 말투로 짧고("Promotion list save.") 정책 힌트가 없으며, `consumes`·`produces`·`checks`도 선언하지 않습니다. `cargo xtask check-docs`는 §4만 읽으므로 이 절은 대조 대상이 아닙니다.

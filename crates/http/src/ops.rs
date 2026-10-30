@@ -284,32 +284,122 @@ fn visible(p: &Principal, meta: &OpMeta) -> bool {
     meta.is_tool() && audience && scoped
 }
 
-/// `GET /v1/tools`: the tools this caller may use, with closed input schemas.
+/// Which tool set a manifest or tool call is for (`?set=`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ToolSet {
+    /// A-Commerce's tools (no `set`).
+    Commerce,
+    /// The screen-shaped facade of the evaluation (`set=facade`).
+    Facade,
+}
+
+fn tool_set(query: &Pairs) -> Result<ToolSet, ApiError> {
+    match query_value(query, "set") {
+        None | Some("commerce") => Ok(ToolSet::Commerce),
+        Some("facade") => Ok(ToolSet::Facade),
+        Some(other) => Err(ToolError::invalid_input(format!(
+            "There is no tool set `{other}`; leave `set` out for the store's tools."
+        ))
+        .detail(json!({"field": "set", "reason": "enum", "allowed": ["commerce", "facade"]}))
+        .into()),
+    }
+}
+
+/// The facade answers only in demo mode, and only to the back office's and the storefront's
+/// people (and our agent acting for them): never to outside agents or the system.
+fn facade_allowed(api: &Api, caller: &Caller) -> Result<(), ApiError> {
+    if !api.runtime.demo_mode() {
+        return Err(ToolError::new(
+            acom_changeset::clock::DEMO_MODE_OFF,
+            "The screen-shaped facade exists only for the evaluation, in demo mode.",
+        )
+        .detail(json!({"entity": "tool_set", "reason": "demo_mode_off"}))
+        .into());
+    }
+    if !matches!(caller.principal.surface, Surface::Bo | Surface::Fo) {
+        return Err(ToolError::new(
+            ErrorCode::FORBIDDEN,
+            "The screen-shaped facade is not available here.",
+        )
+        .detail(json!({"reason": "surface"}))
+        .into());
+    }
+    Ok(())
+}
+
+/// `GET /v1/tools`: the tools this caller may use, with closed input schemas. `?set=facade`
+/// lists the facade's screens instead (demo mode only), filtered the same way.
 async fn manifest(
     State(api): State<Arc<Api>>,
     caller: Caller,
     Query(query): Query<Pairs>,
 ) -> Response {
-    let domain = query_value(&query, "domain");
-    let mut items = api
-        .registry
-        .manifest(|m| visible(&caller.principal, m) && domain.is_none_or(|d| m.domain() == d));
-    items.sort_by_key(|e| e.meta.tool);
-    let total = items.len();
-    Json(json!({"items": items, "total": total})).into_response()
+    async {
+        let domain = query_value(&query, "domain");
+        let wanted =
+            |m: &OpMeta| visible(&caller.principal, m) && domain.is_none_or(|d| m.domain() == d);
+        let mut items = match tool_set(&query)? {
+            ToolSet::Commerce => api.registry.manifest(wanted),
+            ToolSet::Facade => {
+                facade_allowed(&api, &caller)?;
+                api.facade.manifest(wanted)
+            }
+        };
+        items.sort_by_key(|e| e.meta.tool);
+        let total = items.len();
+        Ok::<_, ApiError>(Json(json!({"items": items, "total": total})).into_response())
+    }
+    .await
+    .unwrap_or_else(IntoResponse::into_response)
+}
+
+/// `POST /v1/tools/{tool}?set=facade`: one screen of the facade, run at once with the caller's
+/// context. Body `{"input": {...}}`; there is no preview and no change set. Every real operation
+/// the screen touches passes the same audience and scope check as a normal tool call.
+async fn call_facade(
+    api: &Api,
+    caller: &Caller,
+    tool: &str,
+    body: &[u8],
+) -> Result<Response, ApiError> {
+    facade_allowed(api, caller)?;
+    let screen = api.facade.get(tool).ok_or_else(|| {
+        ToolError::new(
+            ErrorCode::NOT_FOUND,
+            format!("There is no screen named `{tool}`."),
+        )
+    })?;
+    may_use(&caller.principal, screen.meta())?;
+    let mut body = json_body(body)?;
+    let input = body.remove("input").unwrap_or_else(|| json!({}));
+    if let Some(k) = body.keys().next() {
+        return Err(ToolError::invalid_input(format!("Unknown field `{k}`.")).into());
+    }
+    let cx = api.cx(caller).await?;
+    let guard = |m: &OpMeta| may_use(&caller.principal, m).map_err(|ApiError(e)| e);
+    let out = api
+        .facade
+        .call(tool, &api.registry, &cx, &guard, input)
+        .await?;
+    Ok(Json(out).into_response())
 }
 
 /// `POST /v1/tools/{tool}`: how the agent runtime calls a tool by name.
 ///
 /// Body `{"input": {...}}` reads or previews; add `change_set_id` to put the preview in a
 /// change set, or send `{"preview_id": …}` alone to run a preview that needs no approval.
+/// With `?set=facade` the name is one of the facade's screens instead ([`call_facade`]).
 async fn call_tool(
     State(api): State<Arc<Api>>,
     caller: Caller,
     Path(tool): Path<String>,
+    Query(query): Query<Pairs>,
     body: Bytes,
 ) -> Response {
     async {
+        if tool_set(&query)? == ToolSet::Facade {
+            return call_facade(&api, &caller, &tool, &body).await;
+        }
         let op = api.registry.get(&tool).ok_or_else(|| {
             ToolError::new(
                 ErrorCode::NOT_FOUND,
@@ -426,5 +516,232 @@ mod tests {
         assert!(audience_allows(Surface::Fo, Audience::Both));
         assert!(!audience_allows(Surface::Bo, Audience::Internal));
         assert!(audience_allows(Surface::System, Audience::Internal));
+    }
+
+    /// The tool endpoints with the real registry and facade, no database (none of these calls
+    /// reaches one), and tokens signed with a throwaway key.
+    mod tool_sets {
+        use std::collections::BTreeSet;
+
+        use acom_auth::{Signer, Verifier, scopes};
+        use acom_core::TenantId;
+        use acom_core::enums::ActorKind;
+        use acom_store::{Db, Runtime};
+        use axum::body::Body;
+        use axum::http::{Request, StatusCode};
+        use tower::ServiceExt;
+
+        use super::*;
+
+        /// A throwaway Ed25519 key pair from openssl; `None` (test skipped) without openssl.
+        fn keys() -> Option<(Vec<u8>, Vec<u8>)> {
+            static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+            let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let dir =
+                std::env::temp_dir().join(format!("acom-http-test-{}-{n}", std::process::id()));
+            std::fs::create_dir_all(&dir).ok()?;
+            let (private, public) = (dir.join("k.pem"), dir.join("p.pem"));
+            let ok = std::process::Command::new("openssl")
+                .args(["genpkey", "-algorithm", "ed25519", "-out"])
+                .arg(&private)
+                .status()
+                .ok()?
+                .success()
+                && std::process::Command::new("openssl")
+                    .args(["pkey", "-pubout", "-in"])
+                    .arg(&private)
+                    .arg("-out")
+                    .arg(&public)
+                    .status()
+                    .ok()?
+                    .success();
+            let pair = ok.then(|| (std::fs::read(&private).ok(), std::fs::read(&public).ok()));
+            std::fs::remove_dir_all(&dir).ok();
+            match pair {
+                Some((Some(a), Some(b))) => Some((a, b)),
+                _ => None,
+            }
+        }
+
+        struct Fixture {
+            router: Router,
+            signer: Signer,
+            facade: Arc<acom_facade::Facade>,
+        }
+
+        fn fixture(demo_mode: bool) -> Option<Fixture> {
+            let (private, public) = keys()?;
+            let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../policies");
+            let texts: Vec<(&str, String)> = acom_policy::FILES
+                .iter()
+                .map(|f| {
+                    (
+                        *f,
+                        std::fs::read_to_string(format!("{dir}/{f}.yml")).unwrap(),
+                    )
+                })
+                .collect();
+            let policy =
+                acom_policy::PolicySet::from_defaults(texts.iter().map(|(f, t)| (*f, t.as_str())))
+                    .unwrap();
+            // Never connected: no call below gets as far as the database.
+            let db = Db::connect_lazy("postgres://nobody:none@127.0.0.1:9/none", 1).unwrap();
+            let facade = Arc::new(acom_facade::Facade::build().unwrap());
+            let api = Arc::new(Api {
+                runtime: Arc::new(Runtime::new(db, policy, demo_mode)),
+                registry: Arc::new(acom_registry::build().unwrap()),
+                verifier: Arc::new(Verifier::from_pem(&public, "commerce").unwrap()),
+                facade: facade.clone(),
+            });
+            Some(Fixture {
+                router: crate::router(api),
+                signer: Signer::from_pem(&private).unwrap(),
+                facade,
+            })
+        }
+
+        fn person(subject: &str, kind: ActorKind, surface: Surface) -> Principal {
+            let scopes = if kind == ActorKind::Operator {
+                scopes::admin()
+            } else {
+                scopes::shopper()
+            };
+            Principal {
+                subject: subject.into(),
+                kind,
+                tenant: TenantId::parse("store_northwind").unwrap(),
+                surface,
+                scopes,
+                name: None,
+                session_id: Some("ses_test".into()),
+            }
+        }
+
+        impl Fixture {
+            async fn send(&self, who: &Principal, method: &str, uri: &str) -> (StatusCode, Value) {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
+                let token = self.signer.sign(who, "req_test", now, 300).unwrap();
+                let req = Request::builder()
+                    .method(method)
+                    .uri(uri)
+                    .header("authorization", format!("Bearer {token}"))
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"input": {}}"#))
+                    .unwrap();
+                let res = self.router.clone().oneshot(req).await.unwrap();
+                let status = res.status();
+                let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+                    .await
+                    .unwrap();
+                (
+                    status,
+                    serde_json::from_slice(&bytes).unwrap_or(Value::Null),
+                )
+            }
+
+            fn screens(&self) -> BTreeSet<String> {
+                self.facade
+                    .iter()
+                    .map(|s| s.meta().tool.to_owned())
+                    .collect()
+            }
+        }
+
+        fn tools(body: &Value) -> BTreeSet<String> {
+            body["items"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|i| i["tool"].as_str().map(str::to_owned))
+                .collect()
+        }
+
+        #[tokio::test]
+        async fn the_normal_manifest_never_lists_a_screen() {
+            let Some(f) = fixture(true) else {
+                eprintln!("openssl not available; skipping");
+                return;
+            };
+            let screens = f.screens();
+            let registry = acom_registry::build().unwrap();
+            assert!(screens.iter().all(|s| registry.get(s).is_none()));
+
+            let sj = person("adm_sj", ActorKind::Operator, Surface::Bo).on_behalf();
+            let jamie = person("cus_jamie", ActorKind::Shopper, Surface::Fo).on_behalf();
+            for who in [&sj, &jamie] {
+                let (status, body) = f.send(who, "GET", "/v1/tools").await;
+                assert_eq!(status, StatusCode::OK, "{body}");
+                let normal = tools(&body);
+                assert!(!normal.is_empty());
+                assert!(normal.is_disjoint(&screens), "{normal:?}");
+            }
+
+            // The facade's own manifest: screens only, filtered by audience and scopes.
+            let (status, body) = f.send(&sj, "GET", "/v1/tools?set=facade").await;
+            assert_eq!(status, StatusCode::OK, "{body}");
+            let bo = tools(&body);
+            assert!(bo.is_subset(&screens), "{bo:?}");
+            for s in [
+                "getPrdGridList",
+                "getPrdGridListCnt",
+                "savePrmtList",
+                "saveRfndProc",
+            ] {
+                assert!(bo.contains(s), "{s}: {bo:?}");
+            }
+            assert!(!bo.contains("getCartList"), "a shopper's screen");
+            assert_eq!(body["items"][0]["method"], "POST");
+            let (_, body) = f.send(&jamie, "GET", "/v1/tools?set=facade").await;
+            let fo = tools(&body);
+            assert!(
+                fo.contains("getCartList") && fo.contains("saveCartList"),
+                "{fo:?}"
+            );
+            assert!(!fo.contains("savePrmtList"), "{fo:?}");
+
+            // A screen is not a tool: without `set=facade` the name is unknown.
+            let (status, body) = f.send(&sj, "POST", "/v1/tools/getPrdGridList").await;
+            assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+            // …and a tool is not a screen.
+            let (status, _) = f
+                .send(&sj, "POST", "/v1/tools/search_products?set=facade")
+                .await;
+            assert_eq!(status, StatusCode::NOT_FOUND);
+            // A shopper cannot run an operator's screen.
+            let (status, body) = f
+                .send(&jamie, "POST", "/v1/tools/savePrmtList?set=facade")
+                .await;
+            assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+            let (status, _) = f.send(&sj, "GET", "/v1/tools?set=other").await;
+            assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+        }
+
+        #[tokio::test]
+        async fn the_facade_answers_only_in_demo_mode_and_only_to_the_two_chats() {
+            let Some(f) = fixture(false) else {
+                eprintln!("openssl not available; skipping");
+                return;
+            };
+            let sj = person("adm_sj", ActorKind::Operator, Surface::Bo).on_behalf();
+            let (status, body) = f.send(&sj, "GET", "/v1/tools?set=facade").await;
+            assert_eq!(status, StatusCode::CONFLICT, "{body}");
+            assert_eq!(body["error"]["code"], "demo_mode_off");
+            let (status, body) = f
+                .send(&sj, "POST", "/v1/tools/getPrdGridList?set=facade")
+                .await;
+            assert_eq!(status, StatusCode::CONFLICT, "{body}");
+            let (status, _) = f.send(&sj, "GET", "/v1/tools").await;
+            assert_eq!(status, StatusCode::OK, "the normal set is unaffected");
+
+            let Some(f) = fixture(true) else {
+                return;
+            };
+            let outside = person("cus_jamie", ActorKind::ExternalAgent, Surface::Mcp);
+            let (status, body) = f.send(&outside, "GET", "/v1/tools?set=facade").await;
+            assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+        }
     }
 }

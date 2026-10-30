@@ -26,11 +26,13 @@ const NOT_FACTS: &[&str] = &[
     "facts",
 ];
 
-/// Items of a list read (`{items: [...]}`) or a bare list.
+/// Items of a list read (`{items: [...]}`, or a screen grid's `{list: [...]}`) or a bare list.
 pub fn items_of(output: &Value) -> Vec<Value> {
     output
         .get("items")
         .or_else(|| output.get("products"))
+        // A screen-shaped grid (the evaluation's facade) answers its rows as `list`.
+        .or_else(|| output.get("list"))
         .and_then(Value::as_array)
         .or_else(|| output.as_array())
         .cloned()

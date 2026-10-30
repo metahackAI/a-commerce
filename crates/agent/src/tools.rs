@@ -1,8 +1,33 @@
 //! The tool manifest as the agent reads it (`GET /v1/tools`, already filtered by the caller's
 //! scopes). The agent knows tools only from here; it never links a domain crate.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+/// Which tools a turn uses (`tool_set` in the turn request, docs/api/chat.md §1).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolSet {
+    /// A-Commerce's tools: `GET /v1/tools`, writes previewed into change sets.
+    #[default]
+    Commerce,
+    /// The screen-shaped facade the evaluation compares against (`GET /v1/tools?set=facade`):
+    /// every call runs at once, writes included. Demo mode only.
+    Facade,
+}
+
+impl ToolSet {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ToolSet::Commerce => "commerce",
+            ToolSet::Facade => "facade",
+        }
+    }
+
+    pub fn is_commerce(&self) -> bool {
+        *self == ToolSet::Commerce
+    }
+}
 
 /// R, W, W$, and person-only (never in a manifest, refused if it ever is).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
