@@ -3,6 +3,14 @@
 //! - `check-docs`: the operation index in `docs/api/README.md` and the operation sections in
 //!   the domain files must list the same tools with the same kinds. Later this also compares
 //!   both against the registry (`docs/backend/testing.md` §1).
+//! - `check-schema [--write]`: the migrations follow `docs/backend/database.md`; `--write`
+//!   regenerates the data dictionary and `vocab/acom.jsonld`, otherwise stale files are an error.
+//! - `check-seed`: the demo seed fits the migrations (columns, required values, words, keys,
+//!   references), without a database.
+
+mod schema;
+mod seed;
+mod vocab;
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -13,8 +21,10 @@ fn main() -> ExitCode {
     let task = std::env::args().nth(1).unwrap_or_default();
     match task.as_str() {
         "check-docs" => check_docs(&repo_root()),
+        "check-schema" => check_schema(&repo_root(), std::env::args().any(|a| a == "--write")),
+        "check-seed" => check_seed(&repo_root()),
         _ => {
-            eprintln!("usage: cargo xtask check-docs");
+            eprintln!("usage: cargo xtask check-docs | check-schema [--write] | check-seed");
             ExitCode::FAILURE
         }
     }
@@ -25,6 +35,123 @@ fn repo_root() -> PathBuf {
         .parent()
         .map(Path::to_path_buf)
         .unwrap_or_default()
+}
+
+fn check_seed(root: &Path) -> ExitCode {
+    let parsed = match schema::Schema::parse_dir(&root.join("migrations")) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("cannot read migrations/: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let report = match seed::check(&root.join("seed/demo"), &parsed) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("cannot read seed/demo/: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    println!(
+        "seed: {} files, {} rows in {} tables",
+        report.files,
+        report.rows,
+        report.rows_by_table.len()
+    );
+    for p in &report.problems {
+        println!("- {p}");
+    }
+    if report.problems.is_empty() {
+        println!("seed fits the schema");
+        ExitCode::SUCCESS
+    } else {
+        println!("{} problem(s)", report.problems.len());
+        ExitCode::FAILURE
+    }
+}
+
+fn check_schema(root: &Path, write: bool) -> ExitCode {
+    let parsed = match schema::Schema::parse_dir(&root.join("migrations")) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("cannot read migrations/: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let problems = parsed.check(&acom_core::enums::words);
+    let columns: usize = parsed.tables.values().map(|t| t.columns.len()).sum();
+    println!(
+        "schema: {} tables and views, {columns} columns",
+        parsed.tables.len()
+    );
+
+    let terms: serde_json::Value = match fs::read_to_string(root.join("vocab/terms.json"))
+        .map_err(|e| e.to_string())
+        .and_then(|t| serde_json::from_str(&t).map_err(|e| e.to_string()))
+    {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("cannot read vocab/terms.json: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let (vocabulary, vocab_problems) = vocab::generate(&parsed, &terms, acom_core::enums::LISTS);
+    let mut problems = problems;
+    problems.extend(vocab_problems);
+    let outputs = [
+        (
+            root.join("docs/backend/schema.generated.md"),
+            parsed.markdown(),
+        ),
+        (
+            root.join("docs/api/generated/schema-map.json"),
+            parsed.json(),
+        ),
+        (root.join("vocab/acom.jsonld"), vocabulary),
+    ];
+    let mut stale = Vec::new();
+    for (path, content) in &outputs {
+        if write {
+            if let Some(dir) = path.parent()
+                && let Err(e) = fs::create_dir_all(dir)
+            {
+                eprintln!("cannot create {}: {e}", dir.display());
+                return ExitCode::FAILURE;
+            }
+            if let Err(e) = fs::write(path, content) {
+                eprintln!("cannot write {}: {e}", path.display());
+                return ExitCode::FAILURE;
+            }
+        } else if fs::read_to_string(path).ok().as_deref() != Some(content.as_str()) {
+            stale.push(
+                path.strip_prefix(root)
+                    .unwrap_or(path)
+                    .display()
+                    .to_string(),
+            );
+        }
+    }
+
+    for p in &problems {
+        println!("- {p}");
+    }
+    for s in &stale {
+        println!("- {s} is out of date (run `cargo xtask check-schema --write`)");
+    }
+    if problems.is_empty() && stale.is_empty() {
+        println!(
+            "{}",
+            if write {
+                "schema follows the rules; dictionary written"
+            } else {
+                "schema follows the rules; dictionary is current"
+            }
+        );
+        ExitCode::SUCCESS
+    } else {
+        println!("{} problem(s)", problems.len() + stale.len());
+        ExitCode::FAILURE
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

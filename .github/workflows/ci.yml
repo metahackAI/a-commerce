@@ -19,3 +19,5 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
       - run: cargo xtask check-docs
+      - run: cargo xtask check-schema
+      - run: cargo xtask check-seed

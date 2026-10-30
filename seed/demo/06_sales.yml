@@ -1,0 +1,1590 @@
+# Sales: the named orders - Jamie's six past orders (the September windbreaker M Black, kept),
+# Alex's #20402, the other eleven orders behind the scene B2 return requests, and three earlier
+# orders of cus_4431 that were returned (the 4-returns-in-90-days flag). Each order has its items,
+# one card payment and its events. Order numbers equal the id suffix.
+tables:
+  sales.sales_order:
+    - tenant_id: store_northwind
+      id: ord_20105
+      order_number: "20105"
+      order_date: "2026-01-18T14:22:00-05:00"
+      order_status: delivered
+      customer_id: cus_jamie
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 312.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 312.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20151
+      order_number: "20151"
+      order_date: "2026-03-09T20:41:00-04:00"
+      order_status: delivered
+      customer_id: cus_jamie
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 68.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 6.00
+      shipping_currency: USD
+      total_payment_due_value: 74.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20188
+      order_number: "20188"
+      order_date: "2026-05-02T10:03:00-04:00"
+      order_status: delivered
+      customer_id: cus_jamie
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 79.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 6.00
+      shipping_currency: USD
+      total_payment_due_value: 85.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20236
+      order_number: "20236"
+      order_date: "2026-07-11T18:27:00-04:00"
+      order_status: delivered
+      customer_id: cus_jamie
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 88.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 88.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20268
+      order_number: "20268"
+      order_date: "2026-09-08T09:14:00-04:00"
+      order_status: delivered
+      customer_id: cus_jamie
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 89.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 89.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20290
+      order_number: "20290"
+      order_date: "2026-09-24T09:30:00-04:00"
+      order_status: delivered
+      customer_id: cus_dana
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 248.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 248.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20298
+      order_number: "20298"
+      order_date: "2026-09-27T12:15:00-04:00"
+      order_status: returned
+      customer_id: cus_4431
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 84.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 84.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20311
+      order_number: "20311"
+      order_date: "2026-10-01T19:02:00-04:00"
+      order_status: returned
+      customer_id: cus_4431
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 248.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 248.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20324
+      order_number: "20324"
+      order_date: "2026-10-06T08:55:00-04:00"
+      order_status: returned
+      customer_id: cus_4431
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 58.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 6.00
+      shipping_currency: USD
+      total_payment_due_value: 64.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20333
+      order_number: "20333"
+      order_date: "2026-10-08T13:00:00-04:00"
+      order_status: delivered
+      customer_id: cus_priya
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 289.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 289.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20341
+      order_number: "20341"
+      order_date: "2026-10-10T10:20:00-04:00"
+      order_status: delivered
+      customer_id: cus_marcus
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 312.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 312.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20352
+      order_number: "20352"
+      order_date: "2026-10-13T21:05:00-04:00"
+      order_status: delivered
+      customer_id: cus_elena
+      sales_channel: web
+      is_gift: false
+      discount_code: BIRTHDAY10
+      coupon_id: cpn_birthday
+      subtotal_value: 314.00
+      subtotal_currency: USD
+      discount_value: 10.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 304.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20366
+      order_number: "20366"
+      order_date: "2026-10-21T07:45:00-04:00"
+      order_status: delivered
+      customer_id: cus_riley
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 236.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 236.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20377
+      order_number: "20377"
+      order_date: "2026-10-23T11:40:00-04:00"
+      order_status: delivered
+      customer_id: cus_sam
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 217.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 217.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20381
+      order_number: "20381"
+      order_date: "2026-10-24T16:12:00-04:00"
+      order_status: delivered
+      customer_id: cus_jamie
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 58.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 6.00
+      shipping_currency: USD
+      total_payment_due_value: 64.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20388
+      order_number: "20388"
+      order_date: "2026-10-25T15:33:00-04:00"
+      order_status: delivered
+      customer_id: cus_noor
+      sales_channel: web
+      is_gift: false
+      discount_code: BIRTHDAY10
+      coupon_id: cpn_birthday
+      subtotal_value: 306.00
+      subtotal_currency: USD
+      discount_value: 10.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 296.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20395
+      order_number: "20395"
+      order_date: "2026-10-26T09:48:00-04:00"
+      order_status: delivered
+      customer_id: cus_theo
+      sales_channel: web
+      is_gift: false
+      discount_code: BIRTHDAY10
+      coupon_id: cpn_birthday
+      subtotal_value: 303.00
+      subtotal_currency: USD
+      discount_value: 10.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 293.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20402
+      order_number: "20402"
+      order_date: "2026-10-27T19:12:00-04:00"
+      order_status: delivered
+      customer_id: cus_alex
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 312.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 312.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20409
+      order_number: "20409"
+      order_date: "2026-10-28T09:10:00-04:00"
+      order_status: delivered
+      customer_id: cus_grace
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 289.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 289.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20418
+      order_number: "20418"
+      order_date: "2026-10-28T15:30:00-04:00"
+      order_status: delivered
+      customer_id: cus_owen
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 256.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 256.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: ord_20431
+      order_number: "20431"
+      order_date: "2026-10-29T10:05:00-04:00"
+      order_status: delivered
+      customer_id: cus_4431
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 289.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 289.00
+      total_payment_due_currency: USD
+  sales.order_item:
+    - tenant_id: store_northwind
+      id: oln_20105_1
+      order_id: ord_20105
+      position: 1
+      product_id: var_chelsea_boots_8_tan
+      name: Leather chelsea boots
+      order_quantity: 1
+      order_item_status: delivered
+      price: 312.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20151_1
+      order_id: ord_20151
+      position: 1
+      product_id: var_linen_shirt_l_white
+      name: Linen shirt
+      order_quantity: 1
+      order_item_status: delivered
+      price: 68.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20188_1
+      order_id: ord_20188
+      position: 1
+      product_id: var_seersucker_overshirt_l_clay
+      name: Seersucker overshirt
+      order_quantity: 1
+      order_item_status: delivered
+      price: 79.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20236_1
+      order_id: ord_20236
+      position: 1
+      product_id: var_camp_overshirt_l_sand
+      name: Linen camp overshirt
+      order_quantity: 1
+      order_item_status: delivered
+      price: 88.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20268_1
+      order_id: ord_20268
+      position: 1
+      product_id: var_windbreaker_m_black
+      name: Packable windbreaker
+      order_quantity: 1
+      order_item_status: delivered
+      price: 89.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20290_1
+      order_id: ord_20290
+      position: 1
+      product_id: var_cashmere_sweater_m_oatmeal
+      name: Cashmere sweater
+      order_quantity: 1
+      order_item_status: delivered
+      price: 248.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20298_1
+      order_id: ord_20298
+      position: 1
+      product_id: var_fleece_half_zip_l_heather_grey
+      name: Fleece half-zip
+      order_quantity: 1
+      order_item_status: returned
+      price: 84.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20311_1
+      order_id: ord_20311
+      position: 1
+      product_id: var_cashmere_sweater_m_navy
+      name: Cashmere sweater
+      order_quantity: 1
+      order_item_status: returned
+      price: 248.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20324_1
+      order_id: ord_20324
+      position: 1
+      product_id: var_merino_tee_l_charcoal
+      name: Merino trail tee
+      order_quantity: 1
+      order_item_status: returned
+      price: 58.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20333_1
+      order_id: ord_20333
+      position: 1
+      product_id: var_wool_overcoat_l_charcoal
+      name: Wool overcoat
+      order_quantity: 1
+      order_item_status: delivered
+      price: 289.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20341_1
+      order_id: ord_20341
+      position: 1
+      product_id: var_chelsea_boots_10_tan
+      name: Leather chelsea boots
+      order_quantity: 1
+      order_item_status: delivered
+      price: 312.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20352_1
+      order_id: ord_20352
+      position: 1
+      product_id: var_field_jacket_m_navy
+      name: Linen blend field jacket
+      order_quantity: 2
+      order_item_status: delivered
+      price: 128.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20352_2
+      order_id: ord_20352
+      position: 2
+      product_id: var_merino_tee_s_charcoal
+      name: Merino trail tee
+      order_quantity: 1
+      order_item_status: delivered
+      price: 58.00
+      price_currency: USD
+      discount_value: 10.00
+      discount_currency: USD
+      promotion_id: promo_birthday
+    - tenant_id: store_northwind
+      id: oln_20366_1
+      order_id: ord_20366
+      position: 1
+      product_id: var_rain_parka_s_stone
+      name: Light rain parka
+      order_quantity: 2
+      order_item_status: delivered
+      price: 118.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20377_1
+      order_id: ord_20377
+      position: 1
+      product_id: var_field_jacket_m_olive
+      name: Linen blend field jacket
+      order_quantity: 1
+      order_item_status: delivered
+      price: 128.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20377_2
+      order_id: ord_20377
+      position: 2
+      product_id: var_windbreaker_m_navy
+      name: Packable windbreaker
+      order_quantity: 1
+      order_item_status: delivered
+      price: 89.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20381_1
+      order_id: ord_20381
+      position: 1
+      product_id: var_merino_tee_m_charcoal
+      name: Merino trail tee
+      order_quantity: 1
+      order_item_status: delivered
+      price: 58.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20388_1
+      order_id: ord_20388
+      position: 1
+      product_id: var_cashmere_sweater_s_navy
+      name: Cashmere sweater
+      order_quantity: 1
+      order_item_status: delivered
+      price: 248.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20388_2
+      order_id: ord_20388
+      position: 2
+      product_id: var_merino_tee_m_charcoal
+      name: Merino trail tee
+      order_quantity: 1
+      order_item_status: delivered
+      price: 58.00
+      price_currency: USD
+      discount_value: 10.00
+      discount_currency: USD
+      promotion_id: promo_birthday
+    - tenant_id: store_northwind
+      id: oln_20395_1
+      order_id: ord_20395
+      position: 1
+      product_id: var_chore_coat_xl_olive
+      name: Cotton chore coat
+      order_quantity: 2
+      order_item_status: delivered
+      price: 142.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20395_2
+      order_id: ord_20395
+      position: 2
+      product_id: var_breton_tee_m_navy_stripe
+      name: Breton tee
+      order_quantity: 1
+      order_item_status: delivered
+      price: 19.00
+      price_currency: USD
+      discount_value: 10.00
+      discount_currency: USD
+      promotion_id: promo_birthday
+    - tenant_id: store_northwind
+      id: oln_20402_1
+      order_id: ord_20402
+      position: 1
+      product_id: var_chelsea_boots_9_tan
+      name: Leather chelsea boots
+      order_quantity: 1
+      order_item_status: delivered
+      price: 312.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20409_1
+      order_id: ord_20409
+      position: 1
+      product_id: var_wool_overcoat_m_charcoal
+      name: Wool overcoat
+      order_quantity: 1
+      order_item_status: delivered
+      price: 289.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20418_1
+      order_id: ord_20418
+      position: 1
+      product_id: var_field_jacket_s_sand
+      name: Linen blend field jacket
+      order_quantity: 2
+      order_item_status: delivered
+      price: 128.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_20431_1
+      order_id: ord_20431
+      position: 1
+      product_id: var_wool_overcoat_m_charcoal
+      name: Wool overcoat
+      order_quantity: 1
+      order_item_status: delivered
+      price: 289.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+  sales.payment:
+    - tenant_id: store_northwind
+      id: pay_20105
+      order_id: ord_20105
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 312.00
+      amount_currency: USD
+      card_last4: "4821"
+      installment_months: 0
+      external_id: ch_demo_20105
+      paid_at: "2026-01-18T14:23:00-05:00"
+    - tenant_id: store_northwind
+      id: pay_20151
+      order_id: ord_20151
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 74.00
+      amount_currency: USD
+      card_last4: "4821"
+      installment_months: 0
+      external_id: ch_demo_20151
+      paid_at: "2026-03-09T20:42:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20188
+      order_id: ord_20188
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 85.00
+      amount_currency: USD
+      card_last4: "4821"
+      installment_months: 0
+      external_id: ch_demo_20188
+      paid_at: "2026-05-02T10:04:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20236
+      order_id: ord_20236
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 88.00
+      amount_currency: USD
+      card_last4: "4821"
+      installment_months: 0
+      external_id: ch_demo_20236
+      paid_at: "2026-07-11T18:28:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20268
+      order_id: ord_20268
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 89.00
+      amount_currency: USD
+      card_last4: "4821"
+      installment_months: 0
+      external_id: ch_demo_20268
+      paid_at: "2026-09-08T09:15:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20290
+      order_id: ord_20290
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 248.00
+      amount_currency: USD
+      card_last4: "2649"
+      installment_months: 0
+      external_id: ch_demo_20290
+      paid_at: "2026-09-24T09:31:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20298
+      order_id: ord_20298
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 84.00
+      amount_currency: USD
+      card_last4: "7302"
+      installment_months: 0
+      external_id: ch_demo_20298
+      paid_at: "2026-09-27T12:16:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20311
+      order_id: ord_20311
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 248.00
+      amount_currency: USD
+      card_last4: "7302"
+      installment_months: 0
+      external_id: ch_demo_20311
+      paid_at: "2026-10-01T19:03:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20324
+      order_id: ord_20324
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 64.00
+      amount_currency: USD
+      card_last4: "7302"
+      installment_months: 0
+      external_id: ch_demo_20324
+      paid_at: "2026-10-06T08:56:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20333
+      order_id: ord_20333
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 289.00
+      amount_currency: USD
+      card_last4: "3317"
+      installment_months: 0
+      external_id: ch_demo_20333
+      paid_at: "2026-10-08T13:01:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20341
+      order_id: ord_20341
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 312.00
+      amount_currency: USD
+      card_last4: "9054"
+      installment_months: 0
+      external_id: ch_demo_20341
+      paid_at: "2026-10-10T10:21:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20352
+      order_id: ord_20352
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 304.00
+      amount_currency: USD
+      card_last4: "6620"
+      installment_months: 0
+      external_id: ch_demo_20352
+      paid_at: "2026-10-13T21:06:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20366
+      order_id: ord_20366
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 236.00
+      amount_currency: USD
+      card_last4: "1188"
+      installment_months: 0
+      external_id: ch_demo_20366
+      paid_at: "2026-10-21T07:46:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20377
+      order_id: ord_20377
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 217.00
+      amount_currency: USD
+      card_last4: "5512"
+      installment_months: 0
+      external_id: ch_demo_20377
+      paid_at: "2026-10-23T11:41:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20381
+      order_id: ord_20381
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 64.00
+      amount_currency: USD
+      card_last4: "4821"
+      installment_months: 0
+      external_id: ch_demo_20381
+      paid_at: "2026-10-24T16:13:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20388
+      order_id: ord_20388
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 296.00
+      amount_currency: USD
+      card_last4: "4408"
+      installment_months: 0
+      external_id: ch_demo_20388
+      paid_at: "2026-10-25T15:34:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20395
+      order_id: ord_20395
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 293.00
+      amount_currency: USD
+      card_last4: "7719"
+      installment_months: 0
+      external_id: ch_demo_20395
+      paid_at: "2026-10-26T09:49:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20402
+      order_id: ord_20402
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 312.00
+      amount_currency: USD
+      card_last4: "0937"
+      installment_months: 0
+      external_id: ch_demo_20402
+      paid_at: "2026-10-27T19:13:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20409
+      order_id: ord_20409
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 289.00
+      amount_currency: USD
+      card_last4: "1350"
+      installment_months: 0
+      external_id: ch_demo_20409
+      paid_at: "2026-10-28T09:11:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20418
+      order_id: ord_20418
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 256.00
+      amount_currency: USD
+      card_last4: "8826"
+      installment_months: 0
+      external_id: ch_demo_20418
+      paid_at: "2026-10-28T15:31:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_20431
+      order_id: ord_20431
+      payment_method: credit_card
+      payment_status: payment_complete
+      amount_value: 289.00
+      amount_currency: USD
+      card_last4: "7302"
+      installment_months: 0
+      external_id: ch_demo_20431
+      paid_at: "2026-10-29T10:06:00-04:00"
+  sales.order_event:
+    - tenant_id: store_northwind
+      order_id: ord_20105
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_jamie
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-01-18T14:22:00-05:00"
+      end_time: "2026-01-18T14:22:00-05:00"
+    - tenant_id: store_northwind
+      order_id: ord_20105
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-01-19T16:00:00-05:00"
+      end_time: "2026-01-19T16:00:00-05:00"
+    - tenant_id: store_northwind
+      order_id: ord_20105
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-01-22T13:10:00-05:00"
+      end_time: "2026-01-22T13:10:00-05:00"
+    - tenant_id: store_northwind
+      order_id: ord_20151
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_jamie
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-03-09T20:41:00-04:00"
+      end_time: "2026-03-09T20:41:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20151
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-03-10T15:30:00-04:00"
+      end_time: "2026-03-10T15:30:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20151
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-03-13T11:45:00-04:00"
+      end_time: "2026-03-13T11:45:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20188
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_jamie
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-05-02T10:03:00-04:00"
+      end_time: "2026-05-02T10:03:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20188
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-05-04T15:10:00-04:00"
+      end_time: "2026-05-04T15:10:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20188
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-05-07T14:20:00-04:00"
+      end_time: "2026-05-07T14:20:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20236
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_jamie
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-07-11T18:27:00-04:00"
+      end_time: "2026-07-11T18:27:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20236
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-07-13T14:00:00-04:00"
+      end_time: "2026-07-13T14:00:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20236
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-07-16T12:35:00-04:00"
+      end_time: "2026-07-16T12:35:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20268
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_jamie
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-09-08T09:14:00-04:00"
+      end_time: "2026-09-08T09:14:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20268
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-09-08T17:00:00-04:00"
+      end_time: "2026-09-08T17:00:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20268
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-09-11T15:05:00-04:00"
+      end_time: "2026-09-11T15:05:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20290
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_dana
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-09-24T09:30:00-04:00"
+      end_time: "2026-09-24T09:30:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20290
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-09-25T16:20:00-04:00"
+      end_time: "2026-09-25T16:20:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20290
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-09-28T16:00:00-04:00"
+      end_time: "2026-09-28T16:00:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20298
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_4431
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-09-27T12:15:00-04:00"
+      end_time: "2026-09-27T12:15:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20298
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-09-28T15:40:00-04:00"
+      end_time: "2026-09-28T15:40:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20298
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-10-01T13:25:00-04:00"
+      end_time: "2026-10-01T13:25:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20298
+      position: 4
+      action_type: ReturnAction
+      action_status: completed
+      agent_id: sys_executor
+      instrument: refund_return
+      from_state: delivered
+      to_state: returned
+      start_time: "2026-10-12T11:00:00-04:00"
+      end_time: "2026-10-12T11:00:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20311
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_4431
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-10-01T19:02:00-04:00"
+      end_time: "2026-10-01T19:02:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20311
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-10-02T16:10:00-04:00"
+      end_time: "2026-10-02T16:10:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20311
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-10-05T12:50:00-04:00"
+      end_time: "2026-10-05T12:50:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20311
+      position: 4
+      action_type: ReturnAction
+      action_status: completed
+      agent_id: sys_executor
+      instrument: refund_return
+      from_state: delivered
+      to_state: returned
+      start_time: "2026-10-26T15:30:00-04:00"
+      end_time: "2026-10-26T15:30:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20324
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_4431
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-10-06T08:55:00-04:00"
+      end_time: "2026-10-06T08:55:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20324
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-10-06T17:30:00-04:00"
+      end_time: "2026-10-06T17:30:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20324
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-10-09T10:40:00-04:00"
+      end_time: "2026-10-09T10:40:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20324
+      position: 4
+      action_type: ReturnAction
+      action_status: completed
+      agent_id: sys_executor
+      instrument: refund_return
+      from_state: delivered
+      to_state: returned
+      start_time: "2026-10-21T10:10:00-04:00"
+      end_time: "2026-10-21T10:10:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20333
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_priya
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-10-08T13:00:00-04:00"
+      end_time: "2026-10-08T13:00:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20333
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-10-09T15:00:00-04:00"
+      end_time: "2026-10-09T15:00:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20333
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-10-12T11:00:00-04:00"
+      end_time: "2026-10-12T11:00:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20341
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_marcus
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-10-10T10:20:00-04:00"
+      end_time: "2026-10-10T10:20:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20341
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-10-12T14:30:00-04:00"
+      end_time: "2026-10-12T14:30:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20341
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-10-14T16:15:00-04:00"
+      end_time: "2026-10-14T16:15:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20352
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_elena
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-10-13T21:05:00-04:00"
+      end_time: "2026-10-13T21:05:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20352
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-10-14T15:00:00-04:00"
+      end_time: "2026-10-14T15:00:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20352
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-10-16T13:40:00-04:00"
+      end_time: "2026-10-16T13:40:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20366
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_riley
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-10-21T07:45:00-04:00"
+      end_time: "2026-10-21T07:45:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20366
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-11-02T16:00:00-05:00"
+      end_time: "2026-11-02T16:00:00-05:00"
+    - tenant_id: store_northwind
+      order_id: ord_20366
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-11-04T14:30:00-05:00"
+      end_time: "2026-11-04T14:30:00-05:00"
+    - tenant_id: store_northwind
+      order_id: ord_20377
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_sam
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-10-23T11:40:00-04:00"
+      end_time: "2026-10-23T11:40:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20377
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-10-24T15:20:00-04:00"
+      end_time: "2026-10-24T15:20:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20377
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-10-28T13:30:00-04:00"
+      end_time: "2026-10-28T13:30:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20381
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_jamie
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-10-24T16:12:00-04:00"
+      end_time: "2026-10-24T16:12:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20381
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-10-26T14:10:00-04:00"
+      end_time: "2026-10-26T14:10:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20381
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-10-28T12:05:00-04:00"
+      end_time: "2026-10-28T12:05:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20388
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_noor
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-10-25T15:33:00-04:00"
+      end_time: "2026-10-25T15:33:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20388
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-10-26T16:40:00-04:00"
+      end_time: "2026-10-26T16:40:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20388
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-10-29T11:50:00-04:00"
+      end_time: "2026-10-29T11:50:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20395
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_theo
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-10-26T09:48:00-04:00"
+      end_time: "2026-10-26T09:48:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20395
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-10-27T15:05:00-04:00"
+      end_time: "2026-10-27T15:05:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20395
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-10-30T10:25:00-04:00"
+      end_time: "2026-10-30T10:25:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20402
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_alex
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-10-27T19:12:00-04:00"
+      end_time: "2026-10-27T19:12:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20402
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-10-28T16:30:00-04:00"
+      end_time: "2026-10-28T16:30:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20402
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-10-31T14:02:00-04:00"
+      end_time: "2026-10-31T14:02:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20409
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_grace
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-10-28T09:10:00-04:00"
+      end_time: "2026-10-28T09:10:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20409
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-10-28T17:45:00-04:00"
+      end_time: "2026-10-28T17:45:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20409
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-10-31T15:30:00-04:00"
+      end_time: "2026-10-31T15:30:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20418
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_owen
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-10-28T15:30:00-04:00"
+      end_time: "2026-10-28T15:30:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20418
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-10-28T18:10:00-04:00"
+      end_time: "2026-10-28T18:10:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20418
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-10-30T12:00:00-04:00"
+      end_time: "2026-10-30T12:00:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20431
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_4431
+      instrument: POST /v1/sales/orders
+      to_state: processing
+      start_time: "2026-10-29T10:05:00-04:00"
+      end_time: "2026-10-29T10:05:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20431
+      position: 2
+      action_type: SendAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: processing
+      to_state: in_transit
+      start_time: "2026-10-30T14:15:00-04:00"
+      end_time: "2026-10-30T14:15:00-04:00"
+    - tenant_id: store_northwind
+      order_id: ord_20431
+      position: 3
+      action_type: ReceiveAction
+      action_status: completed
+      agent_id: sys_carrier
+      instrument: receive_carrier_event
+      from_state: in_transit
+      to_state: delivered
+      start_time: "2026-11-02T15:20:00-05:00"
+      end_time: "2026-11-02T15:20:00-05:00"

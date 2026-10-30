@@ -1,0 +1,167 @@
+# Spec for the deterministic demo seed generator. This file is not data: it says what the
+# generator adds on top of 01_platform.yml ... 08_messaging.yml so that the counts and totals in
+# docs/scenarios.md §7 hold. Same seed + same named files => byte-identical rows.
+# Times are store time (America/New_York); money is USD rounded to the cent, half up.
+
+random_seed: 20261106            # one PRNG (PCG64 or ChaCha8), seeded once, consumed in the order of this file
+store: store_northwind
+runs_after: [01_platform.yml, 02_customer.yml, 03_catalog.yml, 04_promotion.yml, 05_merchandising.yml,
+             06_sales.yml, 07_fulfillment.yml, 08_messaging.yml]
+never_touch:                     # named rows stay exactly as written; the generator adds no rows that point at them
+  customers: [cus_jamie, cus_alex, cus_4431, cus_riley, cus_sam, cus_dana, cus_priya, cus_marcus, cus_elena,
+              cus_noor, cus_theo, cus_grace, cus_owen]   # no generated orders, claims, coupons or preferences
+  inventory: "offer.inventory_level is the stock at Fri Nov 6 11:00; generated orders do not change it"
+
+id_patterns:                     # prefixes from docs/api/conventions.md §9; nnn/nnnnnn are zero-padded counters
+  product_group: "prd_<category term_code>_<nn>"           # prd_summer_outerwear_01 ... prd_summer_outerwear_35
+  product: "var_<category term_code>_<nn>_<size>_<color>"   # size and color lowercased, spaces -> _
+  offer: "off_<same suffix as the variant>"
+  sku: "<category initials>-<nn>-<color>-<size>"            # so-07-sand-m; unique in the store
+  member: "cus_m<nnnnnn>"                                   # cus_m000001 ...
+  address: "adr_m<nnnnnn>"                                  # one home address per generated member
+  membership_number: "NW-1<nnnnn>"
+  member_coupon: "mcp_m<nnnnnn>_<coupon suffix>_<yyyymm>"   # mcp_m000042_gold_10_202611
+  unit_price_specification: "ups_<variant suffix>_autumn_knit"
+  order: "ord_<order_number>"                               # order items oln_<number>_<line>, payment pay_<number>,
+                                                            # delivery dlv_<number>, events keyed by (order_id, position)
+
+catalog:
+  total_products: 400            # 18 named + 382 generated, in 24 standard categories
+  all_generated:
+    approval_status: active
+    brand_id: [brn_northwind, brn_northwind, brn_northwind, brn_ridgeline]   # pick uniformly from this list
+    has_merchant_return_policy_id: mrp_standard
+    cost: "list price × cost_ratio, rounded to the cent; cost × 1.15 must stay at or below the list price (no new below-cost products)"
+    list_prices: "whole dollars ending in 9 (x9.00) inside the category range"
+    variants: "colors × sizes from the category; stock split over variants at random, every variant ≥ 1 unless the product total is smaller"
+    safety_stock: 2
+  summer_outerwear:              # cat_summer_outerwear: 7 named + 35 generated = 42; sale scope in B1 is 40 (chore coat, rain parka excluded)
+    count: 35
+    list_price: {min: 59, max: 149}
+    cost_ratio: 0.45             # cost = price × 0.45 exactly (then rounded)
+    stock_per_product: {min: 12, max: 120}   # every generated one has ≥ 10 units, so promo_min_stock leaves all 35 in the sale
+    sizes: [XS, S, M, L, XL]
+    colors_per_product: {min: 1, max: 3}
+    colors: [Sand, Olive, Navy, Stone, Clay, Sky, White, Black, Slate, Rust]
+    names: "<material> <noun>"
+    materials: [Linen, Cotton, Ripstop, Seersucker, Poplin, Chambray, Nylon, Twill]
+    nouns: [overshirt, shacket, field jacket, anorak, bomber, shirt jacket, coach jacket, harrington, gilet, cagoule]
+    additional_property:         # same shape as the named ones (compare_products attributes)
+      weight_g: {min: 200, max: 700}          # weight of size M, also weight_value of every variant
+      packing: [folds_flat, folds_flat, none, own_pocket]
+      warmth: [light, light, medium, wind_layer]
+      rain: [false, false, true]
+      packed_size_cm: "only when packing is own_pocket: [short, long] with short 12-16, long 16-22"
+  other_categories:              # generated count per standard category (named products not included); sum 347
+    outerwear:   {count: 17, price: [99, 349], cost_ratio: [0.40, 0.50], stock: [10, 80]}
+    knitwear:    {count: 25, price: [59, 249], cost_ratio: [0.40, 0.50], stock: [10, 80]}   # 26 with the cashmere sweater (promo_autumn_knit product_count)
+    shirts:      {count: 18, price: [39, 99],  cost_ratio: [0.38, 0.48], stock: [15, 120]}
+    tees:        {count: 23, price: [19, 59],  cost_ratio: [0.35, 0.45], stock: [20, 150]}
+    sweatshirts: {count: 20, price: [49, 119], cost_ratio: [0.38, 0.48], stock: [15, 100]}
+    pants:       {count: 26, price: [59, 149], cost_ratio: [0.40, 0.50], stock: [15, 100]}
+    denim:       {count: 16, price: [69, 159], cost_ratio: [0.40, 0.50], stock: [15, 90]}
+    shorts:      {count: 18, price: [39, 89],  cost_ratio: [0.38, 0.48], stock: [15, 100]}
+    dresses:     {count: 18, price: [69, 189], cost_ratio: [0.40, 0.50], stock: [10, 70]}
+    skirts:      {count: 10, price: [49, 129], cost_ratio: [0.40, 0.50], stock: [10, 70]}
+    activewear:  {count: 20, price: [39, 119], cost_ratio: [0.38, 0.48], stock: [15, 120]}
+    loungewear:  {count: 12, price: [39, 99],  cost_ratio: [0.38, 0.48], stock: [15, 100]}
+    swimwear:    {count: 10, price: [39, 99],  cost_ratio: [0.38, 0.48], stock: [10, 60]}
+    underwear:   {count: 12, price: [19, 49],  cost_ratio: [0.35, 0.45], stock: [30, 200]}
+    shoes:       {count: 17, price: [99, 299], cost_ratio: [0.40, 0.50], stock: [10, 60], sizes: ["7", "8", "9", "10", "11", "12"]}
+    sneakers:    {count: 20, price: [79, 189], cost_ratio: [0.40, 0.50], stock: [10, 80], sizes: ["7", "8", "9", "10", "11", "12"]}
+    sandals:     {count: 10, price: [39, 99],  cost_ratio: [0.38, 0.48], stock: [10, 60], sizes: ["7", "8", "9", "10", "11", "12"]}
+    accessories: {count: 8,  price: [19, 79],  cost_ratio: [0.35, 0.45], stock: [10, 80], sizes: [null]}
+    bags:        {count: 11, price: [39, 189], cost_ratio: [0.40, 0.50], stock: [10, 60], sizes: [null]}
+    hats:        {count: 9,  price: [19, 49],  cost_ratio: [0.35, 0.45], stock: [15, 100], sizes: [null]}
+    socks:       {count: 9,  price: [12, 29],  cost_ratio: [0.35, 0.45], stock: [30, 200], sizes: [M, L]}
+    scarves:     {count: 10, price: [29, 99],  cost_ratio: [0.35, 0.45], stock: [10, 80], sizes: [null]}
+    belts:       {count: 8,  price: [29, 89],  cost_ratio: [0.35, 0.45], stock: [10, 80], sizes: [S, M, L]}
+    default_sizes: [XS, S, M, L, XL]   # categories above without sizes
+  placement: "one product_group_category row per generated product (is_primary true, its category); 20% of summer_outerwear and outerwear also in cat_travel or cat_fall_layers"
+  autumn_knit_prices: "for every variant offer of a generated knitwear product: one unit_price_specification, promotion promo_autumn_knit, sale_price, price = list × 0.85, percent_off 15, valid 2026-11-01 00:00 to 2026-11-15 23:59, valid_for_member_tier null"
+
+members:                         # program_membership in prg_rewards; tier counts include the 13 named people (02_customer.yml)
+  tiers:
+    vip:    {total: 1284, named: 1, generate: 1283}   # Jamie is the named one
+    gold:   {total: 2900, named: 3, generate: 2897}   # cus_4431, cus_priya, cus_grace
+    member: {total: 9816, named: 9, generate: 9807}
+  member_state: active           # list_tiers member_count excludes withdrawn and blocked; keep every generated member active
+  registered_at: {from: "2023-01-01T00:00", through: "2026-10-31T23:59"}
+  tier_since: "registered_at for member; for gold and vip the first day of a month between registered_at and 2026-11-01, at 03:00"
+  given_names: [Avery, Blake, Casey, Drew, Emery, Finley, Harper, Jordan, Kendall, Logan, Morgan, Parker, Quinn, Reese,
+                Rowan, Sage, Skyler, Taylor, Lena, Mateo, Nadia, Oscar, Ines, Hana, Yusuf, Mila, Arjun, Chloe, Diego, Ivy]
+  family_names: [Adams, Baker, Chen, Diaz, Evans, Fischer, Garcia, Hughes, Ito, Jensen, Khan, Lopez, Moreau, Novak,
+                 Okafor, Patel, Rossi, Silva, Tanaka, Usman, Varga, Walsh, Young, Zhang]
+  email: "m<nnnnnn>@example.com"
+  card_last4: "4 random digits"
+  addresses: "one home address each, US north-east states (NY, NJ, CT, MA, RI, VT, ME, PA), usage [shipping, billing], is_primary true"
+  gold_coupons: "every gold member gets a member_coupon of cpn_gold_10 for 2026-11: coupon_status available, owned_from 2026-11-01 00:00, owned_through 2026-11-30 23:59"
+
+orders:
+  customers: "generated members only (weighted: vip 3, gold 2, member 1 per member)"
+  lines_per_order: {1: 0.62, 2: 0.28, 3: 0.10}
+  quantity_per_line: {1: 0.9, 2: 0.1}
+  variants: "any active generated or named variant, except none of the M or L variants of prd_chore_coat, prd_rain_parka and prd_denim_jacket after 2026-11-04 15:00 (sold out)"
+  line_price: "list price at order_date (the four below-cost products sold at 19.00 / 24.00 / 14.00 / 12.00 before 2026-11-06 08:31)"
+  line_discount: "promo_linen_clearance 20% on prd_linen_shirt and prd_camp_overshirt lines from Oct 1 to Oct 20; promo_autumn_knit 15% on knitwear lines from Nov 1; no coupons"
+  shipping: "6.00 when the subtotal before discounts is under 80.00, else 0.00 (promo_free_ship_80)"
+  totals: "total_payment_due = subtotal − discount + shipping; exactly as in 06_sales.yml"
+  status_by_date: {before_2026-11-01: delivered, 2026-11-01_to_2026-11-03: in_transit, 2026-11-04_to_2026-11-05: processing}
+  payment: "one credit_card payment per order, payment_complete, paid one minute after order_date"
+  delivery: "delivered and in_transit orders get a parcel_delivery to the member's home address (UPS); delivered_at 2-4 days after order_date"
+  order_number:
+    start: 20001
+    rule: >-
+      Generated orders are numbered from 20001 upward in order_date order, skipping every number a named order
+      uses (06_sales.yml: 20105 ... 20431). scenarios.md §7 also asks that numbers increase with order_date across
+      all orders, but that cannot hold together with B3: #20402 is placed Oct 27 19:12 and #20431 Oct 29 10:05,
+      while B3 needs several hundred orders in between. Named orders keep their numbers and dates; only
+      generated orders are in date order. (Decision needed in scenarios.md; see seed/demo/README.md.)
+  window: {from: "2026-10-01T00:00", through: "2026-11-05T23:59"}   # history before Oct 1 is the named orders only
+  daily_sales:                   # analytics.daily_sales targets (revenue = sum of total_payment_due; orders not payment_due/cancelled)
+    rule: >-
+      For each day below, generated orders placed that day (store time) make up the target minus the named orders
+      of that day; the last generated order of the day absorbs the remaining cents. Days in the window that are not
+      listed get 150-260 orders and revenue at 88-96 USD per order.
+    named_orders_on_target_days:  # already in 06_sales.yml; subtract them
+      "2026-10-08": {orders: 1, revenue: 289.00}    # 20333
+      "2026-10-23": {orders: 1, revenue: 217.00}    # 20377
+      "2026-10-24": {orders: 1, revenue: 64.00}     # 20381
+      "2026-10-25": {orders: 1, revenue: 296.00}    # 20388
+      "2026-10-26": {orders: 1, revenue: 293.00}    # 20395
+      "2026-10-27": {orders: 1, revenue: 312.00}    # 20402
+      "2026-10-28": {orders: 2, revenue: 545.00}    # 20409, 20418
+      "2026-10-29": {orders: 1, revenue: 289.00}    # 20431
+    targets:                     # date: [revenue, orders]
+      "2026-10-08": [22700.00, 245]   # Thu  } Oct 8 + 15 + 22 = 69,000.00 (scenarios.md §7)
+      "2026-10-15": [23400.00, 251]   # Thu  }
+      "2026-10-22": [22900.00, 245]   # Thu  }
+      "2026-10-23": [21480.00, 232]
+      "2026-10-24": [26950.00, 289]
+      "2026-10-25": [24310.00, 263]
+      "2026-10-26": [17840.00, 196]
+      "2026-10-27": [18620.00, 204]
+      "2026-10-28": [19750.00, 216]
+      "2026-10-29": [22600.00, 247]   # Thu: average of Oct 8/15/22/29 = 22,900.00 and 247 orders (B3 compare_to)
+      "2026-10-30": [21930.00, 238]
+      "2026-10-31": [27410.00, 295]
+      "2026-11-01": [24880.00, 270]
+      "2026-11-02": [18150.00, 199]
+      "2026-11-03": [18940.00, 207]
+      "2026-11-04": [19320.00, 211]
+      "2026-11-05": [18240.00, 201]   # Thu: B3 period; gap −4,660.00 (−20%)
+    b3_causes:                   # what explain_sales_change must be able to find in the rows
+      out_of_stock: >-
+        M and L variants of prd_chore_coat, prd_rain_parka and prd_denim_jacket: over the four compare Thursdays
+        (Oct 8, 15, 22, 29) generated lines sell 37 chore coat units and 47 rain parka + denim jacket units in M/L at
+        list price with no discount (37 × 142 + 47 × 118 = 10,800.00, i.e. 2,700.00 per Thursday); on Nov 5 none
+        (sold out since Wed 15:00). Explains −2,700.00.
+      campaign_not_sent: >-
+        −1,300.00 from the weekly email (cmp_weekly_1105, list import failed Thu 08:00). Not derivable from the MVP
+        tables: there is no campaign table and no order attribution column yet. The generator only keeps the
+        Thursday totals above; the explainer needs messaging campaigns and an attribution field first.
+      unexplained: -660.00
+  linen_shirt_velocity:          # watcher stock_out_forecast (task_linen_reorder at 08:40)
+    rule: "prd_linen_shirt sells exactly 61 units from Oct 30 to Nov 5 (7 days): XS 6, S 16, M 19, L 14, XL 6"
+    stock_now: 38                # 38 / (61 / 7) = 4.4 days -> "sells out in about 4 days"
+  other_watchers: "no generated variant may trip stock_out_forecast (≤ 5 days of stock) except the linen shirt"

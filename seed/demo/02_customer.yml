@@ -1,0 +1,351 @@
+# Customer: the named shoppers (Jamie vip, Alex member, and the customers behind the scene B2 return
+# requests), their home addresses, the Northwind Rewards program with tiers member, gold and vip,
+# memberships, and Jamie's remembered preferences. Tier member counts (9,816 / 2,900 / 1,284) are
+# reached by the generator (generate.yml); these 13 people count toward them.
+tables:
+  customer.person:
+    - tenant_id: store_northwind
+      id: cus_jamie
+      name: Jamie
+      given_name: Jamie
+      family_name: Rivera
+      email: "jamie.rivera@example.com"
+      birth_date: "1991-06-03"
+      member_state: active
+      member_type: individual
+      sizes: {tops: M, bottoms: null, shoes: null}
+      card_last4: "4821"
+      registered_at: "2025-02-14T20:05:00-05:00"
+    - {tenant_id: store_northwind, id: cus_alex, name: Alex, given_name: Alex, family_name: Kim, email: "alex.kim@example.com", member_state: active, member_type: individual, sizes: {}, card_last4: "0937", registered_at: "2025-12-10T18:22:00-05:00"}
+    - tenant_id: store_northwind
+      id: cus_4431
+      name: Morgan Reyes
+      given_name: Morgan
+      family_name: Reyes
+      email: "morgan.reyes@example.com"
+      birth_date: "1985-03-22"
+      member_state: active
+      member_type: individual
+      sizes: {}
+      card_last4: "7302"
+      registered_at: "2024-08-19T12:40:00-04:00"
+    - tenant_id: store_northwind
+      id: cus_riley
+      name: Riley Park
+      given_name: Riley
+      family_name: Park
+      email: "riley.park@example.com"
+      member_state: active
+      member_type: individual
+      sizes: {}
+      card_last4: "1188"
+      registered_at: "2025-05-02T09:15:00-04:00"
+    - tenant_id: store_northwind
+      id: cus_sam
+      name: Sam Ortiz
+      given_name: Sam
+      family_name: Ortiz
+      email: "sam.ortiz@example.com"
+      member_state: active
+      member_type: individual
+      sizes: {}
+      card_last4: "5512"
+      registered_at: "2025-03-28T21:10:00-04:00"
+    - tenant_id: store_northwind
+      id: cus_dana
+      name: Dana Whitfield
+      given_name: Dana
+      family_name: Whitfield
+      email: "dana.whitfield@example.com"
+      member_state: active
+      member_type: individual
+      sizes: {}
+      card_last4: "2649"
+      registered_at: "2025-01-11T16:48:00-05:00"
+    - tenant_id: store_northwind
+      id: cus_priya
+      name: Priya Shah
+      given_name: Priya
+      family_name: Shah
+      email: "priya.shah@example.com"
+      member_state: active
+      member_type: individual
+      sizes: {}
+      card_last4: "3317"
+      registered_at: "2024-11-30T10:05:00-05:00"
+    - tenant_id: store_northwind
+      id: cus_marcus
+      name: Marcus Bell
+      given_name: Marcus
+      family_name: Bell
+      email: "marcus.bell@example.com"
+      member_state: active
+      member_type: individual
+      sizes: {}
+      card_last4: "9054"
+      registered_at: "2025-07-07T13:30:00-04:00"
+    - tenant_id: store_northwind
+      id: cus_elena
+      name: Elena Costa
+      given_name: Elena
+      family_name: Costa
+      email: "elena.costa@example.com"
+      birth_date: "1990-10-12"
+      member_state: active
+      member_type: individual
+      sizes: {}
+      card_last4: "6620"
+      registered_at: "2025-04-18T19:55:00-04:00"
+    - tenant_id: store_northwind
+      id: cus_noor
+      name: Noor Haddad
+      given_name: Noor
+      family_name: Haddad
+      email: "noor.haddad@example.com"
+      birth_date: "1987-10-21"
+      member_state: active
+      member_type: individual
+      sizes: {}
+      card_last4: "4408"
+      registered_at: "2025-06-21T08:42:00-04:00"
+    - tenant_id: store_northwind
+      id: cus_theo
+      name: Theo Grant
+      given_name: Theo
+      family_name: Grant
+      email: "theo.grant@example.com"
+      birth_date: "1993-10-25"
+      member_state: active
+      member_type: individual
+      sizes: {}
+      card_last4: "7719"
+      registered_at: "2025-09-09T22:17:00-04:00"
+    - tenant_id: store_northwind
+      id: cus_grace
+      name: Grace Liu
+      given_name: Grace
+      family_name: Liu
+      email: "grace.liu@example.com"
+      member_state: active
+      member_type: individual
+      sizes: {}
+      card_last4: "1350"
+      registered_at: "2024-10-03T11:11:00-04:00"
+    - tenant_id: store_northwind
+      id: cus_owen
+      name: Owen Doyle
+      given_name: Owen
+      family_name: Doyle
+      email: "owen.doyle@example.com"
+      member_state: active
+      member_type: individual
+      sizes: {}
+      card_last4: "8826"
+      registered_at: "2025-08-14T17:36:00-04:00"
+  customer.postal_address:
+    - tenant_id: store_northwind
+      id: adr_home
+      customer_id: cus_jamie
+      label: Home
+      name: Jamie Rivera
+      street_address: "12 Harbor St, Apt 3"
+      address_locality: Brooklyn
+      address_region: NY
+      postal_code: "11201"
+      address_country: US
+      address_usage: [shipping, billing]
+      is_primary: true
+    - tenant_id: store_northwind
+      id: adr_alex_home
+      customer_id: cus_alex
+      label: Home
+      name: Alex Kim
+      street_address: "220 Fore St"
+      address_locality: Portland
+      address_region: ME
+      postal_code: "04101"
+      address_country: US
+      address_usage: [shipping, billing]
+      is_primary: true
+    - tenant_id: store_northwind
+      id: adr_4431_home
+      customer_id: cus_4431
+      label: Home
+      name: Morgan Reyes
+      street_address: "85 Elm St"
+      address_locality: Albany
+      address_region: NY
+      postal_code: "12203"
+      address_country: US
+      address_usage: [shipping, billing]
+      is_primary: true
+    - tenant_id: store_northwind
+      id: adr_riley_home
+      customer_id: cus_riley
+      label: Home
+      name: Riley Park
+      street_address: "410 Oak Ave"
+      address_locality: Burlington
+      address_region: VT
+      postal_code: "05401"
+      address_country: US
+      address_usage: [shipping, billing]
+      is_primary: true
+    - tenant_id: store_northwind
+      id: adr_sam_home
+      customer_id: cus_sam
+      label: Home
+      name: Sam Ortiz
+      street_address: "19 Mill Rd"
+      address_locality: Providence
+      address_region: RI
+      postal_code: "02903"
+      address_country: US
+      address_usage: [shipping, billing]
+      is_primary: true
+    - tenant_id: store_northwind
+      id: adr_dana_home
+      customer_id: cus_dana
+      label: Home
+      name: Dana Whitfield
+      street_address: "7 Bay St"
+      address_locality: Hoboken
+      address_region: NJ
+      postal_code: "07030"
+      address_country: US
+      address_usage: [shipping, billing]
+      is_primary: true
+    - tenant_id: store_northwind
+      id: adr_priya_home
+      customer_id: cus_priya
+      label: Home
+      name: Priya Shah
+      street_address: "260 Grove St"
+      address_locality: Jersey City
+      address_region: NJ
+      postal_code: "07302"
+      address_country: US
+      address_usage: [shipping, billing]
+      is_primary: true
+    - tenant_id: store_northwind
+      id: adr_marcus_home
+      customer_id: cus_marcus
+      label: Home
+      name: Marcus Bell
+      street_address: "33 Water St"
+      address_locality: New Haven
+      address_region: CT
+      postal_code: "06510"
+      address_country: US
+      address_usage: [shipping, billing]
+      is_primary: true
+    - tenant_id: store_northwind
+      id: adr_elena_home
+      customer_id: cus_elena
+      label: Home
+      name: Elena Costa
+      street_address: "15 Spring St"
+      address_locality: Cambridge
+      address_region: MA
+      postal_code: "02141"
+      address_country: US
+      address_usage: [shipping, billing]
+      is_primary: true
+    - tenant_id: store_northwind
+      id: adr_noor_home
+      customer_id: cus_noor
+      label: Home
+      name: Noor Haddad
+      street_address: "88 Pearl St"
+      address_locality: Hartford
+      address_region: CT
+      postal_code: "06103"
+      address_country: US
+      address_usage: [shipping, billing]
+      is_primary: true
+    - tenant_id: store_northwind
+      id: adr_theo_home
+      customer_id: cus_theo
+      label: Home
+      name: Theo Grant
+      street_address: "52 Union St"
+      address_locality: Brooklyn
+      address_region: NY
+      postal_code: "11231"
+      address_country: US
+      address_usage: [shipping, billing]
+      is_primary: true
+    - tenant_id: store_northwind
+      id: adr_grace_home
+      customer_id: cus_grace
+      label: Home
+      name: Grace Liu
+      street_address: "301 Main St"
+      address_locality: Stamford
+      address_region: CT
+      postal_code: "06901"
+      address_country: US
+      address_usage: [shipping, billing]
+      is_primary: true
+    - tenant_id: store_northwind
+      id: adr_owen_home
+      customer_id: cus_owen
+      label: Home
+      name: Owen Doyle
+      street_address: "9 Ash Ln"
+      address_locality: Princeton
+      address_region: NJ
+      postal_code: "08540"
+      address_country: US
+      address_usage: [shipping, billing]
+      is_primary: true
+  customer.member_program:
+    - tenant_id: store_northwind
+      id: prg_rewards
+      name: Northwind Rewards
+      description: "Three tiers. Members get a birthday coupon, Gold members a monthly 10% tier coupon, VIP members limited member prices."
+      evaluation: {schedule: {every: month, on_day: 1, at: "03:00"}, on_event: [order_delivered], settle_days: 14}
+      movement: {upgrade: immediate, downgrade: at_schedule, max_steps_down: 1, grace_periods: 1}
+  customer.member_program_tier:
+    - {tenant_id: store_northwind, id: member, member_program_id: prg_rewards, name: Member, rank: 1, has_tier_requirement: {combine: any, requirements: []}, has_tier_benefit: [{type: recurring_coupon, coupon_id: cpn_birthday, every: year}]}
+    - tenant_id: store_northwind
+      id: gold
+      member_program_id: prg_rewards
+      name: Gold
+      rank: 2
+      has_tier_requirement: {combine: any, requirements: [{metric: spend, threshold: {value: 300.00, currency: USD}, window: {type: rolling, length: 6, unit: month}, counts: {channels: [web, app], order_status: delivered, net_of_returns: true, include_loyalty_spent: true}}]}
+      has_tier_benefit: [{type: recurring_coupon, coupon_id: cpn_gold_10, every: month}]
+    - tenant_id: store_northwind
+      id: vip
+      member_program_id: prg_rewards
+      name: VIP
+      rank: 3
+      has_tier_requirement: {combine: any, requirements: [{metric: spend, threshold: {value: 800.00, currency: USD}, retain_threshold: {value: 600.00, currency: USD}, window: {type: rolling, length: 6, unit: month}}, {metric: invite}]}
+      has_tier_benefit: [{type: member_price}]
+  customer.program_membership:
+    - {tenant_id: store_northwind, customer_id: cus_jamie, member_program_id: prg_rewards, tier_id: vip, membership_number: NW-002417, tier_since: "2026-09-01T03:00:00-04:00"}
+    - {tenant_id: store_northwind, customer_id: cus_alex, member_program_id: prg_rewards, tier_id: member, membership_number: NW-008812, tier_since: "2025-12-10T18:22:00-05:00"}
+    - {tenant_id: store_northwind, customer_id: cus_4431, member_program_id: prg_rewards, tier_id: gold, membership_number: NW-004431, tier_since: "2026-07-01T03:00:00-04:00"}
+    - {tenant_id: store_northwind, customer_id: cus_riley, member_program_id: prg_rewards, tier_id: member, membership_number: NW-006120, tier_since: "2025-05-02T09:15:00-04:00"}
+    - {tenant_id: store_northwind, customer_id: cus_sam, member_program_id: prg_rewards, tier_id: member, membership_number: NW-005388, tier_since: "2025-03-28T21:10:00-04:00"}
+    - {tenant_id: store_northwind, customer_id: cus_dana, member_program_id: prg_rewards, tier_id: member, membership_number: NW-003902, tier_since: "2025-01-11T16:48:00-05:00"}
+    - {tenant_id: store_northwind, customer_id: cus_priya, member_program_id: prg_rewards, tier_id: gold, membership_number: NW-003377, tier_since: "2026-05-01T03:00:00-04:00"}
+    - {tenant_id: store_northwind, customer_id: cus_marcus, member_program_id: prg_rewards, tier_id: member, membership_number: NW-007041, tier_since: "2025-07-07T13:30:00-04:00"}
+    - {tenant_id: store_northwind, customer_id: cus_elena, member_program_id: prg_rewards, tier_id: member, membership_number: NW-005911, tier_since: "2025-04-18T19:55:00-04:00"}
+    - {tenant_id: store_northwind, customer_id: cus_noor, member_program_id: prg_rewards, tier_id: member, membership_number: NW-006655, tier_since: "2025-06-21T08:42:00-04:00"}
+    - {tenant_id: store_northwind, customer_id: cus_theo, member_program_id: prg_rewards, tier_id: member, membership_number: NW-007583, tier_since: "2025-09-09T22:17:00-04:00"}
+    - {tenant_id: store_northwind, customer_id: cus_grace, member_program_id: prg_rewards, tier_id: gold, membership_number: NW-002980, tier_since: "2026-03-01T03:00:00-05:00"}
+    - {tenant_id: store_northwind, customer_id: cus_owen, member_program_id: prg_rewards, tier_id: member, membership_number: NW-007205, tier_since: "2025-08-14T17:36:00-04:00"}
+  customer.preference:
+    - {tenant_id: store_northwind, id: mem_03, customer_id: cus_jamie, preference_key: size, value: M, description: Size M, source: conversation, conversation_id: conv_jamie_0614, learned_at: "2026-06-14T19:02:00-04:00"}
+    - tenant_id: store_northwind
+      id: mem_07
+      customer_id: cus_jamie
+      preference_key: fabric_preference
+      value: natural fabrics
+      description: Natural fabrics
+      source: conversation
+      conversation_id: conv_jamie_0914
+      learned_at: "2026-09-14T19:40:00-04:00"
+    - {tenant_id: store_northwind, id: mem_09, customer_id: cus_jamie, preference_key: compares_specs, value: "yes", description: Compares specs, source: conversation, conversation_id: conv_jamie_0914, learned_at: "2026-09-14T19:46:00-04:00"}
+    - {tenant_id: store_northwind, id: mem_11, customer_id: cus_jamie, preference_key: travel_priority, value: travels light, description: Travels light, source: conversation, conversation_id: conv_jamie_1020, learned_at: "2026-10-20T08:31:00-04:00"}

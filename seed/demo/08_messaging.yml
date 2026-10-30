@@ -1,0 +1,37 @@
+# Messaging: refund notices sent to cus_4431 for the three earlier returns. The B2 messages (two photo
+# requests, one decline) are created by the scene, not seeded.
+tables:
+  messaging.message:
+    - tenant_id: store_northwind
+      id: msg_20298_refund
+      recipient_id: cus_4431
+      about_id: clm_20298
+      message_kind: refund_done
+      message_channel: email
+      headline: Your refund for order 20298 is on its way
+      text: "We've refunded $84.00 to your card ending 7302. It usually shows up within 3-5 business days."
+      sender_id: sys_messaging
+      change_set_id: null
+      date_sent: "2026-10-12T11:05:00-04:00"
+    - tenant_id: store_northwind
+      id: msg_20324_refund
+      recipient_id: cus_4431
+      about_id: clm_20324
+      message_kind: refund_done
+      message_channel: email
+      headline: Your refund for order 20324 is on its way
+      text: "We've refunded $58.00 to your card ending 7302. It usually shows up within 3-5 business days."
+      sender_id: sys_messaging
+      change_set_id: null
+      date_sent: "2026-10-21T10:15:00-04:00"
+    - tenant_id: store_northwind
+      id: msg_20311_refund
+      recipient_id: cus_4431
+      about_id: clm_20311
+      message_kind: refund_done
+      message_channel: email
+      headline: Your refund for order 20311 is on its way
+      text: "We've refunded $248.00 to your card ending 7302. It usually shows up within 3-5 business days."
+      sender_id: sys_messaging
+      change_set_id: null
+      date_sent: "2026-10-26T15:35:00-04:00"

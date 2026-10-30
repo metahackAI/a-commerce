@@ -2,6 +2,169 @@
 //!
 //! Owns the request context (`Cx`: store, principal, clock, policy snapshot, pool) and the
 //! transaction context (`TxCx`) that the operation traits in `acom-contract` run against.
-//! Every transaction sets `app.tenant_id` so row-level security keeps stores apart.
-//! Event tables are append-only; cross-domain notices go through the outbox; scheduled work
-//! runs from the job table with `FOR UPDATE SKIP LOCKED`. Design: `docs/backend/commerce.md` §5.
+//! Every transaction sets `app.tenant_id`, so row-level security keeps stores apart even if a
+//! query forgets a `tenant_id` filter. The schema is `migrations/*.sql`, embedded in the binary.
+//! Design: `docs/backend/commerce.md` §5, `docs/backend/database.md`.
+
+use std::sync::Arc;
+
+use acom_auth::Principal;
+use acom_contract::{Ctx, ErrorCode, ToolError};
+use acom_core::{Clock, TenantId};
+use acom_policy::PolicySet;
+use sqlx::postgres::{PgPool, PgPoolOptions};
+use sqlx::{Postgres, Transaction};
+
+/// The migrations in `migrations/`, embedded at compile time.
+pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../../migrations");
+
+#[derive(Debug, thiserror::Error)]
+pub enum StoreError {
+    #[error("database error: {0}")]
+    Database(#[from] sqlx::Error),
+    #[error("migration error: {0}")]
+    Migrate(#[from] sqlx::migrate::MigrateError),
+}
+
+impl From<StoreError> for ToolError {
+    fn from(e: StoreError) -> Self {
+        // Connection problems are retryable; anything else is our bug. Details stay in logs.
+        let code = match &e {
+            StoreError::Database(sqlx::Error::PoolTimedOut | sqlx::Error::Io(_)) => {
+                ErrorCode::UPSTREAM_UNAVAILABLE
+            }
+            _ => ErrorCode::INTERNAL,
+        };
+        tracing::error!(error = %e, "store error");
+        ToolError::new(code, "The store's database could not complete the request.")
+    }
+}
+
+/// A connection pool to the commerce database.
+#[derive(Debug, Clone)]
+pub struct Db {
+    pool: PgPool,
+}
+
+impl Db {
+    pub async fn connect(url: &str, max_connections: u32) -> Result<Self, StoreError> {
+        let pool = PgPoolOptions::new()
+            .max_connections(max_connections)
+            .connect(url)
+            .await?;
+        Ok(Self { pool })
+    }
+
+    /// Applies pending migrations. Run by the commerce service at start and by `xtask db reset`.
+    pub async fn migrate(&self) -> Result<(), StoreError> {
+        MIGRATOR.run(&self.pool).await?;
+        Ok(())
+    }
+
+    pub fn pool(&self) -> &PgPool {
+        &self.pool
+    }
+}
+
+/// What one request runs with.
+#[derive(Debug, Clone)]
+pub struct Cx {
+    pub tenant: TenantId,
+    pub principal: Arc<Principal>,
+    pub request_id: String,
+    pub clock: Arc<dyn Clock>,
+    pub policy: Arc<PolicySet>,
+    pub db: Db,
+}
+
+impl Cx {
+    /// Opens a transaction scoped to this request's store.
+    pub async fn begin(&self) -> Result<TxCx, StoreError> {
+        let mut tx = self.db.pool.begin().await?;
+        scope_to_tenant(&mut tx, &self.tenant).await?;
+        Ok(TxCx {
+            tx,
+            tenant: self.tenant.clone(),
+            principal: self.principal.clone(),
+            request_id: self.request_id.clone(),
+            clock: self.clock.clone(),
+            policy: self.policy.clone(),
+        })
+    }
+
+    /// Runs read queries inside a read-only transaction scoped to the store.
+    pub async fn read(&self) -> Result<TxCx, StoreError> {
+        let mut t = self.begin().await?;
+        sqlx::query("SET TRANSACTION READ ONLY")
+            .execute(&mut *t.tx)
+            .await?;
+        Ok(t)
+    }
+}
+
+/// An open transaction scoped to one store.
+#[derive(Debug)]
+pub struct TxCx {
+    pub tx: Transaction<'static, Postgres>,
+    pub tenant: TenantId,
+    pub principal: Arc<Principal>,
+    pub request_id: String,
+    pub clock: Arc<dyn Clock>,
+    pub policy: Arc<PolicySet>,
+}
+
+impl TxCx {
+    pub async fn commit(self) -> Result<(), StoreError> {
+        self.tx.commit().await?;
+        Ok(())
+    }
+}
+
+impl Ctx for Cx {
+    type Tx = TxCx;
+}
+
+/// `set_config('app.tenant_id', …, true)`: local to the transaction, read by every RLS policy.
+async fn scope_to_tenant(
+    tx: &mut Transaction<'static, Postgres>,
+    tenant: &TenantId,
+) -> Result<(), StoreError> {
+    sqlx::query("SELECT set_config('app.tenant_id', $1, true)")
+        .bind(tenant.as_str())
+        .execute(&mut **tx)
+        .await?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn embeds_the_migrations_in_order() {
+        let versions: Vec<i64> = MIGRATOR.iter().map(|m| m.version).collect();
+        assert!(!versions.is_empty());
+        assert!(versions.windows(2).all(|w| w[0] < w[1]), "{versions:?}");
+        assert_eq!(versions[0], 1);
+    }
+
+    /// Integration test: needs `DATABASE_URL` to an empty database. Run on request with
+    /// `cargo test -p acom-store -- --ignored`.
+    #[tokio::test]
+    #[ignore = "integration: needs a PostgreSQL database"]
+    async fn migrations_apply_and_rls_isolates_stores() {
+        let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
+        let db = Db::connect(&url, 2).await.expect("connect");
+        db.migrate().await.expect("migrate");
+        let mut tx = db.pool().begin().await.expect("begin");
+        let a = TenantId::parse("store_a").expect("id");
+        scope_to_tenant(&mut tx, &a).await.expect("scope");
+        let visible: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM catalog.product_group WHERE tenant_id <> 'store_a'",
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .expect("query");
+        assert_eq!(visible, 0);
+    }
+}
