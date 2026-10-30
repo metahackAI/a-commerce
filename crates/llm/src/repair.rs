@@ -540,6 +540,12 @@ fn fix_string(
     if let Some(pattern) = schema.get("pattern").and_then(Value::as_str) {
         if let Some(prefix) = id_prefix(pattern) {
             let w = word(&s);
+            // A prefix alone ("promo_") names no record; making one up from it would be a guess.
+            if w.trim_end_matches('_') == prefix {
+                out.errors
+                    .push(format!("{path} needs a {prefix}_ id; {s:?} names none."));
+                return None;
+            }
             let fixed = if w.starts_with(&format!("{prefix}_")) {
                 w
             } else {
