@@ -31,6 +31,12 @@ tool_search:
 router:
   # Below this the surface's default agent (or the conversation's last agent) takes the turn.
   min_confidence: 0.5
+  # Requests that plainly belong to one agent go to it without a model call: a phrase they say
+  # (any case) or the kind of file attached. Only when the hints point at exactly one agent.
+  hints:
+    - agent: catalog
+      when_said: [supplier sheet, product drafts, new products from, the drafts]
+      when_attached: [sheet]
 
 planner:
   # A worker plan with more steps than this, or with steps in more than one domain, is planned

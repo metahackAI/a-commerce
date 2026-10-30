@@ -1,3 +1,5 @@
+import {Button} from '@astryxdesign/core/Button';
+
 import {ErrorState} from '@/components/bo/ErrorState';
 import {FilterBar} from '@/components/bo/FilterBar';
 import {NavTabs} from '@/components/bo/NavTabs';
@@ -71,6 +73,7 @@ export default async function MerchandisingPage({searchParams}: {searchParams: S
       <PageFrame
         title="Merchandising"
         description="The category tree. A category under an inactive parent shows as inactive too."
+        actions={<Button label="Manage categories" href="/bo/categories" />}
         toolbar={
           <>
             {tabs}

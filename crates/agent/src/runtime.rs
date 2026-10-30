@@ -67,7 +67,8 @@ pub struct TurnRequest {
     pub conversation_id: Option<String>,
     #[serde(default)]
     pub message: Option<String>,
-    /// Uploaded files (`upl_…`). Accepted, not yet used by any tool.
+    /// Uploaded files (`{kind, upload_id}`, `upl_…`). Their ids fill a tool's `upload_id`
+    /// (`batch_import` reads an attached supplier sheet).
     #[serde(default)]
     pub attachments: Vec<Value>,
     #[serde(default)]
@@ -129,6 +130,15 @@ impl TurnRequest {
         }
     }
 
+    /// Kinds of the attached files (`sheet`, `image`).
+    pub fn attachment_kinds(&self) -> Vec<String> {
+        self.attachments
+            .iter()
+            .filter_map(|a| a.get("kind").and_then(Value::as_str))
+            .map(str::to_owned)
+            .collect()
+    }
+
     /// Ids the person pointed at or a button carried, by field name.
     pub fn pointed(&self) -> BTreeMap<String, Vec<String>> {
         let mut out: BTreeMap<String, Vec<String>> = BTreeMap::new();
@@ -148,6 +158,11 @@ impl TurnRequest {
                 if let Some(s) = v.as_str().filter(|_| k.ends_with("_id")) {
                     add(k, s);
                 }
+            }
+        }
+        for a in &self.attachments {
+            if let Some(u) = a.get("upload_id").and_then(Value::as_str) {
+                add("upload_id", u);
             }
         }
         out
@@ -825,15 +840,23 @@ impl<'r> Turn<'r> {
         let mut answer = None;
         let started_at = self.clock.now();
         // A button that says a sentence is routed like typed words; other buttons continue the
-        // conversation's work.
+        // conversation's work. Routing hints (words or attachments that point at one agent) come
+        // first, then the phrases an agent lists as its own work; the model chooses otherwise.
         let button_intent =
             self.request.ui_event.is_some() && self.request.button_request().is_none();
-        let by_phrase = if button_intent {
+        let attached = self.request.attachment_kinds();
+        let shortcut = if button_intent {
             None
         } else {
-            router::by_phrase(&agents, &self.text)
+            router::hinted(
+                &profiles.runtime.router.hints,
+                &agents,
+                &self.text,
+                &attached,
+            )
+            .or_else(|| router::by_phrase(&agents, &self.text))
         };
-        if by_phrase.is_none()
+        if shortcut.is_none()
             && !self.rt.models.is_empty()
             && router::needs_model(&agents, button_intent, previous.as_deref())
         {
@@ -853,7 +876,7 @@ impl<'r> Turn<'r> {
                 .ok()
                 .map(|(v, _)| v);
         }
-        let r = by_phrase.unwrap_or_else(|| {
+        let r = shortcut.unwrap_or_else(|| {
             router::decide(
                 answer.as_ref(),
                 &agents,
@@ -1061,6 +1084,12 @@ impl<'r> Turn<'r> {
                     .ui_event
                     .iter()
                     .map(|e| json!({"button": e.action_id, "args": e.args})),
+            )
+            .chain(
+                self.request
+                    .attachments
+                    .iter()
+                    .map(|a| json!({"attached": a})),
             )
             .collect();
         let input = PlanInput {
@@ -2368,8 +2397,28 @@ impl<'r> Turn<'r> {
             .and_then(|p| p.reply_plan.clone())
             .unwrap_or_default();
         let mut out: Vec<Block> = Vec::new();
+        // A supplier sheet's drafts: the drafts block carries the change set (its save button
+        // approves it), so the change set block is not shown twice.
+        let drafts = (reply_plan == "product_drafts")
+            .then(|| {
+                self.history
+                    .iter()
+                    .rev()
+                    .find(|r| r.tool == "batch_import")
+                    .and_then(|r| {
+                        crate::blocks::drafts::product_drafts(
+                            r.preview.as_ref()?,
+                            self.view.as_ref(),
+                        )
+                    })
+            })
+            .flatten();
         // A batch review carries its change set itself, approve button included.
-        if let Some(view) = self.view.as_ref().filter(|_| reply_plan != "refund_review") {
+        if let Some(view) = self
+            .view
+            .as_ref()
+            .filter(|_| drafts.is_none() && reply_plan != "refund_review")
+        {
             let title = self.plan.as_ref().and_then(|p| p.title.clone());
             let b = crate::blocks::change_set::block(
                 view,
@@ -2388,6 +2437,7 @@ impl<'r> Turn<'r> {
         }
         let allowed = |ui: &str| self.profile.blocks.iter().any(|b| b == ui);
         let block = match reply_plan.as_str() {
+            "product_drafts" => drafts,
             "product_table" => self
                 .last_output(|r| r.kind == ToolKind::Read)
                 .and_then(|r| table::product_table(r.output.as_ref()?)),
@@ -2461,10 +2511,11 @@ impl<'r> Turn<'r> {
         }
         for b in out {
             self.emit.send(Event::Block(Box::new(b.clone())));
-            if b.ui == "change_set"
-                && let Some(failed) = b.data["checks"]
-                    .as_array()
-                    .and_then(|c| c.iter().find(|c| c["passed"] == false))
+            if matches!(b.ui.as_str(), "change_set" | "product_drafts")
+                && let Some(failed) = b.data["checks"].as_array().and_then(|c| {
+                    c.iter()
+                        .find(|c| c["passed"] == false || c["status"] == "open")
+                })
                 && let Some(element) = failed["element"].as_str()
             {
                 let note = failed["detail"].as_str().map(str::to_owned);
@@ -2555,6 +2606,10 @@ impl<'r> Turn<'r> {
                 "return_options" => {
                     parts.push("Here are your options; only you can send the request.".into())
                 }
+                "product_drafts" => parts.push(
+                    "I turned the sheet into drafts. Shoppers do not see them; publishing is a separate change set."
+                        .into(),
+                ),
                 _ => {}
             }
         }

@@ -50,7 +50,7 @@
 
 | id | 이름 | 역할 |
 |---|---|---|
-| `adm_sj` | Son SeongJun ("SJ") | merchandiser. 승인 권한: 프로모션·전시·환불·메시지 |
+| `adm_sj` | Son SeongJun ("SJ") | merchandiser + catalog admin **[정함]**. 승인 권한: 프로모션·전시·환불·메시지, 상품 초안 저장·게시(B4) |
 
 ### 2.3 쇼퍼
 
@@ -107,7 +107,7 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 | Corduroy trousers, sand | $34 → $89 | needs_you: 사진에 두 상품 |
 | Lambswool cardigan, oatmeal | $44 → $109 | 설명 작성 중 |
 
-전체 30행: ready 14, needs_you 4, 작업 중 12.
+시안의 숫자(ready 14, needs_you 4, 작업 중 12)는 작업 도중의 화면입니다. 시트는 `seed/demo/09_supplier_sheet.yml`의 `upl_fw26_supplier`(30행, 공급사 Harbor Mills Ltd.) **[정함]** 이고, 가져오기가 끝나면 ready 26, needs_you 4, 작업 중 0입니다. needs_you 4: Quilted liner jacket(olive)과 Down vest(black)의 충전재 비율(소재) 없음, Corduroy trousers sand·olive가 한 장의 사진을 같이 씀. 설명은 가져오기가 쓰지 않고 공급사 글을 초안에 남깁니다([api/catalog.md](api/catalog.md#batch_import)).
 
 ---
 
@@ -205,6 +205,7 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 ### B4. 공급사 시트 등록 (10:58 요청)
 
 "List the 30 products in this supplier sheet. Use our usual pricing and write the descriptions in our tone." → 초안 30개(§3.3), 체크: 중복 SKU 없음 · 모든 가격 하한 이상 · 필수 필드 4건 미해결. 초안은 쇼퍼에게 보이지 않고, 게시는 별도 변경셋입니다.
+- **흐름:** 카탈로그 에이전트(라우팅 힌트 "supplier sheet")가 `batch_import` 하나를 새 변경셋에 프리뷰하고 사람에게 넘깁니다 → `product_drafts` 블록(진행 26/4/0, 쓴 규칙, 체크 3개 + 이름·카테고리 체크) → SJ가 **Save 30 drafts**(변경셋 승인, 사람 전용). 상품 하나의 게시: 설명 작성(`update_product_group`) → `submit_for_review` → `approve_product`(새 변경셋, 사람 승인).
 
 ### B5. 그 밖의 할 일 (운영자 홈)
 

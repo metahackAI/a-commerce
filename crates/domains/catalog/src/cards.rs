@@ -129,7 +129,9 @@ pub async fn load(
     }
     let groups = repo::groups(tx, ids).await?;
     let mut variants: BTreeMap<String, Vec<Variant>> = BTreeMap::new();
-    for v in repo::variants(tx, ids).await? {
+    let mut all = repo::variants(tx, ids).await?;
+    crate::write::apply_scheduled_prices(tx, &mut all, viewer.at).await?;
+    for v in all {
         variants
             .entry(v.product_group_id.clone())
             .or_default()

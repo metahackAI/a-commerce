@@ -86,6 +86,174 @@ impl PriceFloorRule {
     }
 }
 
+fn words_at(p: &PolicySet, path: &str) -> Result<Vec<String>, ToolError> {
+    lookup(p, path)?
+        .as_array()
+        .map(|l| {
+            l.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
+        .ok_or_else(|| missing(path))
+}
+
+/// `pricing_rule`: the list price a new draft gets from its cost — cost × multiplier, then the
+/// nearest whole price ending in 9 (`round_to: nearest_ending_in_9`), ties going up or down.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PricingRule {
+    pub multiplier: Decimal,
+    /// `true` for `round_to: nearest_ending_in_9`; `false` rounds to the cent only.
+    pub ending_in_9: bool,
+    /// `tie: up` — the higher of two equally near prices.
+    pub tie_up: bool,
+}
+
+impl PricingRule {
+    pub fn from_policy(p: &PolicySet) -> Result<Self, ToolError> {
+        let multiplier = decimal(lookup(p, "catalog.pricing_rule.multiplier")?)
+            .ok_or_else(|| missing("catalog.pricing_rule.multiplier"))?;
+        let ending_in_9 = match lookup(p, "catalog.pricing_rule.round_to")?.as_str() {
+            Some("nearest_ending_in_9") => true,
+            Some("cent") => false,
+            _ => return Err(missing("catalog.pricing_rule.round_to")),
+        };
+        let tie_up = p
+            .lookup("catalog.pricing_rule.tie")
+            .and_then(Value::as_str)
+            .is_none_or(|t| t == "up");
+        Ok(Self {
+            multiplier,
+            ending_in_9,
+            tie_up,
+        })
+    }
+
+    /// The price for a cost. With `nearest_ending_in_9` the candidates are whole amounts
+    /// 9, 19, 29, …: $96 × 2.5 = $240 → $239; $52 × 2.5 = $130 → $129; $33.60 × 2.5 = $84 is as
+    /// near $79 as $89, and `tie: up` picks $89.
+    pub fn price(&self, cost: Money) -> Money {
+        let target = cost.value * self.multiplier;
+        if !self.ending_in_9 {
+            return Money::new(target, cost.currency).rounded();
+        }
+        let ten = Decimal::TEN;
+        let nine = Decimal::from(9);
+        let below = ((target - nine) / ten).floor() * ten + nine;
+        let above = below + ten;
+        let pick = if below < Decimal::ZERO {
+            above
+        } else {
+            let (down, up) = (target - below, above - target);
+            if down < up || (down == up && !self.tie_up) {
+                below
+            } else {
+                above
+            }
+        };
+        let mut value = pick;
+        value.rescale(cost.currency.minor_units());
+        Money::new(value, cost.currency)
+    }
+
+    /// The rule in words, for the "rules used" of a preview.
+    pub fn text(&self) -> String {
+        let m = self.multiplier.normalize();
+        if self.ending_in_9 {
+            format!(
+                "Cost × {m}, to the nearest price ending in 9 (a tie goes {})",
+                if self.tie_up { "up" } else { "down" }
+            )
+        } else {
+            format!("Cost × {m}, to the cent")
+        }
+    }
+}
+
+/// `import`: how `batch_import` reads a supplier sheet.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportRules {
+    pub max_rows: usize,
+    /// Fields a draft must have before it can be published; missing ones are flagged.
+    pub required_fields: Vec<String>,
+    /// `save_as_draft` keeps a row with open fields as a flagged draft; `reject_row` refuses it.
+    pub save_open_rows: bool,
+    /// Two rows with the same photo make that photo unclear for both.
+    pub one_product_per_image: bool,
+    /// Category fields the sheet's category word is matched against (`name`, `term_code`).
+    pub category_match: Vec<String>,
+}
+
+impl ImportRules {
+    pub fn from_policy(p: &PolicySet) -> Result<Self, ToolError> {
+        Ok(Self {
+            max_rows: lookup(p, "catalog.import.max_rows")?
+                .as_u64()
+                .and_then(|n| usize::try_from(n).ok())
+                .ok_or_else(|| missing("catalog.import.max_rows"))?,
+            required_fields: words_at(p, "catalog.import.required_fields")?,
+            save_open_rows: lookup(p, "catalog.import.on_open_field")?.as_str()
+                != Some("reject_row"),
+            one_product_per_image: lookup(p, "catalog.import.one_product_per_image")?
+                .as_bool()
+                .ok_or_else(|| missing("catalog.import.one_product_per_image"))?,
+            category_match: words_at(p, "catalog.import.category_match")?,
+        })
+    }
+}
+
+/// `product.required_on_create`, `product.publish_requires`: what a new product must have, and
+/// what it must have before it is published.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProductRules {
+    pub required_on_create: Vec<String>,
+    pub publish_requires: Vec<String>,
+}
+
+impl ProductRules {
+    pub fn from_policy(p: &PolicySet) -> Result<Self, ToolError> {
+        Ok(Self {
+            required_on_create: words_at(p, "catalog.product.required_on_create")?,
+            publish_requires: words_at(p, "catalog.product.publish_requires")?,
+        })
+    }
+}
+
+/// `content.copy`: the store's tone for descriptions.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CopyRules {
+    pub tone: String,
+    pub sentences: u64,
+    pub care_line: bool,
+}
+
+impl CopyRules {
+    pub fn from_policy(p: &PolicySet) -> Result<Self, ToolError> {
+        Ok(Self {
+            tone: lookup(p, "catalog.content.copy.tone")?
+                .as_str()
+                .ok_or_else(|| missing("catalog.content.copy.tone"))?
+                .to_owned(),
+            sentences: lookup(p, "catalog.content.copy.sentences")?
+                .as_u64()
+                .ok_or_else(|| missing("catalog.content.copy.sentences"))?,
+            care_line: lookup(p, "catalog.content.copy.care_line")?
+                .as_bool()
+                .unwrap_or(false),
+        })
+    }
+
+    /// "2 sentences + care line".
+    pub fn shape_text(&self) -> String {
+        format!(
+            "{} sentence{}{}",
+            self.sentences,
+            if self.sentences == 1 { "" } else { "s" },
+            if self.care_line { " + care line" } else { "" }
+        )
+    }
+}
+
 /// `inventory.auto_out_of_stock` and `inventory.auto_restore`: when a stock change moves a
 /// variant's availability by itself.
 #[derive(Debug, Clone, PartialEq)]
@@ -234,6 +402,44 @@ mod tests {
         let r = ReviewRules::from_policy(&policies()).unwrap_or_else(|e| panic!("{e}"));
         assert!(r.verified_purchase_only && r.one_per_order_item);
         assert_eq!(r.profanity_filter, "block");
+    }
+
+    #[test]
+    fn pricing_rule_rounds_to_the_nearest_price_ending_in_9() {
+        let rule = PricingRule::from_policy(&policies()).unwrap_or_else(|e| panic!("{e}"));
+        // scenarios.md §3.3: the six named drafts.
+        for (cost, price) in [
+            ("96.00", "239.00"),
+            ("38.00", "99.00"),
+            ("30.00", "79.00"),
+            ("52.00", "129.00"),
+            ("34.00", "89.00"),
+            ("44.00", "109.00"),
+        ] {
+            assert_eq!(rule.price(usd(cost)), usd(price), "cost {cost}");
+        }
+        // $33.60 × 2.5 = $84.00 is as near $79 as $89: a tie goes up.
+        assert_eq!(rule.price(usd("33.60")), usd("89.00"));
+        // An exact x9 stays; a target under $9 goes up to $9.
+        assert_eq!(rule.price(usd("27.60")), usd("69.00"));
+        assert_eq!(rule.price(usd("2.00")), usd("9.00"));
+        assert_eq!(rule.price(usd("96.00")).value.to_string(), "239.00");
+        assert_eq!(
+            rule.text(),
+            "Cost × 2.5, to the nearest price ending in 9 (a tie goes up)"
+        );
+    }
+
+    #[test]
+    fn import_product_and_copy_rules_read_the_policy() {
+        let i = ImportRules::from_policy(&policies()).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(i.required_fields, ["material", "image"]);
+        assert!(i.save_open_rows && i.one_product_per_image);
+        let p = ProductRules::from_policy(&policies()).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(p.required_on_create, ["seller", "category", "name"]);
+        assert!(p.publish_requires.iter().any(|r| r == "no_open_fields"));
+        let c = CopyRules::from_policy(&policies()).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(c.shape_text(), "2 sentences + care line");
     }
 
     #[test]

@@ -187,8 +187,13 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `catalog.measurement` | schema:QuantitativeValue (hasMeasurement) | — | 실측(가슴, 어깨, 소매, 기장) |
 | `catalog.merchant_return_policy` | schema:MerchantReturnPolicy | — | `merchant_return_days`, `return_fees` |
 | `catalog.review` | schema:Review | `rev` | `review_rating_value`, `review_body`, `acom:fit_vote` |
+| `catalog.data_feed` | schema:DataFeed | `upl` | 올린 공급사 시트(API: upload_id). 행은 `data_feed_element` |
+| `catalog.product_import` | schema:CreateAction/acom:ProductImport | `imp` | `batch_import` 실행 한 번 |
+| `catalog.data_feed_item` | schema:DataFeedItem | — | 시트 행 ↔ 초안, `draft_status`, `open_fields` |
+| `catalog.unit_price_specification` | schema:UnitPriceSpecification | `ups` | 예약 정가(`schedule_price_change`), 그때그때 계산 |
 | `merchandising.defined_term` | schema:DefinedTerm | `cat` | 카테고리, `in_defined_term_set`(standard/display) |
 | `merchandising.product_group_category` | - | — | 상품 ↔ 카테고리 |
+| `merchandising.category_mapping` | schema:Intangible/acom:CategoryMapping | `map` | 표준 → 전시 카테고리 |
 | `merchandising.display_slot` | schema:WebPageElement | `slot` | `slot_type`, 페이지 |
 | `merchandising.banner` | schema:CreativeWork/acom:Banner | `bnr` | `headline`, `alternative_headline`, `image`, `url` |
 | `merchandising.display_booking` | schema:Schedule/acom:DisplayBooking | `dsp` | 슬롯 × 대상 × 기간 |

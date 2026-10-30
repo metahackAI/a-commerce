@@ -48,7 +48,7 @@ thresholds:
     requires: human_approval
     approver_role: merchandiser
   product_approve:
-    applies_to: [update_product, discontinue_product, approve_product]
+    applies_to: [create_product, update_product, update_product_group, set_variants, discontinue_product, approve_product]   # 초안·반려 상품의 구조 변경은 고객에게 닿지 않으므로 content로 판정
     when:
       any:
         - { field: change_type, op: eq, value: structural }   # catalog.yml product.approval.structural_changes

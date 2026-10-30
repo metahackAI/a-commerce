@@ -8,7 +8,7 @@
 use acom_llm::Message;
 use serde_json::{Value, json};
 
-use crate::profile::AgentProfile;
+use crate::profile::{AgentProfile, RouteHint};
 
 /// The routing decision and how it was made, for the step log.
 #[derive(Debug, Clone, PartialEq)]
@@ -71,6 +71,36 @@ pub fn messages(
         user.push_str(&format!("The conversation's agent so far: {p}\n"));
     }
     vec![Message::system(prompt.trim()), Message::user(user)]
+}
+
+/// A routing hint the request matches (`agents/runtime.yml router.hints`): a phrase it says, or
+/// a kind of file attached. Only when the hints name exactly one agent of this surface.
+pub fn hinted(
+    hints: &[RouteHint],
+    agents: &[&AgentProfile],
+    request: &str,
+    attached: &[String],
+) -> Option<Route> {
+    let text = request.to_lowercase();
+    let mut chosen: Vec<&str> = hints
+        .iter()
+        .filter(|h| agents.iter().any(|a| a.id == h.agent))
+        .filter(|h| {
+            h.when_said.iter().any(|p| text.contains(&p.to_lowercase()))
+                || h.when_attached.iter().any(|k| attached.contains(k))
+        })
+        .map(|h| h.agent.as_str())
+        .collect();
+    chosen.sort_unstable();
+    chosen.dedup();
+    match chosen.as_slice() {
+        [one] => Some(Route {
+            agent: (*one).to_owned(),
+            confidence: 1.0,
+            reason: "matched a routing hint",
+        }),
+        _ => None,
+    }
 }
 
 /// The decision from the model's answer (or its absence).
@@ -183,6 +213,32 @@ mod tests {
         assert!(by_phrase(&bo, "Go through the returns over $200").is_none());
         let fo = p.for_surface(ChatSurface::Fo);
         assert!(by_phrase(&fo, "Why did sales drop yesterday?").is_none());
+    }
+
+    #[test]
+    fn supplier_sheets_go_to_the_catalog_agent_without_the_model() {
+        let p = repo();
+        let bo = p.for_surface(ChatSurface::Bo);
+        let hints = &p.runtime.router.hints;
+        let r = hinted(
+            hints,
+            &bo,
+            "List the 30 products in this supplier sheet. Use our usual pricing and write the descriptions in our tone.",
+            &[],
+        )
+        .unwrap();
+        assert_eq!(
+            (r.agent.as_str(), r.reason),
+            ("catalog", "matched a routing hint")
+        );
+        let r = hinted(hints, &bo, "Add these", &["sheet".to_owned()]).unwrap();
+        assert_eq!(r.agent, "catalog");
+        assert!(hinted(hints, &bo, "Run a 20% weekend sale", &[]).is_none());
+        let fo = p.for_surface(ChatSurface::Fo);
+        assert!(
+            hinted(hints, &fo, "supplier sheet", &[]).is_none(),
+            "only this surface's agents"
+        );
     }
 
     #[test]

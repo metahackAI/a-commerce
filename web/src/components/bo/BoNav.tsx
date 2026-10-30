@@ -19,11 +19,14 @@ import {
   ChatBubbleOvalLeftEllipsisIcon,
   CircleStackIcon,
   ClipboardDocumentListIcon,
+  DocumentDuplicateIcon,
+  FolderIcon,
   InboxIcon,
   QueueListIcon,
   ReceiptPercentIcon,
   ScaleIcon,
   ShoppingBagIcon,
+  SwatchIcon,
   TagIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline';
@@ -47,6 +50,9 @@ const WORK: NavLink[] = [
 
 const STORE: NavLink[] = [
   {label: 'Products', href: '/bo/products', icon: TagIcon},
+  {label: 'Product drafts', href: '/bo/products/drafts', icon: DocumentDuplicateIcon},
+  {label: 'Categories', href: '/bo/categories', icon: FolderIcon},
+  {label: 'Brands', href: '/bo/brands', icon: SwatchIcon},
   {label: 'Promotions', href: '/bo/promotions', icon: ReceiptPercentIcon},
   {label: 'Merchandising', href: '/bo/merchandising', icon: BuildingStorefrontIcon},
   {label: 'Orders', href: '/bo/orders', icon: ShoppingBagIcon},
@@ -63,6 +69,7 @@ const RULES: NavLink[] = [
 function isCurrent(pathname: string, href: string): boolean {
   if (href === '/bo') return pathname === '/bo' || pathname.startsWith('/bo/tasks');
   if (href === '/bo/returns') return pathname.startsWith('/bo/returns') || pathname.startsWith('/bo/claims');
+  if (href === '/bo/products') return pathname === href || (pathname.startsWith(`${href}/`) && !pathname.startsWith('/bo/products/drafts'));
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

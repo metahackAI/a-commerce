@@ -18,8 +18,8 @@
 - 논리주소/REST: `catalog.product_group.search` · `GET /v1/catalog/product-groups`
 - 요약: 승인 상태·브랜드처럼 카탈로그 관리 조건으로 상품을 찾습니다(초안·심사 중 포함). 쇼퍼에게 보이는 검색은 `search_products`입니다.
 - consumes → produces: → `product_id[]`
-- 입력: `query?`(Text), `brand_id?`, `category_id?`, `approval_status?`(`draft` | `pending_review` | `active` | `rejected` | `discontinued`), `availability?`(`in_stock` | `out_of_stock` | `pre_order` | `back_order` | `discontinued`), `sort?`(`relevance` | `newest` | `price` | `-price`), `fields?[]`, `limit?`(기본 20, 최대 100), `cursor?`
-- 출력: `{items: ProductGroup[], total, next_cursor?}`
+- 입력: `query?`(Text), `brand_id?`, `category_id?`, `approval_status?`(`draft` | `pending_review` | `active` | `rejected` | `discontinued`), `availability?`(`in_stock` | `out_of_stock` | `pre_order` | `back_order` | `discontinued`), `import_id?`(`imp_…`, 그 가져오기가 만든 초안만), `draft_status?`(`ready` | `needs_you` | `working`, 공급사 시트 초안의 진행), `sort?`(`relevance` | `newest` | `price` | `-price`), `fields?[]`, `limit?`(기본 20, 최대 100), `cursor?`
+- 출력: `{items: ProductGroup[], total, next_cursor?}`. 공급사 시트에서 온 상품은 운영자에게 `acom:draft: {import_id, row, supplier_code, draft_status, open_fields[], note, supplier_text}`가 붙습니다.
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음
 - 에러: `invalid_filter` → `search_product_groups`
@@ -30,7 +30,7 @@
 - 요약: 상품 하나를 카탈로그 관리 관점(승인 상태, 옵션 축 `varies_by`, 변형 전체, 보류 중인 변경)으로 돌려줍니다. 판매 관점의 가격·재고 요약은 `get_product`.
 - consumes → produces: `product_id` → product_group
 - 입력: `product_id`, `fields?[]`
-- 출력: `ProductGroup` 한 건(단건 읽기라 목록 봉투 없음). 예 `{id: "prd_windbreaker", name: "Packable windbreaker", approval_status: "active", varies_by: ["color", "size"], has_variant: [...], pending_changes: []}`
+- 출력: `ProductGroup` 한 건(단건 읽기라 목록 봉투 없음). 예 `{id: "prd_windbreaker", name: "Packable windbreaker", approval_status: "active", varies_by: ["color", "size"], has_variant: [...], pending_changes: []}`. 운영자에게는 공급사 시트 초안이면 `acom:draft`(`search_product_groups`와 같은 모양), 변형마다 예약된 정가 `scheduled_prices[]{unit_price_specification_id, price, valid_from, valid_through}`가 붙습니다.
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음
 - 에러: `product_not_found` → `search_product_groups`
@@ -47,22 +47,23 @@
   | description | Text | | 상세 설명 |
   | brand_id | Text | | 예 `"brn_northwind"` |
   | category_id | Text | ✓ | 표준 카테고리, 예 `"cat_summer_outerwear"` |
-  | image | ImageObject[] | | 대표·상세 이미지 |
-  | varies_by | PropertyValue[] | | 옵션 축(`color`, `size`) |
-  | acom:min_age | Integer | | 구매 가능 최소 연령(세). 없거나 `0`이면 제한 없음. 허용 값·확인 방식은 스토어 설정([catalog.yml](../../policies/catalog.yml) `product.age_restriction`) |
-- 출력: 프리뷰 형식 → 실행 `{ok: true, id: "prd_windbreaker", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`
-- 프리뷰: `changes`=`create` `product`(`id: null`). checks `product.required_on_create`(판매자·카테고리·이름), `product.age_restriction`. 콘텐츠 등록이라 `needs_approval: false`.
+  | image | ImageObject[] | | 대표·상세 이미지 URL 목록. 첫 번째가 대표 이미지 |
+  | varies_by | PropertyValue[] | | 옵션 축 단어 목록(`color`, `size`) |
+  | material | Text | | 주 소재(쇼퍼에게 보임), 예 `"Recycled nylon"` |
+  | acom:min_age | Integer | | 구매 가능 최소 연령(세). 없거나 `0`이면 제한 없음. 허용 값·확인 방식은 스토어 설정([catalog.yml](../../policies/catalog.yml) `product.age_restriction`). **아직 저장하지 않음**(입력에서 빠짐) |
+- 출력: 프리뷰 형식 → 실행 `{ok: true, id: "prd_windbreaker", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`. id는 이름에서 만들고(`prd_trail_shell`), 이미 있으면 `_2`, `_3`
+- 프리뷰: `changes`=`create` `product`(`id: null`, `to.product_id`에 만들 id). checks `product.required_on_create`(판매자·카테고리·이름; 판매자는 스토어), `variant.max_option_axes`(스토어가 상한을 정했을 때). 콘텐츠 등록이라 `needs_approval: false`. 카테고리는 활성 표준 카테고리여야 함(전시 카테고리는 `invalid_category`). 되돌리기는 아직 변형이 없는 초안일 때만 상품을 지웁니다.
 - 정책: [catalog.yml](../../policies/catalog.yml) `product.required_on_create`, `product.age_restriction`, `variant.max_option_axes`
-- 에러: `missing_required_field` → `create_product_group` · `invalid_category` → `list_categories`
+- 에러: `missing_required_field` → `create_product_group` · `invalid_category` → `list_categories` · `brand_not_found` → `list_brands`
 - 멱등성: `Idempotency-Key`
 
 ### `update_product_group` — Kind: W
 - 논리주소/REST: `catalog.product_group.update` · `PATCH /v1/catalog/product-groups/{product_id}`
 - 요약: 상품 속성을 고칩니다. 설명·이미지 변경은 승인 없이, 카테고리 같은 구조 변경은 승인 대상입니다.
 - consumes → produces: `product_id` → `product_id`
-- 입력: `product_id`, 바꿀 필드(`name`, `description`, `category_id`, `image`, `varies_by`)
+- 입력: `product_id`, 바꿀 필드(`name`, `description`, `category_id`, `brand_id`, `image`, `varies_by`, `material`). `description`의 빈 문자열은 설명을 지움
 - 출력: 프리뷰 형식 → 실행 `{ok, id, undo}`
-- 프리뷰: `changes`=`update` `product` 필드별 `from`/`to`. 구조 변경이 있으면 `needs_approval: true`, `approval_reason: "Changes the category"`([approval.yml](../../policies/approval.yml) `thresholds.product_approve`).
+- 프리뷰: `changes`=`update` `product` 필드별 `from`/`to`. 쇼퍼가 볼 수 있는 상품(`active`, `pending_review`)에 구조 변경(카테고리·옵션 축)이 있으면 `needs_approval: true`, `approval_reason: "Changes the category"`([approval.yml](../../policies/approval.yml) `thresholds.product_approve`). 초안·반려 상품은 고객에게 닿지 않으므로 같은 변경도 콘텐츠로 판정해 승인 없이 실행합니다. 공급사 시트 초안의 열린 필드(`material`, `image`)를 채우면 `acom:open_fields`에서 빠지고, 다 채우면 `acom:draft_status`가 `ready`가 됩니다(checks `import.required_fields`). checks `product.approval`(왜 승인이 필요한지/아닌지).
 - 정책: [catalog.yml](../../policies/catalog.yml) `product.approval`
 - 에러: `invalid_state` → `get_product_group`
 - 멱등성: `Idempotency-Key`
@@ -156,17 +157,17 @@
   | product_id | Text | | 소속 상품(`is_variant_of`). 없으면 단품 상품을 자동 생성 |
   | sku | Text | ✓ | 스토어 안에서 유일 |
   | name | Text | ✓ | 변형 이름 |
-  | category_id | Text | ✓ | 표준 카테고리 |
+  | category_id | Text | (✓) | 표준 카테고리. `product_id`가 없을 때(단품 상품을 함께 만들 때)만 필요 |
   | brand_id | Text | | |
   | image | ImageObject[] | | |
-  | additional_property | PropertyValue[] | | 옵션 조합, 예 `{color: "Slate", size: "M"}` |
-  | offers | Offer | | 초기 가격 `{price: 89.00, price_currency: "USD", availability: "in_stock"}`. 생략하면 `set_price`로 |
+  | additional_property | PropertyValue[] | | 옵션 조합 객체 `{color: "Slate", size: "M"}` |
+  | offers | Offer | | 초기 가격 `{price: 89.00, price_currency: "USD"}`. 재고 0·`out_of_stock`으로 시작하고 재고는 `set_variant_stock`. 생략하면 가격 없는 변형(오퍼 없음)이고 `set_variants`로 가격을 줌 |
   | acom:cost | acom:CostSpecification | | 원가(운영자 전용) |
   | acom:managed | Boolean | | 재고 관리 여부(기본 `true`) |
   | acom:sale_type | enum | | `always`(기본) \| `pre_order` \| `subscription` \| `gift_card` |
   | acom:min_age | Integer | | 구매 가능 최소 연령(세). 없거나 `0`이면 제한 없음. 허용 값·확인 방식은 스토어 설정([catalog.yml](../../policies/catalog.yml) `product.age_restriction`) |
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "var_windbreaker_m_slate", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`
-- 프리뷰: `changes`=`create` `variant`(+ `offer`, `inventory_level`, 단품이면 `product`), 모두 `id: null`. checks `product.required_on_create`, `product.sku_unique`, `product.age_restriction`(`acom:min_age`가 스토어 허용 값인지), `price_floor`(가격이 있으면 원가 × 1.15 이상, 실패 시 `fix_tool: "set_price"`), `gift_card.disallow`(`gift_card`일 때 금지 조합). 가격이 없으면 `needs_approval: false`, 있으면 구조 변경으로 `true`.
+- 프리뷰: `changes`=`create` `variant`(+ `offer`, 단품이면 `product`), 모두 `id: null`. checks `product.required_on_create`, `product.sku_unique`, `price_floor`(가격이 있으면 원가 × 1.15 이상, 실패 시 `fix_tool: "set_price"`), `gift_card.disallow`(`gift_card`일 때 금지 조합). 쇼퍼가 볼 수 있는 상품에 가격 있는 변형을 더하면 구조 변경으로 `needs_approval: true`([approval.yml](../../policies/approval.yml) `thresholds.product_approve`), 초안이면 `false`. id는 SKU에서(`wb-sand-m` → `var_wb_sand_m`, `off_wb_sand_m`).
 - 정책: [catalog.yml](../../policies/catalog.yml) `product.required_on_create`, `product.sku_unique`, `product.age_restriction`, `price_floor`, `variant.option_source`, `gift_card.disallow`
 - 에러: `duplicate_sku` → `get_product` · `below_price_floor` → `set_price` · `min_age_not_allowed` → `get_policy` · `missing_required_field` → `create_product` · `invalid_sale_type` → `update_product`
 - 멱등성: `Idempotency-Key = hash(tenant + sku)`. 같은 SKU로 다시 보내면 첫 결과를 돌려줌
@@ -175,9 +176,9 @@
 - 논리주소/REST: `catalog.product.update` · `PATCH /v1/catalog/variants/{variant_id}`
 - 요약: 변형 속성을 고칩니다. 콘텐츠는 승인 없이, 가격·구조는 승인 대상입니다.
 - consumes → produces: `variant_id` → `variant_id`
-- 입력: `variant_id`, 바꿀 필드(`name`, `image`, `additional_property`, `acom:managed`, `acom:sale_type`, `acom:min_age`)
+- 입력: `variant_id`, 바꿀 필드(`name`, `image`, `additional_property`(`{color, size}`), `acom:managed`, `acom:sale_type`). 가격은 `set_price`
 - 출력: 프리뷰 형식 → 실행 `{ok, id, undo}`
-- 프리뷰: `changes`=`update` `variant` 필드별 `from`/`to`. checks `price_floor`(가격이 바뀔 때). 가격·구조 변경이 있으면 `needs_approval: true`([approval.yml](../../policies/approval.yml) `thresholds.product_approve`).
+- 프리뷰: `changes`=`update` `variant` 필드별 `from`/`to`. checks `product.approval`, `gift_card.disallow`. 쇼퍼가 볼 수 있는 상품의 색·사이즈·판매 방식 변경은 `needs_approval: true`([approval.yml](../../policies/approval.yml) `thresholds.product_approve`).
 - 정책: [catalog.yml](../../policies/catalog.yml) `product.approval`, `price_floor`
 - 에러: `invalid_state` → `get_product` · `below_price_floor` → `set_price`
 - 멱등성: `Idempotency-Key`
@@ -190,9 +191,9 @@
   | 필드 | 타입(schema.org/acom) | 필수 | 설명·예 |
   |------|----------------------|:--:|--------|
   | product_id | Text | ✓ | 상품 id, 예 `"prd_windbreaker"` |
-  | varies_by | PropertyValue[] | ✓ | 축과 값, 예 `color: [Slate, Sand]`, `size: [S, M, L]`. 축 수 상한은 스토어 설정 `variant.max_option_axes`(기본 제한 없음), 조합 수는 `variant.max_variants_per_group` |
-  | has_variant | Product[] | ✓ | 조합별 `{sku, additional_property, offers?, acom:cost?, acom:managed?}` |
-  | missing_combination | enum | | `create_all` \| `listed_only` |
+  | varies_by | PropertyValue[] | ✓ | 축과 값 객체 `{color: [Slate, Sand], size: [S, M, L]}`. 축 수 상한은 스토어 설정 `variant.max_option_axes`(기본 제한 없음), 조합 수는 `variant.max_variants_per_group` |
+  | has_variant | Product[] | ✓ | 조합별 `{sku, additional_property: {color, size}, offers?: {price, price_currency}, acom:cost?, acom:managed?}`. 이 상품의 기존 SKU면 고침, 새 SKU면 만듦 |
+  | missing_combination | enum | | `create_all`(목록에 없는 조합도 가격 없이 만듦) \| `listed_only`(기본) |
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "prd_windbreaker", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`
 - 프리뷰: `changes`=조합별 `create`/`update` `variant`. 입력에서 빠진 기존 변형은 지우지 않고 `update`(`availability` → `discontinued`, `variant.missing_from_input`). checks `variant.max_option_axes`(설정했을 때), `variant.max_variants_per_group`, `product.sku_unique`, `price_floor`(가격이 있는 변형). 판매 중인 상품이면 구조 변경으로 `needs_approval: true`.
 - 정책: [catalog.yml](../../policies/catalog.yml) `variant.max_option_axes`, `variant.max_variants_per_group`, `variant.option_source`, `variant.missing_from_input`, `product.approval.structural_changes`, `price_floor`
@@ -234,14 +235,28 @@
 
 ### `batch_import` — Kind: W$
 - 논리주소/REST: `catalog.product.batch_import` · `POST /v1/catalog/products/batch-import`
-- 요약: 스프레드시트(CSV·엑셀)로 상품을 대량 등록·수정합니다. 모든 행을 프리뷰로 검사한 뒤 변경셋 승인을 거쳐 실행합니다.
-- consumes → produces: `upload_id` → `import_id`
-- 입력: `acom:file`(MediaObject, 업로드 id `upl_…`), `acom:mode`(`create` | `upsert`), `acom:publish_on_success?`(Boolean)
-- 출력: 프리뷰 형식(`changes`는 행별 `create`/`update` `product`·`variant`) → 실행 `{ok: true, id: "imp_1107", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`. 진행 상황은 `get_import_status`
-- 프리뷰: checks `product.required_on_create`, `price_floor`, `product.sku_unique`. 실패한 행은 `detail`에 행 번호와 이유. 항상 `needs_approval: true`, 예 `approval_reason: "Creates 128 products"`.
-- 정책: [catalog.yml](../../policies/catalog.yml) `product.required_on_create`, `product.sku_unique`, `price_floor`, `pricing_rule`; [approval.yml](../../policies/approval.yml) `thresholds.bulk_catalog_change`
-- 에러: `invalid_file_format` → `batch_import` · `row_validation_failed` → `batch_import` · `below_price_floor` → `set_price`
-- 멱등성: `Idempotency-Key = hash(tenant + file_digest)`. 같은 파일은 다시 적용하지 않음
+- 요약: 공급사 시트(스프레드시트)를 상품 초안으로 만듭니다(장면 B4). 모든 행을 프리뷰로 검사한 뒤 변경셋 승인("초안 저장")을 거쳐 실행합니다. 초안은 쇼퍼에게 보이지 않고, 게시는 상품마다 `approve_product`의 별도 변경셋입니다.
+- consumes → produces: `upload_id` → `import_id`, `product_id[]`
+- 입력: `acom:file`(MediaObject, 업로드 id `upl_…`; 에이전트에는 대화에 첨부한 시트의 id가 슬롯으로 들어감), `acom:mode`(`create`: 모든 행을 새 초안으로 | `upsert`: 앞선 가져오기가 만든 초안은 시트 값으로 고침), `acom:publish_on_success?`(`false`만 허용: 게시는 상품마다 따로)
+- 시트: `catalog.data_feed.data_feed_element`의 행(열 이름 → 셀 문자열). 필수 열 `supplier_code`, `sku`, `style_name`, `category`, `cost`; 그 밖 `color`, `brand`, `sizes`(쉼표로 나눈 사이즈), `units_per_size`, `material`, `image`, `supplier_text`. 행마다:
+  - 이름 = `style_name` + `, ` + 색 소문자(`import.name_format: style_color`): "Wool blend overcoat, charcoal"
+  - 카테고리 = 시트의 단어를 활성 표준 카테고리의 이름·term code와 대조(`import.category_match`)
+  - 정가 = 원가에 `pricing_rule`(원가 × 2.5 → 가장 가까운 x9, 동률이면 위로): $96 → $239, $52 → $129, $33.60 → $84 → $89. 시트의 가격은 쓰지 않음
+  - 사이즈마다 변형 하나(SKU `<sku>-<size>`), 오퍼(정가·원가·`units_per_size` 재고), 표준 카테고리 배치
+  - 열린 필드: `import.required_fields`(`material`, `image`)가 비었거나, 두 행이 같은 사진을 쓰면(`import.one_product_per_image`, "사진에 상품이 둘") 그 필드가 열림 → `acom:draft_status: needs_you`, 아니면 `ready`
+  - id는 SKU에서: `FW26-OT-014-CHR` → `prd_fw26_ot_014_chr`, `var_fw26_ot_014_chr_m`. 가져오기 id는 시트에서: `upl_fw26_supplier` → `imp_fw26_supplier`(다음 가져오기는 `_2`)
+- **설명(정함)**: 가져오기는 결정적이어서 설명을 쓰지 않습니다. 초안마다 공급사의 글(`acom:supplier_text`, `catalog.data_feed_item.supplier_text`)을 남기고 `description`은 비워 둡니다. 스토어 어조는 정책 `content.copy`(두 문장 + 관리 한 줄)이고, 설명은 그 어조로 사람이나 에이전트가 `update_product_group`으로 씁니다. 설명이 없으면 게시할 수 없습니다(`product.publish_requires: description`). `ready`는 "시트에서 와야 할 필드가 다 있음"이고 설명은 따로 표시합니다. `working`은 가져오기가 아직 채우는 중인 초안의 자리이고, 실행이 끝난 가져오기에는 없습니다.
+- 출력: 프리뷰 형식 → 실행 `{ok: true, id: "imp_fw26_supplier", import_id, product_id: [...], undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`. 결과는 `search_product_groups(import_id, draft_status?)`로 읽음
+- 프리뷰: `changes[0]`=`create` `product_import` `{import_id, upload_id, file_name, rows, drafts, ready, needs_you, working, rules[]{rule, label, text}}`(쓴 규칙: 가격·하한·어조·카테고리 대조); 그 뒤 행별 `create`(`upsert`로 고치는 초안은 `update`) `product` `{row, product_id, supplier_code, sku, name, category_id, cost, price, price_floor, sizes, variants, material, image, acom:draft_status, acom:open_fields, note, acom:supplier_text, description: null}`. checks:
+  - `product.required_on_create`: 이름·카테고리가 없거나 카테고리가 맞지 않는 행(`fix_tool: list_categories`)
+  - `product.sku_unique`: 시트 안에서 겹치거나 카탈로그에 이미 있는 SKU(`fix_tool: get_product`)
+  - `price_floor`: 가격이 하한 아래이거나 원가가 없는 행(`fix_tool: set_price`)
+  - `import.required_fields`: 열린 필드가 있는 초안 수와 이유. `on_open_field: save_as_draft`이면 `passed: true`인 경고(초안은 저장되고 게시 전에 채움, `fix_tool: update_product_group`), `reject_row`면 실패
+  - 항상 `needs_approval: true`, 예 `approval_reason: "Creates 30 product drafts"`. 기준(B4): 30행 → 초안 30, 중복 SKU 없음, 30개 모두 하한 이상, 필수 필드 4건 미해결(충전재 비율 2, 두 상품이 찍힌 사진 2)
+- 되돌리기: 아직 `draft`·`rejected`인 초안과 그 변형·오퍼·배치·시트 행, 가져오기 기록을 지웁니다. 이미 심사·공개된 초안이 있으면 거부(먼저 그 변경셋을 되돌림). `upsert`로 고친 초안은 이전 값으로.
+- 정책: [catalog.yml](../../policies/catalog.yml) `import`, `product.required_on_create`, `product.sku_unique`, `price_floor`, `pricing_rule`, `content.copy`; [approval.yml](../../policies/approval.yml) `thresholds.bulk_catalog_change`
+- 에러: `invalid_file_format`(행 없음, `import.max_rows` 초과, 필수 열 없음) → `batch_import` · `not_found`(`detail.entity: upload`) → `batch_import` · `below_price_floor` → `set_price`
+- 멱등성: 같은 프리뷰는 한 번만 실행. 같은 시트를 `create`로 다시 가져오면 모든 SKU가 `product.sku_unique`에 걸리므로 `upsert`로
 
 ### `generate_image` — Kind: W$
 - 논리주소/REST: `catalog.product.generate_image` · `POST /v1/catalog/products/{product_id}/generate-image`
@@ -301,9 +316,9 @@
 - 논리주소/REST: `catalog.offer.schedule_price_change` · `POST /v1/catalog/variants/{variant_id}/price/schedule`
 - 요약: 정가 변경을 미래 시점에 예약합니다. 적용 여부는 시각으로 그때그때 계산합니다.
 - consumes → produces: `variant_id` → `offer_id`
-- 입력: `variant_id`, `price`, `valid_from`, `valid_through?`
-- 출력: 프리뷰 형식 → 실행 `{ok, id, undo}`
-- 프리뷰: `changes`=`schedule` `unit_price_specification`(`price_type: list_price`, `id: null`). checks `price_floor`, `pricing.scheduled_change`(`valid_from`이 지금 이후). `needs_approval: true`.
+- 입력: `variant_id`, `price`, `price_currency?`(오퍼의 통화), `valid_from`, `valid_through?`
+- 출력: 프리뷰 형식 → 실행 `{ok, id: "off_…", unit_price_specification_id: "ups_…", undo}`
+- 프리뷰: `changes`=`schedule` `unit_price_specification`(`price_type: list_price`, `id: null`). checks `price_floor`, `pricing.scheduled_change`(`valid_from`이 지금 이후). 승인 여부는 [approval.yml](../../policies/approval.yml) `thresholds.price_change_bulk`(한 번에 10개 이상)를 따릅니다. 예약은 `catalog.unit_price_specification`에 저장되고, 정가를 읽는 곳(상품 카드·`get_product`·`get_price_breakdown`·장바구니)이 그 시각에 계산해 적용합니다. `valid_through` 뒤에는 오퍼의 원래 정가.
 - 정책: [catalog.yml](../../policies/catalog.yml) `pricing.scheduled_change`, `price_floor`
 - 에러: `below_price_floor` → `set_price` · `valid_from_in_past` → `schedule_price_change`
 - 멱등성: `Idempotency-Key`
@@ -338,7 +353,7 @@
 - 논리주소/REST: `catalog.inventory.set_safety_stock` · `PUT /v1/catalog/variants/{variant_id}/inventory/safety`
 - 요약: 안전재고 임계치를 정합니다. 알림 전용이며 판매 상태에는 영향이 없습니다.
 - consumes → produces: `variant_id` → `variant_id`
-- 입력: `variant_id`, `acom:safety_stock`(Integer), `enabled?`
+- 입력: `variant_id`, `acom:safety_stock`(Integer), `enabled?`(`false`면 0으로 두어 알림 끔)
 - 출력: 프리뷰 형식 → 실행 `{ok, id, undo}`
 - 프리뷰: `changes`=`update` `inventory_level`(`safety_stock`). `needs_approval: false`.
 - 정책: [catalog.yml](../../policies/catalog.yml) `inventory.safety_stock`
@@ -355,16 +370,16 @@
 - consumes → produces: `product_id` → `product_id`
 - 입력: `product_id`, `note?`
 - 출력: 프리뷰 형식 → 실행 `{ok, id, undo}`
-- 프리뷰: `changes`=`update` `product` `approval_status` `draft` → `pending_review`. `needs_approval: false`.
-- 정책: [catalog.yml](../../policies/catalog.yml) `product.approval`
-- 에러: `invalid_state` → `get_product` · `nothing_to_review` → `update_product_group`
+- 프리뷰: `changes`=`update` `product` `approval_status` `draft` → `pending_review`. checks `product.publish_requires`(공개에 필요한 것이 다 있는지: 변형·정가·원가·열린 필드 없음·설명; 실패 시 `fix_tool`이 채울 툴), `price_floor`. 체크가 실패하면 실행되지 않으므로 덜 된 초안은 심사로 가지 않습니다. `needs_approval: false`.
+- 정책: [catalog.yml](../../policies/catalog.yml) `product.approval`, `product.publish_requires`
+- 에러: `invalid_state` → `get_product` · `nothing_to_review`(변형이 없음) → `set_variants`
 - 멱등성: `Idempotency-Key`
 
 ### `approve_product` — Kind: W$
 - 논리주소/REST: `catalog.approval.approve` · `POST /v1/catalog/products/{product_id}/approve`
 - 요약: 심사 중인 상품을 공개합니다(`pending_review` → `active`). 고객에게 닿으므로 항상 변경셋 승인을 거칩니다. 승인 후 실행기가 `preview_id`로 실행합니다.
 - consumes → produces: `product_id` → `product_id`
-- 입력: `product_id`, `valid_from?`(공개 시점, 없으면 즉시), `note?`
+- 입력: `product_id`, `valid_from?`(공개일. 상품의 `release_date`가 되어 "newest" 정렬에 쓰임, 없으면 오늘. 쇼퍼에게는 변경셋이 실행되는 즉시 보임), `note?`
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "prd_windbreaker", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`
 - 프리뷰: `changes`=`update` `product` `approval_status` `pending_review` → `active`와 보류된 가격·변형. checks `price_floor`(공개 직전 재검사), `product.required_on_create`, `product.publish_requires`(변형·정가·원가가 다 있는지), `gift_card.disallow`. 항상 `needs_approval: true`, 예 `approval_reason: "Publishes 1 product"`.
 - 정책: [catalog.yml](../../policies/catalog.yml) `product.approval`, `product.publish_requires`, `price_floor`; [approval.yml](../../policies/approval.yml) `thresholds.product_approve`

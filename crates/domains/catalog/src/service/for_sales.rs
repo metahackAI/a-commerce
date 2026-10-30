@@ -135,7 +135,28 @@ pub async fn variants(
     .fetch_all(&mut *tx.tx)
     .await
     .map_err(db)?;
-    rows.into_iter().map(VariantRow::facts).collect()
+    let facts = rows
+        .into_iter()
+        .map(VariantRow::facts)
+        .collect::<Result<Vec<_>, _>>()?;
+    with_scheduled_prices(tx, facts).await
+}
+
+/// A scheduled list price in effect now replaces the offer's own price
+/// (`pricing.scheduled_change.compute: on_demand`).
+async fn with_scheduled_prices(
+    tx: &mut TxCx,
+    mut facts: Vec<VariantFacts>,
+) -> Result<Vec<VariantFacts>, ToolError> {
+    let at = tx.clock.now();
+    let offers: Vec<String> = facts.iter().map(|f| f.offer_id.clone()).collect();
+    let now = crate::write::scheduled_prices(tx, &offers, at).await?;
+    for f in &mut facts {
+        if let Some(p) = now.get(&f.offer_id) {
+            f.list_price = Money::new(*p, f.list_price.currency);
+        }
+    }
+    Ok(facts)
 }
 
 /// What looking a variant up by its product's options found.
@@ -191,7 +212,11 @@ pub async fn find_variant(
     let mut colors: Vec<String> = Vec::new();
     for r in rows {
         if same(&r.size, size) && same(&r.color, color) {
-            return Ok(VariantMatch::Found(Box::new(r.facts()?)));
+            let found = with_scheduled_prices(tx, vec![r.facts()?]).await?;
+            return Ok(match found.into_iter().next() {
+                Some(f) => VariantMatch::Found(Box::new(f)),
+                None => VariantMatch::NoProduct,
+            });
         }
         if let Some(s) = &r.size
             && !sizes.contains(s)

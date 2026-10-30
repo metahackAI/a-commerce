@@ -41,6 +41,8 @@ product:
     - at_least_one_variant               # 판매 가능한 변형이 하나 이상
     - price_on_every_variant             # 모든 변형에 정가
     - cost_on_every_variant              # 모든 변형에 원가(가격 하한 계산에 필요)
+    - no_open_fields                     # 가져오기가 표시한 필수 필드(import.required_fields)가 다 채워짐
+    - description                        # 스토어 어조로 쓴 상세 설명이 있음(content.copy)
   discontinue:                           # check: product.discontinue (discontinue_product)
     reversible: false                    # 단종은 되돌리지 않음
     block_if_open_subscriptions: true    # 진행 중 구독이 있으면 실패
@@ -54,6 +56,15 @@ product:
       verify_at: order                   # [default] order | cart | product_view
       reverify_after_days: null          # [default] 재확인하지 않음
     on_fail: block_purchase
+
+import:                                  # batch_import: 공급사 시트를 상품 초안으로 (장면 B4)
+  max_rows: 500                          # check: import.max_rows. 한 번에 가져오는 행 수 상한
+  required_fields: [material, image]     # check: import.required_fields. 시트에 없거나 불분명하면 초안은 저장하되 needs_you로 표시하고, 채울 때까지 게시(product.publish_requires no_open_fields)할 수 없음
+  on_open_field: save_as_draft           # save_as_draft = 초안으로 저장하고 사람에게 물음 | reject_row = 그 행을 거부(체크 실패)
+  one_product_per_image: true            # 두 행이 같은 사진을 쓰면 "사진에 상품이 둘" — 두 행 모두 image가 불분명
+  category_match: [name, term_code]      # 시트의 카테고리 단어를 표준 카테고리의 이름 또는 term_code와 대조(대소문자 무시)
+  name_format: style_color               # 초안 이름 = "<style_name>, <color 소문자>" 예: Wool blend overcoat, charcoal
+  price_from: pricing_rule               # 판매가는 원가에 pricing_rule을 적용해 정함(시트의 가격은 쓰지 않음)
 
 variant:
   max_option_axes: null                  # [default] null = 제한 없음. 스토어가 정수로 상한을 둘 수 있음 (check: variant.max_option_axes)
@@ -93,6 +104,11 @@ gift_card:                               # 디지털 상품권 (acom:sale_type g
   expiry: [absolute_date, days_from_purchase]
 
 content:                                 # 생성 이미지·문구 (generate_image, generate_copy)
+  copy:                                  # 상세 설명의 스토어 어조 (B4 "write the descriptions in our tone")
+    tone: "Plain and warm. Say what it is and how it wears, in our own words, never the supplier's."
+    sentences: 2                         # 본문 두 문장
+    care_line: true                      # 끝에 관리 방법 한 줄
+    source: supplier_text                # 가져오기는 공급사 설명을 초안에 남기고, 설명은 이 어조로 사람이나 에이전트가 씀(update_product_group)
   ai_content_disclosure: required        # check: content.ai_content_disclosure. 생성물에 acom:ai_generated: true 표기
   brand_guideline: enforced              # check: content.brand_guideline. 로고·색·금지 연출 검사
   max_images_per_request: 4
