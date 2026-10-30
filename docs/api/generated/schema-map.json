@@ -1347,6 +1347,13 @@
         "description": "repeated phrases found in the review, counted as mentions, for example size up for a hoodie."
       },
       {
+        "name": "image",
+        "type": "text[]",
+        "nullable": false,
+        "term": "schema:image",
+        "description": "URLs of photos the reviewer added; empty when none."
+      },
+      {
         "name": "creative_work_status",
         "type": "text",
         "nullable": false,
@@ -1365,6 +1372,67 @@
         "nullable": false,
         "term": "schema:datePublished",
         "description": "date the review was posted."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
+    "table": "review_vote",
+    "kind": "table",
+    "term": "schema:VoteAction/acom:ReviewVote",
+    "description": "one shopper's helpful vote on a review; a review's helpful count is its rows with is_helpful true.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "review_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:object",
+        "description": "review voted on (rev_ id).",
+        "references": "catalog.review"
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "shopper who voted (cus_ id).",
+        "references": "customer.person"
+      },
+      {
+        "name": "is_helpful",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:isHelpful",
+        "description": "true while the shopper marks the review helpful; false after they take the vote back."
       },
       {
         "name": "created_at",

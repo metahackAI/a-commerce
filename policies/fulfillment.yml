@@ -221,6 +221,8 @@ delivery:
   shipping_group_by: [seller, ship_from, delivery_address]   # 같은 판매자·출고지·배송지의 품목을 한 배송으로 묶음
   methods: [standard]                    # 배송 방법 (enums.md §3, schema.org ParcelService)
   shipping_fee_types: [paid, free, free_over_min_subtotal]
+  standard_rate: { value: 6.00, currency: USD }   # 기본 배송비(get_delivery_policy). 무료 기준은 order.yml free_shipping_min_subtotal
+  handling_days: 1                       # 주문 후 출고까지 영업일(get_delivery_policy)
   remote_area_surcharge: by_zone         # 지역 추가 배송비는 배송 지역(list_shipping_zones) 데이터
   zone_overlap: not_allowed              # 한 지역이 두 배송 지역에 들어가지 않음
   estimate:                              # get_delivery_dates 계산 파라미터
