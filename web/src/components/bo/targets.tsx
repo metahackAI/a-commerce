@@ -5,7 +5,7 @@
 // that picks it as "this" for the next message. Suggested intents, when a block provides them,
 // sit next to the element and send their sentence as is.
 
-import type {ReactNode} from 'react';
+import {useEffect, useRef, type ReactNode} from 'react';
 import {HStack, StackItem, VStack} from '@astryxdesign/core/Layout';
 import {Button} from '@astryxdesign/core/Button';
 import {IconButton} from '@astryxdesign/core/IconButton';
@@ -40,9 +40,29 @@ export function AskButton({target, label}: {target: Registered; label: string}) 
   );
 }
 
+/**
+ * Sends a sentence with an element picked as "this". The pick is state in the AI layer, so the
+ * sentence goes after the pick has rendered, with the `send` of that render.
+ */
+export function useSendAbout() {
+  const ai = useAi();
+  const latest = useRef(ai.send);
+  useEffect(() => {
+    latest.current = ai.send;
+  });
+  return (say: string, target?: Registered) => {
+    if (!target) {
+      void ai.send(say);
+      return;
+    }
+    target.ask();
+    window.setTimeout(() => void latest.current(say), 0);
+  };
+}
+
 /** Suggested sentences for an element; pressing one sends it to the agent with the element picked. */
 export function SuggestedIntents({intents, target}: {intents?: string[]; target?: Registered}) {
-  const ai = useAi();
+  const sendAbout = useSendAbout();
   const dock = useAgentDock();
   if (!intents || intents.length === 0) return null;
   return (
@@ -54,9 +74,8 @@ export function SuggestedIntents({intents, target}: {intents?: string[]; target?
           size="sm"
           variant="ghost"
           onClick={() => {
-            target?.ask();
             dock.open();
-            void ai.send(say);
+            sendAbout(say, target);
           }}
         />
       ))}
@@ -64,7 +83,7 @@ export function SuggestedIntents({intents, target}: {intents?: string[]; target?
   );
 }
 
-/** A table row that is an AI target. Put an `askHeader` cell last in the header row. */
+/** A table row that is an AI target. Its last cell holds Ask, so the header needs one more cell. */
 export function TargetRow({target, intents, children}: {target: AiTarget; intents?: string[]; children: ReactNode}) {
   const t = useAiTarget(target);
   return (

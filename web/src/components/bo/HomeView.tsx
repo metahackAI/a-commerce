@@ -44,8 +44,8 @@ export function HomeView({
     <Layout
       height="fill"
       header={
-        <LayoutHeader hasDivider>
-          <HStack gap={3} vAlign="center" paddingBlock={2} wrap="wrap">
+        <LayoutHeader hasDivider padding={4}>
+          <HStack gap={3} vAlign="center" wrap="wrap">
             <StackItem size="fill">
               <HStack gap={2} vAlign="center">
                 <Heading level={1}>Inbox</Heading>

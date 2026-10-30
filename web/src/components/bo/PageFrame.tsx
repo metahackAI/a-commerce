@@ -31,8 +31,8 @@ export function PageFrame({title, meta, description, back, actions, toolbar, pan
       contentWidth={width}
       defaultHasDividers
       header={
-        <LayoutHeader hasDivider>
-          <VStack gap={3} paddingBlock={2}>
+        <LayoutHeader hasDivider padding={4}>
+          <VStack gap={3}>
             <HStack gap={4} vAlign="start" wrap="wrap">
               <StackItem size="fill">
                 <VStack gap={1}>
