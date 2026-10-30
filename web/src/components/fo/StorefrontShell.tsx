@@ -6,6 +6,7 @@
 
 import {AppShell, useAppShellMobile} from '@astryxdesign/core/AppShell';
 import {Badge} from '@astryxdesign/core/Badge';
+import {Button} from '@astryxdesign/core/Button';
 import {DropdownMenu} from '@astryxdesign/core/DropdownMenu';
 import {Icon} from '@astryxdesign/core/Icon';
 import {HStack} from '@astryxdesign/core/Layout';
@@ -114,17 +115,15 @@ function EndContent() {
         </TopNavItem>
       ) : null}
       {pathname === '/ask' ? null : (
-        <TopNavItem
+        // A button, not a TopNavItem: TopNavItem always renders the router link (next/link), which
+        // throws during server rendering when there is no href.
+        <Button
           label="Ask Northwind"
-          // The item renders the router link, which needs an href; the click opens the drawer
-          // in place, and the link still works without script.
-          href="/ask"
+          variant="ghost"
+          size="sm"
           icon={<Icon icon={ChatBubbleLeftEllipsisIcon} size="sm" />}
           isIconOnly={isMobile}
-          onClick={e => {
-            e.preventDefault();
-            openAssistant();
-          }}
+          onClick={openAssistant}
         />
       )}
       {isMobile ? null : <TopNavItem label="Orders" href="/orders" isSelected={pathname.startsWith('/orders')} />}

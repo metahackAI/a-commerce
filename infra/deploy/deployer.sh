@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Pull-based deployer for the demo server. Polls the GitHub deployments that
 # .github/workflows/deploy.yml records, and for each new one: checks out that sha in a deploy
-# clone, pulls its images, restarts what changed, waits for health, and reports the result back
-# as a deployment status (visible in the repository's Environments panel).
+# clone, builds its images here, restarts what changed, waits for health, and reports the result
+# back as a deployment status (visible in the repository's Environments panel).
 #
-# The server only makes outbound calls (GitHub API, GHCR); it needs no inbound port and GitHub
-# holds no credentials for it. Setup and operation: infra/deploy/README.md.
+# The server only makes outbound calls (GitHub API, base image registries); it needs no inbound
+# port and GitHub holds no credentials for it. It builds only shas recorded by the deploy workflow,
+# which runs on pushes to main and manual runs by collaborators. Building here keeps the BuildKit
+# layer cache between deploys. Setup and operation: infra/deploy/README.md.
 #
 # Runs from an installed copy (not from the deploy clone, which it checks out under itself).
 #
@@ -22,6 +24,8 @@ PUBLIC_URL=${ACOM_PUBLIC_URL:-}                         # shown as the environme
 READY_URL=${ACOM_READY_URL:-http://127.0.0.1:8080/readyz}
 INTERVAL=${ACOM_DEPLOY_INTERVAL:-20}
 HEALTH_TIMEOUT=${ACOM_DEPLOY_HEALTH_TIMEOUT:-240}
+RUN_TAG=${ACOM_DEPLOY_RUN_TAG:-$PROJECT}                 # tag the running containers use (see deploy)
+KEEP=${ACOM_DEPLOY_KEEP_IMAGES:-5}                       # recent deployed shas whose images stay (fast rollback)
 
 mkdir -p "$STATE/logs"
 log() { printf '%s %s\n' "$(date -Is)" "$*"; }
@@ -46,15 +50,21 @@ healthy() { # every long-running service is healthy and the gateway is ready
 deploy() { # <deployment id> <sha>
   local id=$1 sha=$2 out="$STATE/logs/$1.log"
   log "deployment $id: $sha"
-  status "$id" in_progress "pulling $sha"
+  status "$id" in_progress "building $sha"
   # A subshell: `cd` and ACOM_TAG stay local. Errors are checked explicitly because errexit is
   # off inside `if deploy ...`.
   (
     cd "$DIR" || exit 1
     git fetch --quiet origin "$sha" || exit 1
     git -c advice.detachedHead=false checkout --quiet --detach "$sha" || exit 1
-    export ACOM_TAG=$sha
-    compose pull --quiet || { echo "image pull failed for $sha"; exit 1; }
+    # Build as :<sha> (kept for rollback), then run from one fixed tag: compose recreates a
+    # container when its image *name* changes, so a per-sha name would restart every service on
+    # every deploy. With a fixed name only services whose image id changed are recreated.
+    ACOM_TAG=$sha compose build || { echo "image build failed for $sha"; exit 1; }
+    for img in $(ACOM_TAG=$sha compose config --images | grep '^acom/'); do
+      docker tag "$img" "${img%:*}:$RUN_TAG" || exit 1
+    done
+    export ACOM_TAG=$RUN_TAG
     compose up -d --no-build --remove-orphans || { echo "compose up failed"; exit 1; }
     waited=0
     until healthy; do
@@ -63,6 +73,14 @@ deploy() { # <deployment id> <sha>
     done
     compose ps
   ) >"$out" 2>&1
+}
+
+prune_images() { # keep the images of the last $KEEP deployed shas and $RUN_TAG (`local` is the dev tag)
+  local keep
+  keep=$(tail -n "$KEEP" "$STATE/deployed" 2>/dev/null | tr '\n' ' ')
+  docker image ls --filter 'reference=acom/acom-*' --format '{{.Repository}} {{.Tag}}' \
+    | awk -v keep=" $keep " -v run="$RUN_TAG" '$2 != "local" && $2 != "<none>" && $2 != run && index(keep, " " $2 " ") == 0 {print $1 ":" $2}' \
+    | xargs -r docker image rm >/dev/null 2>&1 || true
 }
 
 handle_newest() {
@@ -74,6 +92,8 @@ handle_newest() {
   if deploy "$id" "$sha"; then
     status "$id" success "running ${sha:0:12}"
     log "deployment $id: success"
+    echo "$sha" >>"$STATE/deployed"
+    prune_images
   else
     status "$id" failure "$(tail -n 1 "$STATE/logs/$id.log") (server log $STATE/logs/$id.log)"
     log "deployment $id: failure, see $STATE/logs/$id.log"

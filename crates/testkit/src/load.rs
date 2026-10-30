@@ -69,12 +69,25 @@ impl Report {
 }
 
 /// Whether the store already exists (the seed job then does nothing).
+///
+/// `platform.online_store` forces row-level security, so the check runs with `app.tenant_id` set
+/// to the store; without it the row is invisible even to the owner role, the store looks missing,
+/// and a second load fails on the primary key.
 pub async fn is_seeded(pool: &PgPool, tenant: &str) -> Result<bool, String> {
-    sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM platform.online_store WHERE id = $1)")
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+    sqlx::query("SELECT set_config('app.tenant_id', $1, true)")
         .bind(tenant)
-        .fetch_one(pool)
+        .execute(&mut *tx)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    let seeded =
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM platform.online_store WHERE id = $1)")
+            .bind(tenant)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| e.to_string())?;
+    tx.rollback().await.map_err(|e| e.to_string())?;
+    Ok(seeded)
 }
 
 /// Empties every store table (`TRUNCATE … CASCADE`). Needs the owner role.
