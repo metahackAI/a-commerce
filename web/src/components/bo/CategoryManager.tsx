@@ -6,6 +6,7 @@
 // categories (map_category, unmap_category). Every change is previewed with its rule checks
 // (depth, unique term code, no cycle, nothing left under a category being switched off).
 
+import {EllipsisHorizontalIcon} from '@heroicons/react/24/outline';
 import {useEffect, useMemo, useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
@@ -18,6 +19,8 @@ import {MultiSelector} from '@astryxdesign/core/MultiSelector';
 import {Switch} from '@astryxdesign/core/Switch';
 import {Spinner} from '@astryxdesign/core/Spinner';
 import {Text} from '@astryxdesign/core/Text';
+import {DropdownMenu} from '@astryxdesign/core/DropdownMenu';
+import {Icon} from '@astryxdesign/core/Icon';
 
 import {api, ApiError, type ApiErrorBody} from '@/lib/api';
 import {count} from '@/app/bo/_lib/format';
@@ -91,10 +94,16 @@ export function CategoryManager({categories}: {categories: Category[]}) {
           header: 'Change',
           cell: c =>
             canWrite ? (
-              <HStack gap={1} wrap="wrap">
+              <HStack gap={1} vAlign="center">
                 <Button label="Edit" size="sm" onClick={() => setOpen({kind: 'edit', c})} />
-                {set === 'standard' ? <Button label="Show in menu" size="sm" variant="ghost" onClick={() => setOpen({kind: 'map', c})} /> : null}
-                <Button label="Mappings" size="sm" variant="ghost" onClick={() => setOpen({kind: 'mappings', c})} />
+                <DropdownMenu
+                  button={{label: `More for ${c.name}`, variant: 'ghost', size: 'sm', icon: <Icon icon={EllipsisHorizontalIcon} />, isIconOnly: true}}
+                  alignment="end"
+                  items={[
+                    ...(set === 'standard' ? [{label: 'Show in menu', onClick: () => setOpen({kind: 'map', c})}] : []),
+                    {label: 'Mappings', onClick: () => setOpen({kind: 'mappings', c})},
+                  ]}
+                />
               </HStack>
             ) : null,
         },

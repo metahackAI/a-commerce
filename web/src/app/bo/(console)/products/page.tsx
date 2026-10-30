@@ -7,7 +7,7 @@ import {Pager} from '@/components/bo/Pager';
 import {ProductList} from '@/components/bo/lists/catalog';
 
 import {param, read, readOptional, type SearchParams} from '../../_lib/server';
-import type {Category, Page, ProductGroupSummary} from '../../_lib/types';
+import type {Brand, Category, Page, ProductGroupSummary} from '../../_lib/types';
 
 export const metadata = {title: 'Products'};
 
@@ -26,10 +26,15 @@ export default async function ProductsPage({searchParams}: {searchParams: Search
     sort: param(sp, 'sort'),
   };
   const cursor = param(sp, 'cursor');
-  const [list, categories] = await Promise.all([
+  const [list, categories, brands] = await Promise.all([
     read<Page<ProductGroupSummary>>('/v1/catalog/product-groups', {...values, limit: 50, cursor}),
     readOptional<Page<Category>>('/v1/merchandising/categories', {term_set: 'standard', limit: 100}),
+    readOptional<Page<Brand>>('/v1/catalog/brands', {limit: 100}),
   ]);
+  const names = {
+    categories: Object.fromEntries((categories?.items ?? []).map(c => [c.id, c.name])),
+    brands: Object.fromEntries((brands?.items ?? []).map(b => [b.id, b.name])),
+  };
 
   return (
     <PageFrame
@@ -51,7 +56,9 @@ export default async function ProductsPage({searchParams}: {searchParams: Search
             ...(categories && categories.items.length > 0
               ? [{kind: 'select' as const, key: 'category_id', label: 'Category', options: categories.items.map(c => ({value: c.id, label: c.name}))}]
               : []),
-            {kind: 'text', key: 'brand_id', label: 'Brand id', placeholder: 'brn_…', width: 160},
+            ...(brands && brands.items.length > 0
+              ? [{kind: 'select' as const, key: 'brand_id', label: 'Brand', options: brands.items.map(b => ({value: b.id, label: b.name}))}]
+              : [{kind: 'text' as const, key: 'brand_id', label: 'Brand id', placeholder: 'brn_…', width: 160}]),
             {
               kind: 'select',
               key: 'sort',
@@ -69,7 +76,7 @@ export default async function ProductsPage({searchParams}: {searchParams: Search
       }>
       {list.ok ? (
         <>
-          <ProductList items={list.data.items} />
+          <ProductList items={list.data.items} names={names} />
           <Pager base="/bo/products" params={{...values, cursor}} shown={list.data.items.length} total={list.data.total} nextCursor={list.data.next_cursor} noun="products" />
         </>
       ) : (
