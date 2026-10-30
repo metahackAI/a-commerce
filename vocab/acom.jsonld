@@ -18,6 +18,24 @@
       "rdfs:comment": "Content shown in a display slot: headline, image, link. Used as additionalType on a CreativeWork."
     },
     {
+      "@id": "acom:Campaign",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Campaign",
+      "rdfs:subClassOf": {
+        "@id": "schema:CreativeWork"
+      },
+      "rdfs:comment": "a marketing message sent to many shoppers at a scheduled time from one template; sending it reaches customers. id prefix cmp_."
+    },
+    {
+      "@id": "acom:CampaignSend",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CampaignSend",
+      "rdfs:subClassOf": {
+        "@id": "schema:CreativeWork"
+      },
+      "rdfs:comment": "one row per campaign: when it was due, whether and when it went out, and why it failed."
+    },
+    {
       "@id": "acom:Cart",
       "@type": "rdfs:Class",
       "rdfs:label": "Cart",
@@ -144,6 +162,33 @@
       "rdfs:comment": "a reusable message for one channel, with named variables; creating one sends nothing. id prefix tpl_."
     },
     {
+      "@id": "acom:NewMembers",
+      "@type": "rdfs:Class",
+      "rdfs:label": "NewMembers",
+      "rdfs:subClassOf": {
+        "@id": "schema:Observation"
+      },
+      "rdfs:comment": "accounts created per store day, by the tier the members are in now."
+    },
+    {
+      "@id": "acom:OrderLineSummary",
+      "@type": "rdfs:Class",
+      "rdfs:label": "OrderLineSummary",
+      "rdfs:subClassOf": {
+        "@id": "schema:OrderItem"
+      },
+      "rdfs:comment": "one row per line of the orders that count as sales (paid, not cancelled): day, variant, product, category, campaign, units and net amount, never who bought it."
+    },
+    {
+      "@id": "acom:OrderSummary",
+      "@type": "rdfs:Class",
+      "rdfs:label": "OrderSummary",
+      "rdfs:subClassOf": {
+        "@id": "schema:Order"
+      },
+      "rdfs:comment": "one row per paid order with only what aggregates need (day, state, tier, campaign, amount, return request), never who placed it; orders still awaiting payment are left out."
+    },
+    {
       "@id": "acom:Preference",
       "@type": "rdfs:Class",
       "rdfs:label": "Preference",
@@ -189,6 +234,15 @@
       "rdfs:comment": "A group of customers defined by conditions. Used as additionalType on an Audience."
     },
     {
+      "@id": "acom:StockOut",
+      "@type": "rdfs:Class",
+      "rdfs:label": "StockOut",
+      "rdfs:subClassOf": {
+        "@id": "schema:Offer"
+      },
+      "rdfs:comment": "one row per variant that is out of stock now, with when it ran out and when it is expected back."
+    },
+    {
       "@id": "acom:Task",
       "@type": "rdfs:Class",
       "rdfs:label": "Task",
@@ -196,6 +250,15 @@
         "@id": "schema:Action"
       },
       "rdfs:comment": "Work proposed to an operator (by a person, an agent, or an automation), opened as a conversation. Used as additionalType on an Action."
+    },
+    {
+      "@id": "acom:TierCount",
+      "@type": "rdfs:Class",
+      "rdfs:label": "TierCount",
+      "rdfs:subClassOf": {
+        "@id": "schema:Observation"
+      },
+      "rdfs:comment": "members per tier now, leaving out blocked and withdrawn accounts."
     },
     {
       "@id": "acom:TierRequirement",
@@ -513,6 +576,53 @@
       "rdfs:comment": "parent category (cat_ id); NULL for a top-level category."
     },
     {
+      "@id": "acom:campaignId",
+      "@type": "rdf:Property",
+      "rdfs:label": "campaignId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CampaignSend"
+        },
+        {
+          "@id": "acom:OrderLineSummary"
+        },
+        {
+          "@id": "acom:OrderSummary"
+        },
+        {
+          "@id": "schema:Order"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:Campaign"
+        },
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the campaign (cmp_ id)."
+    },
+    {
+      "@id": "acom:campaignStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "campaignStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Campaign"
+        },
+        {
+          "@id": "acom:CampaignSend"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:CampaignStatus"
+        }
+      ],
+      "rdfs:comment": "where the campaign is. values: campaign_status"
+    },
+    {
       "@id": "acom:cancelReason",
       "@type": "rdf:Property",
       "rdfs:label": "cancelReason",
@@ -568,6 +678,9 @@
       "@type": "rdf:Property",
       "rdfs:label": "changeSetId",
       "schema:domainIncludes": [
+        {
+          "@id": "acom:Campaign"
+        },
         {
           "@id": "acom:DisplayBooking"
         },
@@ -1234,6 +1347,22 @@
       "rdfs:comment": "ISO 4217 code of gift_wrap_value."
     },
     {
+      "@id": "acom:hasReturnRequest",
+      "@type": "rdf:Property",
+      "rdfs:label": "hasReturnRequest",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:OrderSummary"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "true when a return was asked for on the order and not declined or withdrawn."
+    },
+    {
       "@id": "acom:imageColor",
       "@type": "rdf:Property",
       "rdfs:label": "imageColor",
@@ -1376,6 +1505,22 @@
         }
       ],
       "rdfs:comment": "false hides the category and its children."
+    },
+    {
+      "@id": "acom:isBestseller",
+      "@type": "rdf:Property",
+      "rdfs:label": "isBestseller",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:StockOut"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "true when the store tags the product bestseller (catalog keywords)."
     },
     {
       "@id": "acom:isHelpful",
@@ -1563,6 +1708,25 @@
       "rdfs:comment": "true when stock is tracked and can run out."
     },
     {
+      "@id": "acom:memberCount",
+      "@type": "rdf:Property",
+      "rdfs:label": "memberCount",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:NewMembers"
+        },
+        {
+          "@id": "acom:TierCount"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "members in the tier now."
+    },
+    {
       "@id": "acom:memberState",
       "@type": "rdf:Property",
       "rdfs:label": "memberState",
@@ -1599,6 +1763,12 @@
       "@type": "rdf:Property",
       "rdfs:label": "messageChannel",
       "schema:domainIncludes": [
+        {
+          "@id": "acom:Campaign"
+        },
+        {
+          "@id": "acom:CampaignSend"
+        },
         {
           "@id": "acom:MessageTemplate"
         },
@@ -1786,6 +1956,12 @@
         },
         {
           "@id": "acom:MemberCoupon"
+        },
+        {
+          "@id": "acom:OrderLineSummary"
+        },
+        {
+          "@id": "acom:OrderSummary"
         },
         {
           "@id": "acom:Refund"
@@ -2154,6 +2330,28 @@
       "rdfs:comment": "the shopper's own words, up to 500 characters."
     },
     {
+      "@id": "acom:recipientCount",
+      "@type": "rdf:Property",
+      "rdfs:label": "recipientCount",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Campaign"
+        },
+        {
+          "@id": "acom:CampaignSend"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        },
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "shoppers it was addressed to."
+    },
+    {
       "@id": "acom:recordsBenefitOnly",
       "@type": "rdf:Property",
       "rdfs:label": "recordsBenefitOnly",
@@ -2339,6 +2537,12 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:DailySales"
+        },
+        {
+          "@id": "acom:OrderLineSummary"
+        },
+        {
+          "@id": "acom:OrderSummary"
         }
       ],
       "schema:rangeIncludes": [
@@ -2398,6 +2602,28 @@
         }
       ],
       "rdfs:comment": "where the cart was built. values: sales_channel"
+    },
+    {
+      "@id": "acom:scheduledTime",
+      "@type": "rdf:Property",
+      "rdfs:label": "scheduledTime",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Campaign"
+        },
+        {
+          "@id": "acom:CampaignSend"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        },
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "when the send was due."
     },
     {
       "@id": "acom:sendBackMethod",
@@ -2536,15 +2762,21 @@
       "rdfs:label": "soldOutAt",
       "schema:domainIncludes": [
         {
+          "@id": "acom:StockOut"
+        },
+        {
           "@id": "schema:Offer"
         }
       ],
       "schema:rangeIncludes": [
         {
           "@id": "schema:DateTime"
+        },
+        {
+          "@id": "schema:Text"
         }
       ],
-      "rdfs:comment": "when the variant last ran out; NULL while in stock."
+      "rdfs:comment": "when the variant ran out."
     },
     {
       "@id": "acom:source",
@@ -2786,6 +3018,28 @@
       "rdfs:comment": "Whether a task needs a person, is being worked on, or is done."
     },
     {
+      "@id": "acom:templateId",
+      "@type": "rdf:Property",
+      "rdfs:label": "templateId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Campaign"
+        },
+        {
+          "@id": "acom:CampaignSend"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:MessageTemplate"
+        },
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "template it is made from (tpl_ id); the sends of one template are one recurring campaign."
+    },
+    {
       "@id": "acom:templateStatus",
       "@type": "rdf:Property",
       "rdfs:label": "templateStatus",
@@ -2807,15 +3061,27 @@
       "rdfs:label": "tierId",
       "schema:domainIncludes": [
         {
+          "@id": "acom:NewMembers"
+        },
+        {
+          "@id": "acom:OrderSummary"
+        },
+        {
+          "@id": "acom:TierCount"
+        },
+        {
           "@id": "schema:ProgramMembership"
         }
       ],
       "schema:rangeIncludes": [
         {
           "@id": "schema:MemberProgramTier"
+        },
+        {
+          "@id": "schema:Text"
         }
       ],
-      "rdfs:comment": "current tier (member_program_tier id)."
+      "rdfs:comment": "the tier."
     },
     {
       "@id": "acom:tierOverride",
@@ -3152,6 +3418,16 @@
       },
       "rdfs:comment": "Values of the approval_status list (docs/api/enums.md).",
       "acom:wireList": "approval_status"
+    },
+    {
+      "@id": "acom:CampaignStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CampaignStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the campaign_status list (docs/api/enums.md).",
+      "acom:wireList": "campaign_status"
     },
     {
       "@id": "acom:CancelReason",
@@ -3624,6 +3900,48 @@
       "rdfs:label": "Discontinued",
       "acom:wireWord": "discontinued",
       "schema:position": 5
+    },
+    {
+      "@id": "acom:CampaignStatusDraft",
+      "@type": "acom:CampaignStatus",
+      "rdfs:label": "Draft",
+      "acom:wireWord": "draft",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:CampaignStatusScheduled",
+      "@type": "acom:CampaignStatus",
+      "rdfs:label": "Scheduled",
+      "acom:wireWord": "scheduled",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:CampaignStatusSending",
+      "@type": "acom:CampaignStatus",
+      "rdfs:label": "Sending",
+      "acom:wireWord": "sending",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:CampaignStatusSent",
+      "@type": "acom:CampaignStatus",
+      "rdfs:label": "Sent",
+      "acom:wireWord": "sent",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:CampaignStatusFailed",
+      "@type": "acom:CampaignStatus",
+      "rdfs:label": "Failed",
+      "acom:wireWord": "failed",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:CampaignStatusCancelled",
+      "@type": "acom:CampaignStatus",
+      "rdfs:label": "Cancelled",
+      "acom:wireWord": "cancelled",
+      "schema:position": 6
     },
     {
       "@id": "acom:CancelReasonChangedMind",

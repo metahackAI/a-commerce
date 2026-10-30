@@ -73,6 +73,17 @@ pub struct LayoutRule {
     pub why: String,
 }
 
+/// A next step a block offers for one kind of finding (`agents/insights.yml` `next_actions`).
+/// `{name}` placeholders are filled from the finding; the step is left out when one has no value.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NextAction {
+    /// The button's words.
+    pub label: String,
+    /// What pressing it says to the agent, as the operator's next message.
+    pub request: String,
+}
+
 /// One specialist agent.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -101,6 +112,13 @@ pub struct AgentProfile {
     pub check_intents: BTreeMap<String, String>,
     #[serde(default)]
     pub layout_rules: Vec<LayoutRule>,
+    /// Lower-case phrases that send a request straight to this agent, without the router model
+    /// (`why did sales`); when two agents' phrases match, the model decides.
+    #[serde(default)]
+    pub route_when_said: Vec<String>,
+    /// Next steps a `sales_explainer` block offers, by cause (`out_of_stock`).
+    #[serde(default)]
+    pub next_actions: BTreeMap<String, Vec<NextAction>>,
 }
 
 impl AgentProfile {
@@ -272,6 +290,22 @@ impl Profiles {
                     a.id
                 ));
             }
+            if !a.next_actions.is_empty() && !a.blocks.iter().any(|b| b == "sales_explainer") {
+                problems.push(format!(
+                    "{}: next_actions are for the sales_explainer block, which it does not list",
+                    a.id
+                ));
+            }
+            if let Some(p) = a
+                .route_when_said
+                .iter()
+                .find(|p| p.trim().is_empty() || p.to_lowercase() != **p)
+            {
+                problems.push(format!(
+                    "{}: route_when_said phrase `{p}` must be lower case and not empty",
+                    a.id
+                ));
+            }
             for r in &a.layout_rules {
                 if !a.blocks.contains(&r.ui) {
                     problems.push(format!(
@@ -348,6 +382,21 @@ mod tests {
         let shopper = p.get("shopper").unwrap();
         assert!(!shopper.layout_rules.is_empty());
         assert!(!shopper.instructions_text.is_empty());
+        let insights = p.get("insights").unwrap();
+        assert_eq!(insights.surface, ChatSurface::Bo);
+        assert_eq!(
+            insights.tool_scope.kinds,
+            [ToolKind::Read],
+            "insights only reads"
+        );
+        assert!(insights.blocks.iter().any(|b| b == "sales_explainer"));
+        assert!(
+            insights
+                .route_when_said
+                .iter()
+                .any(|w| w == "why did sales")
+        );
+        assert_eq!(insights.next_actions["out_of_stock"].len(), 2);
     }
 
     #[test]

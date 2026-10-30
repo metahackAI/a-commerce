@@ -1,5 +1,8 @@
-# Messaging: refund notices sent to cus_4431 for the three earlier returns. The B2 messages (two photo
-# requests, one decline) are created by the scene, not seeded.
+# Messaging: refund notices sent to cus_4431 for the three earlier returns, and the weekly email
+# (template and campaigns). The B2 messages (two photo requests, one decline) are created by the scene,
+# not seeded. Scene B3: the weekly email went out on the four Thursdays before Nov 5 and failed on
+# Nov 5 at 08:00 (the list import failed); generate.yml `orders.campaign_orders` gives the orders that
+# came from each sent email.
 tables:
   messaging.message:
     - tenant_id: store_northwind
@@ -35,3 +38,27 @@ tables:
       sender_id: sys_messaging
       change_set_id: null
       date_sent: "2026-10-26T15:35:00-04:00"
+  messaging.message_template:
+    - tenant_id: store_northwind
+      id: tpl_weekly_email
+      name: Weekly email
+      message_channel: email
+      message_purpose: marketing
+      headline: "This week at Northwind: {{headline_item}}"
+      text: "Hi {{customer_name}}, here is what is new this week. {{highlights}}"
+      variables: [customer_name, headline_item, highlights]
+      in_language: en-US
+      template_status: in_use
+  messaging.campaign:
+    - {tenant_id: store_northwind, id: cmp_weekly_1008, name: Weekly email, message_channel: email, template_id: tpl_weekly_email, campaign_status: sent, scheduled_time: "2026-10-08T08:00:00-04:00", date_sent: "2026-10-08T08:02:00-04:00", recipient_count: 11204}
+    - {tenant_id: store_northwind, id: cmp_weekly_1015, name: Weekly email, message_channel: email, template_id: tpl_weekly_email, campaign_status: sent, scheduled_time: "2026-10-15T08:00:00-04:00", date_sent: "2026-10-15T08:02:00-04:00", recipient_count: 11236}
+    - {tenant_id: store_northwind, id: cmp_weekly_1022, name: Weekly email, message_channel: email, template_id: tpl_weekly_email, campaign_status: sent, scheduled_time: "2026-10-22T08:00:00-04:00", date_sent: "2026-10-22T08:01:00-04:00", recipient_count: 11251}
+    - {tenant_id: store_northwind, id: cmp_weekly_1029, name: Weekly email, message_channel: email, template_id: tpl_weekly_email, campaign_status: sent, scheduled_time: "2026-10-29T08:00:00-04:00", date_sent: "2026-10-29T08:02:00-04:00", recipient_count: 11270}
+    - tenant_id: store_northwind
+      id: cmp_weekly_1105
+      name: Weekly email
+      message_channel: email
+      template_id: tpl_weekly_email
+      campaign_status: failed
+      scheduled_time: "2026-11-05T08:00:00-05:00"
+      error: {code: list_import_failed, message: List import failed}

@@ -39,6 +39,38 @@ export async function serverApi<T>(path: string, query?: Query): Promise<T> {
   return body as T;
 }
 
+/**
+ * A read whose input is a body (the analytics reads are `POST` without side effects), from a
+ * Server Component. The gateway checks CSRF on every POST, so the session's token goes along.
+ */
+export async function serverPost<T>(path: string, body: unknown): Promise<T> {
+  const jar = await cookies();
+  const csrf = jar.get('acom_csrf')?.value;
+  const res = await fetch(`${gateway()}/api${path}`, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      cookie: await cookieHeader(),
+      ...(csrf ? {'x-csrf-token': decodeURIComponent(csrf)} : {}),
+    },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  });
+  const text = await res.text();
+  const parsed: unknown = text ? JSON.parse(text) : null;
+  if (!res.ok) {
+    const err = (parsed as {error?: ApiErrorBody} | null)?.error ?? {
+      code: 'upstream_unavailable',
+      class: 'upstream_unavailable',
+      message: `The request failed (${res.status}).`,
+      next_tool: null,
+    };
+    throw new ApiError(res.status, err);
+  }
+  return parsed as T;
+}
+
 /** Who is signed in, read on the server (for layouts that redirect to sign-in). */
 export async function serverSession(): Promise<Session> {
   try {

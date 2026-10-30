@@ -51,6 +51,8 @@ pub(crate) struct Named {
     pub order_numbers: BTreeSet<i64>,
     /// Store day -> (orders, revenue in cents) of named orders that count as sales.
     pub sales_by_day: BTreeMap<NaiveDate, (i64, i64)>,
+    /// Campaign id -> when its messages went out (`date_sent`), None when they did not.
+    pub campaigns: BTreeMap<String, Option<DateTime<Tz>>>,
 }
 
 fn s(row: &Value, key: &str) -> Option<String> {
@@ -238,6 +240,13 @@ impl Named {
             e.1 += total;
         }
 
+        let mut campaigns = BTreeMap::new();
+        for r in rows(named, "messaging.campaign") {
+            let id = s(r, "id").ok_or("named rows: a campaign has no id")?;
+            let sent = s(r, "date_sent").map(|t| parse_time(tz, &t)).transpose()?;
+            campaigns.insert(id, sent);
+        }
+
         Ok(Named {
             tz,
             currency,
@@ -252,6 +261,7 @@ impl Named {
             customers,
             order_numbers,
             sales_by_day,
+            campaigns,
         })
     }
 }

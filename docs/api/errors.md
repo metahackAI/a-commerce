@@ -71,6 +71,7 @@
 | merchandising | `slot_taken`(policy_violation), `cross_set_violation`, `primary_needs_reassign`, `cycle_detected` |
 | integration | `status_unmapped`, `category_unmapped` |
 | platform | `change_set_not_found`, `preview_not_found`, `irreversible_change`(되돌릴 수 없는 항목이 있는 변경셋 되돌리기) |
+| analytics | `no_data_for_period`(비교할 날에 매출이 없음), `invalid_period`·`invalid_granularity`·`dimension_not_supported`(invalid_input) |
 
 ## 3. 구현
 

@@ -78,11 +78,34 @@ export interface ProductDraftsBlockData {
   checks?: Check[];
 }
 
+/** `sales_explainer` as the agent builds it from `explain_sales_change` and `get_sales_trend`. */
 export interface SalesExplainerBlockData {
-  summary?: {revenue?: Money | null; baseline?: Money | null; difference?: Money | null; orders?: number | string | null; [k: string]: unknown};
-  series?: {date: string; revenue: Money | number | null}[];
-  causes?: {cause: string; evidence?: string | null; estimated?: Money | number | string | null}[];
-  next?: {label: string; request: string}[];
+  period?: {valid_from: string; valid_through: string; label?: string};
+  summary?: {
+    revenue?: Money | null;
+    baseline?: Money | null;
+    /** "Thursday average". */
+    baseline_label?: string;
+    difference?: Money | null;
+    /** `difference / baseline`, 0–1 (negative for a drop). */
+    change_rate?: number | null;
+    basis?: string;
+    /** "vs the last 4 Thursdays". */
+    basis_label?: string;
+    orders?: {count?: number | null; baseline?: number | null} | number | null;
+  };
+  series?: {date: string; revenue: Money | null}[];
+  /** Causes with the data behind them, then the part left unexplained (`cause: unexplained`). */
+  causes?: {
+    cause: string;
+    title?: string;
+    detail?: string | null;
+    evidence?: string | null;
+    estimated?: Money | number | null;
+    ids?: string[];
+  }[];
+  /** Next steps; each is also a `say` action whose `args.request` is the sentence it sends. */
+  next?: {label: string; request: string; cause?: string}[];
 }
 
 export interface ProductTableBlockData {

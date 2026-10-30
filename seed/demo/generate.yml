@@ -157,10 +157,21 @@ orders:
         list price with no discount (37 × 142 + 47 × 118 = 10,800.00, i.e. 2,700.00 per Thursday); on Nov 5 none
         (sold out since Wed 15:00). Explains −2,700.00.
       campaign_not_sent: >-
-        −1,300.00 from the weekly email (cmp_weekly_1105, list import failed Thu 08:00). Not derivable from the MVP
-        tables: there is no campaign table and no order attribution column yet. The generator only keeps the
-        Thursday totals above; the explainer needs messaging campaigns and an attribution field first.
+        The weekly email (template tpl_weekly_email) went out on the four compare Thursdays and failed on Nov 5
+        (cmp_weekly_1105, list import failed Thu 08:00; 08_messaging.yml). The orders that came from each sent
+        email are in `campaign_orders` below: 5,200.00 over the four Thursdays, 1,300.00 per Thursday, and none
+        on Nov 5. Explains −1,300.00.
       unexplained: -660.00
+  campaign_orders:               # sales_order.campaign_id: orders that came from a campaign email (B3 campaign_not_sent)
+    rule: >-
+      For each campaign below, generated orders of its send day placed after its date_sent (08_messaging.yml)
+      and holding no sold-out B3 size are marked as coming from the campaign, earliest first, so that their
+      totals add up to the listed revenue exactly. No random draws: every other generated value stays the same.
+    revenue:                     # campaign: USD; 1,240 + 1,410 + 1,180 + 1,370 = 5,200.00 = 4 × 1,300.00
+      cmp_weekly_1008: 1240.00
+      cmp_weekly_1015: 1410.00
+      cmp_weekly_1022: 1180.00
+      cmp_weekly_1029: 1370.00
   linen_shirt_velocity:          # watcher stock_out_forecast (task_linen_reorder at 08:40)
     rule: "prd_linen_shirt sells exactly 61 units from Oct 30 to Nov 5 (7 days): XS 6, S 16, M 19, L 14, XL 6"
     stock_now: 38                # 38 / (61 / 7) = 4.4 days -> "sells out in about 4 days"

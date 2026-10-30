@@ -15,7 +15,7 @@ members and sales history) under fixed counts and a fixed random seed.
 | `05_merchandising.yml` | 24 standard and 3 display categories, placement of the named products, the four main-page slots, hero banners and bookings (October edit ended 09:59; Fall layers for everyone from 10:00) |
 | `06_sales.yml` | 21 named orders with items, payments and events |
 | `07_fulfillment.yml` | Deliveries of those orders, the 12 B2 return requests (`requested`), cus_4431's three completed returns with inspections and refunds |
-| `08_messaging.yml` | Refund notices for cus_4431's completed returns |
+| `08_messaging.yml` | Refund notices for cus_4431's completed returns; the weekly email template `tpl_weekly_email` and its sends: four sent Thursdays (Oct 8–29) and `cmp_weekly_1105`, failed Thu Nov 5 08:00 (list import failed) |
 | `generate.yml` | Spec for the generator (not data) |
 
 Load the files in name order, and the tables inside each file in the order written; foreign keys are
@@ -63,6 +63,8 @@ event rows (the scene setup in `acom-testkit`).
 | Demo clock Fri Nov 6 11:00 | `platform.demo_clock` |
 | Discount caps, refund threshold, return window | defaults in `policies/*.yml`; only `max_discount.by_tier.vip: 0.30` and `watchers.price_below_cost.run_fix: standing_approval` differ, so only those are in `platform.policy_override` |
 | B3: Nov 5 $18,240 / 201, Thursday average $22,900 / 247 | generated orders, `generate.yml` `orders.daily_sales` |
+| B3: sold-out sizes −$2,700 (10,800.00 over the four compare Thursdays) | `sold_out_at` on the six M/L offers + `generate.yml` `b3_causes.out_of_stock` |
+| B3: weekly email not sent −$1,300 | `cmp_weekly_1105` (failed) here; orders from the four sent emails carry `campaign_id` (1,240 + 1,410 + 1,180 + 1,370 = 5,200.00), `generate.yml` `orders.campaign_orders` |
 | Linen shirt: 38 left, 61 sold in 7 days | offers here + `generate.yml` `orders.linen_shirt_velocity` |
 
 ## What the scenes create (not seeded)
@@ -77,7 +79,8 @@ Family names, addresses and cards of the shoppers other than those in §2; color
 splits; brand names Fieldstone Boot Co. and Ridgeline Outdoor; return policy `mrp_free_size_exchange`
 for the overcoat; birthday coupon $10.00 off; denim bundle $20.00 off; linen clearance 20%; the earlier
 hero banner "The October edit"; reorder split S 70 / M 90 / L 80; per-day revenue for Oct 23 – Nov 4
-in `generate.yml`.
+in `generate.yml`; the weekly email (template text, recipient counts 11,204–11,270, sends at 08:01–08:02) and the
+split of its 5,200.00 over the four Thursdays (1,240 / 1,410 / 1,180 / 1,370).
 
 ## Open points
 
@@ -86,5 +89,3 @@ in `generate.yml`.
   `generate.yml` keeps named numbers and numbers only generated orders in date order.
 - #1041 has no items: the docs define no reorder (purchase order) operation yet, so the draft holds the
   request and its interpretation only.
-- B3's "weekly email not sent −$1,300" cannot be derived from the current tables (no campaign table or
-  order attribution).

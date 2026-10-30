@@ -37,7 +37,8 @@ pub fn generate(named: &SeedRows, spec_yaml: &str) -> Result<SeedRows, String> {
     let catalog = catalog::generate(&spec, &known, &mut dice)?;
     let members = members::generate(&spec, &known, &mut dice)?;
     let skus = orders::skus(&known, &catalog);
-    let orders = orders::generate(&spec, &known, &skus, &members, &mut dice)?;
+    let mut orders = orders::generate(&spec, &known, &skus, &members, &mut dice)?;
+    orders::attribute_campaigns(&spec, &known, &skus, &mut orders)?;
 
     let autumn_knit = known
         .promotions
