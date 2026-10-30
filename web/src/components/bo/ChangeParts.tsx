@@ -21,10 +21,13 @@ import {AskButton, SuggestedIntents, TargetRow} from './targets';
 /** Intents for an element from a block's `suggested_intents` (`element: "change_row:prd_x"`). */
 export type IntentsFor = (kind: string, id: string) => string[] | undefined;
 
-function CheckRow({check, ids, blockId, intents}: {check: Check; ids: Record<string, string>; blockId?: string; intents?: string[]}) {
+/** A check and, in a change set, the item it was run on. */
+export type ItemCheck = Check & {subject?: string};
+
+function CheckRow({check, ids, blockId, intents}: {check: ItemCheck; ids: Record<string, string>; blockId?: string; intents?: string[]}) {
   const t = useAiTarget({
     kind: 'check_row',
-    label: `${words(check.rule)} · ${check.passed ? 'passed' : 'failed'}${check.detail ? ` · ${check.detail}` : ''}`,
+    label: `${words(check.rule)} · ${check.passed ? 'passed' : 'failed'}${check.subject ? ` · ${check.subject}` : ''}${check.detail ? ` · ${check.detail}` : ''}`,
     ids: {rule: check.rule, ...ids},
     term: 'acom:Check',
     blockId,
@@ -42,9 +45,9 @@ function CheckRow({check, ids, blockId, intents}: {check: Check; ids: Record<str
               {check.rule}
             </Text>
           </HStack>
-          {check.detail ? (
+          {check.detail || check.subject ? (
             <Text type="supporting" color="secondary">
-              {check.detail}
+              {[check.subject, check.detail].filter(Boolean).join(' · ')}
             </Text>
           ) : null}
           {!check.passed && check.fix_tool ? (
@@ -60,14 +63,60 @@ function CheckRow({check, ids, blockId, intents}: {check: Check; ids: Record<str
   );
 }
 
-/** Rule checks, failed first as the API ordered them otherwise. */
+/** Several passed checks of one rule (a price floor on nine prices): one row and their details. */
+function PassedGroup({rule, checks, ids, blockId}: {rule: string; checks: ItemCheck[]; ids: Record<string, string>; blockId?: string}) {
+  const t = useAiTarget({
+    kind: 'check_row',
+    label: `${words(rule)} · ${checks.length} of ${checks.length} passed`,
+    ids: {rule, ...ids},
+    term: 'acom:Check',
+    blockId,
+  });
+  const shown = checks.slice(0, GROUP_SHOWN);
+  return (
+    <HStack ref={t.ref} {...t.props} gap={3} vAlign="start" paddingBlock={1}>
+      <Icon icon="success" color="success" size="sm" label="Passed" />
+      <StackItem size="fill">
+        <VStack gap={0.5}>
+          <HStack gap={2} vAlign="center" wrap="wrap">
+            <Link href={withParams('/bo/policies', {key: rule})} color="primary">
+              {words(rule)}
+            </Link>
+            <Text type="supporting" color="secondary">
+              {`${rule} · ${checks.length} of ${checks.length} passed`}
+            </Text>
+          </HStack>
+          {shown.map((c, i) => (
+            <Text key={`${c.subject ?? ''}-${i}`} type="supporting" color="secondary">
+              {[c.subject, c.detail].filter(Boolean).join(' · ') || 'Passed'}
+            </Text>
+          ))}
+          {checks.length > shown.length ? (
+            <Text type="supporting" color="secondary">
+              {`and ${checks.length - shown.length} more`}
+            </Text>
+          ) : null}
+        </VStack>
+      </StackItem>
+      <AskButton target={t} label={words(rule)} />
+    </HStack>
+  );
+}
+
+/** Details listed under a group of passed checks before "and N more". */
+const GROUP_SHOWN = 6;
+
+/**
+ * Rule checks, failed first. A failed check gets its own row; passed checks of the same rule
+ * share one row, so nine price-floor passes read as one rule held nine times.
+ */
 export function ChecksList({
   checks,
   ids = {},
   blockId,
   intentsFor,
 }: {
-  checks: Check[];
+  checks: ItemCheck[];
   ids?: Record<string, string>;
   blockId?: string;
   intentsFor?: IntentsFor;
@@ -79,12 +128,21 @@ export function ChecksList({
       </Text>
     );
   }
-  const ordered = [...checks.filter(c => !c.passed), ...checks.filter(c => c.passed)];
+  const failed = checks.filter(c => !c.passed);
+  const passed = new Map<string, ItemCheck[]>();
+  for (const c of checks.filter(c => c.passed)) passed.set(c.rule, [...(passed.get(c.rule) ?? []), c]);
   return (
     <VStack gap={1}>
-      {ordered.map(c => (
-        <CheckRow key={c.rule} check={c} ids={ids} blockId={blockId} intents={intentsFor?.('check_row', c.rule)} />
+      {failed.map((c, i) => (
+        <CheckRow key={`failed-${c.rule}-${i}`} check={c} ids={ids} blockId={blockId} intents={intentsFor?.('check_row', c.rule)} />
       ))}
+      {[...passed].map(([rule, group]) =>
+        group.length === 1 ? (
+          <CheckRow key={rule} check={group[0]} ids={ids} blockId={blockId} intents={intentsFor?.('check_row', rule)} />
+        ) : (
+          <PassedGroup key={rule} rule={rule} checks={group} ids={ids} blockId={blockId} />
+        ),
+      )}
     </VStack>
   );
 }
@@ -103,10 +161,22 @@ export function changeSubject(c: Change): string {
   return c.entity;
 }
 
+/**
+ * A side of a change whose `price` (and `cost`) came without a currency, as older previews wrote
+ * them: read in `currency`, the one the tool input named, so it shows as money.
+ */
+function withCurrency(side: unknown, currency: string | undefined): unknown {
+  if (!currency || !side || typeof side !== 'object' || Array.isArray(side)) return side;
+  const o = {...(side as Record<string, unknown>)};
+  if (typeof o.price === 'number' && typeof o.price_currency !== 'string') o.price_currency = currency;
+  if (typeof o.cost === 'number') o.cost = {value: o.cost, currency};
+  return o;
+}
+
 /** Before and after as text, without the fields both sides share. */
-export function beforeAfter(c: Change): {from: string; to: string} {
-  const from = c.from;
-  const to = c.to;
+export function beforeAfter(c: Change, currency?: string): {from: string; to: string} {
+  const from = withCurrency(c.from, currency);
+  const to = withCurrency(c.to, currency);
   if (from && to && typeof from === 'object' && typeof to === 'object' && !Array.isArray(from) && !Array.isArray(to)) {
     const f = {...(from as Record<string, unknown>)};
     const t = {...(to as Record<string, unknown>)};
@@ -125,12 +195,15 @@ export function beforeAfter(c: Change): {from: string; to: string} {
 export function ChangesTable({
   changes,
   total,
+  currency,
   ids = {},
   blockId,
   intentsFor,
 }: {
   changes: Change[];
   total?: number;
+  /** The currency of the tool input, for prices a change wrote without one. */
+  currency?: string;
   ids?: Record<string, string>;
   blockId?: string;
   intentsFor?: IntentsFor;
@@ -161,7 +234,7 @@ export function ChangesTable({
         <TableBody>
           {changes.map((c, i) => {
             const subject = changeSubject(c);
-            const {from, to} = beforeAfter(c);
+            const {from, to} = beforeAfter(c, currency);
             const href = entityHref(subject);
             return (
               <TargetRow

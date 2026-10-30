@@ -307,7 +307,7 @@
   | acom:list_price | UnitPriceSpecification | | 참조 정가(`price_type: "list_price"`) |
   | acom:cost | acom:CostSpecification | | 원가(운영자 전용) |
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "off_windbreaker_m_slate", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`
-- 프리뷰: `changes`=`update` `offer` `id: "off_windbreaker_m_slate"` `from: 89.00` → `to: 85.00`. checks `price_floor`(원가 × 1.15 이상, 실패 시 `fix_tool: "set_price"`). `needs_approval: true`, 예 `approval_reason: "Changes 1 price"`.
+- 프리뷰: `changes`=`update` `offer` `id: "off_windbreaker_m_slate"` `from: {price: 89.00, price_currency: "USD"}` → `to: {price: 85.00, price_currency: "USD"}`(원가를 바꾸면 `cost`도). checks `price_floor`(원가 × 1.15 이상, 실패 시 `fix_tool: "set_price"`). `needs_approval: true`, 예 `approval_reason: "Changes 1 price"`.
 - 정책: [catalog.yml](../../policies/catalog.yml) `price_floor`, `product.approval.structural_changes`; [approval.yml](../../policies/approval.yml) `thresholds.price_change_bulk`
 - 에러: `below_price_floor` → `set_price`
 - 멱등성: `Idempotency-Key = hash(variant_id + price)`

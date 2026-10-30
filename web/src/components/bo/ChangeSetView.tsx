@@ -19,12 +19,12 @@ import {Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow} fro
 import type {ApiErrorBody} from '@/lib/api';
 import {actor, count, dateTime, value, words} from '@/app/bo/_lib/format';
 import {entityHref, withParams} from '@/app/bo/_lib/links';
-import type {ActionEntry, ChangeSet, Check, Verification} from '@/app/bo/_lib/types';
+import type {ActionEntry, ChangeSet, Verification} from '@/app/bo/_lib/types';
 
 import {ActionLogTable} from './ActionLogTable';
 import {useBoSession} from './BoSession';
 import {ChangeSetActions} from './ChangeSetActions';
-import {ChangesTable, ChecksList} from './ChangeParts';
+import {ChangesTable, ChecksList, changeSubject, type ItemCheck} from './ChangeParts';
 import {ErrorState} from './ErrorState';
 import {PageFrame, PageSection} from './PageFrame';
 import {StateToken} from './StateToken';
@@ -45,7 +45,10 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
   const ids = {change_set_id: cs.id};
   const isLatest = cs.version === latestVersion;
   const items = cs.items ?? [];
-  const allChecks: (Check & {tool: string})[] = items.flatMap(i => i.checks.map(c => ({...c, tool: i.tool})));
+  // Each check says which item it was run on: its position and what it changes.
+  const allChecks: ItemCheck[] = items.flatMap(i =>
+    i.checks.map(c => ({...c, subject: `Item ${i.position}${i.changes[0] ? ` · ${changeSubject(i.changes[0])}` : ''}`})),
+  );
   const summary = cs.checks_summary;
 
   return (
@@ -157,7 +160,12 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
                   }`}
                 </Text>
               </TargetBlock>
-              <ChangesTable changes={item.changes} total={item.changes_total} ids={{...ids, preview_id: item.preview_id}} />
+              <ChangesTable
+                changes={item.changes}
+                total={item.changes_total}
+                currency={typeof item.input?.price_currency === 'string' ? item.input.price_currency : undefined}
+                ids={{...ids, preview_id: item.preview_id}}
+              />
             </VStack>
           </Section>
         ))}
