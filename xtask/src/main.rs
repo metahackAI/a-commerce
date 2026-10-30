@@ -9,6 +9,9 @@
 //!   references), without a database.
 //! - `check-eval`: the agent task set in `eval/tasks/` is well formed and names only tools that
 //!   are built or specified; prints each task's derived coverage (`eval/README.md`).
+//! - `eval-run [--base URL] [--tasks DIR] [--only ID] [--writes] [--out FILE]`: runs the task set
+//!   against a running store through the chat API and records what the agent did
+//!   (`eval/README.md` §4). Signs in with `ACOM_EVAL_LOGIN` / `ACOM_EVAL_PASSWORD`.
 //! - `hash-password <password>`: an argon2id hash for seed accounts.
 //! - `dev-token <persona> [--agent]`: an internal token signed with the local key
 //!   (`infra/secrets/gateway_signing_key.pem`), to call commerce without the gateway while
@@ -16,6 +19,7 @@
 //!   token a chat turn would carry.
 
 mod eval;
+mod eval_run;
 mod schema;
 mod seed;
 mod vocab;
@@ -32,6 +36,7 @@ fn main() -> ExitCode {
         "check-schema" => check_schema(&repo_root(), std::env::args().any(|a| a == "--write")),
         "check-seed" => check_seed(&repo_root()),
         "check-eval" => check_eval(&repo_root()),
+        "eval-run" => eval_run(&repo_root()),
         "hash-password" => match std::env::args().nth(2) {
             Some(pw) => match acom_auth::password::hash(&pw) {
                 Ok(h) => {
@@ -55,7 +60,7 @@ fn main() -> ExitCode {
         ),
         _ => {
             eprintln!(
-                "usage: cargo xtask check-docs | check-schema [--write] | check-seed | check-eval | hash-password <password> | dev-token <admin|jamie|alex|guest> [--agent]"
+                "usage: cargo xtask check-docs | check-schema [--write] | check-seed | check-eval | eval-run | hash-password <password> | dev-token <admin|jamie|alex|guest> [--agent]"
             );
             ExitCode::FAILURE
         }
@@ -176,6 +181,43 @@ fn check_seed(root: &Path) -> ExitCode {
     } else {
         println!("{} problem(s)", report.problems.len());
         ExitCode::FAILURE
+    }
+}
+
+fn eval_run(root: &Path) -> ExitCode {
+    let args: Vec<String> = std::env::args().skip(2).collect();
+    let value = |flag: &str| {
+        args.iter()
+            .position(|a| a == flag)
+            .and_then(|i| args.get(i + 1))
+            .cloned()
+    };
+    let o = eval_run::Options {
+        base: value("--base").unwrap_or_else(|| "http://localhost:8080".into()),
+        tasks: value("--tasks").unwrap_or_else(|| "eval/tasks/design".into()),
+        only: value("--only"),
+        writes: args.iter().any(|a| a == "--writes"),
+        out: value("--out"),
+    };
+    match eval_run::run(root, &o) {
+        Ok(v) => {
+            let text = serde_json::to_string_pretty(&v).unwrap_or_default();
+            match &o.out {
+                Some(path) => match fs::write(root.join(path), text + "\n") {
+                    Ok(()) => println!("wrote {path}"),
+                    Err(e) => {
+                        eprintln!("cannot write {path}: {e}");
+                        return ExitCode::FAILURE;
+                    }
+                },
+                None => println!("{text}"),
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("{e}");
+            ExitCode::FAILURE
+        }
     }
 }
 

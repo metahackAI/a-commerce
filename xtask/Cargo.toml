@@ -12,9 +12,11 @@ acom-auth.workspace = true
 acom-contract.workspace = true
 acom-core.workspace = true
 acom-registry.workspace = true
+reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_norway.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true

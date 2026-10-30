@@ -85,6 +85,18 @@ cargo xtask check-eval
   - `spec`: 필요한 툴 중 명세만 있고 구현되지 않은 것이 있음. 구현되면 `ready`가 되고, 그때 기대 사실을 채웁니다.
 - 숫자를 문서에 옮겨 적지 않습니다. 현황은 검사 출력이 원본입니다.
 
+## 4.1 실행
+
+```bash
+ACOM_EVAL_LOGIN=... ACOM_EVAL_PASSWORD=... \
+  cargo xtask eval-run --base https://<store> --tasks eval/tasks/design --out eval/results/<date>-<model>-acom-design.json
+```
+
+- 웹과 같은 채팅 API(`POST /api/chat/bo/turns`)로 과업마다 새 대화를 열고 턴을 차례로 보냅니다. 에이전트, 계획 단계 수, 부른 툴과 상태, 답, UI 블록 종류, 사용량을 기록합니다.
+- 모델 없이 매기는 점수: 필요한 툴을 다 불렀는지(`required_called`), 부르면 안 되는 툴(`forbidden_called`), 단계 0개 계획 수(`empty_plans`), 기대 사실의 숫자가 답·블록에 나온 비율(`fact_numbers`). 마지막은 사람이 대화를 읽을 때 쓰는 대략의 신호이고 채점이 아닙니다.
+- 쓰기 과업은 스토어에 초안을 남기므로 `--writes`를 줄 때만 돌립니다. 공유 데모에서는 돌리지 않습니다.
+- 같은 과업을 여러 번 돌려 일관성(pass^k)을 봅니다. 한 번 통과는 통과가 아닙니다.
+
 ## 5. 설계 세트와 보류 세트
 
 - `design/`: 에이전트(프롬프트, 툴 검색, 계획기)를 고치면서 보고 돌리는 과업.
