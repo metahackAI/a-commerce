@@ -79,6 +79,27 @@ Every milestone is held to the same AI-native bar:
 
 Unit tests reproduce the B1, B2, F1, F2 and F5 numbers. The SQL paths have database tests that are written but not yet run (`#[ignore]`, integration); they run on request together with bringing the stack up, which is the next check.
 
+**Where M5 stands (Oct 31).** Since M4, built and merged:
+- **Scale:** 125 commerce tools (77 reads, 48 writes) in 10 domains, plus the 22 screen-shaped tools of the evaluation's facade (`?set=facade`, demo mode only).
+- **The demo server** (`https://a-commerce.ailism.team`, back office at `/bo`) deploys every merge to main. It reloads the demo store when the seed rows change, and an admin can reset the store from the back office.
+- **Database tests:** the `#[ignore]` integration tests run against a real database and pass crate by crate.
+- **Scenes now built:**
+  - returns triage (B2);
+  - the sales explainer (B3);
+  - fit check (F3);
+  - gifts, including the recipient's link page (F4);
+  - layout by profile (F6);
+  - the task list.
+- **Reorders:** the Inbox's first item, the Linen shirt reorder (#1041), is a real change set a person can approve.
+- **Reviewing a change set:** checks are grouped by rule and name their item; amounts show as money; a finished task says how it ended.
+- **Finding things by the human value:** orders by number, and customers by email or name.
+- **Evaluation:** `cargo xtask eval` runs the task set against a live stack (`--tool-set acom|facade|both`, `--repeat`, `--logs`). All 12 design tasks are ready, with no data gaps left. The best live design run before the outage passed 5 of 12.
+- **Blocked:** the model endpoint (Glimmer) has not answered since Oct 31 01:37 KST, so the design and held-out numbers wait for it. Until it answers, the assistant says plainly that its model is down instead of timing out.
+- **Open:**
+  - expiring gifts nobody accepted and unpaid orders (the policies exist; no job applies them yet);
+  - receiving a reorder into stock;
+  - the held-out run and the README numbers (M6).
+
 ## 5. Work tracks
 
 Each track has a first deliverable that unblocks others. Owners are set at kickoff; each owner may hand pieces to coding agents following [AGENTS.md](../AGENTS.md).
