@@ -160,12 +160,12 @@ impl Operation for ListActivePromotions {
         kind: Kind::Read,
         method: Method::Get,
         path: "/v1/promotion/promotions/active",
-        summary: "Running and scheduled promotions whose period overlaps the given one, with what each covers. The same data the promotion_overlap check of set_sale_prices reads, so overlaps can be explained before previewing.",
+        summary: "Running and scheduled promotions whose period overlaps the given one, with what each covers. The same data the promotion_overlap check of set_sale_prices reads, so overlaps can be explained before previewing. A shopper gets only the promotions running now (whatever the period) for everyone or for their own tier.",
         consumes: &[Slot::one("tier_id")],
         produces: &[Slot::many("promotion_id")],
         checks: &[],
         errors: &[INVALID_PERIOD, TIER_NOT_FOUND],
-        audience: Audience::Operator,
+        audience: Audience::Both,
         action_type: ActionType::SEARCH,
         person_scope: "",
     };
@@ -183,6 +183,7 @@ impl ReadOp<Cx> for ListActivePromotions {
             INVALID_PERIOD,
             "list_active_promotions",
         )?;
+        let chose_status = input.status.is_some();
         let statuses: Vec<String> = match input.status {
             Some(s) => s.iter().map(|s| s.as_str().to_owned()).collect(),
             None => crate::model::SaleRules::from_policy(&cx.policy)?
@@ -193,12 +194,39 @@ impl ReadOp<Cx> for ListActivePromotions {
         };
         let now = cx.clock.now();
         let mut tx = cx.read().await.map_err(ToolError::from)?;
-        if let Some(t) = &input.valid_for_member_tier {
-            known_tier(&mut tx, t).await?;
-        }
+        // A shopper sees the sales on for them now: running, for everyone or their own tier.
+        let shopper = !acom_catalog::is_operator(&cx.principal);
+        let (statuses, tier) = if shopper {
+            if input.valid_for_member_tier.is_some() || chose_status {
+                return Err(ToolError::new(
+                    ErrorCode::FORBIDDEN,
+                    "Only store operators can choose the tier or statuses to list.",
+                )
+                .detail(json!({"reason": "scope"})));
+            }
+            let mine = match cx.principal.customer_id() {
+                Some(c) => acom_customer::service::for_promotion::tier_of(&mut tx, c).await?,
+                None => None,
+            };
+            (
+                vec![PromotionStatus::Running.as_str().to_owned()],
+                Some(mine.unwrap_or_else(|| "everyone".to_owned())),
+            )
+        } else {
+            if let Some(t) = &input.valid_for_member_tier {
+                known_tier(&mut tx, t).await?;
+            }
+            (statuses, input.valid_for_member_tier.clone())
+        };
+        // For a shopper the period is now: they see what is on, not what is coming.
+        let (from, through) = if shopper {
+            (Some(now), Some(now))
+        } else {
+            (from, through)
+        };
         let filter = PromotionFilter {
             statuses,
-            tier: input.valid_for_member_tier.clone(),
+            tier,
             tier_reach: true,
             from,
             through,

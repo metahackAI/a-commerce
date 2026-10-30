@@ -18,7 +18,7 @@ use crate::promotion::{
     EndPromotion, GetPromotion, ListActivePromotions, PausePromotion, SearchPromotions,
 };
 use crate::service::for_merchandising::{CategoryProducts, provide_category_products};
-use crate::testing::operator_cx;
+use crate::testing::{operator_cx, shopper_cx};
 
 /// Stands in for merchandising's category placement: categories exist and hold nothing.
 fn empty_categories<'a>(
@@ -282,4 +282,47 @@ async fn loyalty_reads_an_empty_ledger() {
         .await
         .unwrap_err();
     assert_eq!(e.code, "not_found");
+}
+
+/// A shopper sees only the promotions running now for everyone or for their tier; the tier and
+/// statuses are operator inputs.
+#[tokio::test]
+#[ignore = "integration: needs a PostgreSQL database"]
+async fn shoppers_see_the_sales_on_for_them() {
+    provide_category_products(empty_categories);
+    let ids = |out: &Value| -> Vec<String> {
+        let mut v: Vec<String> = out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|p| p["id"].as_str().map(str::to_owned))
+            .collect();
+        v.sort();
+        v
+    };
+    let period = json!({"valid_from": "2026-11-06T00:00", "valid_through": "2026-11-06T23:59"});
+    let guest = ListActivePromotions
+        .read(&shopper_cx("ses_guest").await, input(period.clone()))
+        .await
+        .unwrap();
+    assert_eq!(
+        ids(&guest),
+        ["promo_autumn_knit", "promo_free_ship_80"],
+        "{guest:#}"
+    );
+    let jamie = ListActivePromotions
+        .read(&shopper_cx("cus_jamie").await, input(period.clone()))
+        .await
+        .unwrap();
+    assert!(
+        ids(&jamie).iter().all(|i| i != "promo_gold_10" && i != "promo_denim_bundle"),
+        "{jamie:#}"
+    );
+    let mut asked = period.clone();
+    asked["valid_for_member_tier"] = json!("gold");
+    let e = ListActivePromotions
+        .read(&shopper_cx("cus_jamie").await, input(asked))
+        .await
+        .unwrap_err();
+    assert_eq!(e.code, "forbidden");
 }
