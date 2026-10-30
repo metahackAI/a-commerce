@@ -1,31 +1,48 @@
 # syntax=docker/dockerfile:1.7
 #
-# All Rust services from one build. The builder compiles the three binaries once (BuildKit cache
-# mounts keep crates and target/ between builds); each runtime target copies one binary into a
-# distroless, non-root image (uid 65532, no shell).
+# All Rust services from one build. The builder compiles the three binaries once; each runtime
+# target copies one binary into a distroless, non-root image (uid 65532, no shell).
 #
 #   docker build -f infra/docker/rust.Dockerfile --target gateway  -t acom/acom-gateway:local  .
 #   docker build -f infra/docker/rust.Dockerfile --target commerce -t acom/acom-commerce:local .
 #   docker build -f infra/docker/rust.Dockerfile --target agent    -t acom/acom-agent:local    .
 #
+# Dependencies are compiled in their own layer (cargo-chef): the layer only changes when
+# Cargo.toml / Cargo.lock do, so a code change rebuilds only our crates. The layer is plain image
+# content (no cache mounts), so the registry and GitHub Actions layer caches keep it too.
+#
 # Context: the repository root (see .dockerignore).
 
-ARG RUST_VERSION=1.99
+# The image's toolchain is the build toolchain: rust-toolchain.toml is left out of the context
+# copies, because its channel name ("1.99") differs from the image's ("1.99.1") and rustup would
+# download a second 650 MB toolchain on every uncached build. Keep the minor version in step.
+ARG CHEF_IMAGE=lukemathwalker/cargo-chef:0.1.78-rust-1.99-slim-bookworm
 
-FROM rust:${RUST_VERSION}-slim-bookworm AS builder
+FROM ${CHEF_IMAGE} AS chef
 WORKDIR /src
 ENV CARGO_TERM_COLOR=never
-COPY Cargo.toml Cargo.lock rust-toolchain.toml clippy.toml ./
+
+# The dependency recipe: manifests and lockfile only, so it is stable across code changes.
+FROM chef AS planner
+COPY Cargo.toml Cargo.lock clippy.toml ./
+COPY .cargo .cargo
+COPY crates crates
+COPY services services
+COPY xtask xtask
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder
+COPY --from=planner /src/recipe.json recipe.json
+RUN cargo chef cook --release --locked --recipe-path recipe.json \
+      --bin acom-gateway --bin acom-commerce --bin acom-agent
+COPY Cargo.toml Cargo.lock clippy.toml ./
 COPY .cargo .cargo
 COPY crates crates
 COPY services services
 COPY xtask xtask
 COPY migrations migrations
 COPY docs/api/generated docs/api/generated
-RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
-    --mount=type=cache,target=/src/target,sharing=locked \
-    cargo build --release --locked --bin acom-gateway --bin acom-commerce --bin acom-agent \
+RUN cargo build --release --locked --bin acom-gateway --bin acom-commerce --bin acom-agent \
  && mkdir -p /out \
  && cp target/release/acom-gateway target/release/acom-commerce target/release/acom-agent /out/
 
