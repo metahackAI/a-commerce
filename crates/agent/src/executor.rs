@@ -119,6 +119,21 @@ pub fn slots_from_prepared(preview: &Preview) -> BTreeMap<String, Vec<Value>> {
     BTreeMap::from([("preview_id".to_owned(), vec![json!(preview.preview_id)])])
 }
 
+/// The id prefix of an id field (or of its items): `ord` for `^ord_[a-z0-9_]+$` and for the
+/// widened pattern of a field that also takes what people say.
+fn id_prefix(schema: &Value) -> Option<&str> {
+    schema
+        .get("pattern")
+        .or_else(|| schema.pointer("/items/pattern"))
+        .and_then(Value::as_str)
+        .and_then(acom_core::handle::id_prefix)
+}
+
+/// Whether the manifest marks the field (or its items) as taking what people say.
+fn takes_handle(schema: Option<&Value>) -> bool {
+    schema.is_some_and(|p| p.get("x-handle").is_some() || p.pointer("/items/x-handle").is_some())
+}
+
 /// Whether the model wrote a stand-in instead of a value for a slot field: the field's or
 /// slot's own name (`"promotion_id"`), an id prefix alone (`"promo_"`), a template
 /// (`"<promotion id>"`, `"{s1.id}"`), or for an id field, a value without the id's prefix.
@@ -133,18 +148,16 @@ fn is_stand_in(v: &Value, field: &str, slot: &str, schema: Option<&Value>) -> bo
         if t.contains(['<', '>', '{', '}']) || t.contains("...") {
             return true;
         }
-        let pattern = schema
-            .and_then(|p| p.get("pattern").or_else(|| p.pointer("/items/pattern")))
-            .and_then(Value::as_str);
-        if let Some(prefix) = pattern
-            .and_then(|p| p.strip_prefix('^'))
-            .and_then(|p| p.strip_suffix("[a-z0-9_]+$"))
-            .filter(|p| {
-                p.ends_with('_') && p[..p.len() - 1].bytes().all(|b| b.is_ascii_lowercase())
-            })
-        {
+        if let Some(prefix) = schema.and_then(id_prefix) {
+            // A value people say where the field takes it (an order number): the server finds
+            // the record (`acom_core::handle`).
+            if takes_handle(schema) && acom_core::handle::read_value(prefix, t).is_some() {
+                return false;
+            }
+            let prefix = format!("{prefix}_");
             // `$item[n].…` is the change set's own placeholder, filled when it runs.
-            return !t.starts_with("$item[") && (!t.starts_with(prefix) || t.len() == prefix.len());
+            return !t.starts_with("$item[")
+                && (!t.starts_with(&prefix) || t.len() == prefix.len());
         }
         false
     };
@@ -381,11 +394,8 @@ pub fn bind_row(step: &PlanStep, tool: &ToolSpec, row: &Value) -> Bound {
         }
         // The row's field named like the slot, else its own `id` when it has the field's prefix
         // (search rows name a product by `id`).
-        let prefix = schema
-            .and_then(|p| p.get("pattern").or_else(|| p.pointer("/items/pattern")))
-            .and_then(Value::as_str)
-            .and_then(|p| p.strip_prefix('^'))
-            .and_then(|p| p.strip_suffix("[a-z0-9_]+$"));
+        let prefix = schema.and_then(id_prefix).map(|p| format!("{p}_"));
+        let prefix = prefix.as_deref();
         let own_id = || {
             row.get("id").filter(|v| {
                 v.as_str()
@@ -596,6 +606,34 @@ mod tests {
             "valid_for_member_tier",
             "tier_id",
             None
+        ));
+        // An order number where the field takes it is a value; without the handle it is not.
+        let widened = json!({"type": "string", "pattern": "^(?:ord_[a-z0-9_]+|#?[0-9]+)$",
+                             "x-handle": {"field": "order_number", "shape": "number"}});
+        assert!(!is_stand_in(
+            &json!("27184"),
+            "order_id",
+            "order_id",
+            Some(&widened)
+        ));
+        assert!(is_stand_in(
+            &json!("order_id"),
+            "order_id",
+            "order_id",
+            Some(&widened)
+        ));
+        assert!(is_stand_in(
+            &json!("ord_"),
+            "order_id",
+            "order_id",
+            Some(&widened)
+        ));
+        let plain = json!({"type": "string", "pattern": "^ord_[a-z0-9_]+$"});
+        assert!(is_stand_in(
+            &json!("27184"),
+            "order_id",
+            "order_id",
+            Some(&plain)
         ));
 
         // One product among several: the stand-in is dropped and nothing is guessed.
