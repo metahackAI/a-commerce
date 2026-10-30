@@ -65,10 +65,10 @@ A-Commerce의 모든 구성 요소는 컨테이너이고, **어디서 띄우든 
 
 | 이미지 | Dockerfile | 기반 | 사용자 | 메모 |
 |---|---|---|---|---|
-| `acom-gateway`, `acom-commerce`, `acom-agent` | `docker/rust.Dockerfile`(`--target gateway\|commerce\|agent`) | `gcr.io/distroless/cc-debian12:nonroot` | 65532 | 빌드 단계 하나에서 세 바이너리를 같이 컴파일(BuildKit 캐시). 셸이 없으므로 컨테이너 헬스 체크는 `<binary> healthcheck` |
+| `acom-gateway`, `acom-commerce`, `acom-agent` | `docker/rust.Dockerfile`(`--target gateway\|commerce\|agent`) | `gcr.io/distroless/cc-debian12:nonroot` | 65532 | 빌드 단계 하나에서 세 바이너리를 같이 컴파일. 의존성은 cargo-chef 층으로 따로 캐시되어 코드만 바뀌면 다시 컴파일하지 않음. 셸이 없으므로 컨테이너 헬스 체크는 `<binary> healthcheck` |
 | `acom-web` | `docker/web.Dockerfile` | `node:24-bookworm-slim` | `node`(1000) | Next.js `standalone` 출력, `node server.js` |
 
-- 태그: 로컬 `acom/acom-<이름>:local`, 운영 `ghcr.io/metahackai/a-commerce/acom-<이름>:<버전 또는 git sha>`.
+- 태그: 로컬 `acom/acom-<이름>:local`, 데모 서버 `acom/acom-<이름>:<git sha>`(서버에서 빌드, `deploy/README.md`), 운영 `ghcr.io/metahackai/a-commerce/acom-<이름>:<버전 또는 git sha>`.
 - `commerce` 이미지에는 정책 파일(`/app/policies`)이 들어 있고, 마이그레이션은 바이너리에 내장됩니다.
 - 빌드 컨텍스트는 저장소 루트이고 `.dockerignore`가 문서·시안·비밀을 뺍니다.
 
