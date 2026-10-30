@@ -27,6 +27,7 @@ import {ResizeHandle, useResizable} from '@astryxdesign/core/Resizable';
 import {useAi} from '@/ai/AiProvider';
 import {useAiTarget} from '@/ai/useAiTarget';
 import type {UiBlock} from '@/ai/types';
+import {blockComponent} from '@/components/blocks/registry';
 
 // Below this width the canvas collapses under the chat (same breakpoint as the template).
 const MOBILE_MAX_WIDTH = 767;
@@ -49,6 +50,12 @@ const WORKSPACE_CSS = `
   .acom-canvas { width: 100%; flex-shrink: 1; }
 }
 `;
+
+/** The block's own component, or a card with its title and why-line. */
+function Block({block}: {block: UiBlock}) {
+  const Component = blockComponent(block.ui);
+  return Component ? <Component block={block} /> : <BlockCard block={block} />;
+}
 
 function BlockCard({block}: {block: UiBlock}) {
   const target = useAiTarget({kind: 'block', label: block.title ?? block.ui, ids: {block_id: block.block_id}, blockId: block.block_id});
@@ -144,7 +151,7 @@ export function Workspace({greeting, composerPlaceholder, canvasTitle, canvasEmp
                   {ai.blocks.length === 0 ? (
                     <EmptyState title={canvasEmpty.title} description={canvasEmpty.description} />
                   ) : (
-                    ai.blocks.map(b => <BlockCard key={b.block_id} block={b} />)
+                    ai.blocks.map(b => <Block key={b.block_id} block={b} />)
                   )}
                 </VStack>
               </Card>

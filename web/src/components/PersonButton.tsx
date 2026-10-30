@@ -9,6 +9,8 @@ import {useState} from 'react';
 import {Button} from '@astryxdesign/core/Button';
 import {AlertDialog} from '@astryxdesign/core/AlertDialog';
 
+import {writeHeaders} from '@/lib/api';
+
 export interface PersonAction {
   label: string;
   method: string;
@@ -30,7 +32,8 @@ export function PersonButton({action, onDone}: {action: PersonAction; onDone?: (
     try {
       const res = await fetch(`/api${action.path}`, {
         method: action.method,
-        headers: {'content-type': 'application/json', 'idempotency-key': crypto.randomUUID()},
+        headers: writeHeaders({'idempotency-key': crypto.randomUUID()}),
+        credentials: 'same-origin',
         body: action.body === undefined ? undefined : JSON.stringify(action.body),
       });
       const result: unknown = await res.json().catch(() => null);
