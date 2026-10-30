@@ -25,6 +25,7 @@ sqlx.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
+acom-testkit.workspace = true
 tokio.workspace = true
 
 [lints]
