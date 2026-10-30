@@ -27,6 +27,11 @@ CREATE EXTENSION IF NOT EXISTS vector;
 GRANT CONNECT ON DATABASE acom TO acom_app, acom_readonly;
 GRANT CREATE ON DATABASE acom TO acom_owner;
 
+-- Since PostgreSQL 15 ordinary roles cannot create objects in the public schema. The migration
+-- runner (sqlx) keeps its history table, public._sqlx_migrations, there, so the owner role needs
+-- CREATE on it. Every other object lives in the domain schemas created by the migrations.
+GRANT CREATE ON SCHEMA public TO acom_owner;
+
 -- Objects that acom_owner creates later (the migrations) get these grants automatically.
 ALTER DEFAULT PRIVILEGES FOR ROLE acom_owner GRANT USAGE ON SCHEMAS TO acom_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE acom_owner GRANT SELECT, INSERT, UPDATE ON TABLES TO acom_app;

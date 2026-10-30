@@ -182,14 +182,24 @@ mod tests {
         assert_eq!(versions[0], 1);
     }
 
-    /// Integration test: needs `DATABASE_URL` to an empty database. Run on request with
-    /// `cargo test -p acom-store -- --ignored`.
+    /// Integration test: needs a database prepared by `infra/postgres/init.sql`, with
+    /// `MIGRATION_DATABASE_URL` (owner role) and `DATABASE_URL` (service role) as in `.env.example`.
+    /// Run on request with `cargo test -p acom-store -- --ignored`.
     #[tokio::test]
     #[ignore = "integration: needs a PostgreSQL database"]
     async fn migrations_apply_and_rls_isolates_stores() {
+        let owner = std::env::var("MIGRATION_DATABASE_URL").expect("MIGRATION_DATABASE_URL");
+        Db::connect(&owner, 1)
+            .await
+            .expect("connect as owner")
+            .migrate()
+            .await
+            .expect("migrate");
         let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
         let db = Db::connect(&url, 2).await.expect("connect");
-        db.migrate().await.expect("migrate");
+        db.migrations_applied()
+            .await
+            .expect("service role sees the applied migrations");
         let mut tx = db.pool().begin().await.expect("begin");
         let a = TenantId::parse("store_a").expect("id");
         scope_to_tenant(&mut tx, &a).await.expect("scope");

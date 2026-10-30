@@ -149,7 +149,16 @@ make kind-down
 | 지표 | `observability` 프로필 | 파드 주석 | `monitoring` 컴포넌트 |
 | 데모 모드 | 켬 | 켬 | 끔 |
 
-## 10. 검사
+## 10. 문제 해결
+
+| 증상 | 원인과 해결 |
+|---|---|
+| `migrate`가 `permission denied for schema public`으로 실패 | `infra/postgres/init.sql`이 소유자 역할에 `public` 스키마 생성 권한을 주기 전의 DB 볼륨입니다(PostgreSQL 15부터 기본으로 막힘. 마이그레이션 이력 테이블 `_sqlx_migrations`가 거기 생김). `init.sql`은 볼륨을 처음 만들 때만 실행되므로 `make clean && make up`으로 볼륨을 새로 만듭니다 |
+| `init.sql`을 고쳤는데 반영되지 않음 | 위와 같은 이유입니다. 로컬 DB를 지워도 되면 `make clean`, 아니면 바꾼 문장을 superuser(`acom`)로 직접 실행합니다 |
+| 서비스가 `unhealthy`이거나 `/readyz`가 503 | `make logs SERVICE=<이름>`으로 이유를 봅니다. `/readyz`의 `reason`에 DB 연결 실패나 남은 마이그레이션이 적혀 있습니다 |
+| 8080이 이미 쓰임 | `.env`의 `ACOM_HTTP_PORT`를 바꿉니다 |
+
+## 11. 검사
 
 DB를 띄우거나 서비스를 함께 돌리지 않는 검사는 항상 돌립니다.
 - `make check-infra`: Compose 파일 검사, 두 오버레이 렌더링, Kubernetes 스키마 검사(kubeconform).

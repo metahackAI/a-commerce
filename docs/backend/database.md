@@ -118,7 +118,7 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 ```
 
 - 스토어 범위의 모든 테이블에 위 정책이 있습니다(검사기가 확인).
-- 역할: `acom_owner`(마이그레이션, 테이블 소유), `acom_app`(서비스 접속, RLS 적용, `DELETE`는 허용된 테이블만), `acom_readonly`(분석 뷰 읽기).
+- 역할: `acom_owner`(마이그레이션, 테이블 소유), `acom_app`(서비스 접속, RLS 적용, `DELETE`는 허용된 테이블만), `acom_readonly`(분석 뷰 읽기). 역할과 권한은 `infra/postgres/init.sql`이 만들고, `acom_owner`는 도메인 스키마를 만들 권한과 `public` 스키마에 마이그레이션 이력 테이블(`_sqlx_migrations`)을 만들 권한을 가집니다.
 - 트랜잭션마다 `SELECT set_config('app.tenant_id', $1, true)`(`acom-store`가 자동으로).
 
 ## 9. 상태와 이벤트
