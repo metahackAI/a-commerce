@@ -2,6 +2,7 @@
 
 A-Commerce의 웹은 **화면 하나하나가 AI와 함께 움직이는 화면**입니다. 대화 창이 따로 붙은 화면이 아니라, 가격 하나, 체크 한 줄, 장바구니 줄 하나까지 "이것에 대해 묻기", "이것을 이렇게 바꿔 줘"를 받을 수 있고, 에이전트가 화면의 어느 요소를 가리키는지 사람이 볼 수 있습니다. 상태를 바꾸는 사람의 결정(승인, 주문하기, 반품 요청 보내기, 되돌리기)만은 사람이 직접 누릅니다.
 
+- UI 라이브러리와 모양 규칙(Meta Astryx, 테마, 템플릿 우선): [../frontend-ui.md](../frontend-ui.md). 이 문서는 그 위에 얹는 **AI 층**입니다.
 - 사람 ↔ 에이전트 계약(SSE 이벤트, UI 블록, 버튼 종류): [../api/chat.md](../api/chat.md)
 - 화면 근거: [../../design/](../../design) 시안, 장면: [../scenarios.md](../scenarios.md)
 - 백엔드 접점: 게이트웨이 하나(`/api/*`), [../backend/gateway.md](../backend/gateway.md)
@@ -11,7 +12,7 @@ A-Commerce의 웹은 **화면 하나하나가 AI와 함께 움직이는 화면**
 ## 1. 원칙
 
 1. **모든 요소가 AI의 대상이 됩니다.** 화면의 의미 있는 요소(블록, 표의 행, 가격, 체크, 칩, 상품 카드, 입력 칸)는 자기가 무엇인지(엔티티 id, schema.org 용어, 블록 id)를 등록합니다. 사람은 그 요소를 골라 묻거나 고치라고 말할 수 있고, 에이전트는 그 요소를 가리킬 수 있습니다(§3).
-2. **화면은 고정 라이브러리로만 그립니다.** 에이전트는 HTML을 쓰지 않고 블록 이름과 데이터를 보냅니다. 웹은 블록마다 컴포넌트 하나를 둡니다.
+2. **화면은 고정 라이브러리로만 그립니다.** 에이전트는 HTML을 쓰지 않고 블록 이름과 데이터를 보냅니다. 웹은 블록마다 컴포넌트 하나를 두고, 그 컴포넌트는 Meta Astryx 부품으로 만듭니다([../frontend-ui.md](../frontend-ui.md) §4).
 3. **같은 계약.** API·블록·에러·값 목록의 TypeScript 타입은 Rust에서 생성합니다(`cargo xtask codegen` → `web/src/contract/`). 손으로 쓴 API 타입은 없습니다.
 4. **사람의 결정은 사람의 손으로.** `person` 버튼만 상태를 바꾸고, 게이트웨이를 거쳐 commerce를 직접 부릅니다. 에이전트가 보내는 화면 명령(§3.3)은 강조·스크롤·열기만 할 수 있고 `person` 버튼을 누를 수 없습니다.
 5. **설명이 기본.** 블록의 `why`, 체크의 `detail`, "What I used" 같은 근거를 항상 보여 줍니다. 숫자는 툴 결과에서 오고 화면이 계산하지 않습니다(예외: 표시 형식).
@@ -45,8 +46,9 @@ web/
 │   │   ├── stream.ts                 # SSE 클라이언트(이어 받기)
 │   │   ├── commands.ts               # ui.command 실행(강조·스크롤·열기)
 │   │   └── page-tools.ts             # 브라우저 에이전트용 페이지 툴 등록(선택, §3.5)
-│   ├── blocks/                       # ui 이름 하나 = 컴포넌트 하나 + registry.ts
-│   ├── components/                   # Money, Price, Chip, CheckRow, ChangeRow, PersonButton, StepTrail ...
+│   ├── blocks/                       # ui 이름 하나 = 컴포넌트 하나 + registry.ts (Astryx 부품으로 구성)
+│   ├── components/                   # Money, Price, Chip, CheckRow, ChangeRow, PersonButton, StepTrail ... (Astryx 부품 + useAiTarget)
+│   ├── theme.css                     # Astryx theme-neutral 위의 우리 CSS 변수 (모양은 여기서만 바꿈)
 │   ├── lib/gateway.ts                # fetch(쿠키 세션, CSRF, Idempotency-Key, 에러 → ToolError)
 │   └── jsonld/                       # 상품·제안의 schema.org JSON-LD
 ├── fixtures/                         # 블록 픽스처 (scenarios.md 숫자)
@@ -54,7 +56,8 @@ web/
 ```
 
 - 서버 컴포넌트는 페이지의 첫 데이터를 게이트웨이 REST(`/api/v1/...`, 읽기 툴)에서 가져옵니다. 대화와 블록 갱신은 클라이언트 컴포넌트가 SSE로 받습니다.
-- 디자인 토큰은 시안의 `base.css`·`fo.css`에서 가져와 CSS 변수로 둡니다.
+- 모양은 Astryx `theme-neutral` 위에 우리 테마 파일(`theme.css`)의 CSS 변수로만 바꿉니다. 시안(`design/`)의 색·간격은 이 변수로 옮깁니다. 운영자 페이지는 Astryx 템플릿에서 시작합니다([../frontend-ui.md](../frontend-ui.md) §3–§4).
+- **층 나누기:** Astryx 부품은 모양과 접근성, 우리 컴포넌트는 데이터와 AI 층(`useAiTarget`, 추천 말, `PersonButton`)을 맡습니다. Astryx 부품을 바꾸거나(swizzle) 다른 라이브러리로 갈아타도(Mantine 대안, 같은 문서 §5) AI 층과 블록 계약은 그대로입니다.
 
 ## 3. AI 층
 
@@ -129,7 +132,7 @@ return <tr ref={ref} data-acom-kind="change_row" data-acom-id="prd_seersucker_ov
 
 ## 5. 사람의 결정 (`PersonButton`)
 
-- 블록의 `person` 버튼은 `PersonButton` 하나로만 그립니다: 확인 문구(`confirm`), CSRF 토큰, `Idempotency-Key`, 진행·결과 표시, 에러(`estimate_changed`면 새 금액을 보여 주고 다시 확인).
+- 블록의 `person` 버튼은 `PersonButton` 하나로만 그립니다(Astryx 버튼 위에 확인 단계를 얹은 우리 컴포넌트): 확인 문구(`confirm`), CSRF 토큰, `Idempotency-Key`, 진행·결과 표시, 에러(`estimate_changed`면 새 금액을 보여 주고 다시 확인).
 - 대상: 변경셋 승인·거절·되돌리기, 주문하기, 반품·교환·취소 요청 보내기, 기억 되돌리기, 할 일 치우기.
 - 에이전트 이벤트로 눌리지 않고, 페이지 툴로 등록되지 않습니다.
 

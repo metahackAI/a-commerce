@@ -51,9 +51,11 @@ Rules: `docs/backend/database.md`.
 
 ## Front end (Next.js)
 
-Rules: `docs/frontend/README.md`.
+Rules: `docs/frontend-ui.md` (UI library and look) and `docs/frontend/README.md` (AI layer).
 
-- One component per UI block name. Data types come from `web/src/contract/` (generated, do not edit).
+- Components come from Meta Astryx (`@astryxdesign/*`). Read `docs/frontend-ui.md` first. Look up components and templates with `npm run astryx -- search "<query>"` before writing your own.
+- One UI block from `docs/api/chat.md` §3 is one component, built from Astryx parts. The look lives in our theme (CSS custom properties); no gradients, glows, decorative shadows, colored side bars, or sparkle icons.
+- Data types come from `web/src/contract/` (generated, do not edit).
 - Every meaningful element (row, price, check, chip, card, input) calls `useAiTarget` so people can ask about it and the agent can point at it.
 - Elements that the agent may change also show the block's `suggested_intents`.
 - State changes made by a person (approve, place order, send a return request, undo) go through `PersonButton` only. They are never reachable from `ui.command` or page tools.
