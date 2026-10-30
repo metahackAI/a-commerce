@@ -3,12 +3,12 @@ import {ErrorState} from '@/components/bo/ErrorState';
 import {PageFrame} from '@/components/bo/PageFrame';
 
 import {read, readOptional} from '../../../_lib/server';
-import type {Member, MemberTier, OrderSummary, Page, ReturnHistory, Tier} from '../../../_lib/types';
+import type {Member, MemberTier, OrderSummary, Page, ReturnHistory, StoreMessage, Tier} from '../../../_lib/types';
 
 export const metadata = {title: 'Customer'};
 
-// One member: get_member, get_member_tier, get_return_history and their orders (search_orders),
-// with tier names from list_tiers.
+// One member: get_member, get_member_tier, get_return_history, their orders (search_orders) and
+// the messages the store sent them (list_notifications), with tier names from list_tiers.
 export default async function CustomerPage({params}: {params: Promise<{customer_id: string}>}) {
   const {customer_id: id} = await params;
   const enc = encodeURIComponent(id);
@@ -20,11 +20,12 @@ export default async function CustomerPage({params}: {params: Promise<{customer_
       </PageFrame>
     );
   }
-  const [tier, returns, orders, tiers] = await Promise.all([
+  const [tier, returns, orders, tiers, messages] = await Promise.all([
     read<MemberTier>(`/v1/customer/people/${enc}/tier`),
     read<ReturnHistory>(`/v1/customer/people/${enc}/returns`, {limit: 20}),
     read<Page<OrderSummary>>('/v1/sales/orders', {customer_id: id, limit: 10}),
     readOptional<Page<Tier>>('/v1/customer/tiers', {limit: 100}),
+    read<Page<StoreMessage>>('/v1/messaging/notifications', {customer_id: id, limit: 20}),
   ]);
 
   return (
@@ -38,6 +39,8 @@ export default async function CustomerPage({params}: {params: Promise<{customer_
       orders={orders.ok ? orders.data.items : null}
       ordersTotal={orders.ok ? orders.data.total : 0}
       ordersError={orders.ok ? null : orders.error}
+      messages={messages.ok ? messages.data : null}
+      messagesError={messages.ok ? null : messages.error}
     />
   );
 }

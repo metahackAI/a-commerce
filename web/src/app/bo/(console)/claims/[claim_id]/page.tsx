@@ -3,7 +3,7 @@ import {ErrorState} from '@/components/bo/ErrorState';
 import {PageFrame} from '@/components/bo/PageFrame';
 
 import {read, readOptional} from '../../../_lib/server';
-import type {Claim, Order, Page, Refund, ReturnEvaluation, ReturnHistory} from '../../../_lib/types';
+import type {Claim, Order, Page, Refund, ReturnEvaluation, ReturnHistory, StoreMessage} from '../../../_lib/types';
 
 export const metadata = {title: 'Return'};
 
@@ -27,7 +27,14 @@ export default async function ClaimPage({params}: {params: Promise<{claim_id: st
     c.claim_type === 'return' ? read<Page<ReturnEvaluation>>(`/v1/fulfillment/return-requests/${enc}/evaluation`) : Promise.resolve(null),
     c.refund_id ? read<Refund>(`/v1/fulfillment/refunds/${encodeURIComponent(c.refund_id)}`) : Promise.resolve(null),
   ]);
-  const history = order ? await read<ReturnHistory>(`/v1/customer/people/${encodeURIComponent(order.customer_id)}/returns`, {limit: 20}) : null;
+  const [history, sent] = order
+    ? await Promise.all([
+        read<ReturnHistory>(`/v1/customer/people/${encodeURIComponent(order.customer_id)}/returns`, {limit: 20}),
+        read<Page<StoreMessage>>('/v1/messaging/notifications', {customer_id: order.customer_id, limit: 50}),
+      ])
+    : [null, null];
+  // Messages about this request or its order (list_notifications has no `about` filter).
+  const about = new Set([c.id, c.order_id]);
 
   return (
     <ClaimView
@@ -39,6 +46,7 @@ export default async function ClaimPage({params}: {params: Promise<{claim_id: st
       refundError={refund && !refund.ok ? refund.error : null}
       history={history?.ok ? history.data : null}
       historyError={history && !history.ok ? history.error : null}
+      messages={sent?.ok ? sent.data.items.filter(m => m.about !== null && about.has(m.about)) : null}
     />
   );
 }

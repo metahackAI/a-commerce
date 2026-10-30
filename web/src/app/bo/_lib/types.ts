@@ -764,3 +764,15 @@ export interface StoreClock {
   time_zone: string;
   now: string;
 }
+
+/** `list_notifications`: a message the store sent one member (email, push, in-app). */
+export interface StoreMessage {
+  id: string;
+  channel: string;
+  headline: string;
+  text: string;
+  /** What it is about: an order, a return request, a campaign. */
+  about: string | null;
+  date_sent: string;
+  read?: boolean;
+}

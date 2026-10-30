@@ -17,7 +17,7 @@ import {useState} from 'react';
 
 import {useAiTarget} from '@/ai/useAiTarget';
 import {day, longDate, money, price, words} from '@/app/(storefront)/_lib/format';
-import type {Address, LoyaltyBalance, MemberCoupon, Preference, WishlistItem} from '@/app/(storefront)/_lib/types';
+import type {Address, LoyaltyBalance, MemberCoupon, Preference, StoreMessage, WishlistItem} from '@/app/(storefront)/_lib/types';
 import type {ApiErrorBody} from '@/lib/api';
 import {signOut} from '@/lib/session';
 import {PersonButton} from '@/components/PersonButton';
@@ -227,5 +227,41 @@ export function SignOutButton() {
         router.refresh();
       }}
     />
+  );
+}
+
+function MessageRow({message}: {message: StoreMessage}) {
+  const target = useAiTarget({
+    kind: 'message',
+    label: `${message.headline} (${longDate(message.date_sent)})`,
+    ids: {message_id: message.id, ...(message.about ? {about: message.about} : {})},
+    term: 'schema:Message',
+  });
+  return (
+    <ListItem
+      ref={target.ref}
+      {...target.props}
+      label={message.headline}
+      description={`${message.text} · ${longDate(message.date_sent)}`}
+      endContent={<AskButton target={target} label={message.headline} />}
+    />
+  );
+}
+
+/** What the store sent the shopper (list_notifications with `me`). */
+export function MessageList({messages}: {messages: StoreMessage[]}) {
+  if (messages.length === 0) {
+    return (
+      <Text type="supporting" color="secondary">
+        Nothing yet. Order and return updates show up here.
+      </Text>
+    );
+  }
+  return (
+    <List hasDividers>
+      {messages.map(m => (
+        <MessageRow key={m.id} message={m} />
+      ))}
+    </List>
   );
 }
