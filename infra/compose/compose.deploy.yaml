@@ -2,10 +2,11 @@
 # Used by infra/deploy/deployer.sh:
 #
 #   ACOM_TAG=<git sha> docker compose -f infra/compose/compose.yaml -f infra/compose/compose.deploy.yaml \
-#     --env-file .env build && ... up -d --no-build
+#     --env-file .env build, then tag each image :acom-demo, then ACOM_TAG=acom-demo ... up -d --no-build
 #
-# Images are tagged acom/acom-<name>:<sha> (compose.yaml). The server's BuildKit cache keeps every
-# layer, so an unchanged service rebuilds to the same image id and compose does not restart it.
+# Images are built as acom/acom-<name>:<sha> (compose.yaml) and run from the fixed tag. The
+# server's BuildKit cache keeps every layer, so an unchanged service rebuilds to the same image id
+# and, its image name being fixed too, compose does not restart it.
 
 services:
   postgres:
