@@ -1537,6 +1537,15 @@ impl<'r> Turn<'r> {
                 return Err(Flow::Stop(why));
             }
             let bound = executor::bind_row(step, tool, &row);
+            // A row that cannot fill the step is left out, not asked about one model call at a
+            // time.
+            if tool
+                .required()
+                .iter()
+                .any(|f| bound.input.get(*f).is_none_or(Value::is_null))
+            {
+                continue;
+            }
             let record = self
                 .call(plan, &step.id, tool, bound.input, bound.notes)
                 .await?;
@@ -1620,8 +1629,8 @@ impl<'r> Turn<'r> {
             .map(|i| i.input.clone())
     }
 
-    /// A tool error: try again with the tool commerce suggests when this agent may use it,
-    /// otherwise stop and show the reason.
+    /// A tool error: try again with the tool commerce suggests when this agent may use it, or
+    /// with the message when the arguments were wrong; otherwise stop and show the reason.
     fn tool_failure(&mut self, tool: &str, e: &ToolError) -> Flow {
         let next = e
             .next_tool
@@ -1637,6 +1646,12 @@ impl<'r> Turn<'r> {
                     e.code, e.message
                 ))
             }
+            // Arguments the plan got wrong (a field missing, a value out of range) are fixed by
+            // planning again with the message; anything else is shown to the person.
+            None if e.class == acom_contract::ErrorClass::InvalidInput => Flow::Revise(format!(
+                "{tool} failed ({}): {} Plan it again with the arguments it needs.",
+                e.code, e.message
+            )),
             None => Flow::Stop(format!("{tool} failed: {}", e.message)),
         }
     }
