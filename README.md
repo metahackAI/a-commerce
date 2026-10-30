@@ -99,7 +99,7 @@ Numbers will be added here once measured.
               Commerce back-end services
 ```
 
-Design details: [docs/design.md](docs/design.md). Research (what AI-native commerce means, who else is building it, with source captures): [docs/research.md](docs/research.md). UI mockups: [design/mockups](design/mockups), layout options and UI per intent: [design/options](design/options), storefront plan: [design/storefront](design/storefront).
+Full architecture (back-end structure, API hierarchy, agent-friendly interface, schema.org data model, AI-native features): [docs/architecture.md](docs/architecture.md). Design details: [docs/design.md](docs/design.md). Build plan: [docs/plan.md](docs/plan.md). Research (what AI-native commerce means, who else is building it, with source captures): [docs/research.md](docs/research.md). UI mockups: [design/mockups](design/mockups), layout options and UI per intent: [design/options](design/options), storefront plan: [design/storefront](design/storefront).
 
 ## Getting started
 
@@ -131,6 +131,8 @@ Everything in this repository was created between Oct 27 and Nov 4, 2026. The co
 | Date | What was built |
 |---|---|
 | Oct 27 | Repository created, project scope defined |
+| Oct 28 | Build plan: MVP scope, tool signatures, seed data, UI block schema, roles and schedule |
+| Oct 30 | Architecture document: back-end structure, API hierarchy, schema.org data model, AI-native features |
 
 ## References
 
