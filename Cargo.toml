@@ -12,6 +12,7 @@ members = [
     "crates/mcp",
     "crates/policy",
     "crates/registry",
+    "crates/server",
     "crates/store",
     "crates/testkit",
     "crates/domains/*",
@@ -41,6 +42,7 @@ acom-llm = { path = "crates/llm" }
 acom-agent = { path = "crates/agent" }
 acom-facade = { path = "crates/facade" }
 acom-testkit = { path = "crates/testkit" }
+acom-server = { path = "crates/server" }
 acom-catalog = { path = "crates/domains/catalog" }
 acom-search = { path = "crates/domains/search" }
 acom-merchandising = { path = "crates/domains/merchandising" }
@@ -53,6 +55,12 @@ acom-platform = { path = "crates/domains/platform" }
 
 # external
 axum = "0.8"
+clap = { version = "4.6", features = ["derive", "env"] }
+http-body-util = "0.1"
+hyper = "1"
+hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
+metrics = "0.24"
+metrics-exporter-prometheus = { version = "0.18", default-features = false }
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
 chrono-tz = { version = "0.10", features = ["serde"] }
 futures = "0.3"

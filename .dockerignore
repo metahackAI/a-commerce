@@ -1,0 +1,18 @@
+# Build context is the repository root; only what images need goes in.
+**/target
+**/node_modules
+web/.next
+web/.scaffold
+.git
+.github
+design
+docs
+eval
+seed
+vocab
+infra/secrets
+infra/k8s/overlays/local/secrets
+**/*.pem
+.env
+.env.*
+!.env.example

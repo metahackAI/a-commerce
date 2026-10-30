@@ -60,3 +60,13 @@ Rules: `docs/frontend-ui.md` (UI library and look) and `docs/frontend/README.md`
 - Elements that the agent may change also show the block's `suggested_intents`.
 - State changes made by a person (approve, place order, send a return request, undo) go through `PersonButton` only. They are never reachable from `ui.command` or page tools.
 - The web never computes business numbers. Prices, totals, and stock come from tool results.
+
+## Infrastructure
+
+Serving architecture: `infra/README.md`. Commands: `make help`.
+
+- Every component is a container, and every environment runs the same images and topology; only configuration differs. Don't add a code path that runs only locally; put local conveniences in configuration (`.env`, overlays).
+- Configuration comes from environment variables, and secrets come from files or Kubernetes Secrets. Names are the same everywhere (`infra/README.md` §5). Never commit secrets: `infra/secrets/` and `infra/k8s/overlays/local/secrets/` are git-ignored.
+- New Rust services use `acom-server`: JSON logs, `/healthz`, `/readyz`, `/metrics`, request ids, graceful shutdown, and the `healthcheck` subcommand.
+- Images run as non-root with a read-only root file system. Write only to declared temporary volumes.
+- Integration checks (bringing the stack up) run on request. Always run `make check-infra` after changing Compose or Kubernetes files.

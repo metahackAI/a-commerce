@@ -1,0 +1,218 @@
+# vLLM serving the worker model. The model cache (weights, compile caches) lives on a PVC so a
+# restart does not download the model again. Root filesystem is read-only; every cache path is
+# pointed at the PVC or at /tmp.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: models-config
+  labels:
+    app.kubernetes.io/name: models
+    app.kubernetes.io/component: model-server
+    app.kubernetes.io/part-of: a-commerce
+data:
+  # Hugging Face model id served as the Glimmer worker model. Replace in your overlay.
+  VLLM_MODEL: set-me
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: models
+  labels:
+    app.kubernetes.io/name: models
+    app.kubernetes.io/component: model-server
+    app.kubernetes.io/part-of: a-commerce
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: models-cache
+  labels:
+    app.kubernetes.io/name: models
+    app.kubernetes.io/component: model-server
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: models
+  labels:
+    app.kubernetes.io/name: models
+    app.kubernetes.io/component: model-server
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  # One GPU and a ReadWriteOnce cache: stop the old pod before starting the new one.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: models
+      app.kubernetes.io/part-of: a-commerce
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: models
+        app.kubernetes.io/component: model-server
+        app.kubernetes.io/part-of: a-commerce
+    spec:
+      serviceAccountName: models
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: vllm
+          # Same release as infra/compose; an overlay can change it with `images:`.
+          image: vllm/vllm-openai:v0.11.0
+          command: ["vllm", "serve"]
+          args:
+            - "$(VLLM_MODEL)"
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8000"
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: VLLM_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: models-config
+                  key: VLLM_MODEL
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: acom-models
+                  key: HF_TOKEN
+                  optional: true
+            # The image has no account for this uid; give Python a user name and a home.
+            - name: USER
+              value: vllm
+            - name: HOME
+              value: /tmp
+            - name: XDG_CACHE_HOME
+              value: /cache
+            - name: HF_HOME
+              value: /cache/huggingface
+            - name: VLLM_CACHE_ROOT
+              value: /cache/vllm
+            - name: TRITON_CACHE_DIR
+              value: /cache/triton
+            - name: NUMBA_CACHE_DIR
+              value: /tmp/numba
+          volumeMounts:
+            - name: cache
+              mountPath: /cache
+            - name: tmp
+              mountPath: /tmp
+            - name: shm
+              mountPath: /dev/shm
+          # The first start downloads and loads the model: allow up to 30 minutes.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 180
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 4
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "2"
+              memory: 16Gi
+              nvidia.com/gpu: 1
+            limits:
+              cpu: "8"
+              memory: 32Gi
+              nvidia.com/gpu: 1
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: cache
+          persistentVolumeClaim:
+            claimName: models-cache
+        - name: tmp
+          emptyDir:
+            sizeLimit: 8Gi
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 4Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: models
+  labels:
+    app.kubernetes.io/name: models
+    app.kubernetes.io/component: model-server
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: models
+    app.kubernetes.io/part-of: a-commerce
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      protocol: TCP
+---
+# Only the agent calls the model server.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: models-ingress
+  labels:
+    app.kubernetes.io/name: models
+    app.kubernetes.io/component: network-policy
+    app.kubernetes.io/part-of: a-commerce
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: models
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: agent
+      ports:
+        - protocol: TCP
+          port: 8000

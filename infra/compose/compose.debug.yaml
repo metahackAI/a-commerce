@@ -1,0 +1,24 @@
+# Debug overlay: publishes Postgres and each service's own port, and switches to readable logs.
+# Use it only on your machine:  make up-debug
+#   postgres  localhost:5432 (user acom / acom; roles acom_owner, acom_app)
+#   commerce  localhost:7001   worker localhost:7003   agent localhost:7002   web localhost:3000
+services:
+  postgres:
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    networks: [data, edge]
+  commerce:
+    environment: {ACOM_LOG_FORMAT: pretty}
+    ports: ["7001:7001"]
+    networks: [app, data, edge]
+  commerce-worker:
+    environment: {ACOM_LOG_FORMAT: pretty}
+    ports: ["7003:7003"]
+    networks: [app, data, edge]
+  agent:
+    environment: {ACOM_LOG_FORMAT: pretty}
+    ports: ["7002:7002"]
+  web:
+    ports: ["3000:3000"]
+    networks: [app, edge]
+  gateway:
+    environment: {ACOM_LOG_FORMAT: pretty}

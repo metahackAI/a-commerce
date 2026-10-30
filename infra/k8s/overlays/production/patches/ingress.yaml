@@ -1,0 +1,14 @@
+# TLS for the public host; cert-manager issues the certificate into Secret acom-tls.
+# (The class and host are set by the JSON patch in ../kustomization.yaml.)
+# The controller's namespace must carry the label acom.dev/ingress: "true" (see base/networkpolicies.yaml).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: a-commerce
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  tls:
+    - hosts:
+        - shop.example.com
+      secretName: acom-tls

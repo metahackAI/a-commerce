@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: a-commerce
+  labels:
+    app.kubernetes.io/name: a-commerce
+    app.kubernetes.io/component: namespace
+    app.kubernetes.io/part-of: a-commerce
+    # Every pod in this namespace meets the "restricted" Pod Security Standard.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

@@ -18,7 +18,7 @@ A-Commerce의 서버 측은 **전부 Rust**로 만듭니다. 게이트웨이, �
 
 ## 1. 서비스
 
-배포 단위는 세 개입니다. 모두 같은 워크스페이스의 바이너리입니다.
+서비스는 세 개이고 모두 같은 워크스페이스의 바이너리입니다. 컨테이너로는 gateway, commerce(`serve`), commerce-worker(같은 이미지의 `work`), agent, 마이그레이션 작업(`migrate`)으로 뜹니다. 서빙 구성은 [../../infra/README.md](../../infra/README.md)에 있습니다.
 
 ```
             브라우저 (Next.js: /bo 운영자, /fo 쇼퍼)            외부 에이전트
@@ -51,7 +51,7 @@ A-Commerce의 서버 측은 **전부 Rust**로 만듭니다. 게이트웨이, �
 
 나누는 기준은 **신뢰 경계**입니다. 에이전트(모델)는 커머스 규칙의 바깥에 있다고 보고, 승인·실행·정책 판정은 전부 `commerce`가 합니다. 에이전트가 고장 나거나 프롬프트가 조작돼도 `commerce`가 받지 않는 요청은 실행되지 않습니다.
 
-MCP는 별도 서비스가 아니라 `commerce`가 REST와 함께 내놓는 또 하나의 표면입니다(같은 레지스트리에서 생성). 해커톤 데모는 세 서비스를 각각 띄우되, 같은 크레이트로 단일 바이너리(`acom all`)로도 돌릴 수 있게 합니다.
+MCP는 별도 서비스가 아니라 `commerce`가 REST와 함께 내놓는 또 하나의 표면입니다(같은 레지스트리에서 생성). 모든 서비스는 로컬에서도 운영과 같은 구성(컨테이너, 같은 네트워크 경계, 같은 헬스 체크)으로 뜹니다.
 
 ---
 
@@ -85,6 +85,7 @@ a-commerce/
 │   ├── llm/           acom-llm           모델 클라이언트(OpenAI 호환), 툴콜 파싱·인자 보정, 사용량
 │   ├── agent/         acom-agent         에이전트 런타임 전체 (agent.md)
 │   ├── facade/        acom-facade        평가용 화면형 API 파사드 (testing.md)
+│   ├── server/        acom-server        서비스 공통 런타임: 로그, /healthz·/readyz·/metrics, 요청 id, 종료 신호, 컨테이너 헬스 체크
 │   └── testkit/       acom-testkit       시드 로더·데모 시계·시나리오 재생 도우미
 ├── services/
 │   ├── gateway/       바이너리 acom-gateway
@@ -96,7 +97,7 @@ a-commerce/
 ├── seed/demo/                    # 데모 스토어 시드 (docs/scenarios.md에서 도출)
 ├── eval/                         # 과업 세트(design/held_out)와 결과
 ├── migrations/                   # sqlx 마이그레이션 (도메인 스키마별 파일)
-├── deploy/                       # docker-compose(Postgres+pgvector, 세 서비스, web), Dockerfile
+├── infra/                        # 이미지(docker/), Compose(compose/), Kubernetes(k8s/), DB 역할(postgres/) — infra/README.md
 ├── web/                          # Next.js (App Router)
 └── docs/
 ```
@@ -165,18 +166,21 @@ MVP 인프라는 **PostgreSQL 하나**입니다. 멱등 키·락·작업 큐·�
 |---|---|---|
 | `DATABASE_URL` | commerce, agent | `postgres://acom_app:acom_app@localhost:5432/acom` (RLS가 적용되는 서비스 역할) |
 | `MIGRATION_DATABASE_URL` | `xtask db` | `postgres://acom_owner:acom_owner@localhost:5432/acom` (마이그레이션 역할, [database.md](database.md) §8) |
-| `ACOM_GATEWAY_SIGNING_KEY` / `ACOM_GATEWAY_PUBLIC_KEY` | gateway / commerce·agent | Ed25519 PEM |
+| `ACOM_GATEWAY_SIGNING_KEY_FILE` / `ACOM_GATEWAY_PUBLIC_KEY_FILE` | gateway / commerce·agent | Ed25519 PEM 파일 경로(`make keys`) |
 | `ACOM_COMMERCE_URL`, `ACOM_AGENT_URL`, `ACOM_WEB_URL` | gateway, agent | `http://localhost:7001` |
 | `ACOM_DEMO_MODE` | 전부 | `true`면 데모 로그인·데모 시계 활성 |
 | `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | agent | self-hosted vLLM의 OpenAI 호환 엔드포인트 |
 | `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL` | agent | Meta Model API |
 
+전체를 컨테이너로 띄우는 방법은 [../../infra/README.md](../../infra/README.md) §7(`make up`)입니다. 서비스 하나를 컨테이너 밖에서 고치며 돌릴 때:
+
 ```bash
-docker compose -f deploy/docker-compose.yml up -d postgres   # Postgres 17 + pgvector
-cargo xtask db reset                                        # 마이그레이션 + 데모 시드
-cargo run -p acom-commerce        # :7001
-cargo run -p acom-agent-svc       # :7002
-cargo run -p acom-gateway         # :7000  (웹·API 단일 출처)
+make up-debug                     # 전체 스택 + Postgres :5432, 각 서비스 포트 공개
+cargo run -p acom-commerce -- migrate   # MIGRATION_DATABASE_URL (스택이 이미 적용함)
+cargo run -p acom-commerce -- serve     # :7001 (해당 컨테이너는 먼저 멈춤)
+cargo run -p acom-commerce -- work      # :7003
+cargo run -p acom-agent-svc             # :7002 (바이너리 acom-agent)
+cargo run -p acom-gateway               # :7000 (웹·API 단일 출처)
 cargo xtask codegen               # tools.json · openapi.json · ui-blocks.schema.json · web/src/contract/*.ts
 cargo test --workspace            # 단위·계약 테스트 (DB 없이)
 cargo test --workspace -- --ignored   # 통합 테스트 (DB 필요, 요청 시)

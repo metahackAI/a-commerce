@@ -21,3 +21,63 @@ jobs:
       - run: cargo xtask check-docs
       - run: cargo xtask check-schema
       - run: cargo xtask check-seed
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+  infra:
+    runs-on: ubuntu-latest
+    env:
+      KUSTOMIZE_VERSION: "5.8.3"
+      KUBECONFORM_VERSION: "0.8.0"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compose files are valid
+        run: >
+          docker compose -f infra/compose/compose.yaml -f infra/compose/compose.debug.yaml
+          --env-file .env.example --profile models --profile observability config --quiet
+      - name: Install kustomize and kubeconform
+        run: |
+          mkdir -p "$HOME/bin"
+          curl -sSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | tar -xz -C "$HOME/bin"
+          curl -sSL "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" | tar -xz -C "$HOME/bin"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: Kubernetes manifests render and validate
+        run: infra/k8s/validate.sh
+
+  images:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - {name: gateway, file: infra/docker/rust.Dockerfile, target: gateway}
+          - {name: commerce, file: infra/docker/rust.Dockerfile, target: commerce}
+          - {name: agent, file: infra/docker/rust.Dockerfile, target: agent}
+          - {name: web, file: infra/docker/web.Dockerfile, target: ""}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          push: false
+          tags: acom/acom-${{ matrix.name }}:ci
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}

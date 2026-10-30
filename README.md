@@ -111,6 +111,7 @@ Start with the row that matches what you are about to do. Each document links to
 | Know the demo store and scenes | [docs/scenarios.md](docs/scenarios.md) (people, products, policies, each scene with expected results) |
 | Build back-end code | [AGENTS.md](AGENTS.md) → [docs/backend/README.md](docs/backend/README.md) (workspace, crates, rules) → [docs/backend/database.md](docs/backend/database.md) (schema.org tables and columns) → [docs/backend/commerce.md](docs/backend/commerce.md) → [docs/backend/agent.md](docs/backend/agent.md) → [docs/backend/gateway.md](docs/backend/gateway.md) → [docs/backend/testing.md](docs/backend/testing.md) |
 | Add or change an operation (tool) | [docs/api/README.md](docs/api/README.md) (hierarchy, kinds, index) → [docs/api/conventions.md](docs/api/conventions.md) → [docs/api/vocabulary.md](docs/api/vocabulary.md) (schema.org types and our extensions) → the domain file (for example [docs/api/promotion.md](docs/api/promotion.md)) → [docs/api/enums.md](docs/api/enums.md) and [docs/api/errors.md](docs/api/errors.md) → [policies/](policies/README.md) |
+| Run, package, or deploy | [infra/README.md](infra/README.md) (serving architecture, images, Compose, Kubernetes) → [infra/k8s/README.md](infra/k8s/README.md) |
 | Build front-end code | [docs/frontend-ui.md](docs/frontend-ui.md) (Meta Astryx, setup, look rules) → [docs/frontend/README.md](docs/frontend/README.md) (AI layer, elements, person buttons) → [docs/api/chat.md](docs/api/chat.md) (stream and blocks) → [design/](design) |
 | Look up a table, column, or term | [docs/backend/schema.generated.md](docs/backend/schema.generated.md) (generated from the migrations), [vocab/acom.jsonld](vocab/acom.jsonld) (every `acom:` term), or the `describe_data` tool |
 | Load or change demo data | [docs/scenarios.md](docs/scenarios.md) → [seed/demo/README.md](seed/demo/README.md) |
@@ -119,36 +120,57 @@ Specifications that implementers read daily (`docs/api/`, `docs/backend/`, `docs
 
 ## Getting started
 
+Everything runs in containers with the same layout as production; only internal settings differ (where the database lives, how many replicas, where secrets come from). The serving architecture, Compose, and Kubernetes setups are described in [infra/README.md](infra/README.md).
+
 ### Requirements
 
-- Rust (the version in `rust-toolchain.toml`; `rustup` installs it on first build)
-- Docker (PostgreSQL 17 with pgvector)
-- Node.js 24 for the web app
+- Docker with Compose v2 (the whole stack)
+- GNU Make
+- For development outside containers: Rust (the version in `rust-toolchain.toml`; `rustup` installs it) and Node.js 24
+- For local Kubernetes (optional): kind and kubectl
 
-### Run locally
+### Run the whole stack locally
 
 ```bash
-docker compose -f deploy/docker-compose.yml up -d postgres
-cargo build --workspace
-cargo test --workspace          # unit and contract tests
-cargo xtask check-docs          # the code and docs/api must agree
-cargo xtask check-schema        # migrations follow docs/backend/database.md
-cargo xtask check-seed          # the demo seed fits the schema
-cargo run -p acom-commerce      # :7001
-cargo run -p acom-agent-svc     # :7002
-cargo run -p acom-gateway       # :7000, the one address for the web app and outside agents
+make up          # creates .env and local keys if missing, builds the images, runs migrations, starts everything
+                 # → http://localhost:8080   storefront /   back office /bo
+make ps          # containers and health
+make logs SERVICE=gateway
+make down        # stop (make clean also deletes the database volume)
 ```
 
-More in [docs/backend/README.md](docs/backend/README.md) §4.
+Add model access in `.env` (`META_API_KEY`, `GLIMMER_BASE_URL`, …) to use real models. `make up-models` serves the worker model on a local GPU, and `make up-observability` adds Prometheus and Grafana. `make help` lists every command.
+
+### Develop one service outside containers
+
+```bash
+make up-debug                      # the stack, plus Postgres on :5432 and each service on its own port
+cargo run -p acom-commerce -- serve   # replace the container you are working on (stop it first: docker compose ... stop commerce)
+cd web && npm install && npm run dev  # web on :3000 (Meta Astryx; docs/frontend-ui.md)
+```
+
+### Local Kubernetes (optional)
+
+```bash
+make kind-up     # kind cluster, images loaded, the local overlay applied (infra/k8s)
+make kind-down
+```
+
+### Checks
+
+```bash
+make check       # Rust (fmt, clippy, tests, docs/schema/seed checks), web (types, build), infra (Compose, Kubernetes manifests)
+```
 
 ### Environment variables
 
+`.env.example` lists every variable with a comment. The ones you set yourself:
+
 | Name | Description |
 |---|---|
-| `META_API_KEY` | Meta Model API key (never commit it) |
-| `DATABASE_URL` | PostgreSQL connection for the commerce and agent services |
-| `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | Self-hosted Muse Glimmer endpoint (OpenAI-compatible) |
-| `ACOM_GATEWAY_SIGNING_KEY`, `ACOM_GATEWAY_PUBLIC_KEY` | Ed25519 keys for internal tokens (never commit them) |
+| `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL` | Meta Model API for the planner model (never commit the key) |
+| `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | OpenAI-compatible endpoint serving the worker model |
+| `ACOM_HTTP_PORT` | Host port of the gateway (default 8080) |
 
 ## Demo
 
@@ -165,6 +187,7 @@ Everything in this repository was created between Oct 27 and Nov 4, 2026. The co
 | Oct 28 | Build plan: MVP scope, tool signatures, seed data, UI block schema, roles and schedule |
 | Oct 30 | Architecture document: back-end structure, API hierarchy, schema.org data model, AI-native features |
 | Oct 30 | API specification: 13 domains, every operation, data model, policies |
+| Oct 30 | Infrastructure base: every component in a container (gateway, web, commerce, worker, agent, migrations, Postgres), Docker Compose with the production topology, Kubernetes manifests (Kustomize: local and production overlays), a shared service runtime (health, readiness, metrics, graceful shutdown), and the Next.js web on Meta Astryx with the AI layer |
 | Oct 30 | Data foundation (M1): 12 migrations with schema.org tables and columns, a comment with its term on every table and column, a generated data dictionary and vocabulary, a rule checker, and the demo store seed (812 rows) |
 | Oct 30 | Direction set: the whole server side in Rust (gateway, commerce, agent). Rust workspace with the contract, money, time, policy loader, and a docs checker; implementation design; demo scenarios from the mockups; conventions, enumerations, errors, and the chat stream |
 

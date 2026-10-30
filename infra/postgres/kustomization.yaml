@@ -1,0 +1,62 @@
+# In-cluster PostgreSQL 17 + pgvector for local clusters (kind). A Kustomize Component: an overlay
+# lists it under `components:`. Production uses a managed database instead.
+#
+# Needs Secret acom-postgres (key POSTGRES_PASSWORD), which the local overlay generates.
+# init.sql (same folder) creates the roles acom_owner / acom_app / acom_readonly on first start.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+resources:
+  - postgres.yaml
+
+configMapGenerator:
+  - name: postgres-init
+    files:
+      - init.sql
+    options:
+      labels:
+        app.kubernetes.io/name: postgres
+        app.kubernetes.io/component: database
+        app.kubernetes.io/part-of: a-commerce
+
+patches:
+  # The migrate Job waits until this database accepts connections. The image is the one the
+  # StatefulSet already pulls, and pg_isready answers only after init.sql has run.
+  - target:
+      group: batch
+      version: v1
+      kind: Job
+      name: migrate
+    patch: |-
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: migrate
+      spec:
+        template:
+          spec:
+            initContainers:
+              - name: wait-for-postgres
+                image: pgvector/pgvector:pg17
+                command:
+                  - sh
+                  - -c
+                  - |
+                    for i in $(seq 1 150); do
+                      pg_isready -q -h postgres -p 5432 && exit 0
+                      sleep 2
+                    done
+                    echo "postgres did not accept connections within 5 minutes" >&2
+                    exit 1
+                resources:
+                  requests:
+                    cpu: 10m
+                    memory: 16Mi
+                  limits:
+                    cpu: 100m
+                    memory: 64Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  readOnlyRootFilesystem: true
+                  capabilities:
+                    drop: ["ALL"]

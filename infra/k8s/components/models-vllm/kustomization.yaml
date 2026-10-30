@@ -1,0 +1,16 @@
+# Optional: serve the Glimmer worker model inside the cluster with vLLM (OpenAI-compatible API on
+# http://models:8000/v1). Needs a node with an NVIDIA GPU and the NVIDIA device plugin.
+#
+# Using it:
+#   1. Add `- ../../components/models-vllm` (path relative to the overlay) under `components:`.
+#   2. Set the model: patch ConfigMap models-config, key VLLM_MODEL (a Hugging Face model id).
+#   3. Point the agent at it. A Component cannot patch values inside a Secret, so set these in the
+#      acom-models Secret yourself:
+#        GLIMMER_BASE_URL=http://models:8000/v1
+#        GLIMMER_MODEL=<the same id as VLLM_MODEL>
+#      For a gated model, also add HF_TOKEN to acom-models (optional; read by the models pod only).
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+resources:
+  - models.yaml

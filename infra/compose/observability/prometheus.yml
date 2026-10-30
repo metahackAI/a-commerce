@@ -1,0 +1,8 @@
+# Scrapes /metrics of every Rust service on the compose `app` network.
+global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: acom
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["gateway:7000", "commerce:7001", "commerce-worker:7003", "agent:7002"]
