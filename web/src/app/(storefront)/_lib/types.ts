@@ -614,6 +614,17 @@ export interface ClaimResult {
 }
 
 /** One `get_return_history` item (customer.md). */
+/** One of the shopper's own requests (`search_claims`, which a shopper only sees for themselves). */
+export interface ClaimSummary {
+  id: string;
+  claim_type: string;
+  status: string;
+  order_id: string;
+  reason: string | null;
+  amount: Money;
+  created_at: string;
+}
+
 export interface ReturnHistoryItem {
   id: string;
   claim_type: string;
