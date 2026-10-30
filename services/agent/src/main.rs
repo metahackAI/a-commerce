@@ -119,10 +119,9 @@ async fn main() -> ExitCode {
                 tracing::warn!(missing = ?models.missing, "no model is configured; turns will say so");
             }
             let (log, store): (Arc<dyn TurnLog>, Arc<dyn StoreInfo>) = match &db {
-                Some(db) => {
-                    let pg = Arc::new(PgStore::new(db.clone(), cli.demo_mode));
-                    (pg.clone(), pg)
-                }
+                // Store time and currency come from commerce (GET /v1/platform/store) each
+                // turn; SystemStore is only the fallback when commerce does not answer.
+                Some(db) => (Arc::new(PgStore::new(db.clone())), Arc::new(SystemStore)),
                 None => (
                     Arc::new(acom_agent::store::MemoryLog::default()),
                     Arc::new(SystemStore),

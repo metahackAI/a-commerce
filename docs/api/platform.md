@@ -752,5 +752,6 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 
 | 엔드포인트 | 스코프 | 내용 |
 |---|---|---|
+| `GET /v1/platform/store` | 토큰만 | 요청 문맥의 스토어: `{store_id, currency, time_zone, now}`. `now`는 데모 모드면 데모 시계. agent 서비스가 턴마다 스토어 시각·통화를 여기서 받습니다(commerce 테이블을 직접 읽지 않음) |
 | `GET /v1/platform/previews/{preview_id}` | `changeset:draft` 또는 `tools:read:platform` | 저장된 프리뷰 하나: `{preview_id, operation, input, changes[], checks[], needs_approval, approval_reason, expires_at, state, change_set_id, policy_version, created_at}`. `state`는 [enums.md](enums.md) §1.9. 런타임이 실행 전 확인하거나 화면이 프리뷰를 다시 그릴 때 |
 | `GET /v1/platform/events` (SSE) | `tools:read:platform` | 스토어의 진행 이벤트: `change_set.updated {change_set_id, version, state}`, `task.updated {task_id, state, change_set_id?}`, `job.updated {job_id, kind, state, run_at}`. 각 이벤트는 `id:`(스토어 안 순번)를 가지며 `Last-Event-ID`로 이어 받음. agent 서비스가 구독해 대화의 `change_set.updated`([chat.md](chat.md) §2)로 흘림 |

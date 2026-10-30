@@ -129,16 +129,15 @@ impl StoreInfo for SystemStore {
     }
 }
 
-/// The Postgres log and store settings.
+/// The Postgres turn log (the `agent` schema). Store settings come from commerce, not here.
 #[derive(Debug, Clone)]
 pub struct PgStore {
     db: Db,
-    demo_mode: bool,
 }
 
 impl PgStore {
-    pub fn new(db: Db, demo_mode: bool) -> Self {
-        Self { db, demo_mode }
+    pub fn new(db: Db) -> Self {
+        Self { db }
     }
 
     async fn begin(
@@ -440,49 +439,6 @@ impl TurnLog for PgStore {
     }
 }
 
-impl StoreInfo for PgStore {
-    fn settings<'a>(&'a self, tenant: &'a str) -> BoxFuture<'a, Result<StoreSettings, String>> {
-        Box::pin(async move {
-            let mut tx = self.begin(tenant).await?;
-            let store =
-                sqlx::query("SELECT time_zone, currency FROM platform.online_store WHERE id = $1")
-                    .bind(tenant)
-                    .fetch_optional(&mut *tx)
-                    .await
-                    .map_err(db)?
-                    .ok_or_else(|| format!("unknown store {tenant}"))?;
-            let zone: String = store.try_get("time_zone").map_err(db)?;
-            let currency: String = store.try_get("currency").map_err(db)?;
-            let wall = SystemClock.now();
-            let mut now = wall;
-            if self.demo_mode
-                && let Some(r) = sqlx::query(
-                    "SELECT now, is_running, updated_at FROM platform.demo_clock WHERE tenant_id = $1",
-                )
-                .bind(tenant)
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(db)?
-            {
-                let at: DateTime<Utc> = r.try_get("now").map_err(db)?;
-                let running: bool = r.try_get("is_running").map_err(db)?;
-                let set_at: DateTime<Utc> = r.try_get("updated_at").map_err(db)?;
-                // A running demo clock moves with the wall clock from the moment it was set.
-                now = if running { at + (wall - set_at) } else { at };
-            }
-            tx.commit().await.map_err(db)?;
-            Ok(StoreSettings {
-                time: StoreTime::new(
-                    zone.parse()
-                        .map_err(|_| format!("store {tenant}: bad time zone {zone}"))?,
-                ),
-                currency: currency.trim().to_owned(),
-                now,
-            })
-        })
-    }
-}
-
 /// The tool arguments a step recorded (`{"args": …, "repairs": […]}`).
 fn step_args(input: &Value) -> Value {
     input.get("args").cloned().unwrap_or_else(|| input.clone())
@@ -745,10 +701,9 @@ mod tests {
     #[ignore = "integration: needs a PostgreSQL database"]
     async fn turns_steps_and_model_calls_round_trip() {
         let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
-        let store = PgStore::new(Db::connect(&url, 2).await.expect("connect"), true);
+        let store = PgStore::new(Db::connect(&url, 2).await.expect("connect"));
         let tenant = "store_northwind";
-        let settings = store.settings(tenant).await.expect("settings");
-        assert_eq!(settings.time.zone, chrono_tz::America::New_York);
+        let settings = SystemStore.settings(tenant).await.expect("settings");
         let conv = format!("conv_{}", acom_core::id::new_suffix());
         let turn = format!("turn_{}", acom_core::id::new_suffix());
         let owner = Owner {

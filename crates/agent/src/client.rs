@@ -86,6 +86,17 @@ pub trait ToolClient: Send + Sync {
         change_set_id: &'a str,
         version: i32,
     ) -> BoxFuture<'a, Result<ChangeSetHead, ToolError>>;
+
+    /// `GET /v1/platform/store`: the store's currency, time zone and current time (the demo
+    /// clock in demo mode), as commerce sees them. The agent never reads commerce's tables.
+    fn store(&self) -> BoxFuture<'_, Result<crate::store::StoreSettings, ToolError>> {
+        Box::pin(async {
+            Err(ToolError::new(
+                ErrorCode::UPSTREAM_UNAVAILABLE,
+                "This client cannot ask for the store's settings.",
+            ))
+        })
+    }
 }
 
 /// The HTTP client for one turn: the commerce base URL, the caller's token, the request id.
@@ -260,6 +271,34 @@ impl ToolClient for HttpToolClient {
                 )
                 .await?;
             decode(v, "change set")
+        })
+    }
+
+    fn store(&self) -> BoxFuture<'_, Result<crate::store::StoreSettings, ToolError>> {
+        Box::pin(async move {
+            let v = self
+                .send(reqwest::Method::GET, "/v1/platform/store", None)
+                .await?;
+            let unreadable = || {
+                ToolError::new(
+                    ErrorCode::INTERNAL,
+                    "The commerce service sent store settings the agent cannot read.",
+                )
+            };
+            let zone: chrono_tz::Tz = v["time_zone"]
+                .as_str()
+                .and_then(|z| z.parse().ok())
+                .ok_or_else(unreadable)?;
+            let now = v["now"]
+                .as_str()
+                .and_then(|t| chrono::DateTime::parse_from_rfc3339(t).ok())
+                .ok_or_else(unreadable)?
+                .with_timezone(&chrono::Utc);
+            Ok(crate::store::StoreSettings {
+                time: acom_core::StoreTime::new(zone),
+                currency: v["currency"].as_str().unwrap_or("").to_owned(),
+                now,
+            })
         })
     }
 }

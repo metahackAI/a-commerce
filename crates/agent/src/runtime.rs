@@ -265,7 +265,14 @@ impl Runtime {
     /// Runs one turn, sending its events. Always ends with `turn.done`.
     pub async fn run(&self, p: Prepared, tools: Arc<dyn ToolClient>, emit: Emitter) {
         let tenant = p.principal.tenant.as_str().to_owned();
-        let settings = match self.store.settings(&tenant).await {
+        let settings = match tools.store().await {
+            Ok(s) => Ok(s),
+            Err(e) => {
+                tracing::warn!(error = %e.message, "commerce did not give the store settings");
+                self.store.settings(&tenant).await
+            }
+        };
+        let settings = match settings {
             Ok(s) => s,
             Err(e) => {
                 tracing::warn!(error = %e, "store settings unavailable; using UTC and the system clock");

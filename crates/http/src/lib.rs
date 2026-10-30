@@ -13,6 +13,7 @@ pub mod coerce;
 mod events;
 mod idempotency;
 mod ops;
+mod store;
 
 use std::sync::Arc;
 
@@ -55,6 +56,7 @@ pub fn router(api: Arc<Api>) -> Router {
     let r = ops::routes(&api.registry);
     r.merge(change_sets::routes())
         .merge(events::routes())
+        .merge(store::routes())
         .with_state(api)
 }
 
