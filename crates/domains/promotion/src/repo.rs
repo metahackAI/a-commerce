@@ -35,7 +35,7 @@ const PROMOTION_COLUMNS: &str = "id, name, description, promotion_status, discou
     amount_off_currency, applies_to, change_set_id, version";
 
 /// The status now, in SQL (same rule as `model::promotion_status`); `now` names the parameter.
-fn status_sql(now: &str) -> String {
+pub(crate) fn status_sql(now: &str) -> String {
     format!(
         "(CASE WHEN promotion_status IN ('draft', 'paused', 'ended') THEN promotion_status
                WHEN {now} < valid_from THEN 'scheduled'

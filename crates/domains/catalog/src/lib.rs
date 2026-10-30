@@ -16,6 +16,7 @@ mod cards;
 mod ops;
 mod repo;
 mod viewer;
+mod watch;
 
 use acom_auth::Principal;
 use acom_contract::{ErrorClass, ErrorCode, RegistryBuilder, ToolError};
@@ -76,6 +77,8 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .read(ops::review::ListReviews)
         .write(ops::review::CreateReview)
         .write(ops::review::VoteReviewHelpful);
+    // Scheduled work (platform.job): the watcher over prices under cost.
+    b.job(watch::PriceBelowCost);
 }
 
 pub(crate) fn db(e: sqlx::Error) -> ToolError {

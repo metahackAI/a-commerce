@@ -11,11 +11,17 @@
 //!   items produced, reads each back (`verify`), and moves the set to `live` or `failed`. Undo
 //!   takes every item back in reverse order until the deadline.
 //!
+//! - [`jobs`] runs scheduled work (`platform.job`) with the handlers domains register, writes
+//!   the tasks watchers find, and drafts their fixes as change sets.
+//! - [`clock`] reads and moves a store's demo clock; moving it forward runs what comes due.
+//!
 //! Every step writes a schema.org `Action` row to `platform.action_log`, and every change-set
 //! transition a `platform.change_set_event` row plus a `NOTIFY acom_events`.
 
 pub mod bind;
 pub mod change_set;
+pub mod clock;
+pub mod jobs;
 pub mod preview;
 pub mod read;
 
@@ -40,6 +46,23 @@ pub const RUNNER: &str = "sys_runner";
 
 pub(crate) fn db_err(e: sqlx::Error) -> ToolError {
     ToolError::from(acom_store::StoreError::from(e))
+}
+
+/// Sends one progress event (`change_set.updated`, `task.updated`, `job.updated`) on the
+/// `acom_events` channel. Postgres delivers it when the transaction commits, and not at all if
+/// it rolls back; `GET /v1/platform/events` passes it on to the store's listeners.
+pub async fn notify(tx: &mut TxCx, kind: &str, body: Value) -> Result<(), ToolError> {
+    let mut note = body;
+    if let Value::Object(o) = &mut note {
+        o.insert("type".into(), json!(kind));
+        o.insert("tenant".into(), json!(tx.tenant.as_str()));
+    }
+    sqlx::query("SELECT pg_notify('acom_events', $1)")
+        .bind(note.to_string())
+        .execute(&mut *tx.tx)
+        .await
+        .map_err(db_err)?;
+    Ok(())
 }
 
 pub(crate) fn op<'r>(

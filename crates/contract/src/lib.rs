@@ -6,6 +6,7 @@
 
 pub mod envelope;
 pub mod error;
+pub mod job;
 pub mod meta;
 pub mod op;
 pub mod registry;
@@ -13,6 +14,9 @@ pub mod schema;
 
 pub use envelope::{Change, ChangeOp, Check, CommitResult, Preview, ReadResult, Undo};
 pub use error::{ErrorClass, ErrorCode, ToolError};
+pub use job::{
+    DomainEvent, DynJob, EntityRef, FixCall, FixDraft, Job, JobMeta, JobOutcome, TaskDraft,
+};
 pub use meta::{ActionType, Audience, Group, Kind, Method, OpMeta, Slot};
 pub use op::{
     ApprovalNeed, Basis, Committed, Ctx, Operation, PersonOp, Planned, ReadOp, UndoSupport,

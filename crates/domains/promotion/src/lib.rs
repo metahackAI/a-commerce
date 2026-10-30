@@ -14,6 +14,7 @@ mod model;
 mod offer;
 mod promotion;
 mod repo;
+mod schedule;
 
 #[cfg(test)]
 mod b1;
@@ -48,6 +49,9 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .read(coupon::ListMemberCoupons)
         .read(loyalty::GetLoyaltyBalance)
         .read(loyalty::ListLoyaltyTransactions);
+    // Scheduled work (platform.job): starts and ends at the period's edges.
+    b.job(schedule::PromotionStarts)
+        .job(schedule::PromotionEnds);
 }
 
 pub const TIER_NOT_FOUND: ErrorCode = ErrorCode::new("tier_not_found", ErrorClass::NotFound);
