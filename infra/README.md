@@ -9,6 +9,7 @@ A-Commerce의 모든 구성 요소는 컨테이너이고, **어디서 띄우든 
 | `infra/k8s/` | Kubernetes(Kustomize): `base/`, `components/`, `overlays/{local,production}`, `kind/`. 자세한 것은 [k8s/README.md](k8s/README.md) |
 | `infra/postgres/` | DB 역할을 만드는 `init.sql`(Compose·Kubernetes 공용)과 로컬 클러스터용 Postgres 컴포넌트 |
 | `infra/scripts/` | `gen-keys.sh`(게이트웨이 서명 키), `kind-up.sh` / `kind-down.sh` |
+| `infra/deploy/` | 데모 서버 배포: main 머지 → GitHub Actions가 GHCR에 이미지 → 서버 배포기가 가져가 실행. 쓰는 법은 [deploy/README.md](deploy/README.md) |
 | `infra/secrets/` | 로컬 비밀(git 무시). 운영 비밀은 여기 두지 않음 |
 
 명령은 저장소 루트의 `Makefile` 하나로 모읍니다(`make help`).

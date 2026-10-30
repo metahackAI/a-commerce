@@ -1,0 +1,29 @@
+# Deployed stack: the same services as compose.yaml, but every image comes from the registry at
+# one git sha instead of a local build. Used by infra/deploy/deployer.sh on the demo server:
+#
+#   ACOM_TAG=<git sha> docker compose -f infra/compose/compose.yaml -f infra/compose/compose.deploy.yaml \
+#     --env-file .env pull && ... up -d --no-build
+#
+# Images are built and pushed by .github/workflows/deploy.yml. Compose recreates only the
+# containers whose image changed, so a web-only change restarts only `web`.
+
+services:
+  postgres:
+    environment:
+      ACOM_OWNER_PASSWORD: ${ACOM_OWNER_PASSWORD:?set in the server .env}
+      ACOM_APP_PASSWORD: ${ACOM_APP_PASSWORD:?set in the server .env}
+    volumes:
+      # after init.sql (scripts run in name order): replace the development role passwords
+      - ../postgres/set-passwords.sh:/docker-entrypoint-initdb.d/zz-set-passwords.sh:ro
+  migrate:
+    image: ${ACOM_REGISTRY:-ghcr.io/metahackai/a-commerce}/acom-commerce:${ACOM_TAG:?set ACOM_TAG to a git sha}
+  commerce:
+    image: ${ACOM_REGISTRY:-ghcr.io/metahackai/a-commerce}/acom-commerce:${ACOM_TAG:?set ACOM_TAG to a git sha}
+  commerce-worker:
+    image: ${ACOM_REGISTRY:-ghcr.io/metahackai/a-commerce}/acom-commerce:${ACOM_TAG:?set ACOM_TAG to a git sha}
+  agent:
+    image: ${ACOM_REGISTRY:-ghcr.io/metahackai/a-commerce}/acom-agent:${ACOM_TAG:?set ACOM_TAG to a git sha}
+  web:
+    image: ${ACOM_REGISTRY:-ghcr.io/metahackai/a-commerce}/acom-web:${ACOM_TAG:?set ACOM_TAG to a git sha}
+  gateway:
+    image: ${ACOM_REGISTRY:-ghcr.io/metahackai/a-commerce}/acom-gateway:${ACOM_TAG:?set ACOM_TAG to a git sha}

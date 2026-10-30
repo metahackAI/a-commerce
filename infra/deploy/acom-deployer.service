@@ -1,0 +1,17 @@
+# systemd user unit for the demo server's deployer (infra/deploy/README.md §3).
+#   install -m 755 infra/deploy/deployer.sh ~/deploy/bin/acom-deployer.sh
+#   cp infra/deploy/acom-deployer.service ~/.config/systemd/user/ && systemctl --user enable --now acom-deployer
+# Needs `gh` logged in as an account with write access to the repository (deployment statuses).
+
+[Unit]
+Description=A-Commerce demo deployer (polls GitHub deployments, runs the compose stack)
+After=network-online.target docker.service
+
+[Service]
+EnvironmentFile=-%h/deploy/deployer.env
+ExecStart=%h/deploy/bin/acom-deployer.sh
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=default.target
