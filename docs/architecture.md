@@ -10,7 +10,7 @@ This document is the reference for how A-Commerce is built: the back-end structu
 - [6. AI-native features](#6-ai-native-features)
 - [7. From the hackathon MVP to the target](#7-from-the-hackathon-mvp-to-the-target)
 
-Related documents: why and design rules in [docs/design.md](design.md), the build contract (MVP scope, tool signatures, seed data, UI block schema) in [docs/plan.md](plan.md), market research in [docs/research.md](research.md), UI mockups in [design/](../design).
+The full API specification, every operation in this hierarchy with inputs, outputs, checks, and errors, is in [api/](api/README.md). Related documents: why and design rules in [docs/design.md](design.md), the build contract (MVP scope, tool signatures, seed data, UI block schema) in [docs/plan.md](plan.md), market research in [docs/research.md](research.md), UI mockups in [design/](../design).
 
 ## 1. System at a glance
 
@@ -122,13 +122,13 @@ Each operation has three names generated from one definition:
 | Group | Domain | Resources | Representative operations | MVP |
 |---|---|---|---|---|
 | **Offer**: what is for sale | `catalog` | ProductGroup, Product (variant), Offer, inventory, Brand, Review, Question | `search_products`, `get_product`, `create_product`, `set_variant_stock`, `get_review_summary`, `get_product_measurements` | reads |
-| | `merchandising` | category (DefinedTerm), display slot, banner, CollectionPage | `list_display_slots`, `schedule_banner`, `create_collection_page` | yes |
+| | `merchandising` | category (DefinedTerm), display slot, banner, CollectionPage | `list_display_slots`, `schedule_banner`, `create_curation` | yes |
 | | `search` | search, lexicon, index | `search_products`, `compare_products`, `autocomplete`, `reindex` | yes |
 | **Transact**: from cart to delivery | `sales` | cart, checkout, Order, OrderItem, payment, Invoice, subscription, gift order | `add_to_cart`, `get_cart`, `prepare_order`, `get_order`, `get_my_orders` | yes |
 | | `fulfillment` | ReturnAction (return request), refund, inspection, ParcelDelivery, shipping rate | `search_return_requests`, `evaluate_return_request`, `get_return_options`, `refund_return`, `get_delivery_dates` | yes |
-| **Engage**: customers and benefits | `promotion` | promotion, member price (UnitPriceSpecification), coupon, cart benefit, loyalty points, event, segment | `list_active_promotions`, `set_sale_prices`, `create_coupon`, `calculate_benefits`, `grant_points` | yes |
+| **Engage**: customers and benefits | `promotion` | promotion, member price (UnitPriceSpecification), coupon, cart benefit, loyalty points, event, segment | `list_active_promotions`, `set_sale_prices`, `create_coupon`, `calculate_benefits`, `grant_loyalty` | yes |
 | | `customer` | Person, ProgramMembership, MemberProgramTier, PostalAddress, consent, preference (memory), inquiry, remedy | `list_tiers`, `get_my_profile`, `update_my_preferences`, `get_return_history`, `set_consent` | yes |
-| | `messaging` | Message, template, campaign | `send_customer_message`, `send_campaign` | one tool |
+| | `messaging` | Message, template, campaign | `send_customer_message`, `create_campaign` | one tool |
 | | `community` | post, reply, board | `list_posts`, `create_reply`, `report_post` | later |
 | **Operate**: running the store | `platform` | policy, change set, action log, enumerations, roles, store (tenant) | `get_policy`, `verify_change_set`, `search_action_log`, `list_enums` | yes |
 | | `analytics` | sales, customer, and service metrics | `explain_sales_change`, `get_sales_overview` | later |
@@ -152,30 +152,30 @@ Each operation has three names generated from one definition:
 | `get_policy` | `platform.policy.get` | read | operator |
 | `search_products` | `search.product.search` | read | both |
 | `get_product` | `catalog.product.get` | read | operator |
-| `list_tiers` | `customer.member_program_tier.list` | read | operator |
+| `list_tiers` | `customer.membership.list_tiers` | read | operator |
 | `list_active_promotions` | `promotion.promotion.list_active` | read | operator |
 | `list_display_slots` | `merchandising.display_slot.list` | read | operator |
 | `set_sale_prices` | `promotion.offer.set_sale_prices` | write | operator |
 | `create_coupon` | `promotion.coupon.create` | write | operator |
 | `schedule_banner` | `merchandising.banner.schedule` | write | operator |
 | `verify_change_set` | `platform.change_set.verify` | read | operator |
-| `search_return_requests` | `fulfillment.return_action.search` | read | operator |
+| `search_return_requests` | `fulfillment.claim.search_return_requests` | read | operator |
 | `get_order` | `sales.order.get` | read | operator |
-| `evaluate_return_request` | `fulfillment.return_action.evaluate` | read | operator |
+| `evaluate_return_request` | `fulfillment.claim.evaluate_return_request` | read | operator |
 | `get_return_history` | `customer.person.get_return_history` | read | operator |
 | `refund_return` | `fulfillment.refund.create` | write | operator |
 | `send_customer_message` | `messaging.message.send` | write | operator |
 | `compare_products` | `search.product.compare` | read | shopper |
-| `get_my_profile` | `customer.person.get_mine` | read | shopper |
-| `update_my_preferences` | `customer.preference.update_mine` | write (no approval) | shopper |
+| `get_my_profile` | `customer.person.get_my_profile` | read | shopper |
+| `update_my_preferences` | `customer.preference.update_my_preferences` | write (no approval) | shopper |
 | `add_to_cart` | `sales.cart.add` | write (no approval) | shopper |
 | `get_cart` | `sales.cart.get` | read | shopper |
 | `prepare_order` | `sales.order.prepare` | write (preview only) | shopper |
 | `get_my_orders` | `sales.order.list_mine` | read | shopper |
-| `get_return_options` | `fulfillment.return_action.list_options` | read | shopper |
+| `get_return_options` | `fulfillment.claim.get_return_options` | read | shopper |
 | `get_product_measurements` | `catalog.product.get_measurements` | read | shopper |
 | `get_review_summary` | `catalog.review.summarize` | read | shopper |
-| `get_delivery_dates` | `fulfillment.parcel_delivery.estimate` | read | shopper |
+| `get_delivery_dates` | `fulfillment.parcel_delivery.get_delivery_dates` | read | shopper |
 
 Signatures, inputs, and return shapes for these tools are fixed in [docs/plan.md §3](plan.md).
 

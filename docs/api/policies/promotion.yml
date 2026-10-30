@@ -1,0 +1,66 @@
+# policy: promotion — 프로모션·회원 판매가·쿠폰·적립금·이벤트 규칙 (데이터)
+# 프로모션 툴과 혜택 계산(calculate_benefits)이 이 파일로 규칙을 강제한다.
+# 값은 의미 있는 영단어, 금액은 {value, currency}. 데모 값은 plan.md §4.1과 같다.
+version: 2
+
+max_discount:                            # check: max_discount (set_sale_prices, create_promotion)
+  vip: 0.30                              # VIP 대상 최대 30%
+  everyone: 0.20                         # 전체 대상 최대 20%
+  on_violation: block                    # 상한을 넘는 품목은 프리뷰에서 실패, fix_tool: set_sale_prices
+
+promo_min_stock: 10                      # check: min_stock. 재고 10개 미만 상품은 세일에서 제외
+
+member_benefits_per_order: 1             # check: coupon_stacking. 주문당 회원 혜택 1개
+coupon:
+  stacking: no_tier_coupons              # 프로모션 쿠폰은 등급 쿠폰(예: Gold tier 10%)과 함께 쓰지 않음
+  records_benefit_only: true             # 쿠폰은 회원 판매가 혜택을 주문에 기록할 뿐, 두 번째 할인을 더하지 않음
+  status_values: [issued, available, used, restored, expired, revoked]
+  issue_methods: [download, conditional_auto, manual]
+  per_member_limit: 0                    # 0 = 제한 없음
+  total_pool_limit: 0
+  tier_match: issue_equals_redemption    # 발급 시 등급 == 사용 시 등급
+  restore_on_cancel:
+    full: restore_all
+    partial: product_coupon_only         # 부분 취소 때는 상품 쿠폰만 복원
+  expiry_grace_days: 1                   # 복원 시 만료 유예
+  expiry_notify_days_before: [3, 0]
+
+promotion_overlap:                       # check: promotion_overlap
+  compare_with: running_and_scheduled    # 같은 기간·대상의 진행 중/예정 프로모션과 비교
+  same_product_same_audience: block      # 같은 상품·같은 대상에 겹치면 실패
+
+sale_price:
+  formula: "list_price * (1 - percent_off / 100)"
+  rounding: cent                         # 센트 단위 반올림
+  changes_list_price: false              # 정가는 바꾸지 않음
+  price_floor: catalog.price_floor       # 가격 하한은 catalog.yml
+
+loyalty:                                 # 적립금 (이벤트로 쌓음)
+  accrual_base_rate: 0.01
+  confirm_on: delivered                  # 배송 완료 시 확정
+  tier_multiplier: { member: 1.0, gold: 1.5, vip: 2.0 }
+  product_override: highest_wins         # 상품별 적립률이 여럿이면 가장 높은 것
+  expiry:
+    window_days: 365
+    notify_days_before: [10, 3, 0]
+  spend:
+    min_order: { value: 0.00, currency: USD }
+    partial_allowed: true
+  refund_restore: pro_rata               # 취소·반품 시 비례 복원
+
+conditional_gift:                        # 구매 금액 조건 사은품
+  trigger: "subtotal >= min_subtotal"
+  tiers_by_amount: true
+  bundle_with_order: true
+  recipient: primary_shipping_address
+
+event:
+  types: [draw_buyer, draw_click, draw_survey, draw_comment, instant_gift, instant_coupon]
+  participation_limit: { per_day: 1, per_campaign: 1 }
+  reward_set: [prize, gift, loyalty_points, coupon]
+  prize_tax_reporting:
+    threshold: { value: 600.00, currency: USD }   # 이 금액 이상 경품은 세금 신고 정보 수집
+  winner_states: [registrant, waitlist, winner, cancelled]
+
+cost_share:
+  sum_must_equal: 1.0                    # 스토어 + 판매자 분담률 합 = 100%

@@ -1,0 +1,26 @@
+# policy: merchandising — 진열·카테고리·기획전 규칙 (데이터)
+version: 2
+
+slot_free:                               # check: slot_free (schedule_banner)
+  one_booking_per: [slot, audience, time]   # 같은 슬롯·같은 대상·겹치는 시간에 하나만
+  others_keep_current: true              # 대상 밖 고객은 기존 배너 유지 ("Fall layers")
+
+category:
+  sets: [internal, display]              # 내부용 / 고객 노출용
+  mapping: many_to_many
+  primary_display_per_internal: 1        # 대표 전시 카테고리 1개 (breadcrumb)
+  delete_only_if: [no_children, no_products]
+  child_inherits_inactive_parent: true
+
+display:
+  schedule_compute: on_demand            # valid_from·valid_through로 계산, 배치 토글 금지
+  visibility_formula: "in_period and in_stock and product_sellable"
+  audience: [member_tier, staff_only]    # 없으면 전체
+  start_not_in_past: true
+  cache_invalidation: explicit
+
+curation:
+  states: [draft, scheduled, active, ended]
+  publish_reaches_customers: true        # publish_curation = W$
+
+reaches_customers: [schedule_banner, schedule_display, publish_curation, set_banner, set_popup]
