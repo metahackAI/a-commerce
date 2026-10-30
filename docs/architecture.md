@@ -1,6 +1,6 @@
 # A-Commerce architecture
 
-This document is the reference for how A-Commerce is built: the back-end structure, how the API is organized, what makes it friendly to AI agents, how every interface follows [schema.org](https://schema.org), and the AI-native features on top.
+This document is the reference for how A-Commerce is built: the services and their trust boundaries, how the API is organized, what makes it friendly to AI agents, how every interface follows [schema.org](https://schema.org), and the AI-native features on top. **The whole server side is written in Rust**: the gateway, the commerce back end, and the agent runtime.
 
 - [1. System at a glance](#1-system-at-a-glance)
 - [2. Back-end structure](#2-back-end-structure)
@@ -10,95 +10,84 @@ This document is the reference for how A-Commerce is built: the back-end structu
 - [6. AI-native features](#6-ai-native-features)
 - [7. From the hackathon MVP to the target](#7-from-the-hackathon-mvp-to-the-target)
 
-The full API specification, every operation in this hierarchy with inputs, outputs, checks, and errors, is in [api/](api/README.md). Related documents: why and design rules in [docs/design.md](design.md), the build contract (MVP scope, tool signatures, seed data, UI block schema) in [docs/plan.md](plan.md), market research in [docs/research.md](research.md), UI mockups in [design/](../design).
+Related documents: why and the tool design rules in [design.md](design.md); every operation with inputs, outputs, checks, and errors in [api/](api/README.md); the Rust implementation design in [backend/](backend/README.md); the demo store and its scenes in [scenarios.md](scenarios.md); the build plan in [plan.md](plan.md); market research in [research.md](research.md); UI mockups in [design/](../design).
 
 ## 1. System at a glance
 
 ```
   Storefront chat (/fo)        Back-office chat (/bo)          Outside agents
      shoppers                     operators                 (ChatGPT, Gemini, ...)
-         │  SSE                      │  SSE                        │  MCP
-         └──────────────┬────────────┘                             │
-                        ▼                                          │
-     ┌──────────────────────────────────────────┐                  │
-     │ Harness                                  │                  │
-     │  router → specialist agent               │                  │
-     │  tool search · plan · execute · check    │   models         │
-     │  change sets · read back · undo          │◀─ Glimmer        │
-     │  action log · UI block picker            │◀─ Spark Open     │
-     └────────────────────┬─────────────────────┘                  │
-                          │ tool calls                             │
-                          ▼                                        ▼
-     ┌──────────────────────────────────────────────────────────────────┐
-     │ Tool layer: 4 groups · 13 domains · about 200 operations          │
-     │ one definition per operation → MCP tool + REST endpoint           │
-     ├──────────────────────────────────────────────────────────────────┤
-     │ Policy engine: policy.yaml (limits, floors, stacking, approvals)  │
-     ├──────────────────────────────────────────────────────────────────┤
-     │ Store: schema.org-shaped tables · event log · search index        │
-     └──────────────────────────────────────────────────────────────────┘
-          ▲
-          │ person-only endpoints: approve / undo a change set,
-          └ place an order, send a return request, undo a memory (UI buttons only)
+         │                           │                             │ MCP
+         └───────── Next.js web ─────┘                             │
+                        │ HTTPS (session)                          │
+                        ▼                                          ▼
+     ┌────────────────────────────── gateway (Rust) ──────────────────────────────┐
+     │ who is calling · which store · scopes · signed internal token · rate limits │
+     └──────────────┬─────────────────────────────┬─────────────────────┬──────────┘
+                    │ chat turns (SSE)            │ REST, person-only   │ MCP
+                    ▼                             ▼                     ▼
+     ┌──────────── agent (Rust) ─────────┐   ┌──────────── commerce (Rust) ───────────────┐
+     │ router → specialist agent         │   │ tool layer: 4 groups · 13 domains           │
+     │ tool search · plan · execute      │──▶│ one definition per operation → REST + MCP   │
+     │ intent check · UI blocks · memory │   │ policy engine (policies/*.yml)              │
+     │ Glimmer worker, Spark planner     │   │ previews · change sets: approve, run,       │
+     └─────────────────┬─────────────────┘   │ verify, undo · events · scheduled jobs      │
+                       │                     └──────────────────────┬──────────────────────┘
+                       └──────────── PostgreSQL + pgvector ─────────┘
 ```
 
 Every caller, whether our operator agent, our shopper agent, an outside agent, or a button in the UI, goes through the same tool layer and the same policies. The price an operator sets in a change set is the price the shopper agent quotes and the price an outside agent sees.
 
+The split between `agent` and `commerce` is a trust boundary. The agent turns words into tool calls; it cannot approve anything, run an approved change set, or call a person-only endpoint, because the gateway never gives a chat turn the scopes for those actions and `commerce` checks them again. Whatever a prompt says, `commerce` only runs what its rules and a person allow.
+
 ## 2. Back-end structure
 
-### 2.1 Layers
+### 2.1 Services
+
+| Service | Owns | Never does |
+|---|---|---|
+| **gateway** | Sessions, outside-agent tokens, store resolution, scopes, the signed internal token, routing, rate limits, SSE passthrough | Business rules |
+| **commerce** | Every operation and its rules: catalog to platform, the policy engine, the preview store, the change-set engine (approve, run, verify, undo), events, scheduled jobs, the REST and MCP surfaces | Calling models |
+| **agent** | Conversations, routing to specialist agents, tool search, planning, running reads and previews, intent checks, UI blocks, visible memory, model calls | Touching commerce tables, approving, running change sets, person-only actions |
+
+Design detail: [backend/README.md](backend/README.md) (services and crates), [backend/commerce.md](backend/commerce.md), [backend/agent.md](backend/agent.md), [backend/gateway.md](backend/gateway.md).
+
+### 2.2 Layers inside commerce
 
 | Layer | What it does | Rules it enforces |
 |---|---|---|
-| **Interfaces** | SSE chat for `/bo` and `/fo`, MCP for agents, REST for the web app and tests, person-only endpoints | Authentication, store (tenant) context, rate limits, request ids |
-| **Harness** | Turns a request into tool calls: picks the agent, searches tools, plans, executes previews, groups them into a change set, runs after approval, reads back, logs | Models only see read and write tools; never person-only actions |
-| **Tool layer** | The commerce operations, organized as group → domain → resource → operation (§3) | One business verb per tool, typed inputs, preview before write (§4) |
-| **Policy engine** | Loads `policy.yaml` and evaluates checks during previews and runs | Business rules live in data, not in prompts or code constants |
-| **Store** | Tables named after schema.org types, an append-only event log for state changes, a search index | Money paths are transactional; state history is never overwritten |
+| **Surfaces** | REST `/v1` for the web and tests, MCP for outside agents, the tool manifest for our agent, person-only endpoints | Internal token, scopes, store context |
+| **Tool layer** | The commerce operations, organized as group → domain → resource → operation (§3) | One business verb per tool, closed typed inputs, preview before write (§4) |
+| **Change sets** | Stores previews, groups them, waits for a person, runs them in order, reads them back, undoes them together | Nothing that needs approval runs without it; a person approves exactly what will run |
+| **Policy engine** | Loads `policies/*.yml` plus the store's overrides and evaluates checks during previews and runs | Business rules live in data, not in prompts or code constants |
+| **Store** | Tables named after schema.org types, append-only event tables, an outbox, a job queue, search (full text + vectors) | Money paths are transactional; state history is never overwritten |
 
-### 2.2 Code layout
+### 2.3 Code layout
+
+One Cargo workspace ([backend/README.md](backend/README.md) §2):
 
 ```
-server/
-  contract/    operation definitions: inputs, outputs, consumes/produces, errors
-               → generates MCP tool specs and the REST/OpenAPI view from one source
-  schema/      schema.org types and our acom: extensions (§5)
-  policy/      policy.yaml loader, rule checks, cart benefit calculation
-  tools/       one package per domain: catalog/ merchandising/ search/ sales/
-               fulfillment/ promotion/ customer/ messaging/ platform/ ...
-  harness/     router, tool search, planner, executor, change sets, read back, action log
-  store/       tables, event log, seed data, demo clock
-  api/         chat (SSE), person-only endpoints, REST view of the tools
-web/           back office (/bo) and storefront (/fo), one component per UI block
-eval/          task set, screen-shaped facade, runner, results
+crates/   core · contract · policy · store · auth · changeset
+          domains/{catalog, search, merchandising, promotion, customer, sales, fulfillment, messaging, platform, ...}
+          registry · http · mcp · llm · agent · facade · testkit
+services/ gateway · commerce · agent
+policies/ agents/ seed/ eval/ migrations/ deploy/ xtask/
+web/      Next.js: /bo and /fo, one component per UI block
 ```
 
-The `server/` and `web/` split follows [docs/plan.md §6.1](plan.md).
-
-### 2.3 Two stages, one contract
-
-| | Stage 1: reference implementation | Stage 2: optimized implementation |
-|---|---|---|
-| Language | Python, FastAPI | Rust, Axum on Tokio |
-| Storage | SQLite (hackathon) | PostgreSQL |
-| Purpose | Build every operation quickly and prove the design with real models | Lower latency and stronger guarantees on the paths agents call most |
-| When | The hackathon MVP | Module by module after the MVP |
-
-The contract (operation names, inputs, outputs, errors, preview behavior) is the same in both stages. A module moves to Rust only when it passes the same contract tests and replays the same scenarios (the VIP weekend change set, Jamie's checkout, Alex's return) with identical results. The planned order is search, catalog, sales and fulfillment, promotion, then the rest.
-
-Why Rust for the second stage: an agent makes many tool calls for one request, so per-call latency adds up; money paths (checkout, refunds) gain from typed state machines and checked money arithmetic; and one small binary per service is easy to run on a merchant's own servers next to open-weight models.
+`core`, `contract`, and `policy` do no I/O. Domain crates depend on each other only as a DAG and only through exported service traits. The agent crate does not depend on any domain crate: it knows tools only through the manifest that `commerce` serves.
 
 ### 2.4 Data and state
 
-- **Tables named after schema.org types**, one schema per domain in PostgreSQL (`catalog`, `sales`, `fulfillment`, ...). Naming rules in §5.6.
-- **Store context on every row** (`tenant_id`) with row-level security, so one deployment can serve several stores. The MVP runs one store.
-- **State changes are events.** Order status, return status, refunds, loyalty points, and change-set runs are appended to event tables; the current state is derived. This is what makes read-back, undo, and the action log reliable.
-- **Search index** (keyword plus vector) behind `search_products`; filters for audience and stock are applied inside the query, not after it.
-- **Idempotency keys and locks** in Redis for writes that may be retried; an object store for product and banner images.
+- **Tables named after schema.org types**, one PostgreSQL schema per domain (`catalog`, `sales`, `fulfillment`, ...), plus `platform` and `agent`. Naming rules in §5.6.
+- **Store context on every row** (`tenant_id`) with row-level security, so one deployment can serve several stores. The demo runs one store.
+- **State changes are events.** Order status, claim status, refunds, loyalty points, and change-set runs are appended to event tables in the same transaction as the state change. This is what makes read-back, undo, and the action log reliable.
+- **One database for the MVP.** Idempotency, locks, the job queue, and search (full text plus pgvector) all run on PostgreSQL. A cache, a search cluster, or a message bus sits behind a trait and is added when load justifies it.
+- **One clock.** All code reads time from a clock; the demo store runs on a fixed demo clock (Fri Nov 6 and Sat Nov 7, 2026), so scheduled jobs and undo deadlines behave as in the scenes.
 
 ## 3. API design: one hierarchy
 
-A flat list of 200 tools is as hard for a model as 2,000 endpoints. A-Commerce organizes every operation in a four-level hierarchy, and the harness uses that hierarchy to narrow down what a model sees.
+A flat list of 280 tools is as hard for a model as 2,000 endpoints. A-Commerce organizes every operation in a four-level hierarchy, and the harness uses that hierarchy to narrow down what a model sees.
 
 ### 3.1 Addressing
 
@@ -135,15 +124,15 @@ Each operation has three names generated from one definition:
 | | `partner` | Organization (seller), contract | `onboard_seller`, `get_seller` | later |
 | | `integration` | external channels, bulk import, carrier and payment events | `import_products`, `receive_carrier_event` | later |
 
-"MVP" marks domains with tools in the hackathon build ([docs/plan.md §3](plan.md)). The others are designed and kept in the hierarchy so that the MVP tools land in the place they will stay.
+"MVP" marks domains with tools in the hackathon build ([plan.md](plan.md)). The others are designed and kept in the hierarchy so that the MVP tools land in the place they will stay.
 
 ### 3.3 Three kinds of operations
 
 | Kind | Called by | Behavior | schema.org action status |
 |---|---|---|---|
 | **read** | agents | No side effects. Lists return items and the total together. `fields` keeps responses small. | n/a |
-| **write** | agents | Runs with `preview=true` first. The preview joins a change set; the real run uses the `preview_id` after approval, or directly when policy needs no approval (for example remembering a shopper preference). | `PotentialActionStatus` → `ActiveActionStatus` → `CompletedActionStatus` / `FailedActionStatus` |
-| **person-only** | UI buttons | Approving or undoing a change set, placing an order, sending a cancel, return or exchange request, deleting an account, resetting a password, undoing a memory. These are HTTP endpoints, not tools, so no prompt can make an agent do them. | the person's `AuthorizeAction` or `OrderAction` |
+| **write** | agents | Runs with `preview=true` first. The preview joins a change set; the real run uses the `preview_id` after approval, or directly when policy needs no approval (for example remembering a shopper preference, or a refund at or under the store's threshold). Kind **W$** marks writes that always need a person (prices shown to customers, coupons, banners, messages). | `PotentialActionStatus` → `ActiveActionStatus` → `CompletedActionStatus` / `FailedActionStatus` |
+| **person-only** | UI buttons | Approving, rejecting, or undoing a change set, placing an order, sending a cancel, return or exchange request, deleting an account, resetting a password, undoing a memory. These are HTTP endpoints, not tools, and they need `human:*` scopes that a chat turn never has, so no prompt can make an agent do them. | the person's `AuthorizeAction` or `OrderAction` |
 
 ### 3.4 The MVP tools in the hierarchy
 
@@ -158,12 +147,13 @@ Each operation has three names generated from one definition:
 | `set_sale_prices` | `promotion.offer.set_sale_prices` | write | operator |
 | `create_coupon` | `promotion.coupon.create` | write | operator |
 | `schedule_banner` | `merchandising.banner.schedule` | write | operator |
+| `get_change_set` | `platform.change_set.get` | read | operator |
 | `verify_change_set` | `platform.change_set.verify` | read | operator |
 | `search_return_requests` | `fulfillment.claim.search_return_requests` | read | operator |
 | `get_order` | `sales.order.get` | read | operator |
 | `evaluate_return_request` | `fulfillment.claim.evaluate_return_request` | read | operator |
 | `get_return_history` | `customer.person.get_return_history` | read | operator |
-| `refund_return` | `fulfillment.refund.create` | write | operator |
+| `refund_return` | `fulfillment.refund.create` | write (a person approves over $200) | operator |
 | `send_customer_message` | `messaging.message.send` | write | operator |
 | `compare_products` | `search.product.compare` | read | shopper |
 | `get_my_profile` | `customer.person.get_my_profile` | read | shopper |
@@ -177,26 +167,26 @@ Each operation has three names generated from one definition:
 | `get_review_summary` | `catalog.review.summarize` | read | shopper |
 | `get_delivery_dates` | `fulfillment.parcel_delivery.get_delivery_dates` | read | shopper |
 
-Signatures, inputs, and return shapes for these tools are fixed in [docs/plan.md §3](plan.md).
+Inputs, outputs, checks, and errors for each tool are in the domain files of [api/](api/README.md). The scenes that use them, with expected results, are in [scenarios.md](scenarios.md) §6.
 
 ## 4. An interface built for agents
 
 ### 4.1 Rules for every operation
 
-Code review checks these ([docs/design.md §3](design.md)):
+Code review checks these ([design.md §3](design.md)), and the registry refuses an operation whose input schema is not closed:
 
 1. **One business verb, plain name.** `verb_noun` in full English words. No screen, popup, or grid names. The name and a one-line description are enough to pick the tool.
 2. **Typed inputs with meaning.** Enumerations are words (`"vip"`, `"in_stock"`), never codes. Every field has a description and an example.
 3. **Safe reads.** A read never changes state. A list returns items and the total in one call.
 4. **Writes go through preview.** The preview returns what will change, the policy checks, and whether a person must approve.
 5. **Declared links.** Each operation declares what it consumes and produces, so the harness can chain tools without guessing.
-6. **Rules are data.** Limits, floors, stacking, and approval thresholds come from `policy.yaml`. A violation comes back as a reason and the tool that can fix it.
+6. **Rules are data.** Limits, floors, stacking, and approval thresholds come from `policies/*.yml` and the store's overrides. A violation comes back as a reason and the tool that can fix it.
 7. **Actionable errors.** A code, a sentence a person can read, and the next tool to try.
-8. **Retries are safe.** Writes take an idempotency key; repeating a call returns the first result.
+8. **Retries are safe.** Running the same `preview_id` twice returns the first result; person-only endpoints take an idempotency key.
 
 ### 4.2 Response shapes
 
-The shapes below are the contract from [docs/plan.md §3.1](plan.md):
+Full rules (money, time, paging, ids, tool schemas) are in [api/conventions.md](api/conventions.md).
 
 ```jsonc
 // read
@@ -204,15 +194,18 @@ The shapes below are the contract from [docs/plan.md §3.1](plan.md):
 
 // write, preview=true
 {
-  "preview_id": "pv_8f2c",
-  "changes": [{"op": "update", "entity": "price", "id": "prd_windbreaker", "from": 89.00, "to": 71.20}],
+  "preview_id": "pv_01jc8x4m2q",
+  "expires_at": "2026-11-06T11:32:00-05:00",
+  "changes": [{"op": "update", "entity": "unit_price_specification", "id": "prd_windbreaker",
+               "from": {"value": 89.00, "currency": "USD"}, "to": {"value": 71.20, "currency": "USD"}}],
   "checks": [{"rule": "price_floor", "passed": true, "detail": "Overshirt moved to 15% to stay at cost + 15%", "fix_tool": null}],
   "needs_approval": true,
-  "approval_reason": "Changes 40 prices"
+  "approval_reason": "Changes 40 prices",
+  "change_set_id": "cs_1042"
 }
 
-// write, with preview_id (only the executor sends this, after approval)
-{"ok": true, "id": "promo_1042", "undo": {"tool": "undo_change_set", "until": "2026-11-09T23:59:00"}}
+// write, run with the preview_id (inside an approved change set, or directly when no approval is needed)
+{"ok": true, "id": "promo_1042", "undo": {"by": "person", "target": "cs_1042", "until": "2026-11-09T23:59:00-05:00"}}
 
 // error
 {"error": {"code": "below_price_floor", "message": "At 20% the Seersucker overshirt would sell below cost + 15%.", "next_tool": "set_sale_prices"}}
@@ -233,19 +226,24 @@ search_products ──▶ compare_products ──▶ add_to_cart ──cart_id�
 search_return_requests ──▶ evaluate_return_request ──▶ refund_return ──▶ send_customer_message
 ```
 
-**Tool search** uses both the hierarchy and the graph. For a request, the harness picks the likely domains, matches tool descriptions inside them, and adds graph neighbors (what usually comes before or after). The model sees a handful of candidates, not 200. This is what lets a 30B model do routine work.
+**Tool search** uses both the hierarchy and the graph. For a request, the harness picks the likely domains, matches tool descriptions inside them, and adds graph neighbors (what usually comes before or after). The model sees a handful of candidates, not 280. This is what lets a 30B model do routine work.
 
 ### 4.4 One definition, several surfaces
 
-Each operation is defined once in `server/contract/`. From that definition we generate:
+Each operation is defined once in Rust: static metadata (address, tool name, kind, REST path, consumes and produces, checks, errors) plus typed input and output. The input type generates a closed JSON Schema. From that one definition the registry produces:
 
-- **MCP tools** for our own agents and for outside agents. Outside agents get a narrower set: reads, cart, and `prepare_order`; placing the order stays with the shopper.
-- **REST endpoints and an OpenAPI document** for the web app, tests, and the evaluation runner.
-- **A schema.org action description** of each operation (`potentialAction` with an `EntryPoint` and input specifications), so the store's capabilities can be discovered the same way schema.org describes a search box or an order button today.
+- **The tool manifest** our agent searches (`GET /v1/tools`), already filtered by the caller's scopes.
+- **MCP tools** for outside agents, narrowed to reads, the cart, and `prepare_order`; placing the order stays with the shopper.
+- **REST endpoints and an OpenAPI document** for the web app, tests, and the evaluation runner, and TypeScript types for the web.
+- **A schema.org action description** of each operation (`potentialAction` with an `EntryPoint` and input specifications), so the store's capabilities can be discovered the way schema.org describes a search box or an order button today.
+
+`cargo xtask check-docs` compares the registry with the operation index in [api/README.md](api/README.md), so the specification and the code cannot drift apart silently.
 
 ### 4.5 Small model first
 
-Glimmer handles tool search, tool calls, and routine plans. Spark Open plans multi-step requests and takes over when a read-back check fails. Each agent step records the model, the number of tool calls, and the time taken ([docs/plan.md §5.1](plan.md)), which is what the evaluation measures.
+The model our agent sees is smaller than the wire. It sees a handful of tools picked by tool search, each with a closed schema, and it only says *what* to change: the runtime runs previews, attaches them to a change set, and binds ids between steps by slot name (`product_id[]`, `promotion_id`), so a model never copies 40 ids by hand. Guided decoding fixes the shape of plans and arguments, and a deterministic repair step maps "20%" to `20` and "VIP members" to `vip` before validation.
+
+Muse Glimmer 30B does routing, tool selection, arguments, and short plans. Muse Spark plans multi-step requests and takes over when a check fails twice. Each step records the model, tool calls, tokens, and time, which is what the evaluation measures ([backend/agent.md](backend/agent.md)).
 
 ## 5. Data model: schema.org first
 
@@ -262,8 +260,8 @@ Glimmer handles tool search, tool calls, and routine plans. Spark Open plans mul
 2. **Properties.** Use the schema.org property name. On the wire and in the database it is written in snake_case (`validFrom` → `valid_from`, `priceCurrency` → `price_currency`); a published JSON-LD context maps each name back to its schema.org term, so every payload is valid JSON-LD.
 3. **Values.** Use schema.org enumeration members, written as snake_case words: `InStock` → `in_stock`, `OrderDelivered` → `delivered`, `FreeReturn` → `free_return`.
 4. **Extensions only when nothing fits.** Our own terms live in the `acom:` namespace, each declared as a subtype of the closest schema.org type and reusing its properties (§5.4).
-5. **Identifiers.** Readable prefixed ids (`prd_windbreaker`, `promo_1042`) stored in `identifier`; the database key is separate.
-6. **Money.** A number with two decimals plus `price_currency` (USD in the demo store).
+5. **Identifiers.** Readable prefixed ids (`prd_windbreaker`, `promo_1042`); the prefix table is in [api/conventions.md](api/conventions.md) §9.
+6. **Money.** schema.org `MonetaryAmount`, `{"value": 71.20, "currency": "USD"}`, read and written as an exact decimal ([api/conventions.md](api/conventions.md) §3).
 
 ### 5.3 Entities by domain
 
@@ -329,7 +327,7 @@ The action status gives one vocabulary to the whole lifecycle: a preview is an a
   "result": {
     "@type": "UnitPriceSpecification",
     "price": 71.20, "price_currency": "USD", "price_type": "sale_price",
-    "valid_for_member_tier": "tier_vip",
+    "valid_for_member_tier": "vip",
     "valid_from": "2026-11-07T00:00:00-05:00", "valid_through": "2026-11-08T23:59:00-05:00"
   }
 }
@@ -357,15 +355,15 @@ The VIP weekend sale shows how one interface is designed.
 2. **Describe the inputs in schema.org terms.** `name`, `valid_for_member_tier` (`"vip"`), `valid_from`, `valid_through`, and `items[]` of `{product_id, percent_off}`, plus `preview`.
 3. **Return schema.org data.** Each new price is a `UnitPriceSpecification` with `price_type: "sale_price"` and the member tier, as in §5.5.
 4. **Declare the links.** Consumes `product_id[]` and a tier; produces `promotion_id`.
-5. **Attach the policy checks.** `max_discount`, `price_floor`, `min_stock`, `promotion_overlap`, all read from `policy.yaml`. A failed check names the products and the fix.
+5. **Attach the policy checks.** `max_discount`, `price_floor`, `promo_min_stock`, `promotion_overlap`, all read from `policies/*.yml`. A failed check names the products and the fix.
 6. **Write actionable errors.** `below_price_floor` with the product and `next_tool: "set_sale_prices"`.
 7. **Make it verifiable.** After the run, `verify_change_set` reads every price back and marks each change as matched or not.
 
 The same seven steps apply to every operation in the hierarchy.
 
-### 5.8 Alignment with the MVP contract
+### 5.8 One list of values
 
-[plan.md](plan.md) uses these names since Oct 30 (see its §8 Changes): `starts_at` → `valid_from`, `ends_at` → `valid_through`, `audience` → `valid_for_member_tier` (a tier id from the store's tier program; `"everyone"` means no tier), `ship_to` → `delivery_address`, `qty` → `order_quantity`.
+Every state and type enumeration (order status, claim status, change-set state, liability, reasons, channels) has one canonical list in [api/enums.md](api/enums.md), with its schema.org member where one exists. Domain files, policies, the database, and the Rust enums all use that list.
 
 ## 6. AI-native features
 
@@ -379,15 +377,15 @@ drafting → waiting_for_approval → running → verifying → live
      edit by talking ┘  └→ rejected                live → undone (until the undo deadline)
 ```
 
-Editing by talking re-runs the previews and bumps the version (v1 → v2). Approval starts the run; the harness reads every change back and compares it with the request; all changes can be undone together until the deadline. Refund batches use the same mechanism ("Approve 9 refunds and send 3 messages").
+Editing by talking re-runs the previews and bumps the version (v1 → v2). Approval re-checks every preview and starts the run inside `commerce`; every change is read back and compared with the plan; all changes can be undone together until the deadline. Refund batches use the same mechanism ("Approve 9 refunds and send 3 messages"). The change-set API is in [api/platform.md](api/platform.md#change_set).
 
 ### 6.2 The harness loop
 
 ```
 request ─► route ─► tool search ─► plan ─► preview ─► change set ─► approve ─► run ─► read back ─► UI blocks
-            │           │            │                                  (person)          │
-       specialist   hierarchy +   Glimmer, or Spark Open                          Spark Open takes over
-         agent      tool graph    for multi-step plans                            when a check fails
+            │           │            │                                  (person)  (commerce)    │
+       specialist   hierarchy +   Glimmer, or Spark                                          Spark takes over
+         agent      tool graph    for multi-step plans                                       when a check fails
 ```
 
 ### 6.3 Specialist agents on one tool layer
@@ -405,19 +403,19 @@ Each area of the business has its own agent that people can talk to. A specialis
 | Shopper agent | storefront | search, catalog (read), sales (cart, `prepare_order`), fulfillment (return options), customer (own profile) | "A light jacket that packs small for a trip" | cart and preferences only |
 | Outside agents | MCP | reads, cart, `prepare_order` | via ChatGPT, Gemini | cart only |
 
-In the MVP, the operator agent and the shopper agent run with domain-scoped tool search; the specialist split is the same mechanism with narrower scopes.
+Specialists are data (`agents/*.yml`: tool scope, home domains, instructions, allowed blocks, models), not code. The MVP runs the router, the promotion agent, the orders and returns agent, and the shopper agent ([backend/agent.md](backend/agent.md) §2).
 
 ### 6.4 Policy as data
 
-Business rules are values in `policy.yaml`, read by the back end, cited in checks, and shown to people. A selection from the demo store ([docs/plan.md §4.1](plan.md)):
+Business rules are values in `policies/*.yml`, overridden per store, read by the back end, cited in checks, and shown to people. A selection from the demo store ([scenarios.md](scenarios.md) §5):
 
 | Key | Value |
 |---|---|
-| `max_discount.vip` | 30% |
+| `max_discount.everyone` / `max_discount.by_tier.vip` | 20% / 30% |
 | `price_floor` | cost + 15% |
 | `promo_min_stock` | 10 units |
 | `member_benefits_per_order` | 1 (coupons don't stack with tier coupons) |
-| `refund_without_person_max` | $200.00 |
+| refunds a person must approve | over $200.00 |
 | `return_window_days` | 30 |
 | `customer_messages` | always ask |
 
@@ -427,7 +425,7 @@ Agents do not only wait for requests. They watch the store and propose work: twe
 
 ### 6.6 UI on demand
 
-The agent never writes HTML. It returns UI blocks that name a component from a fixed library and fill it with data ([docs/plan.md §5](plan.md)):
+The agent never writes HTML. It returns UI blocks that name a component from a fixed library and fill it with data from tool outputs ([api/chat.md](api/chat.md)):
 
 ```jsonc
 {
@@ -435,11 +433,11 @@ The agent never writes HTML. It returns UI blocks that name a component from a f
   "title": "Side by side",
   "why": "Shown as a table because you compare specs. Say \"show photos\" to change it.",
   "data": { },
-  "actions": [{"intent": "add_to_cart", "label": "Add M", "args": {"product_id": "prd_field_jacket", "size": "M"}, "by": "shopper"}]
+  "actions": [{"kind": "say", "action_id": "add_m", "label": "Add M", "args": {"product_id": "prd_field_jacket", "size": "M"}}]
 }
 ```
 
-Buttons send intents back; they never change state by themselves. Back office: `change_set`, `task_list`, `refund_review`. Storefront: `understood_chips`, `compare_table`, `product_list`, `look_gallery`, `cart`, `memory_note`, `return_options`. The layout follows the person: a comparison table for a shopper who compares specs, a gallery for one who browses by look.
+`say` buttons send an intent back to the agent; `person` buttons call a person-only endpoint directly and never pass through the agent. Back office: `change_set`, `task_list`, `refund_review`, `product_drafts`, `sales_explainer`. Storefront: `looking_for`, `compare_table`, `look_gallery`, `product_list`, `fit_check`, `gift_picker`, `cart`, `checkout_card`, `return_options`, `memory_note`. The layout follows the person: a comparison table for a shopper who compares specs, a gallery for one who browses by look.
 
 ### 6.7 Memory people can see, actions only people take
 
@@ -449,15 +447,17 @@ Buttons send intents back; they never change state by themselves. Back office: `
 
 ### 6.8 Evaluation
 
-We build a screen-shaped facade over the same database, with the patterns from [docs/design.md §2](design.md), and run the same tasks through both tool layers with Glimmer (and Spark Open if credits allow): 12 design tasks and 8 held-out tasks, three runs each, each checked by reading the database ([docs/plan.md §3.7](plan.md)).
+We build a screen-shaped facade over the same domain services, with the patterns from [design.md §2](design.md) written as our own generic examples, and run the same tasks through both tool sets with the same agent runtime, on Glimmer and on Spark. Tasks are split into a design set and a held-out set, each run several times and checked by reading the database ([backend/testing.md](backend/testing.md) §3).
 
 ## 7. From the hackathon MVP to the target
 
+The stack is the same from the first commit; what grows is the scope.
+
 | | Hackathon MVP | Target |
 |---|---|---|
-| Back end | Python, FastAPI, SQLite | Rust (Axum, Tokio), PostgreSQL with row-level security |
-| Operations | The 27 tools in §3.4 | 13 domains, about 200 operations |
-| Agents | Operator agent and shopper agent | Router and specialist agents per area |
-| Stores | One demo store with a fixed clock | Many stores on one deployment |
-| Search | Filters over the seed catalog | Hybrid keyword and vector search |
-| Out of scope | Real payments and shipping, settlement, sellers, auth beyond one demo user per persona | Payment, carrier, and channel integrations |
+| Server side | Rust: gateway, commerce, agent | Same services, split further only where load says so |
+| Storage | PostgreSQL + pgvector | Same, plus read replicas, a cache, or a search cluster behind the existing traits |
+| Operations | The MVP tools in §3.4 | 13 domains, about 280 operations |
+| Agents | Router, promotion, orders and returns, shopper | A specialist per area (§6.3) |
+| Stores | One demo store on a fixed clock | Many stores on one deployment (row-level security is on from the start) |
+| Out of scope | Real payments and shipping, settlement, sellers | Payment, carrier, and channel integrations |

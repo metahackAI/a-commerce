@@ -1,0 +1,112 @@
+# policy: approval — 사람 승인이 필요한 경우 (데이터)
+# 프리뷰의 needs_approval·approval_reason은 이 파일로 정한다. 종류 W$는 이 파일과 상관없이 항상 승인이고,
+# 여기의 임계는 W$에도 approval_reason과 approver_role을 정한다.
+# 금액은 {value, currency}. 조건은 문자열 식이 아니라 구조화된 데이터다(아래 when 형식).
+# 이 값들은 새 스토어의 기본값이다. 데모 스토어가 덮어쓰는 값은 docs/scenarios.md §5에 있다.
+version: 3
+
+preview_ttl_minutes: 30                  # 프리뷰 유효 시간(분). 변경셋에 붙은 프리뷰는 만료 대신 승인 때 다시 계산한다
+
+customer_messages: always_ask            # send_customer_message·send_bulk는 항상 승인 (always_ask | threshold)
+
+change_set:
+  undo_window_after_end_days: 1          # 기간이 있는 변경(회원가·쿠폰·배너)은 기간 끝 날 + 1일 23:59(스토어 시간대)까지 되돌릴 수 있다
+  undo_window_after_run_days: 1          # 기간이 없는 변경은 실행한 날 + 1일 23:59까지 되돌릴 수 있다
+  approve_requires_latest_version: true  # 최신 버전이 아니면 승인 거부(version_out_of_date)
+  revalidate_on_approve: true            # 승인 때 모든 항목을 다시 프리뷰하고, changes가 다르면 estimate_changed로 drafting에 되돌린다
+  irreversible: [refund_return, retry_refund, send_customer_message, send_bulk]   # check: irreversible. 이런 항목이 있으면 checks에 irreversible 표시, 셋 되돌리기 불가
+
+# 임계 형식: 항목마다 { applies_to, when, requires, approver_role }
+#   when: always | reaches_customers | 조건 | { all: [조건...] } | { any: [조건...] }
+#   조건: { field: <프리뷰가 계산한 값 이름>, op: eq | ne | gt | gte | lt | lte | in, value: <값> }
+#         또는 value 대신 value_from: <정책 키>(다른 정책 값을 기준으로)
+#   금액 값은 {value, currency}. 조건이 참이면 needs_approval: true.
+thresholds:
+  refund:
+    applies_to: [refund_return]
+    when: { field: amount, op: gt, value: { value: 200.00, currency: USD } }   # $200.00 초과 환불은 사람 승인, 이하는 사람 없이 실행
+    requires: human_approval
+    approver_role: operator
+  loyalty_grant:
+    applies_to: [grant_loyalty, approve_remedy]
+    when: { field: amount, op: gt, value: { value: 50.00, currency: USD } }
+    requires: human_approval
+    approver_role: operator
+  price_change_bulk:
+    applies_to: [set_price, schedule_price_change]
+    when: { field: changed_offers, op: gte, value: 10 }    # 한 번에 정가 10개 이상을 바꾸면
+    requires: human_approval
+    approver_role: merchandiser
+  promotion_publish:
+    applies_to: [set_sale_prices, create_coupon, create_promotion, issue_coupon]
+    when: always                         # 고객에게 닿는 가격·혜택
+    requires: human_approval
+    approver_role: merchandiser
+  display_schedule:
+    applies_to: [schedule_banner, schedule_display, publish_curation, set_banner, set_popup]
+    when: reaches_customers              # merchandising.yml reaches_customers
+    requires: human_approval
+    approver_role: merchandiser
+  product_approve:
+    applies_to: [update_product, discontinue_product, approve_product]
+    when:
+      any:
+        - { field: change_type, op: eq, value: structural }   # catalog.yml product.approval.structural_changes
+        - { field: new_product, op: eq, value: true }
+    requires: human_approval
+    approver_role: catalog_admin
+  bulk_catalog_change:
+    applies_to: [import_products, batch_import]
+    when: always
+    requires: human_approval
+    approver_role: catalog_admin
+  claim_approve:
+    applies_to: [approve_claim]
+    when:
+      all:
+        - { field: liability, op: eq, value: customer_fault }
+        - { field: extra_charge, op: gt, value: { value: 0.00, currency: USD } }
+    requires: human_approval
+    approver_role: operator
+  remedy_cash:
+    applies_to: [approve_remedy, pay_remedy]
+    when: { field: remedy_type, op: eq, value: cash }
+    requires: payout_approval
+    approver_role: payout_approver
+  member_block:
+    applies_to: [block_member, unblock_member]
+    when: always
+    requires: human_approval
+    approver_role: operator
+
+no_approval:                             # 쇼퍼 본인의 쓰기. 어떤 임계에도 걸리지 않고 프리뷰 후 바로 실행
+  - add_to_cart
+  - update_cart_item
+  - remove_cart_item
+  - clear_cart
+  - update_my_preferences
+
+preview_only:                            # 프리뷰만 만든다. needs_approval은 항상 false이고, 실행은 사람 전용 엔드포인트가 preview_id로 한다
+  prepare_order: "POST /v1/sales/orders"
+  prepare_subscription: "POST /v1/sales/subscriptions"
+  prepare_gift_order: "POST /v1/sales/orders"
+
+person_only:                             # 툴이 아니다. 사람이 누른 요청(human:* 스코프)만 부를 수 있다. 목록은 docs/api/README.md §2와 같다
+  - { endpoint: "POST /v1/platform/change-sets/{id}/approve", scope: "human:approve" }
+  - { endpoint: "POST /v1/platform/change-sets/{id}/reject", scope: "human:reject" }
+  - { endpoint: "POST /v1/platform/change-sets/{id}/undo", scope: "human:undo" }
+  - { endpoint: "POST /v1/platform/tasks/{task_id}/dismiss", scope: "human:task" }
+  - { endpoint: "POST /v1/sales/orders", scope: "human:order" }
+  - { endpoint: "POST /v1/sales/subscriptions", scope: "human:order" }
+  - { endpoint: "POST /v1/sales/gift-orders/{id}/accept", scope: "human:order" }
+  - { endpoint: "POST /v1/fulfillment/orders/{order_id}/cancel", scope: "human:cancel" }
+  - { endpoint: "POST /v1/fulfillment/returns", scope: "human:return" }
+  - { endpoint: "POST /v1/fulfillment/exchanges", scope: "human:exchange" }
+  - { endpoint: "POST /v1/fulfillment/claims/{claim_id}/pay-charge", scope: "human:claim" }
+  - { endpoint: "POST /v1/fulfillment/claims/{claim_id}/withdraw", scope: "human:claim" }
+  - { endpoint: "POST /v1/customer/me/memories/{memory_id}/undo", scope: "human:undo" }
+  - { endpoint: "POST /v1/customer/me/withdrawal", scope: "human:account" }
+  - { endpoint: "POST /v1/customer/password-reset/requests", scope: "human:account" }
+  - { endpoint: "POST /v1/customer/password-reset/confirm", scope: "human:account" }
+  - { endpoint: "POST /v1/customer/account-recovery/login-id", scope: "human:account" }
+  - { endpoint: "PUT /v1/customer/me/password", scope: "human:account" }

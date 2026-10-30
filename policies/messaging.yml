@@ -1,0 +1,13 @@
+# policy: messaging — 고객 메시지 발송 규칙 (데이터)
+# docs/api/messaging.md가 인용하는 키만 둔다. 값은 새 스토어의 기본값이다.
+version: 1
+
+messaging:                               # 발송 규칙. 마케팅 동의 게이트는 customer.yml consent.marketing_gate
+  quiet_hours:                           # check: messaging.quiet_hours. 이 시간대(스토어 시간대)에는 마케팅 메시지를 보내지 않음
+    start: "21:00"                       # 기본값
+    end: "08:00"                         # 기본값
+    applies_to: [marketing]              # 거래성 메시지(주문·반품 안내)는 시간과 무관
+  daily_send_cap: 2                      # 기본값. check: messaging.daily_send_cap. 회원 한 명이 하루에 받는 마케팅 메시지 상한
+  template:
+    variables_declared: true             # 고정. check: messaging.template.variables_declared. 템플릿 본문에는 선언한 변수만
+    channel_match: true                  # 고정. check: messaging.template.channel_match. 템플릿의 채널과 발송 채널이 같아야 함

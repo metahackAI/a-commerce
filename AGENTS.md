@@ -1,6 +1,6 @@
 # Instructions for coding agents
 
-Read `docs/design.md` before writing code. It defines the tool design rules, domain scope, harness, and UI protocol.
+Read `docs/design.md` before writing code. It defines the tool design rules, domain scope, harness, and UI protocol. Then read `docs/architecture.md` (services and trust boundaries), `docs/backend/` (how the Rust code is organized), and `docs/api/conventions.md` (wire formats).
 
 ## Hackathon rules that affect code
 
@@ -24,3 +24,16 @@ Team members may have reference material about an existing commerce platform on 
 - Declares what it consumes and produces
 - Errors include a code, a sentence, and a suggested next tool
 - Business rules come from the policy file, not from code constants or prompts
+
+## Back end (Rust)
+
+The whole server side is one Cargo workspace: `crates/` (libraries), `services/` (gateway, commerce, agent), `xtask/`. Details: `docs/backend/README.md`.
+
+- An operation exists in `docs/api/` first. Its tool name, address, kind, and REST path in code must match the spec; `cargo xtask check-docs` compares them.
+- One operation is one type implementing `ReadOp` or `WriteOp` (`acom-contract`), in its domain crate, with at least one contract test.
+- Input types use `#[serde(deny_unknown_fields)]`, word enums, a doc comment on every field, and no data-carrying enums (they become `oneOf`; use a `mode` word field instead); the registry refuses schemas that are not closed.
+- Money is `acom_core::Money`, never a float. Time comes from the `Clock`, never `Utc::now()`. Ids use the prefixes in `docs/api/conventions.md` §9; state words come from `docs/api/enums.md`; error codes and classes from `docs/api/errors.md`.
+- Business numbers come from `policies/*.yml` through `acom-policy`, never from constants in code or prompts.
+- `core`, `contract`, and `policy` do no I/O. Domain crates call each other only through exported service traits, never each other's tables. The agent crate never depends on a domain crate.
+- The agent can preview and draft change sets; it can never approve, run an approved change set, or call a person-only endpoint.
+- Before pushing: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`.

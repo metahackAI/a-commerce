@@ -99,25 +99,38 @@ Numbers will be added here once measured.
               Commerce back-end services
 ```
 
-Full architecture (back-end structure, API hierarchy, agent-friendly interface, schema.org data model, AI-native features): [docs/architecture.md](docs/architecture.md). Full API specification (every operation, by group → domain → resource, with data model and policies): [docs/api/](docs/api/README.md). Design details: [docs/design.md](docs/design.md). Build plan: [docs/plan.md](docs/plan.md). Research (what AI-native commerce means, who else is building it, with source captures): [docs/research.md](docs/research.md). UI mockups: [design/mockups](design/mockups), layout options and UI per intent: [design/options](design/options), storefront plan: [design/storefront](design/storefront).
+Full architecture (services and trust boundaries, API hierarchy, agent-friendly interface, schema.org data model, AI-native features): [docs/architecture.md](docs/architecture.md). Rust implementation design (workspace, commerce service, agent runtime, gateway, testing): [docs/backend/](docs/backend/README.md). Full API specification (every operation, by group → domain → resource, with conventions, enumerations, errors, the chat stream, and the data model): [docs/api/](docs/api/README.md); policies as data: [policies/](policies/README.md). Demo store and scenes with expected results: [docs/scenarios.md](docs/scenarios.md). Design details: [docs/design.md](docs/design.md). Build plan: [docs/plan.md](docs/plan.md). Research (what AI-native commerce means, who else is building it, with source captures): [docs/research.md](docs/research.md). UI mockups: [design/mockups](design/mockups), layout options and UI per intent: [design/options](design/options), storefront plan: [design/storefront](design/storefront).
 
 ## Getting started
 
 ### Requirements
 
-- TODO
+- Rust (the version in `rust-toolchain.toml`; `rustup` installs it on first build)
+- Docker (PostgreSQL 17 with pgvector)
+- Node.js 24 for the web app
 
 ### Run locally
 
 ```bash
-# TODO
+docker compose -f deploy/docker-compose.yml up -d postgres
+cargo build --workspace
+cargo test --workspace          # unit and contract tests
+cargo xtask check-docs          # the code and docs/api must agree
+cargo run -p acom-commerce      # :7001
+cargo run -p acom-agent-svc     # :7002
+cargo run -p acom-gateway       # :7000, the one address for the web app and outside agents
 ```
+
+More in [docs/backend/README.md](docs/backend/README.md) §4.
 
 ### Environment variables
 
 | Name | Description |
 |---|---|
 | `META_API_KEY` | Meta Model API key (never commit it) |
+| `DATABASE_URL` | PostgreSQL connection for the commerce and agent services |
+| `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | Self-hosted Muse Glimmer endpoint (OpenAI-compatible) |
+| `ACOM_GATEWAY_SIGNING_KEY`, `ACOM_GATEWAY_PUBLIC_KEY` | Ed25519 keys for internal tokens (never commit them) |
 
 ## Demo
 
@@ -134,6 +147,7 @@ Everything in this repository was created between Oct 27 and Nov 4, 2026. The co
 | Oct 28 | Build plan: MVP scope, tool signatures, seed data, UI block schema, roles and schedule |
 | Oct 30 | Architecture document: back-end structure, API hierarchy, schema.org data model, AI-native features |
 | Oct 30 | API specification: 13 domains, every operation, data model, policies |
+| Oct 30 | Direction set: the whole server side in Rust (gateway, commerce, agent). Rust workspace with the contract, money, time, policy loader, and a docs checker; implementation design; demo scenarios from the mockups; conventions, enumerations, errors, and the chat stream |
 
 ## References
 

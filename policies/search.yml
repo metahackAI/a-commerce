@@ -1,0 +1,45 @@
+# policy: search — 검색·비교·색인 규칙 (데이터)
+# 이 값들은 새 스토어의 기본값이다. 데모 스토어가 덮어쓰는 값은 docs/scenarios.md §5에 있다.
+version: 2
+
+query:
+  modes: [keyword, hybrid, vector]
+  default_mode: hybrid
+  expansion: [llm, synonym_dictionary]   # LLM 확장 + 사전 폴백
+  expansion_fallback_keeps_ranking: true # 확장이 실패해 키워드 검색으로 내려가도 같은 정렬 기준
+  member_tier_filter_at_query_time: true # 등급·재고·판매 상태 필터는 질의 안에서(사후 필터 금지)
+  tenant_isolation: enforced_in_query    # 스토어 격리는 질의 조건으로
+  default_limit: 20
+  max_limit: 100
+  shopper_default_availability: [in_stock, pre_order, back_order]   # 쇼퍼 검색은 기본으로 살 수 있는 상품만
+
+compare:                                 # compare_products
+  min_products: 2
+  max_products: 6
+  attributes: [weight, packed_size, packing, warmth, rain, material, price]   # 비교할 수 있는 속성. 값은 상품 데이터(additional_property)에서 옴
+
+ranking:
+  signals: [text_relevance, vector_similarity, best_seller, best_rated, newest, trending, personalization]
+  recalc: daily_batch
+  exclusion: explicit_null               # 제외 기간은 명시적 null(제거 아님)
+
+boost_exclude:
+  scope: [tenant, language]              # 스토어·언어별 격리
+  exclude_means: zero_result             # 제외어는 부재(억제 아님)
+
+lexicon:                                 # update_lexicon
+  replace_whole_set: true                # 사전은 통째로 교체(부분 수정 없음)
+  no_circular_synonym: true              # check: lexicon.no_circular_synonym
+  no_self_reference: true                # check: lexicon.no_self_reference
+
+index:
+  naming: "{type}-{tenant}-{lang}-{version}"   # 색인 이름 패턴(식이 아니라 이름 틀)
+  reindex: blue_green_alias_swap         # 새 색인을 다 채운 뒤 별칭 교체(무중단)
+  incremental: changed_docs_only
+  distributed_lock: true                 # check: index.distributed_lock. 스토어마다 재색인 작업 하나만
+  lexicon_change_requires_reindex: true  # check: index.lexicon_change_requires_reindex. 동의어/신조어 변경 → 재색인 후 반영
+  resource_budget:                       # check: index.resource_budget (reindex)
+    full_reindex_max_per_day: 2
+    embeddings_regeneration: incremental_only_by_default   # 벡터 전체 재생성은 명시했을 때만
+  concurrency_limit: semaphore
+  timeout_degrade: graceful

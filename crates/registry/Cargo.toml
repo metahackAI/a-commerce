@@ -1,0 +1,24 @@
+[package]
+name = "acom-registry"
+description = "Assembles every domain's operations into one registry."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+acom-contract.workspace = true
+acom-store.workspace = true
+acom-catalog.workspace = true
+acom-search.workspace = true
+acom-merchandising.workspace = true
+acom-promotion.workspace = true
+acom-customer.workspace = true
+acom-sales.workspace = true
+acom-fulfillment.workspace = true
+acom-messaging.workspace = true
+acom-platform.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,57 @@
+# policy: merchandising — 진열·카테고리·배너·팝업·기획전 규칙 (데이터)
+# 값은 의미 있는 영단어. 조건은 문자열 식이 아니라 구조화된 데이터다.
+# 이 값들은 새 스토어의 기본값이다. 데모 스토어가 덮어쓰는 값은 docs/scenarios.md §5에 있다.
+version: 3
+
+slot_free:                               # check: slot_free (schedule_banner, schedule_display)
+  one_booking_per: [slot, audience, time]   # 같은 슬롯·같은 대상(등급 id 또는 everyone)·겹치는 시간에 예약 하나만
+  others_keep_current: true              # 등급 대상 예약은 그 등급에만 보이고, 다른 고객은 기존 배너를 계속 봄 ("Fall layers")
+  everyone_blocks_tiers: false           # everyone 예약이 있어도 등급 대상 예약은 따로 잡을 수 있음(등급 예약이 그 등급에게 우선)
+
+category:
+  sets: [standard, display]              # acom:term_set. standard = 내부 분류, display = 고객에게 보이는 트리
+  max_depth: 4                           # check: category.max_depth. 루트 아래 단계 수
+  term_code_unique: per_term_set         # check: category.term_code_unique. term_code는 같은 묶음 안에서 유일
+  no_cycle: true                         # check: category.no_cycle. 자기 자신·하위를 부모로 둘 수 없음
+  mapping:                               # check: category.mapping (map_category)
+    cardinality: many_to_many
+    direction: standard_to_display       # 표준 → 전시 방향만(같은 묶음끼리 연결 금지)
+  primary_display_per_standard: 1        # check: category.primary_display_per_standard. 표준 카테고리마다 대표 전시 카테고리 1개(경로 표시)
+  delete_only_if: [no_children, no_mappings, no_products]   # check: category.delete_only_if. 비활성·삭제 조건
+  child_inherits_inactive_parent: true
+
+display:
+  schedule_compute: on_demand            # valid_from·valid_through로 계산, 배치 토글 금지
+  visible_when: [in_period, in_stock, product_sellable]   # 노출 = 모든 조건이 참일 때 (기간 ∧ 재고 ∧ 판매 가능 상태)
+  audience: [member_tier, staff_only]    # 없으면 everyone
+  start_not_in_past: true                # check: display.start_not_in_past. 예약 시작은 지금 이후
+  max_items_per_slot: 24                 # check: display.max_items_per_slot
+  exclude_discontinued: true             # check: display.exclude_discontinued. 단종 상품은 담을 수 없음, 품절 상품은 노출 시 숨김
+  priority_unique: per_page              # check: display.priority_unique. 같은 페이지의 배너·팝업 우선순위는 겹치지 않음
+
+banner:
+  image_spec:                            # check: banner.image_spec (set_banner)
+    min_width_px: 1600
+    min_height_px: 600
+    max_bytes: 2000000
+    formats: [jpeg, png, webp]
+  text_max_length:                       # schedule_banner 문구 길이 상한(글자 수)
+    eyebrow: 24
+    headline: 60
+    cta_label: 24
+
+popup:
+  max_concurrent_per_page: 2             # check: popup.max_concurrent_per_page. 같은 페이지에 동시에 뜨는 팝업 수
+  suppress_days_max: 7                   # "오늘 그만 보기" 일수 상한
+
+curation:
+  states: [draft, scheduled, active, ended]   # acom:display_status
+  no_empty_section: true                 # check: curation.no_empty_section
+  publish_reaches_customers: true        # publish_curation = W$
+
+cache_invalidation:                      # invalidate_display_cache
+  mode: explicit                         # 전시 변경은 캐시를 명시적으로 비워야 반영. 승인된 변경셋의 실행기는 끝에 자동으로 부름
+  allowed_resource_types: [category, display_slot, banner, popup, collection_page, all]   # check: cache_invalidation.allowed_resource_types
+  all_scope_max_per_hour: 2              # check: cache_invalidation.all_scope_max_per_hour. all 남용 방지
+
+reaches_customers: [schedule_banner, schedule_display, publish_curation, set_banner, set_popup]   # approval.yml display_schedule

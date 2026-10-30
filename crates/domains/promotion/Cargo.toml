@@ -1,0 +1,19 @@
+[package]
+name = "acom-promotion"
+description = "The promotion domain: promotions, member sale prices, coupons, benefits, loyalty, events, segments."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+acom-core.workspace = true
+acom-contract.workspace = true
+acom-policy.workspace = true
+acom-store.workspace = true
+acom-catalog.workspace = true
+acom-customer.workspace = true
+
+[lints]
+workspace = true

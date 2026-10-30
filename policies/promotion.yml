@@ -1,0 +1,172 @@
+# policy: promotion — 프로모션·회원 판매가·쿠폰·적립금·이벤트 규칙 (데이터)
+# 프로모션 툴과 혜택 계산(calculate_benefits)이 이 파일로 규칙을 강제한다.
+# 값은 의미 있는 영단어, 비율은 0–1, 금액은 {value, currency}. 이 값들은 새 스토어의 기본값이고,
+# 데모 스토어가 덮어쓰는 값(예: max_discount.by_tier.vip 0.30)은 docs/scenarios.md §5에 있다.
+version: 3
+
+max_discount:                            # check: max_discount (set_sale_prices, create_promotion)
+  everyone: 0.20                         # [default] 등급 지정 없는(전체 대상) 할인 상한
+  by_tier: {}                            # 등급별 상한. 키는 스토어 등급 프로그램의 tier id(customer.membership)
+  on_unknown_tier: use_everyone          # [default] by_tier에 없는 등급은 전체 상한 적용
+  on_violation: block                    # 상한을 넘는 품목은 프리뷰에서 실패, fix_tool: set_sale_prices
+
+promo_min_stock: 10                      # check: promo_min_stock. 판매 가능 재고(변형 합)가 이보다 적은 상품은 체크 실패(사람이 판단), set_sale_prices exclude_low_stock: true면 빼고 기록
+
+member_benefits_per_order: 1             # check: member_benefits_per_order. 주문당 회원 혜택(등급 쿠폰·프로모션 쿠폰) 1개
+
+discount_layers:                         # 할인 층 (enums.md §1.11 acom:discount_layer). calculate_benefits가 이 순서로 적용
+  order: [item_price, order_discount, add_on]
+  item_price:                            # 회원가·기간가(set_sale_prices, 상품 대상 create_promotion)
+    combine: lowest_price                # 같은 줄에 여럿이면 가장 낮은 판매가 하나
+  order_discount:                        # 주문 할인(등급 쿠폰, 금액 조건 할인)
+    combine: pick_one                    # 하나만 (member_benefits_per_order와 함께)
+  add_on:                                # 적립금 사용, 배송비 혜택
+    combine: stack                       # 위 두 층 뒤에 더함
+  max_total_discount_rate: 0.50          # check: discount_layers.max_total_discount_rate. 세 층 합산 할인이 정가 소계의 50%를 넘지 않음
+
+coupon:
+  applications: [automatic_at_checkout, code_entry, download]   # acom:coupon_application. automatic_at_checkout은 발급 단계 없이 대상 회원 결제에 자동 적용
+  stacking:                              # create_coupon의 stacking 입력 값
+    default: no_tier_coupons
+    allowed: [no_tier_coupons, with_tier_coupons, no_other_coupons]   # 등급 쿠폰과 함께 안 씀 | 등급 쿠폰과 함께 씀 | 다른 쿠폰 전부와 함께 안 씀
+  records_benefit_only: true             # 프로모션에 연결된 쿠폰은 회원 판매가 혜택을 주문에 기록할 뿐, 두 번째 할인을 더하지 않음
+  validity: inherit_promotion            # 기간은 연결된 프로모션의 valid_from·valid_through
+  status_values: [issued, available, used, restored, expired, revoked]
+  issue_modes: [customers, segment, on_condition]   # issue_coupon: 회원 목록 | 세그먼트 | 조건 충족 시(생일 등)
+  per_member_limit: 0                    # check: coupon.per_member_limit. 0 = 제한 없음
+  total_pool_limit: 0                    # check: coupon.total_pool_limit. 0 = 제한 없음
+  tier_match: issue_equals_redemption    # check: coupon.tier_match. 발급 시 등급 == 사용 시 등급
+  restore_on_cancel:
+    full: restore_all
+    partial: product_coupon_only         # 부분 취소 때는 상품 쿠폰만 복원
+  expiry_grace_days: 1                   # 복원 시 만료 유예
+  expiry_notify_days_before: [3, 0]
+
+promotion_overlap:                       # check: promotion_overlap
+  compare_statuses: [running, scheduled] # 기간이 겹치는 진행 중·예정 프로모션과 비교
+  same_product_same_audience: block      # 같은 상품·겹치는 대상(같은 등급 또는 everyone)에 같은 층 할인이 겹치면 실패
+
+sale_price:                              # 회원·기간 판매가 계산 (set_sale_prices). 계산식은 코드(acom-policy benefit)에 있고 여기에는 파라미터만
+  base: list_price                       # 판매가 = 정가 × (1 − percent_off / 100)
+  rounding: cent                         # 센트 단위
+  rounding_mode: half_up                 # 0.5는 올림
+  changes_list_price: false              # 정가는 바꾸지 않음
+  floor_policy: catalog.price_floor      # 가격 하한은 catalog.yml price_floor
+
+loyalty:                                 # 적립금 (원장에 이벤트로 쌓음)
+  accrual_base_rate: 0.01
+  confirm_on: delivered                  # 배송 완료 시 확정
+  tier_multiplier:                       # 등급 목록을 여기서 정하지 않는다. 키는 customer 도메인 등급 프로그램의
+    default: 1.0                         # 등급 id(customer.yml `tier`, list_tiers)이며, 없는 등급은 default를 쓴다.
+    by_tier: {}                          # 기본값: 비어 있음(모든 등급 1.0)
+    on_unknown_tier: reject              # 등급 프로그램에 없는 id면 정책 저장을 거부(tier_not_found)
+  product_override: highest_wins         # 상품별 적립률이 여럿이면 가장 높은 것
+  expiry:
+    window_days: 365
+    notify_days_before: [10, 3, 0]
+  spend:                                 # check: loyalty.spend
+    min_order: { value: 0.00, currency: USD }
+    partial_allowed: true
+  refund_restore: pro_rata               # 취소·반품 시 비례 복원
+
+conditional_gift:                        # 구매 금액 조건 사은품
+  trigger:                               # 사은품마다 기준 금액(acom:trigger_threshold)을 두고, 아래 값과 비교
+    measured: subtotal_before_member_benefits   # 회원 혜택 적용 전 상품 소계
+    op: gte                              # 소계 ≥ 기준 금액이면 지급
+  tiers_by_amount: true                  # 기준 금액 구간별로 다른 사은품
+  bundle_with_order: true
+  recipient: primary_shipping_address
+
+event:                                   # 이벤트·보상 설정 스키마. [default]는 스토어가 덮어쓰지 않을 때의 기본값
+  # ── 레지스트리: 고정 목록이 아니라 스토어가 항목을 추가·비활성할 수 있는 목록 (list_event_types / list_reward_types)
+  entry_mechanics:                       # 쇼퍼가 응모하는 방식. 항목별 { id, enabled, entry_payload_schema? }
+    registry: extensible                 # 스토어 정의 항목 추가 허용 (id는 영단어 snake_case)
+    builtin:                             # [default] 기본 제공. enabled: false로 끌 수 있음
+      - purchase_triggered               # 기간·범위 안 구매 조건을 채운 주문으로 응모(자동 또는 버튼)
+      - click_apply                      # 버튼 한 번으로 응모
+      - survey                           # 설문 응답(문항 스키마는 이벤트별)
+      - comment                          # 댓글·사진 등 사용자 콘텐츠 제출(UGC). 검수 후 유효 처리 가능
+      - check_in                         # 출석. 회차별 누적
+      - code_redemption                  # 받은 코드를 입력해 응모
+      - custom                           # 스토어 정의(entry_payload_schema 필수)
+  selection_methods:                     # 당첨자를 정하는 방식
+    registry: extensible
+    builtin:                             # [default]
+      - instant_win                      # 응모 즉시 판정. 보상 등수별 확률·수량(odds) 필요
+      - random_draw                      # 마감 후 무작위 추첨(run_draw)
+      - first_come                       # 선착순 수량까지
+      - ranked                           # 점수·심사 순위(심사자·기준 기록)
+      - everyone_qualifies               # 조건을 채운 응모자 전원
+    allowed_combinations: any            # [default] 스토어가 { mechanic: [method...] }로 좁힐 수 있음
+    instant_win:
+      odds_must_sum_at_most: 1.0         # 등수별 확률 합 ≤ 1 (나머지는 꽝)
+      odds_precision: 0.001              # [default]
+  reward_types:                          # 보상 종류. 항목별 { id, fulfillment, has_value, enabled }
+    registry: extensible
+    builtin:                             # [default] fulfillment 기본값
+      product:         { fulfillment: ship,  has_value: true }    # 실물 경품·사은품. 카탈로그 상품 참조 또는 자유 기재
+      coupon:          { fulfillment: issue, has_value: true }    # issue_coupon과 같은 경로
+      loyalty_points:  { fulfillment: grant, has_value: true }    # grant_loyalty와 같은 원장
+      store_credit:    { fulfillment: grant, has_value: true }
+      digital_code:    { fulfillment: email, has_value: true }    # 상품권·라이선스 코드
+      experience:      { fulfillment: email, has_value: true }    # 초대·체험. 안내만 발송
+      custom:          { fulfillment: manual, has_value: false }  # 스토어 정의
+    fulfillment_methods: [ship, issue, grant, email, manual]      # [default]
+    value_required_when: compliance_applies  # 보상 가치(reward_value)는 선택, 컴플라이언스 규칙이 걸리면 필수
+    ship_to: primary_shipping_address    # [default] 배송 보상의 기본 주소
+    ship_address_editable_until: dispatch  # [default] 발송 전까지 당첨자가 주소 변경 가능
+    auto_dispatch:                       # [default] 즉시형(instant_win·first_come·everyone_qualifies)의 비배송 보상은 자동 지급
+      selection_methods: [instant_win, first_come, everyone_qualifies]
+      fulfillment: [issue, grant]
+  # ── 자격·참여 한도 (이벤트별로 덮어씀)
+  eligibility:
+    valid_for_member_tier: everyone      # [default] 등급 id는 customer 도메인 등급 프로그램에서(list_tiers)
+    segment_id: null                     # [default] 세그먼트(define_segment)로 대상 한정
+    member_types: any                    # [default] 개인·사업자 등 customer 도메인 회원 유형
+    purchase_condition: null             # [default] 예시: { min_subtotal: {value: 50.00, currency: USD}, window: event_period, scope: {...} }
+    channels: any                        # [default] 예시: [web, mobile_web, app] (enums.md §3 acom:sales_channel)
+    consent_required: [entry_terms, winner_contact]  # 응모 시 필수 동의
+  entry_limit:                           # check: event.entry_limit
+    per_member: { count: 1, period: event }    # [default] period: day | week | event | unlimited
+    # 예시: 하루 1회 → { count: 1, period: day }
+  entry_period: start_to_end_inclusive   # check: event.entry_period. start_date ~ end_date(포함) 안의 응모만
+  payload_validation: entry_payload_schema   # check: event.payload_validation. 응모 데이터는 이벤트의 entry_payload_schema로 검증
+  schedule:                              # check: event.schedule. 시각 순서
+    order: [start_date, end_date, draw_at, announce_at, dispatch_at]   # 앞 시각 ≤ 뒤 시각
+  # ── 추첨·발표
+  draw:
+    requires_entries_closed: true        # check: event.draw.requires_entries_closed. 응모가 끝난 뒤에만 추첨
+    winner_count_from: reward_tiers      # 등수별 winner_count 합
+    waitlist_count: 0                    # [default] 등수별로 덮어씀
+    modes: [draw, redraw, cancel_winner, promote_waitlist, add_waitlist, manual_select]
+    exclude_previous_winners: true       # [default] 같은 이벤트 재추첨 시 기존 당첨자 제외
+    cancel_reason_required: true
+    fairness:
+      method: seeded_shuffle             # [default] 다른 값: external_rng, judged(ranked일 때)
+      record: [method, seed_commitment, seed, entrant_snapshot_digest, run_by, approved_by, run_at]
+      seed_commit_before_close: true     # [default] 응모 마감 전 시드 해시를 공개·기록, 추첨 후 시드 공개
+      retention_days: null               # 보존 기간은 스토어가 정함(관할 규칙을 따름)
+    announcement:
+      channels: [in_app, email]         # [default]
+      mask_winner_names: true            # [default]
+      notify_winner_on: draw_approved
+  # ── 컴플라이언스 훅: 금액·세율을 여기 고정하지 않는다. 스토어가 관할별 규칙을 정의한다.
+  compliance:
+    rules: []                            # [default] 비어 있음 = 추가 요구 없음
+    # 규칙 형식:
+    #   - jurisdiction: <스토어가 정한 관할 id>
+    #     applies_when: { field: reward_value, op: gte, value: { value: <스토어가 정한 기준>, currency: <통화> } }   # 누적 기준이면 field: cumulative_reward_value
+    #     actions: [collect_winner_info, withhold, issue_report, winner_pays_tax, require_age_check]
+    #     withholding_rate: <스토어가 정한 값>                 # withhold일 때만
+    #     winner_info_required: [legal_name, tax_id, address]  # 예시
+    #     payment_deadline_days: <값>                          # winner_pays_tax일 때
+    #     reward_state_until_satisfied: compliance_pending
+    jurisdiction_from: winner_address    # [default] 규칙 선택 기준: winner_address | store_location
+    on_unsatisfied: hold_dispatch        # 요구를 채우기 전에는 보상 발송 보류
+  # ── 상태
+  event_states: [draft, scheduled, running, paused, closed, drawing, announced, fulfilling, completed, cancelled]
+  entry_states: [entered, invalid, won, lost, waitlist, cancelled]
+  reward_states: [pending, compliance_pending, ready, dispatched, delivered, failed, forfeited]
+
+cost_share:                              # create_promotion의 할인 분담
+  sum_must_equal: 1.0                    # check: cost_share.sum_must_equal. 스토어 + 판매자 분담률 합 = 1

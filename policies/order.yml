@@ -1,0 +1,88 @@
+# policy: order — 장바구니·체크아웃·주문·결제 규칙 (데이터)
+# 값은 의미 있는 영단어, 금액은 {value, currency}. 이 값들은 새 스토어의 기본값이고,
+# 데모 스토어가 덮어쓰는 값은 docs/scenarios.md §5에 있다.
+version: 3
+
+free_shipping_min_subtotal:              # 무료 배송 기준 (check: free_shipping_min_subtotal)
+  amount: { value: 80.00, currency: USD }
+  measured: before_member_benefits       # 회원 혜택 적용 전 상품 소계로 판단
+
+cart:
+  separate_by: [order_type]              # 일반 주문과 구독 분리
+  no_mix: [domestic_international]       # check: cart.no_mix. 국내·해외 배송 혼합 금지
+  retention_days: 30
+  max_lines: 50                          # check: cart.max_lines. 장바구니 줄 수 상한
+  max_quantity_per_line: 20              # 줄 하나의 수량 상한 (상품별 구매 한도가 더 작으면 그쪽)
+  shows: [subtotal, discounts, shipping, total]   # 할인은 프로모션마다 한 줄 ("VIP weekend −$17.80")
+
+checkout_validation:                     # 주문 준비(prepare_*)·주문하기에서 반드시 통과. 각 키가 check 이름
+  common_payment_method_exists: required # 모든 줄에 함께 쓸 수 있는 결제 수단이 있음
+  stock_available: required              # 줄마다 판매 가능 재고 ≥ 수량
+  product_sellable: required             # 품절·판매 종료·미승인 상품 아님
+  no_domestic_international_mix: required   # 국내·해외 배송 상품을 한 주문에 섞지 않음
+  server_total_matches_client: required  # 서버가 calculate_benefits로 다시 계산한 합계 = 쇼퍼가 본 합계(client_total). 다르면 실패하고 새 합계를 알림
+  price_floor_respected: required        # 혜택 적용 후 줄 단가가 catalog.yml price_floor 이상
+
+change:                                  # 주문 후 변경 (change_shipping_address)
+  allowed_before: shipped                # check: change.allowed_before. 이 출고 단계 전까지만 배송지 변경 (acom:fulfillment_stage)
+
+payment:
+  primary_methods_per_order: 1
+  methods: [credit_card, bank_transfer, virtual_account, loyalty_points, store_credit]   # enums.md §3 acom:payment_method
+  loyalty_as_secondary: true             # 적립금은 보조 결제
+  guest_allows_loyalty: false
+  subscription_card_only: true           # check: payment.subscription_card_only
+  virtual_account_hold_days: 3           # check: payment.virtual_account_hold_days. 입금 대기 일수
+  installment:                           # 신용카드 할부 (set_installment)
+    methods: [credit_card]               # 카드 결제만
+    min_amount: { value: 50.00, currency: USD }   # check: payment.installment.min_amount. 이 금액 이상 주문만 할부
+    months: [0, 3, 6]                    # 고를 수 있는 개월 수. 0 = 일시불
+
+inventory:
+  reserve_on: place_order                # 주문하면 바로 재고 예약
+  release_on: cancel_approved
+  unpaid_ttl_minutes: 30                 # 미결제 자동 취소
+
+order_status:                            # schema.org OrderStatus 멤버 (enums.md §1.1)
+  values: [payment_due, processing, in_transit, delivered, returned, cancelled, problem]
+  line_item_status_independent: true     # 줄별 상태 독립(부분 출고)
+  event_sourced: true                    # 상태를 덮어쓰지 않고 이벤트 추가
+  auto_confirm_days: 14                  # 배송 완료 후 자동 구매 확정(acom:confirmed_at)
+
+multi_address:
+  enabled_if_quantity_gte: 2
+  max_destinations: 10
+
+order_types: [member, guest, agent_assisted, subscription, gift]
+agent_assisted:
+  payment: loyalty_points_only           # 상담원 대행 주문은 적립금 결제만
+  single_shipping_address: true
+
+guest_lookup:                            # 비회원 주문 조회 (verify_guest)
+  max_attempts: 5                        # 이 횟수를 넘게 틀리면 잠금
+  lock_minutes: 15
+  token_ttl_seconds: 1800                # 조회 토큰 유효 시간
+
+gift:                                    # 선물 주문 (prepare_gift_order)
+  recipient_per_order: 1
+  recipient_modes: [address_known, recipient_accepts]   # 보내는 사람이 주소를 앎 | 받는 사람이 링크로 수락하며 주소·옵션 입력
+  auto_cancel_if_no_address_days: 3      # recipient_accepts에서 수락이 없으면 자동 취소
+  recipient_can_change: [acceptance, address, options]  # 받는 사람이 바꿀 수 있는 것. 가격은 못 바꿈
+  wrap_fee: { value: 5.00, currency: USD }   # 선물 포장비
+  gift_receipt_hides_prices: true        # 선물 영수증에는 가격을 넣지 않음
+
+subscription:                            # 정기 주문 (prepare_subscription)
+  billing_cycles: [every_week, every_2_weeks, every_month]
+  discount_layers: [item_price]          # 정기 주문에는 회원가·기간가 층만 적용 (promotion.yml discount_layers)
+  loyalty_usable: false                  # 적립금 사용 불가
+
+receipt:                                 # 영수증·증빙 (issue_receipt)
+  types: [deduction, proof, tax_invoice]
+  same_month_only: true                  # 주문한 달 안에서만 발급
+  after_claim: cancel_and_reissue        # 클레임으로 금액이 바뀌면 취소 후 다시 발급
+
+international:
+  require: [customs_information]
+
+# 주문하기·구독 시작·선물 수락은 툴이 아니라 사람 전용 엔드포인트다. 목록은 approval.yml person_only, preview_only.
+refund_authority: operator_approval      # 쇼퍼는 취소를 '요청'만, 환불은 운영 승인

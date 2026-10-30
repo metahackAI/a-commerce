@@ -1,0 +1,18 @@
+[package]
+name = "acom-messaging"
+description = "The messaging domain: customer messages, templates, campaigns, notifications."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+acom-core.workspace = true
+acom-contract.workspace = true
+acom-policy.workspace = true
+acom-store.workspace = true
+acom-customer.workspace = true
+
+[lints]
+workspace = true

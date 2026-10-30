@@ -1,0 +1,18 @@
+[package]
+name = "acom-search"
+description = "The search domain: product search, compare, autocomplete, lexicon, index."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+acom-core.workspace = true
+acom-contract.workspace = true
+acom-policy.workspace = true
+acom-store.workspace = true
+acom-catalog.workspace = true
+
+[lints]
+workspace = true

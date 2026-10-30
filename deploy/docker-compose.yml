@@ -1,0 +1,21 @@
+# Local development: PostgreSQL 17 with pgvector.
+# Services run with `cargo run` (see docs/backend/README.md §4).
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: acom
+      POSTGRES_PASSWORD: acom
+      POSTGRES_DB: acom
+    ports:
+      - "5432:5432"
+    volumes:
+      - acom-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acom -d acom"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  acom-pg:
