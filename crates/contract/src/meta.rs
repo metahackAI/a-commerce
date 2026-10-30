@@ -98,6 +98,7 @@ impl ActionType {
     pub const AUTHORIZE: Self = Self("AuthorizeAction");
     pub const REJECT: Self = Self("RejectAction");
     pub const RETURN: Self = Self("ReturnAction");
+    pub const RECEIVE: Self = Self("ReceiveAction");
     pub const CANCEL: Self = Self("CancelAction");
     pub const REGISTER: Self = Self("RegisterAction");
     pub const REVIEW: Self = Self("ReviewAction");
