@@ -782,6 +782,7 @@ tables:
         - {entity: claim, id: clm_20409}
       change_set_id: null
       start_time: "2026-11-06T10:40:00-05:00"
+      updated_at: "2026-11-06T10:40:00-05:00"
       end_time: null
     - tenant_id: store_northwind
       id: task_linen_reorder
@@ -797,6 +798,7 @@ tables:
       change_set_id: cs_1041
       conversation_id: conv_linen_reorder
       start_time: "2026-11-06T08:40:00-05:00"
+      updated_at: "2026-11-06T08:40:00-05:00"
       end_time: null
     - tenant_id: store_northwind
       id: task_size_charts
@@ -810,6 +812,7 @@ tables:
       change_set_id: null
       conversation_id: conv_size_charts
       start_time: "2026-11-05T16:20:00-05:00"
+      updated_at: "2026-11-05T16:20:00-05:00"
       end_time: null
     - tenant_id: store_northwind
       id: task_below_cost
@@ -823,6 +826,7 @@ tables:
       related_entities: [{entity: product, id: prd_breton_tee}, {entity: product, id: prd_canvas_tote}, {entity: product, id: prd_ribbed_beanie}, {entity: product, id: prd_hiking_socks}]
       change_set_id: cs_1040
       start_time: "2026-11-06T07:55:00-05:00"
+      updated_at: "2026-11-06T08:31:40-05:00"
       end_time: "2026-11-06T08:31:40-05:00"
     - tenant_id: store_northwind
       id: task_fall_layers
@@ -836,6 +840,7 @@ tables:
       change_set_id: cs_1039
       conversation_id: conv_fall_layers
       start_time: "2026-11-06T09:30:00-05:00"
+      updated_at: "2026-11-06T10:00:00-05:00"
       end_time: "2026-11-06T10:00:00-05:00"
   platform.job:
     - {tenant_id: store_northwind, id: job_watch_returns, kind: watcher.returns_over_refund_threshold, run_at: "2026-11-06T11:10:00-05:00", payload: {}, attempts: 0}
