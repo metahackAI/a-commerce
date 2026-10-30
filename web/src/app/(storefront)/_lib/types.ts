@@ -228,6 +228,8 @@ export interface DisplayBooking {
   cta_label?: string | null;
   url?: string | null;
   content?: BannerContent | null;
+  /** The banner this booking shows (`get_display_slot`), with its image. */
+  banner?: (BannerContent & {id: string}) | null;
 }
 
 export interface BannerContent {
@@ -370,6 +372,23 @@ export interface OrderDraft {
   gift_wrap?: Money | null;
 }
 
+/** `changes[0].to` of a `prepare_gift_order` preview (docs/api/sales.md §gift_order). */
+export interface GiftDraft extends Omit<OrderDraft, 'delivery'> {
+  order_type?: 'gift';
+  /** The cart's total before the gift's own charges. */
+  goods_total?: Money;
+  delivery?: (DeliverySummary & {to?: string | null; recipient_contact?: string | null}) | null;
+  gift_options?: {
+    wrap?: boolean;
+    wrap_fee?: Money | null;
+    card_message?: string | null;
+    gift_receipt?: boolean;
+    receipt_hides_prices?: boolean;
+    exchange_until?: string | null;
+  };
+  recipient?: {name: string; mode: 'address_known' | 'recipient_accepts'};
+}
+
 /** `POST /v1/sales/orders` (person-only). */
 export interface PlacedOrder {
   ok: boolean;
@@ -377,6 +396,9 @@ export interface PlacedOrder {
   order_number: string;
   order_status: OrderStatus;
   undo: null;
+  /** A gift its recipient accepts by link: where they accept it. */
+  gift_order_id?: string;
+  accept_url?: string;
 }
 
 export type OrderStatus = 'payment_due' | 'processing' | 'in_transit' | 'delivered' | 'returned' | 'cancelled' | 'problem';
@@ -432,6 +454,17 @@ export interface Order {
   payment?: {payment_method?: string; card_last4?: string | null; payment_status?: string} | null;
   totals: {subtotal: Money; discounts: Discount[]; shipping: Money; total: Money};
   coupons_recorded?: RecordedCoupon[];
+  /** Cancel, return and exchange requests on the order, oldest first. */
+  claims?: OrderClaim[];
+}
+
+/** One request on an order (`get_order` `claims[]`). */
+export interface OrderClaim {
+  id: string;
+  claim_type: 'cancel' | 'return' | 'exchange' | string;
+  claim_status: string;
+  order_item_ids: string[];
+  requested_at: string;
 }
 
 // ── Fulfillment ────────────────────────────────────────────────────────────────

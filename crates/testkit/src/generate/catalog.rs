@@ -263,6 +263,8 @@ fn product(
     let days = (through - from).num_days();
     let release_date = from + TimeDelta::days(dice.range(0, days));
 
+    let image =
+        crate::media::garment_image(&name, variants.first().map_or("", |v| v.color.as_str()));
     Ok(Product {
         id: format!("prd_{suffix}"),
         term: cat.term.clone(),
@@ -276,7 +278,7 @@ fn product(
         name,
         material,
         brand_id,
-        image: format!("https://cdn.northwind.example/p/{suffix}.webp"),
+        image,
         release_date,
         varies_by: if cat.sizes.iter().any(Option::is_some) {
             vec!["color", "size"]
@@ -328,6 +330,7 @@ pub(crate) fn rows(
                 "sku": v.sku,
                 "name": v.name,
                 "color": v.color,
+                "image": crate::media::garment_image(&p.name, &v.color),
             });
             if let (Some(size), Some(map)) = (&v.size, row.as_object_mut()) {
                 map.insert("size".to_owned(), json!(size));

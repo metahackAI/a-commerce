@@ -7,6 +7,7 @@
 //! through their service functions, never through their tables; the ones above catalog in the
 //! crate graph come in through [`neighbors`].
 
+pub mod import;
 pub mod model;
 pub mod neighbors;
 pub mod rules;
@@ -16,6 +17,8 @@ mod cards;
 mod ops;
 mod repo;
 mod viewer;
+mod watch;
+mod write;
 
 use acom_auth::Principal;
 use acom_contract::{ErrorClass, ErrorCode, RegistryBuilder, ToolError};
@@ -55,6 +58,28 @@ pub const ALREADY_REVIEWED: ErrorCode =
 /// The review text has a word the store blocks.
 pub const PROFANITY_BLOCKED: ErrorCode =
     ErrorCode::new("profanity_blocked", ErrorClass::PolicyViolation);
+/// A supplier sheet that cannot be read: no rows, too many, or a required column missing.
+pub const INVALID_FILE_FORMAT: ErrorCode =
+    ErrorCode::new("invalid_file_format", ErrorClass::InvalidInput);
+/// A SKU already used in the store.
+pub const DUPLICATE_SKU: ErrorCode = ErrorCode::new("duplicate_sku", ErrorClass::AlreadyExists);
+
+/// Lowercase words joined by `_`, for ids made from names and codes:
+/// `FW26-OT-014-CHR` → `fw26_ot_014_chr`, `Wool blend overcoat` → `wool_blend_overcoat`.
+pub fn slug(text: &str) -> String {
+    let mut out = String::new();
+    for ch in text.trim().chars() {
+        if ch.is_ascii_alphanumeric() {
+            out.push(ch.to_ascii_lowercase());
+        } else if !out.ends_with('_') && !out.is_empty() {
+            out.push('_');
+        }
+    }
+    while out.ends_with('_') {
+        out.pop();
+    }
+    if out.is_empty() { "x".into() } else { out }
+}
 
 /// Adds every operation of this domain to the registry.
 pub fn register(b: &mut RegistryBuilder<Cx>) {
@@ -75,7 +100,23 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .read(ops::review::GetReviewSummary)
         .read(ops::review::ListReviews)
         .write(ops::review::CreateReview)
-        .write(ops::review::VoteReviewHelpful);
+        .write(ops::review::VoteReviewHelpful)
+        .write(ops::import::BatchImport)
+        .write(ops::group_write::CreateProductGroup)
+        .write(ops::group_write::UpdateProductGroup)
+        .write(ops::variant::CreateProduct)
+        .write(ops::variant::UpdateProduct)
+        .write(ops::variant::SetVariants)
+        .write(ops::approval::SubmitForReview)
+        .write(ops::approval::ApproveProduct)
+        .write(ops::approval::RejectProduct)
+        .write(ops::brand_write::CreateBrand)
+        .write(ops::brand_write::UpdateBrand)
+        .write(ops::safety::SetSafetyStock)
+        .write(ops::schedule::SchedulePriceChange)
+        .write(ops::moderate::ModerateReview);
+    // Scheduled work (platform.job): the watcher over prices under cost.
+    b.job(watch::PriceBelowCost);
 }
 
 pub(crate) fn db(e: sqlx::Error) -> ToolError {
@@ -106,6 +147,19 @@ pub(crate) fn parse_time(
         })
     })
     .transpose()
+}
+
+/// Whether `approval.yml` asks for a person on this write (`thresholds.*` whose `applies_to`
+/// names the tool and whose `when` holds for `facts`). Writes with no threshold run without one.
+pub(crate) fn policy_approval(cx: &Cx, tool: &str, facts: &Value) -> acom_contract::ApprovalNeed {
+    let a = cx.policy.approval_for(tool, facts);
+    match a.reason {
+        Some(reason) if a.needed => acom_contract::ApprovalNeed::Needed { reason },
+        _ if a.needed => acom_contract::ApprovalNeed::Needed {
+            reason: format!("The store asks a person to approve {tool}"),
+        },
+        _ => acom_contract::ApprovalNeed::NotNeeded,
+    }
 }
 
 /// An operator-only input sent by someone else.
@@ -163,6 +217,16 @@ pub(crate) mod testing {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn slugs_make_id_suffixes() {
+        assert_eq!(slug("FW26-OT-014-CHR"), "fw26_ot_014_chr");
+        assert_eq!(
+            slug("  Wool blend overcoat, charcoal "),
+            "wool_blend_overcoat_charcoal"
+        );
+        assert_eq!(slug("!!"), "x");
+    }
 
     #[test]
     fn keeps_only_the_named_fields() {

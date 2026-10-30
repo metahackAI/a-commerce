@@ -135,7 +135,28 @@ pub async fn variants(
     .fetch_all(&mut *tx.tx)
     .await
     .map_err(db)?;
-    rows.into_iter().map(VariantRow::facts).collect()
+    let facts = rows
+        .into_iter()
+        .map(VariantRow::facts)
+        .collect::<Result<Vec<_>, _>>()?;
+    with_scheduled_prices(tx, facts).await
+}
+
+/// A scheduled list price in effect now replaces the offer's own price
+/// (`pricing.scheduled_change.compute: on_demand`).
+async fn with_scheduled_prices(
+    tx: &mut TxCx,
+    mut facts: Vec<VariantFacts>,
+) -> Result<Vec<VariantFacts>, ToolError> {
+    let at = tx.clock.now();
+    let offers: Vec<String> = facts.iter().map(|f| f.offer_id.clone()).collect();
+    let now = crate::write::scheduled_prices(tx, &offers, at).await?;
+    for f in &mut facts {
+        if let Some(p) = now.get(&f.offer_id) {
+            f.list_price = Money::new(*p, f.list_price.currency);
+        }
+    }
+    Ok(facts)
 }
 
 /// What looking a variant up by its product's options found.
@@ -191,7 +212,11 @@ pub async fn find_variant(
     let mut colors: Vec<String> = Vec::new();
     for r in rows {
         if same(&r.size, size) && same(&r.color, color) {
-            return Ok(VariantMatch::Found(Box::new(r.facts()?)));
+            let found = with_scheduled_prices(tx, vec![r.facts()?]).await?;
+            return Ok(match found.into_iter().next() {
+                Some(f) => VariantMatch::Found(Box::new(f)),
+                None => VariantMatch::NoProduct,
+            });
         }
         if let Some(s) = &r.size
             && !sizes.contains(s)
@@ -256,6 +281,50 @@ pub async fn product_summaries(
             })
         })
         .collect()
+}
+
+/// A product's sellable stock, for the stock-out forecast (`watchers.stock_out_forecast`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProductStock {
+    /// `prd_…`
+    pub product_id: String,
+    pub name: String,
+    /// Units on hand over the variants counted.
+    pub inventory_level: i64,
+    /// The variants counted (`var_…`).
+    pub variant_ids: Vec<String>,
+}
+
+/// Every product's stock over its variants whose offer is not in one of `exclude_availability`
+/// (`discontinued`, `pre_order`), in product order.
+pub async fn product_stock(
+    tx: &mut TxCx,
+    exclude_availability: &[String],
+) -> Result<Vec<ProductStock>, ToolError> {
+    let rows: Vec<(String, String, i64, Vec<String>)> = sqlx::query_as(
+        "SELECT g.id, g.name, sum(o.inventory_level)::bigint, array_agg(v.id ORDER BY v.id)
+         FROM catalog.product_group g
+         JOIN catalog.product v ON v.tenant_id = g.tenant_id AND v.product_group_id = g.id
+         JOIN catalog.offer o ON o.tenant_id = v.tenant_id AND o.product_id = v.id
+         WHERE g.tenant_id = $1 AND NOT (o.availability = ANY($2))
+         GROUP BY g.id, g.name ORDER BY g.id",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(exclude_availability)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(rows
+        .into_iter()
+        .map(
+            |(product_id, name, inventory_level, variant_ids)| ProductStock {
+                product_id,
+                name,
+                inventory_level,
+                variant_ids,
+            },
+        )
+        .collect())
 }
 
 /// Takes `quantity` units of a variant's stock for a placed order. Returns `false` (and changes

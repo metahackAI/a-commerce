@@ -7,7 +7,7 @@ import {cache} from 'react';
 import {redirect} from 'next/navigation';
 
 import {ApiError, type ApiErrorBody, type Query} from '@/lib/api';
-import {serverApi, serverSession} from '@/lib/server-api';
+import {serverApi, serverPost, serverSession} from '@/lib/server-api';
 import type {Session} from '@/lib/session';
 
 export type Result<T> = {ok: true; data: T} | {ok: false; error: ApiErrorBody; status: number};
@@ -16,6 +16,25 @@ export type Result<T> = {ok: true; data: T} | {ok: false; error: ApiErrorBody; s
 export async function read<T>(path: string, query?: Query): Promise<Result<T>> {
   try {
     return {ok: true, data: await serverApi<T>(path, query)};
+  } catch (e) {
+    if (e instanceof ApiError) return {ok: false, error: e.body, status: e.status};
+    return {
+      ok: false,
+      status: 503,
+      error: {
+        code: 'upstream_unavailable',
+        class: 'upstream_unavailable',
+        message: 'The store could not be reached. Try again in a moment.',
+        next_tool: null,
+      },
+    };
+  }
+}
+
+/** A read whose input goes in a body (`POST` without side effects, like the analytics reads). */
+export async function readPost<T>(path: string, body: unknown): Promise<Result<T>> {
+  try {
+    return {ok: true, data: await serverPost<T>(path, body)};
   } catch (e) {
     if (e instanceof ApiError) return {ok: false, error: e.body, status: e.status};
     return {

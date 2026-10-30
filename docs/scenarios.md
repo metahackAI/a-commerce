@@ -50,7 +50,7 @@
 
 | id | 이름 | 역할 |
 |---|---|---|
-| `adm_sj` | Son SeongJun ("SJ") | merchandiser. 승인 권한: 프로모션·전시·환불·메시지 |
+| `adm_sj` | Son SeongJun ("SJ") | merchandiser + catalog admin **[정함]**. 승인 권한: 프로모션·전시·환불·메시지, 상품 초안 저장·게시(B4) |
 
 ### 2.3 쇼퍼
 
@@ -107,7 +107,7 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 | Corduroy trousers, sand | $34 → $89 | needs_you: 사진에 두 상품 |
 | Lambswool cardigan, oatmeal | $44 → $109 | 설명 작성 중 |
 
-전체 30행: ready 14, needs_you 4, 작업 중 12.
+시안의 숫자(ready 14, needs_you 4, 작업 중 12)는 작업 도중의 화면입니다. 시트는 `seed/demo/09_supplier_sheet.yml`의 `upl_fw26_supplier`(30행, 공급사 Harbor Mills Ltd.) **[정함]** 이고, 가져오기가 끝나면 ready 26, needs_you 4, 작업 중 0입니다. needs_you 4: Quilted liner jacket(olive)과 Down vest(black)의 충전재 비율(소재) 없음, Corduroy trousers sand·olive가 한 장의 사진을 같이 씀. 설명은 가져오기가 쓰지 않고 공급사 글을 초안에 남깁니다([api/catalog.md](api/catalog.md#batch_import)).
 
 ---
 
@@ -205,6 +205,7 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 ### B4. 공급사 시트 등록 (10:58 요청)
 
 "List the 30 products in this supplier sheet. Use our usual pricing and write the descriptions in our tone." → 초안 30개(§3.3), 체크: 중복 SKU 없음 · 모든 가격 하한 이상 · 필수 필드 4건 미해결. 초안은 쇼퍼에게 보이지 않고, 게시는 별도 변경셋입니다.
+- **흐름:** 카탈로그 에이전트(라우팅 힌트 "supplier sheet")가 `batch_import` 하나를 새 변경셋에 프리뷰하고 사람에게 넘깁니다 → `product_drafts` 블록(진행 26/4/0, 쓴 규칙, 체크 3개 + 이름·카테고리 체크) → SJ가 **Save 30 drafts**(변경셋 승인, 사람 전용). 상품 하나의 게시: 설명 작성(`update_product_group`) → `submit_for_review` → `approve_product`(새 변경셋, 사람 승인).
 
 ### B5. 그 밖의 할 일 (운영자 홈)
 
@@ -267,7 +268,7 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 ### 7.1 시드와 장면 재생
 
 - 시드는 **금요일 10:40 이후의 상태**입니다. F5(Alex가 반품 요청을 보냄, 09:50)의 결과인 `clm_20402`가 이미 들어 있어 B2가 12건을 봅니다. F5 재생 테스트는 이 클레임을 지운 상태에서 시작합니다(`acom-testkit`의 장면별 준비 단계).
-- B3의 원인 중 "주간 이메일 미발송 −$1,300"은 캠페인·매출 귀속 데이터(P2)가 생기기 전까지 분석용 시드 값입니다.
+- B3의 원인은 데이터에서 나옵니다. 품절은 `catalog.offer`의 `sold_out_at`(Wed Nov 4 15:00)과 품절 사이즈가 비교 목요일에 판 줄, 주간 이메일은 `messaging.campaign`(`cmp_weekly_1105`, `failed`, "List import failed", Thu 08:00)과 지난 네 목요일 발송에서 온 주문(`sales_order.campaign_id`, 합 $5,200 = 4 × $1,300)입니다. 설명 안 됨 −$660은 나머지입니다.
 
 ## 8. 시안끼리 다른 곳과 결정
 
@@ -290,3 +291,6 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 | 15 | 품절인데 "7 left" | chore coat M·L 품절 | M 쇼퍼에게 "7 left" | 재고 7은 S·XL에만. 쇼퍼에게는 자기 사이즈 재고를 보여 줌 |
 | 16 | 모바일 쇼퍼 | `mockups/mobile.html` | `storefront/fo-mobile-adapt.html` | 앞은 Jamie, 뒤는 Mina |
 | 17 | 승인 대기 표기 | Waiting for your approval / Needs your approval / Ready to review | | 상태는 `waiting_for_approval` 하나, 화면 문구는 자유 |
+| 18 | Mina의 첫 답 형태 | F1: `look_gallery`(첫 방문) | F6: `product_list` 뒤 `look_gallery` | 로그인하지 않은 첫 방문은 `look_gallery`(F1). F6의 목록 → 사진 전환과 되돌릴 수 있는 기억 한 줄은 로그인한 쇼퍼의 장면으로 재생하고, 게스트는 기억이 없어(`update_my_preferences`의 `not_signed_in`) 형태만 이 대화 안에서 유지 |
+| 19 | 선물의 `client_total` | 보내는 사람이 본 합계 $76.20 (`sales.md` 예) | 장바구니가 보여 준 합계 $71.20 | 둘 다 받음. 포장비는 정책에서 서버가 더하므로, 에이전트는 장바구니 합계를 넘기고 선물 합계 $76.20은 프리뷰가 보여 줌 |
+| 20 | B2 처리 순서 | 분류(읽기만, 14회) | 변경셋(환불 9 + 메시지 3) | 두 턴. 첫 턴은 큐와 평가만 읽어 `refund_review`, 다음 턴은 그 블록의 행으로 환불·메시지를 변경셋에 담음(다시 읽지 않음). 턴당 툴 호출 상한 20을 지킴 |

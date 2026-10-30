@@ -22,6 +22,7 @@ use serde_json::{Map, Value, json};
 
 use crate::checkout;
 use crate::delivery::{self, Address};
+use crate::gift;
 use crate::owner::{self, Viewer};
 use crate::pricing::{self, CartView, Carts, DeliveryChoice};
 use crate::repo::{self, OrderRow};
@@ -100,18 +101,18 @@ pub(crate) struct PlannedLine {
 /// What `prepare_order` hands to the shopper's "Place order" button.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct PreparedOrder {
-    order_id: String,
-    customer_id: String,
-    lines: Vec<PlannedLine>,
-    delivery: DeliveryChoice,
-    payment_method: String,
+    pub order_id: String,
+    pub customer_id: String,
+    pub lines: Vec<PlannedLine>,
+    pub delivery: DeliveryChoice,
+    pub payment_method: String,
     /// The total the checkout card showed.
-    total: Money,
+    pub total: Money,
     /// Checks that failed on the card; such an order cannot be placed.
-    failed_checks: Vec<String>,
+    pub failed_checks: Vec<String>,
 }
 
-fn planned_lines(v: &CartView) -> Vec<PlannedLine> {
+pub(crate) fn planned_lines(v: &CartView) -> Vec<PlannedLine> {
     v.lines
         .iter()
         .map(|l| PlannedLine {
@@ -133,7 +134,7 @@ fn create_order_change(v: &CartView) -> Change {
     }
 }
 
-fn floor_multiplier(tx_policy: &acom_policy::PolicySet) -> Option<Decimal> {
+pub(crate) fn floor_multiplier(tx_policy: &acom_policy::PolicySet) -> Option<Decimal> {
     promotion::rules(tx_policy).ok()?.price_floor_multiplier
 }
 
@@ -202,8 +203,9 @@ fn choice(input: &PrepareOrderInput) -> Result<DeliveryChoice, ToolError> {
     }
 }
 
-/// Prices the caller's cart for checkout and refuses what can never be ordered.
-async fn checkout_view(
+/// Prices the caller's cart for checkout and refuses what can never be ordered. A gift whose
+/// recipient gives the address later (`DeliveryChoice::Later`) needs no address yet.
+pub(crate) async fn checkout_view(
     tx: &mut TxCx,
     delivery: &DeliveryChoice,
     payment_method: Option<&str>,
@@ -232,6 +234,9 @@ async fn checkout_view(
         )
         .detail(json!({"policy_key": "cart.separate_by"}))
         .next("remove_cart_item"));
+    }
+    if *delivery == DeliveryChoice::Later {
+        return Ok((carts, view));
     }
     let Some(d) = &view.destination else {
         return Err(ToolError::new(
@@ -338,7 +343,7 @@ fn preview_only() -> ToolError {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct PlaceOrderInput {
-    /// The `prepare_order` preview the shopper confirmed on the checkout card.
+    /// The `prepare_order` or `prepare_gift_order` preview the shopper confirmed on the card.
     #[schemars(regex(pattern = r"^pv_[a-z0-9_]+$"), example = &"pv_7731")]
     pub preview_id: String,
 }
@@ -354,7 +359,7 @@ impl Operation for PlaceOrder {
         kind: Kind::Person,
         method: Method::Post,
         path: "/v1/sales/orders",
-        summary: "Place the order a prepare_order preview describes: re-price, take stock, record coupons, start payment, empty the cart.",
+        summary: "Place the order a prepare_order or prepare_gift_order preview describes: re-price, take stock, record coupons, start payment (a gift the recipient accepts waits for them), empty the cart.",
         consumes: &[Slot::one("preview_id")],
         produces: &[Slot::one("order_id")],
         checks: &[
@@ -381,8 +386,15 @@ impl Operation for PlaceOrder {
 }
 
 fn placed(done: &Committed) -> Value {
-    json!({"ok": true, "id": done.id, "order_number": done.produced.get("order_number"),
-           "order_status": done.produced.get("order_status"), "undo": null})
+    let mut out = json!({"ok": true, "id": done.id, "order_number": done.produced.get("order_number"),
+           "order_status": done.produced.get("order_status"), "undo": null});
+    // A gift the recipient accepts: where they accept it.
+    for key in ["gift_order_id", "accept_url"] {
+        if let Some(v) = done.produced.get(key) {
+            out[key] = v.clone();
+        }
+    }
+    out
 }
 
 /// The error for a checkout check that fails at the moment of ordering.
@@ -396,15 +408,40 @@ fn failed_check(rule: &str, detail: Option<&str>) -> ToolError {
     .detail(json!({"rule": rule}))
 }
 
+/// The preview behind a Place order button: an order (`prepare_order`) or a gift
+/// (`prepare_gift_order`); both are placed by this one endpoint.
+async fn claim_order_preview(
+    tx: &mut TxCx,
+    preview_id: &str,
+) -> Result<(acom_changeset::ClaimedPreview, Option<gift::PreparedGift>), ToolError> {
+    match acom_changeset::claim_preview(tx, preview_id, PrepareOrder::META.tool).await {
+        Ok(c) => Ok((c, None)),
+        Err(e) if e.code == ErrorCode::INVALID_INPUT.code => {
+            let c = acom_changeset::claim_preview(tx, preview_id, gift::PREPARE_TOOL)
+                .await
+                .map_err(|_| e)?;
+            if c.already.is_some() {
+                return Ok((c, None));
+            }
+            let g: gift::PreparedGift = serde_json::from_value(c.plan.clone())
+                .map_err(|e| ToolError::new(ErrorCode::INTERNAL, format!("prepared gift: {e}")))?;
+            Ok((c, Some(g)))
+        }
+        Err(e) => Err(e),
+    }
+}
+
 impl PersonOp<Cx> for PlaceOrder {
     async fn run(&self, tx: &mut TxCx, input: PlaceOrderInput) -> Result<Value, ToolError> {
-        let claimed =
-            acom_changeset::claim_preview(tx, &input.preview_id, PrepareOrder::META.tool).await?;
+        let (claimed, gift) = claim_order_preview(tx, &input.preview_id).await?;
         if let Some(done) = &claimed.already {
             return Ok(placed(done));
         }
-        let plan: PreparedOrder = serde_json::from_value(claimed.plan.clone())
-            .map_err(|e| ToolError::new(ErrorCode::INTERNAL, format!("prepared order: {e}")))?;
+        let plan: PreparedOrder = match &gift {
+            Some(g) => g.order.clone(),
+            None => serde_json::from_value(claimed.plan.clone())
+                .map_err(|e| ToolError::new(ErrorCode::INTERNAL, format!("prepared order: {e}")))?,
+        };
         if tx.principal.customer_id() != Some(plan.customer_id.as_str()) {
             return Err(ToolError::new(
                 ErrorCode::FORBIDDEN,
@@ -422,20 +459,28 @@ impl PersonOp<Cx> for PlaceOrder {
         // Re-price now: what is charged is what the shopper saw, or nothing.
         let (carts, view) = checkout_view(tx, &plan.delivery, Some(&plan.payment_method)).await?;
         let required = rules::checkout_checks(&tx.policy);
-        let checks =
-            checkout::checkout_checks(&view, &required, plan.total, floor_multiplier(&tx.policy));
-        if planned_lines(&view) != plan.lines || view.breakdown.total != plan.total {
+        let floor = floor_multiplier(&tx.policy);
+        let (checks, total, change) = match &gift {
+            Some(g) => {
+                let total = gift::total_of(&view, g.gift_wrap)?;
+                let checks = gift::checks(&view, &required, g, plan.total, floor, total);
+                (checks, total, g.change(&view, total))
+            }
+            None => (
+                checkout::checkout_checks(&view, &required, plan.total, floor),
+                view.breakdown.total,
+                create_order_change(&view),
+            ),
+        };
+        if planned_lines(&view) != plan.lines || total != plan.total {
             return Err(ToolError::new(
                 ErrorCode::ESTIMATE_CHANGED,
                 format!(
-                    "The order now comes to {} instead of {}; prepare it again.",
-                    view.breakdown.total, plan.total
+                    "The order now comes to {total} instead of {}; prepare it again.",
+                    plan.total
                 ),
             )
-            .detail(
-                json!({"new_preview": {"changes": [create_order_change(&view)],
-                                           "checks": checks}}),
-            ));
+            .detail(json!({"new_preview": {"changes": [change], "checks": checks}})));
         }
         if let Some(c) = checks.iter().find(|c| !c.passed) {
             return Err(failed_check(&c.rule, c.detail.as_deref()));
@@ -453,16 +498,22 @@ impl PersonOp<Cx> for PlaceOrder {
 
         let now = tx.clock.now();
         let b = &view.breakdown;
-        // A saved card is charged at once; transfers wait for the money (payment_due).
-        let (order_status, payment_status, paid_at) = if payment.payment_method == "credit_card" {
-            ("processing", "payment_complete", Some(now))
-        } else {
-            ("payment_due", "payment_due", None)
-        };
+        // A saved card is charged at once; transfers wait for the money (payment_due), and so
+        // does a gift until its recipient accepts it.
+        let held = gift
+            .as_ref()
+            .is_some_and(gift::PreparedGift::waits_for_recipient);
+        let (order_status, payment_status, paid_at) =
+            if payment.payment_method == "credit_card" && !held {
+                ("processing", "payment_complete", Some(now))
+            } else {
+                ("payment_due", "payment_due", None)
+            };
         let order_id = plan.order_id.clone();
         let customer_id = plan.customer_id.clone();
         let order_number = repo::next_order_number(tx).await?;
         let coupon = b.coupons_recorded.first();
+        let gift_options = gift.as_ref().map(gift::PreparedGift::options_json);
         repo::insert_order(
             tx,
             &repo::NewOrder {
@@ -477,8 +528,11 @@ impl PersonOp<Cx> for PlaceOrder {
                 subtotal: b.subtotal,
                 discount: b.discount_total,
                 shipping: b.shipping,
-                total: b.total,
+                total,
                 preview_id: &claimed.id,
+                is_gift: gift.is_some(),
+                gift_options: gift_options.as_ref(),
+                gift_wrap: gift.as_ref().and_then(|g| g.gift_wrap),
             },
         )
         .await?;
@@ -528,7 +582,7 @@ impl PersonOp<Cx> for PlaceOrder {
                 order_id: &order_id,
                 method: &payment.payment_method,
                 status: payment_status,
-                amount: b.total,
+                amount: total,
                 card_last4: if payment.payment_method == "credit_card" {
                     card.as_deref()
                 } else {
@@ -541,7 +595,7 @@ impl PersonOp<Cx> for PlaceOrder {
         let member_coupons =
             promotion::redeem_coupons(tx, &customer_id, &order_id, &b.coupons_recorded).await?;
         let d = view.destination.as_ref();
-        let record = json!({
+        let mut record = json!({
             "preview_id": claimed.id,
             "delivery": d.map(|d| json!({
                 "address_id": d.address_id,
@@ -556,6 +610,20 @@ impl PersonOp<Cx> for PlaceOrder {
             })).collect::<Vec<_>>(),
             "member_coupon_ids": member_coupons,
         });
+        let mut produced = Map::new();
+        if let Some(g) = &gift {
+            record["gift"] = g.record_json();
+            if let Some(delivery) = record.get_mut("delivery").filter(|v| v.is_object()) {
+                // The recipient's address is for this order only.
+                delivery["address_saved"] = json!(false);
+            }
+            if let Some(accept) = g.place_acceptance(tx, &order_id).await? {
+                record["gift"]["gift_order_id"] = json!(accept.gift_order_id);
+                record["gift"]["expires"] = json!(tx.time.format(accept.expires));
+                produced.insert("gift_order_id".into(), json!(accept.gift_order_id));
+                produced.insert("accept_url".into(), json!(accept.accept_url));
+            }
+        }
         repo::append_event(
             tx,
             &order_id,
@@ -580,7 +648,6 @@ impl PersonOp<Cx> for PlaceOrder {
             repo::touch_cart(tx, &c.id).await?;
         }
 
-        let mut produced = Map::new();
         produced.insert("order_id".into(), json!(order_id));
         produced.insert("order_number".into(), json!(order_number));
         produced.insert("order_status".into(), json!(order_status));
@@ -594,8 +661,8 @@ impl PersonOp<Cx> for PlaceOrder {
             tx,
             LogEntry {
                 object: Some(("order", &order_id)),
-                result: Some(json!({"order_number": order_number, "total": b.total,
-                                    "order_status": order_status})),
+                result: Some(json!({"order_number": order_number, "total": total,
+                                    "order_status": order_status, "is_gift": gift.is_some()})),
                 preview_id: Some(&claimed.id),
                 ..LogEntry::new(
                     ActionType::ORDER.0,
@@ -799,6 +866,8 @@ pub enum OrderField {
     Totals,
     /// Coupons the order recorded.
     CouponsRecorded,
+    /// Cancel, return and exchange requests on the order.
+    Claims,
 }
 
 impl OrderField {
@@ -809,6 +878,7 @@ impl OrderField {
             OrderField::OrderStatus => "order_status",
             OrderField::OrderDate => "order_date",
             OrderField::CustomerId => "customer_id",
+            OrderField::Claims => "claims",
             OrderField::OrderedItem => "ordered_item",
             OrderField::Delivery => "delivery",
             OrderField::Payment => "payment",
@@ -866,6 +936,10 @@ impl ReadOp<Cx> for GetOrder {
         let parcel = match crate::service::providers::deliveries() {
             Some(read) => read(&mut tx, &o.id).await?,
             None => None,
+        };
+        let claims = match crate::service::providers::claims() {
+            Some(read) => read(&mut tx, &o.id).await?,
+            None => Vec::new(),
         };
         let payment = repo::payment(&mut tx, &o.id).await?;
         // Orders placed before discounts were recorded in full: one line per promotion.
@@ -961,6 +1035,11 @@ impl ReadOp<Cx> for GetOrder {
                 "total": repo::money(o.total_payment_due_value, &o.total_payment_due_currency)?,
             },
             "coupons_recorded": coupons,
+            "claims": claims.iter().map(|c| json!({
+                "id": c.id, "claim_type": c.claim_type, "claim_status": c.claim_status,
+                "order_item_ids": c.order_item_ids,
+                "requested_at": cx.time.format(c.requested_at),
+            })).collect::<Vec<_>>(),
         });
         let fields: Vec<String> = input
             .fields
@@ -1147,6 +1226,7 @@ impl ReadOp<Cx> for SearchOrders {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cart::{GetCart, GetCartInput};
     use acom_contract::schema::{closed_schema_for, violations};
 
     #[test]
@@ -1208,12 +1288,32 @@ mod tests {
         assert_eq!(back, plan);
     }
 
-    /// Integration: F2 step 5 — Jamie prepares her order for $71.20 and places it
-    /// (`DATABASE_URL`, demo seed with change set #1042 run and the windbreaker in her cart).
+    /// Integration: Jamie puts the windbreaker in her cart, prepares the order for exactly the
+    /// cart's total, and places it; the order is rolled back and the cart line removed again
+    /// (`DATABASE_URL`, demo seed). The $71.20 of scene F2, which needs change set #1042 run
+    /// first, is checked by `services/commerce/tests/scenes.rs`.
     #[tokio::test]
     #[ignore = "integration: needs a PostgreSQL database"]
     async fn jamie_prepares_and_places_her_order() {
         let cx = crate::testdb::cx("cus_jamie").await;
+        let registry = crate::testdb::registry();
+        let added = acom_changeset::preview(
+            &registry,
+            &cx,
+            "add_to_cart",
+            json!({"mode": "variant", "variant_id": "var_windbreaker_m_slate", "order_quantity": 1}),
+            None,
+        )
+        .await
+        .unwrap();
+        let line = acom_changeset::commit(&registry, &cx, "add_to_cart", &added.preview_id)
+            .await
+            .unwrap();
+        let cart = GetCart
+            .read(&cx, GetCartInput { fields: None })
+            .await
+            .unwrap();
+        let total: Money = serde_json::from_value(cart["total"].clone()).unwrap();
         let planned = PrepareOrder
             .preview(
                 &cx,
@@ -1222,7 +1322,7 @@ mod tests {
                     delivery_address_id: Some("adr_home".into()),
                     delivery_address: None,
                     payment_method: None,
-                    client_total: promotion::money(Decimal::new(7120, 2), acom_core::Currency::USD),
+                    client_total: total,
                 },
             )
             .await
@@ -1232,16 +1332,13 @@ mod tests {
             "{:?}",
             planned.checks
         );
-        assert_eq!(planned.changes[0].to["total"]["value"].to_string(), "71.20");
+        assert_eq!(planned.changes[0].to["total"], cart["total"]);
         let p = acom_changeset::preview(
-            &crate::testdb::registry(),
+            &registry,
             &cx,
             "prepare_order",
-            serde_json::to_value(
-                json!({"delivery_mode": "saved", "delivery_address_id": "adr_home",
-                                        "client_total": {"value": 71.20, "currency": "USD"}}),
-            )
-            .unwrap(),
+            json!({"delivery_mode": "saved", "delivery_address_id": "adr_home",
+                   "client_total": cart["total"]}),
             None,
         )
         .await
@@ -1257,7 +1354,20 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(out["order_status"], "processing");
-        // Rolled back on drop.
+        drop(tx); // rolled back
+        let cart_line_id = line.produced["cart_line_id"].as_str().unwrap().to_owned();
+        let removed = acom_changeset::preview(
+            &registry,
+            &cx,
+            "remove_cart_item",
+            json!({"cart_line_id": cart_line_id}),
+            None,
+        )
+        .await
+        .unwrap();
+        acom_changeset::commit(&registry, &cx, "remove_cart_item", &removed.preview_id)
+            .await
+            .unwrap();
     }
 
     /// Integration: order reads for Alex's #20402 (`DATABASE_URL`, demo seed).

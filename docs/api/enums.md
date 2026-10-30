@@ -87,6 +87,8 @@
 | 재고 상태 `availability` (schema.org `ItemAvailability`) | `in_stock`, `out_of_stock`, `pre_order`, `back_order`, `discontinued` |
 | 가격 종류 `price_type` (schema.org `PriceTypeEnumeration`) | `list_price`, `sale_price` |
 | 판매 방식 `acom:sale_type` | `always`, `pre_order`, `subscription`, `gift_card` |
+| 초안 진행 `acom:draft_status` (공급사 시트에서 만든 초안) | `ready`(시트의 필수 필드가 다 있음), `needs_you`(필수 필드가 없거나 불분명해 사람이 채워야 함), `working`(가져오기가 아직 채우는 중) |
+| 가져오기 방식 `acom:import_mode` (`batch_import`) | `create`(새 초안만), `upsert`(앞선 가져오기가 만든 초안도 시트 값으로 고침) |
 
 ### 1.11 프로모션·쿠폰·이벤트
 
@@ -132,7 +134,7 @@
 | 목록 | 값 |
 |---|---|
 | 구독 | `active`, `paused`, `cancelled` |
-| 캠페인 | `draft`, `scheduled`, `sending`, `sent`, `cancelled` |
+| 캠페인 `acom:campaign_status` | `draft`, `scheduled`, `sending`, `sent`, `failed`(발송이 메시지 하나 나가기 전에 멈춤, 예: 수신자 목록 가져오기 실패), `cancelled` |
 | 공지 | `draft`, `published` |
 | 게시글 | `published`, `held_for_review`, `blinded`, `deleted` |
 | 리뷰 노출 `review_status` (schema:creativeWorkStatus) | `visible`, `hidden`, `reported` |
@@ -143,6 +145,7 @@
 | 채널 연결 | `connected`, `degraded`, `disconnected` |
 | 할 일 `acom:task_state` | `needs_you`, `working`, `done`, `dismissed` |
 | 할 일 출처 `acom:task_origin` | `you_asked`, `agent_noticed`, `automation` |
+| 예약 작업 `acom:job_state` (`job.updated` 이벤트, 열에서 계산) | `scheduled`, `retrying`, `done` |
 | 운영자 계정 `acom:admin_status` | `active`, `suspended`, `locked` |
 
 ### 1.15 에이전트

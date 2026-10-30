@@ -523,6 +523,124 @@
   },
   {
     "schema": "analytics",
+    "table": "campaign_send",
+    "kind": "view",
+    "term": "schema:CreativeWork/acom:CampaignSend",
+    "description": "one row per campaign: when it was due, whether and when it went out, and why it failed.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "",
+        "nullable": true,
+        "term": "-",
+        "description": "store (tenant) the campaign belongs to."
+      },
+      {
+        "name": "campaign_id",
+        "type": "",
+        "nullable": true,
+        "term": "acom:campaignId",
+        "description": "the campaign (cmp_ id)."
+      },
+      {
+        "name": "name",
+        "type": "",
+        "nullable": true,
+        "term": "schema:name",
+        "description": "campaign name, for example Weekly email."
+      },
+      {
+        "name": "template_id",
+        "type": "",
+        "nullable": true,
+        "term": "acom:templateId",
+        "description": "template it is made from (tpl_ id); the sends of one template are one recurring campaign."
+      },
+      {
+        "name": "message_channel",
+        "type": "",
+        "nullable": true,
+        "term": "acom:messageChannel",
+        "description": "channel it goes out on. values: message_channel",
+        "values_list": "message_channel"
+      },
+      {
+        "name": "campaign_status",
+        "type": "",
+        "nullable": true,
+        "term": "acom:campaignStatus",
+        "description": "where the campaign is. values: campaign_status",
+        "values_list": "campaign_status"
+      },
+      {
+        "name": "scheduled_time",
+        "type": "",
+        "nullable": true,
+        "term": "acom:scheduledTime",
+        "description": "when the send was due."
+      },
+      {
+        "name": "date_sent",
+        "type": "",
+        "nullable": true,
+        "term": "schema:dateSent",
+        "description": "when the messages went out; NULL when they did not."
+      },
+      {
+        "name": "recipient_count",
+        "type": "",
+        "nullable": true,
+        "term": "acom:recipientCount",
+        "description": "shoppers it was addressed to."
+      },
+      {
+        "name": "error_message",
+        "type": "",
+        "nullable": true,
+        "term": "schema:error",
+        "description": "why the send failed, in a few words, for example List import failed; NULL unless it failed."
+      }
+    ]
+  },
+  {
+    "schema": "analytics",
+    "table": "daily_new_members",
+    "kind": "view",
+    "term": "schema:Observation/acom:NewMembers",
+    "description": "accounts created per store day, by the tier the members are in now.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "",
+        "nullable": true,
+        "term": "-",
+        "description": "store (tenant) the members belong to."
+      },
+      {
+        "name": "observation_date",
+        "type": "",
+        "nullable": true,
+        "term": "schema:observationDate",
+        "description": "calendar day in the store's time zone on which the accounts were created."
+      },
+      {
+        "name": "member_tier",
+        "type": "",
+        "nullable": true,
+        "term": "acom:tierId",
+        "description": "tier the members are in now; NULL for accounts outside every program."
+      },
+      {
+        "name": "member_count",
+        "type": "",
+        "nullable": true,
+        "term": "acom:memberCount",
+        "description": "accounts created that day."
+      }
+    ]
+  },
+  {
+    "schema": "analytics",
     "table": "daily_sales",
     "kind": "view",
     "term": "schema:Observation/acom:DailySales",
@@ -562,6 +680,260 @@
         "nullable": true,
         "term": "acom:orderCount",
         "description": "number of orders placed that day that were paid and not cancelled."
+      }
+    ]
+  },
+  {
+    "schema": "analytics",
+    "table": "member_tier_count",
+    "kind": "view",
+    "term": "schema:Observation/acom:TierCount",
+    "description": "members per tier now, leaving out blocked and withdrawn accounts.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "",
+        "nullable": true,
+        "term": "-",
+        "description": "store (tenant) the members belong to."
+      },
+      {
+        "name": "member_tier",
+        "type": "",
+        "nullable": true,
+        "term": "acom:tierId",
+        "description": "the tier."
+      },
+      {
+        "name": "member_count",
+        "type": "",
+        "nullable": true,
+        "term": "acom:memberCount",
+        "description": "members in the tier now."
+      }
+    ]
+  },
+  {
+    "schema": "analytics",
+    "table": "order_line_summary",
+    "kind": "view",
+    "term": "schema:OrderItem/acom:OrderLineSummary",
+    "description": "one row per line of the orders that count as sales (paid, not cancelled): day, variant, product, category, campaign, units and net amount, never who bought it.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "",
+        "nullable": true,
+        "term": "-",
+        "description": "store (tenant) the line belongs to."
+      },
+      {
+        "name": "order_id",
+        "type": "",
+        "nullable": true,
+        "term": "acom:orderId",
+        "description": "the order the line is in (ord_ id)."
+      },
+      {
+        "name": "observation_date",
+        "type": "",
+        "nullable": true,
+        "term": "schema:observationDate",
+        "description": "calendar day in the store's time zone on which the order was placed."
+      },
+      {
+        "name": "product_id",
+        "type": "",
+        "nullable": true,
+        "term": "schema:orderedItem",
+        "description": "the variant sold (var_ id; API variant_id)."
+      },
+      {
+        "name": "product_group_id",
+        "type": "",
+        "nullable": true,
+        "term": "schema:isVariantOf",
+        "description": "the product the variant belongs to (prd_ id; API product_id)."
+      },
+      {
+        "name": "category_id",
+        "type": "",
+        "nullable": true,
+        "term": "schema:category",
+        "description": "the product's primary standard category (cat_ id); NULL when it has none."
+      },
+      {
+        "name": "campaign_id",
+        "type": "",
+        "nullable": true,
+        "term": "acom:campaignId",
+        "description": "campaign the order came from (cmp_ id); NULL when it came from anywhere else."
+      },
+      {
+        "name": "order_quantity",
+        "type": "",
+        "nullable": true,
+        "term": "schema:orderQuantity",
+        "description": "units sold on the line."
+      },
+      {
+        "name": "revenue_value",
+        "type": "",
+        "nullable": true,
+        "term": "acom:revenue",
+        "description": "price × quantity − line discount, in major units; shipping is not on lines."
+      },
+      {
+        "name": "revenue_currency",
+        "type": "",
+        "nullable": true,
+        "term": "acom:revenue",
+        "description": "ISO 4217 code of revenue_value."
+      }
+    ]
+  },
+  {
+    "schema": "analytics",
+    "table": "order_summary",
+    "kind": "view",
+    "term": "schema:Order/acom:OrderSummary",
+    "description": "one row per paid order with only what aggregates need (day, state, tier, campaign, amount, return request), never who placed it; orders still awaiting payment are left out.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "",
+        "nullable": true,
+        "term": "-",
+        "description": "store (tenant) the order belongs to."
+      },
+      {
+        "name": "order_id",
+        "type": "",
+        "nullable": true,
+        "term": "acom:orderId",
+        "description": "the order (ord_ id)."
+      },
+      {
+        "name": "observation_date",
+        "type": "",
+        "nullable": true,
+        "term": "schema:observationDate",
+        "description": "calendar day in the store's time zone on which the order was placed."
+      },
+      {
+        "name": "order_status",
+        "type": "",
+        "nullable": true,
+        "term": "schema:orderStatus",
+        "description": "where the order is now; cancelled orders count for the cancellation rate only. values: order_status",
+        "values_list": "order_status"
+      },
+      {
+        "name": "member_tier",
+        "type": "",
+        "nullable": true,
+        "term": "acom:tierId",
+        "description": "the tier the shopper is in now; NULL for guest orders."
+      },
+      {
+        "name": "campaign_id",
+        "type": "",
+        "nullable": true,
+        "term": "acom:campaignId",
+        "description": "campaign the order came from (cmp_ id); NULL when it came from anywhere else."
+      },
+      {
+        "name": "revenue_value",
+        "type": "",
+        "nullable": true,
+        "term": "acom:revenue",
+        "description": "total_payment_due of the order (after discounts, with shipping and gift wrap), in major units."
+      },
+      {
+        "name": "revenue_currency",
+        "type": "",
+        "nullable": true,
+        "term": "acom:revenue",
+        "description": "ISO 4217 code of revenue_value."
+      },
+      {
+        "name": "has_return_request",
+        "type": "",
+        "nullable": true,
+        "term": "acom:hasReturnRequest",
+        "description": "true when a return was asked for on the order and not declined or withdrawn."
+      }
+    ]
+  },
+  {
+    "schema": "analytics",
+    "table": "variant_stock_out",
+    "kind": "view",
+    "term": "schema:Offer/acom:StockOut",
+    "description": "one row per variant that is out of stock now, with when it ran out and when it is expected back.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "",
+        "nullable": true,
+        "term": "-",
+        "description": "store (tenant) the variant belongs to."
+      },
+      {
+        "name": "product_id",
+        "type": "",
+        "nullable": true,
+        "term": "schema:itemOffered",
+        "description": "the variant that ran out (var_ id; API variant_id)."
+      },
+      {
+        "name": "product_group_id",
+        "type": "",
+        "nullable": true,
+        "term": "schema:isVariantOf",
+        "description": "the product the variant belongs to (prd_ id; API product_id)."
+      },
+      {
+        "name": "product_name",
+        "type": "",
+        "nullable": true,
+        "term": "schema:name",
+        "description": "name of the product, for example Cotton chore coat."
+      },
+      {
+        "name": "size",
+        "type": "",
+        "nullable": true,
+        "term": "schema:size",
+        "description": "size word of the variant; NULL for one-size products."
+      },
+      {
+        "name": "color",
+        "type": "",
+        "nullable": true,
+        "term": "schema:color",
+        "description": "color name of the variant; NULL when the product has one color."
+      },
+      {
+        "name": "is_bestseller",
+        "type": "",
+        "nullable": true,
+        "term": "acom:isBestseller",
+        "description": "true when the store tags the product bestseller (catalog keywords)."
+      },
+      {
+        "name": "sold_out_at",
+        "type": "",
+        "nullable": true,
+        "term": "acom:soldOutAt",
+        "description": "when the variant ran out."
+      },
+      {
+        "name": "availability_starts",
+        "type": "",
+        "nullable": true,
+        "term": "schema:availabilityStarts",
+        "description": "when stock is expected back; NULL when unknown."
       }
     ]
   },
@@ -608,6 +980,183 @@
         "nullable": true,
         "term": "schema:description",
         "description": "short brand description."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
+    "table": "data_feed",
+    "kind": "table",
+    "term": "schema:DataFeed",
+    "description": "a supplier sheet as uploaded, one element per row, read by batch_import. id prefix upl_. API: upload_id.",
+    "id_prefix": "upl",
+    "api_name": "upload_id",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix upl_; the same value the API, logs and events use."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "file name as uploaded, for example fw26_supplier.xlsx."
+      },
+      {
+        "name": "encoding_format",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:encodingFormat",
+        "description": "media type of the uploaded file, for example text/csv."
+      },
+      {
+        "name": "provider_name",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:provider",
+        "description": "name of the supplier that sent the sheet; NULL when unknown."
+      },
+      {
+        "name": "data_feed_element",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "schema:dataFeedElement",
+        "description": "the rows in sheet order, each a map from column name to cell text: [{supplier_code, style_name, color, category, brand, sizes, cost, units_per_size, material, image, supplier_text}]."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
+    "table": "data_feed_item",
+    "kind": "table",
+    "term": "schema:DataFeedItem",
+    "description": "one supplier sheet row and the draft product it became, with what is still open before the draft can be published.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "product_import_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:productImportId",
+        "description": "the import run that read the row (imp_ id).",
+        "references": "catalog.product_import"
+      },
+      {
+        "name": "position",
+        "type": "integer",
+        "nullable": false,
+        "term": "schema:position",
+        "description": "row number in the sheet, from 1."
+      },
+      {
+        "name": "product_group_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:item",
+        "description": "the draft product made from the row (prd_ id).",
+        "references": "catalog.product_group"
+      },
+      {
+        "name": "supplier_code",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:supplierCode",
+        "description": "the supplier's own code for the row, for example FW26-OT-014."
+      },
+      {
+        "name": "supplier_text",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:supplierText",
+        "description": "the supplier's description, kept so the store can write its own copy in its tone; NULL when the sheet had none."
+      },
+      {
+        "name": "draft_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:draftStatus",
+        "description": "whether the draft is complete or waits for a person. values: draft_status",
+        "values": [
+          "ready",
+          "needs_you",
+          "working"
+        ],
+        "values_list": "draft_status"
+      },
+      {
+        "name": "open_fields",
+        "type": "text[]",
+        "nullable": false,
+        "term": "acom:openFields",
+        "description": "required fields that were missing or unclear in the sheet, from catalog.yml import.required_fields, for example {material}; empty when none."
+      },
+      {
+        "name": "draft_note",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:draftNote",
+        "description": "one sentence for the person about what is open, for example Fabric mix is missing in the sheet; NULL when nothing is."
       },
       {
         "name": "created_at",
@@ -1239,6 +1788,116 @@
   },
   {
     "schema": "catalog",
+    "table": "product_import",
+    "kind": "table",
+    "term": "schema:CreateAction/acom:ProductImport",
+    "description": "one batch_import run that turned a supplier sheet into product drafts. id prefix imp_. API: import_id.",
+    "id_prefix": "imp",
+    "api_name": "import_id",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix imp_; the same value the API, logs and events use."
+      },
+      {
+        "name": "data_feed_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:object",
+        "description": "the supplier sheet imported (upl_ id).",
+        "references": "catalog.data_feed"
+      },
+      {
+        "name": "import_mode",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:importMode",
+        "description": "create makes new drafts only; upsert also refreshes drafts an earlier import made. values: import_mode",
+        "values": [
+          "create",
+          "upsert"
+        ],
+        "values_list": "import_mode"
+      },
+      {
+        "name": "action_status",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:actionStatus",
+        "description": "whether the run finished. values: action_status",
+        "values": [
+          "potential",
+          "active",
+          "completed",
+          "failed"
+        ],
+        "values_list": "action_status"
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "who ran the import: the change-set runner (sys_) or an operator (adm_)."
+      },
+      {
+        "name": "change_set_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:changeSetId",
+        "description": "the approved change set the import ran in (cs_ id); undoing the set removes its drafts.",
+        "references": "platform.change_set"
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the run started."
+      },
+      {
+        "name": "end_time",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:endTime",
+        "description": "when the run finished; NULL while it runs."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
     "table": "review",
     "kind": "table",
     "term": "schema:Review",
@@ -1433,6 +2092,100 @@
         "nullable": false,
         "term": "acom:isHelpful",
         "description": "true while the shopper marks the review helpful; false after they take the vote back."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
+    "table": "unit_price_specification",
+    "kind": "table",
+    "term": "schema:UnitPriceSpecification",
+    "description": "a list price scheduled for a period (schedule_price_change); it applies from valid_from, and the offer price applies again after valid_through. id prefix ups_.",
+    "id_prefix": "ups",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix ups_; the same value the API, logs and events use."
+      },
+      {
+        "name": "offer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:offerId",
+        "description": "the offer whose list price this schedules (off_ id).",
+        "references": "catalog.offer"
+      },
+      {
+        "name": "price",
+        "type": "numeric(12,2)",
+        "nullable": false,
+        "term": "schema:price",
+        "description": "the list price per unit during the period."
+      },
+      {
+        "name": "price_currency",
+        "type": "char(3)",
+        "nullable": false,
+        "term": "schema:priceCurrency",
+        "description": "ISO 4217 code of price."
+      },
+      {
+        "name": "price_type",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:priceType",
+        "description": "always list_price here; member and sale prices live in promotion.unit_price_specification. values: price_type",
+        "values": [
+          "list_price",
+          "sale_price"
+        ],
+        "values_list": "price_type"
+      },
+      {
+        "name": "valid_from",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:validFrom",
+        "description": "first moment the scheduled price applies."
+      },
+      {
+        "name": "valid_through",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:validThrough",
+        "description": "last moment it applies (inclusive); NULL means until changed."
       },
       {
         "name": "created_at",
@@ -3152,6 +3905,75 @@
   },
   {
     "schema": "merchandising",
+    "table": "category_mapping",
+    "kind": "table",
+    "term": "schema:Intangible/acom:CategoryMapping",
+    "description": "links a standard category to a display category, so the display tree shows the standard category's products. id prefix map_.",
+    "id_prefix": "map",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix map_; the same value the API, logs and events use."
+      },
+      {
+        "name": "standard_category_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:standardCategory",
+        "description": "the internal category whose products are shown (cat_ id, term set standard).",
+        "references": "merchandising.defined_term"
+      },
+      {
+        "name": "display_category_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:displayCategory",
+        "description": "the shopper menu category that shows them (cat_ id, term set display).",
+        "references": "merchandising.defined_term"
+      },
+      {
+        "name": "is_primary",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:isPrimary",
+        "description": "true for the one display category a standard category's product pages show as their path."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "merchandising",
     "table": "defined_term",
     "kind": "table",
     "term": "schema:DefinedTerm",
@@ -3499,6 +4321,141 @@
         "nullable": true,
         "term": "schema:position",
         "description": "order of the product inside the category; NULL sorts by search ranking."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "messaging",
+    "table": "campaign",
+    "kind": "table",
+    "term": "schema:CreativeWork/acom:Campaign",
+    "description": "a marketing message sent to many shoppers at a scheduled time from one template; sending it reaches customers. id prefix cmp_.",
+    "id_prefix": "cmp",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix cmp_; the same value the API, logs and events use."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "name operators know the campaign by, for example Weekly email."
+      },
+      {
+        "name": "message_channel",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:messageChannel",
+        "description": "channel it is sent on; the template must be written for the same channel. values: message_channel",
+        "values": [
+          "email",
+          "sms",
+          "push",
+          "in_app"
+        ],
+        "values_list": "message_channel"
+      },
+      {
+        "name": "template_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:templateId",
+        "description": "template the message is made from (tpl_ id); campaigns of one template are the same recurring send.",
+        "references": "messaging.message_template"
+      },
+      {
+        "name": "valid_for_member_tier",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:validForMemberTier",
+        "description": "tier the campaign goes to; NULL means every member who agreed to marketing messages.",
+        "references": "customer.member_program_tier"
+      },
+      {
+        "name": "campaign_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:campaignStatus",
+        "description": "where the campaign is; failed means the send stopped before any message went out. values: campaign_status",
+        "values": [
+          "draft",
+          "scheduled",
+          "sending",
+          "sent",
+          "failed",
+          "cancelled"
+        ],
+        "values_list": "campaign_status"
+      },
+      {
+        "name": "scheduled_time",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:scheduledTime",
+        "description": "when the send is due, on the store clock; NULL while a draft has no time."
+      },
+      {
+        "name": "date_sent",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:dateSent",
+        "description": "when the messages went out; NULL while not sent, and for failed and cancelled campaigns."
+      },
+      {
+        "name": "recipient_count",
+        "type": "integer",
+        "nullable": true,
+        "term": "acom:recipientCount",
+        "description": "shoppers the campaign was addressed to after consent checks; NULL until the list is built."
+      },
+      {
+        "name": "error",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "schema:error",
+        "description": "why the send failed, as {code, message}; NULL unless campaign_status is failed."
+      },
+      {
+        "name": "change_set_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:changeSetId",
+        "description": "change set that approved the campaign; NULL for sends set up before change sets.",
+        "references": "platform.change_set"
       },
       {
         "name": "created_at",
@@ -4858,6 +5815,13 @@
         "nullable": false,
         "term": "-",
         "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      },
+      {
+        "name": "seed_fingerprint",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "fingerprint (SHA-256 of the rows) of the demo seed this store was loaded from; NULL for a store not loaded from a seed."
       }
     ]
   },
@@ -6294,6 +7258,103 @@
   },
   {
     "schema": "sales",
+    "table": "gift_order",
+    "kind": "table",
+    "term": "schema:AcceptAction/acom:GiftOrder",
+    "description": "a gift waiting for its recipient to accept it and give an address; id prefix gift_. API: gift_order.",
+    "id_prefix": "gift",
+    "api_name": "gift_order",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "gift id (gift_ prefix), the part of the accept link that names the gift (API gift_order_id)."
+      },
+      {
+        "name": "order_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:object",
+        "description": "the gift order the recipient accepts (ord_ id).",
+        "references": "sales.sales_order"
+      },
+      {
+        "name": "recipient_name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:recipient",
+        "description": "the name the sender gave for the recipient, printed on the card and the parcel; used for this gift only."
+      },
+      {
+        "name": "recipient_contact",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:recipientContact",
+        "description": "the email or phone the accept link goes to; used for this gift only and never saved to anyone's profile."
+      },
+      {
+        "name": "action_status",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:actionStatus",
+        "description": "the recipient's acceptance: potential until they accept, completed once they did, failed when it lapsed. values: action_status",
+        "values": [
+          "potential",
+          "active",
+          "completed",
+          "failed"
+        ],
+        "values_list": "action_status"
+      },
+      {
+        "name": "expires",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:expires",
+        "description": "the last moment the recipient can accept (order time + gift.auto_cancel_if_no_address_days); payment waits until then."
+      },
+      {
+        "name": "accepted_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:acceptedAt",
+        "description": "when the recipient accepted and gave the address; NULL until then."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the gift was ordered."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "sales",
     "table": "order_event",
     "kind": "table",
     "term": "schema:Action",
@@ -6943,6 +8004,14 @@
         "nullable": false,
         "term": "-",
         "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      },
+      {
+        "name": "campaign_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:campaignId",
+        "description": "campaign whose message the shopper followed to place the order (cmp_ id); NULL when the order came from anywhere else.",
+        "references": "messaging.campaign"
       }
     ]
   },

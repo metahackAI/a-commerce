@@ -128,17 +128,24 @@ impl ConversationContext {
         self.turns.is_empty()
     }
 
-    /// One line per earlier turn for the planner.
+    /// One line per earlier turn for the planner. Blocks are named with their id, so a step can
+    /// use an earlier block's rows (`uses`/`each`: `blk_…`).
     pub fn history(&self, n: usize) -> Vec<String> {
         let skip = self.turns.len().saturating_sub(n);
         self.turns
             .iter()
             .skip(skip)
             .map(|t| {
-                let shown: Vec<&str> = t
+                let shown: Vec<String> = t
                     .blocks
                     .iter()
-                    .filter_map(|b| b.get("ui").and_then(Value::as_str))
+                    .filter_map(|b| {
+                        let ui = b.get("ui").and_then(Value::as_str)?;
+                        Some(match b.get("block_id").and_then(Value::as_str) {
+                            Some(id) => format!("{ui} {id}"),
+                            None => ui.to_owned(),
+                        })
+                    })
                     .collect();
                 format!(
                     "Person: {} | Agent ({}): {}{}",
@@ -153,6 +160,31 @@ impl ConversationContext {
                 )
             })
             .collect()
+    }
+
+    /// An earlier block by id.
+    pub fn block(&self, block_id: &str) -> Option<&Value> {
+        self.turns
+            .iter()
+            .rev()
+            .flat_map(|t| t.blocks.iter())
+            .find(|b| b.get("block_id").and_then(Value::as_str) == Some(block_id))
+    }
+
+    /// The most recent earlier block of one of these kinds.
+    pub fn last_block(&self, uis: &[&str]) -> Option<&Value> {
+        self.turns.iter().rev().find_map(|t| {
+            t.blocks.iter().rev().find(|b| {
+                b.get("ui")
+                    .and_then(Value::as_str)
+                    .is_some_and(|u| uis.contains(&u))
+            })
+        })
+    }
+
+    /// What the person said in earlier turns, newest first.
+    pub fn said_before(&self) -> impl Iterator<Item = &str> {
+        self.turns.iter().rev().map(|t| t.text.as_str())
     }
 
     /// Ids that came up in earlier blocks, by field name (`product_id` → […]), newest first.
@@ -244,6 +276,23 @@ mod tests {
             c.history(4),
             ["Person: Run a 20% weekend sale | Agent (promotion): Drafted. [showed change_set]"]
         );
+        c.turns.push(PastTurn {
+            text: "Review the returns".into(),
+            reply: None,
+            agent: "orders".into(),
+            blocks: vec![
+                json!({"ui": "refund_review", "block_id": "blk_7", "data": {"requests": []}}),
+            ],
+        });
+        assert!(c.history(4)[1].ends_with("[showed refund_review blk_7]"));
+        assert_eq!(c.block("blk_7").unwrap()["ui"], "refund_review");
+        assert!(c.block("blk_8").is_none());
+        assert_eq!(
+            c.last_block(&["change_set", "refund_review"]).unwrap()["ui"],
+            "refund_review"
+        );
+        assert_eq!(c.said_before().next(), Some("Review the returns"));
+        c.turns.pop();
         let e = c.entities();
         assert_eq!(e["change_set_id"], ["cs_1042"]);
         assert_eq!(e["product_id"], ["prd_a"]);

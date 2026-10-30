@@ -3,6 +3,7 @@
 
 pub mod generate;
 pub mod load;
+pub mod media;
 pub mod named;
 
 /// Seed rows in load order: the table (`schema.table`) and the row, a JSON object whose keys

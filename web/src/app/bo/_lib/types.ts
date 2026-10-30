@@ -98,6 +98,8 @@ export interface ChangeSet {
   approved_by?: string | null;
   approved_at?: string | null;
   verification?: {state: string; matched: number; total: number} | null;
+  /** State changes, oldest first, with who made each (`agent_id`, `agent_name`). */
+  history?: {agent_id?: string | null; agent_name?: string | null; to?: string | null; time?: string | null}[];
 }
 
 /** One row of `search_change_sets`. */
@@ -148,6 +150,8 @@ export interface TaskSummary {
   change_set_id: string | null;
   watcher: string | null;
   conversation_id?: string | null;
+  /** When it last changed, including a watcher writing what it observed again. */
+  updated_at?: string;
 }
 
 /** `get_task`. */
@@ -248,6 +252,17 @@ export interface Variant {
   availability?: string;
 }
 
+/** Where a draft made from a supplier sheet came from, and what is still open on it (`acom:draft`). */
+export interface DraftInfo {
+  import_id: string;
+  row: number;
+  supplier_code: string;
+  draft_status: 'ready' | 'needs_you' | 'working' | string;
+  open_fields: string[];
+  note: string | null;
+  supplier_text: string | null;
+}
+
 /** One row of `search_product_groups` (a `ProductGroup`). */
 export interface ProductGroupSummary {
   id: string;
@@ -258,15 +273,42 @@ export interface ProductGroupSummary {
   availability?: string;
   price?: number | null;
   price_currency?: string | null;
+  cost?: number | null;
   inventory_level?: number | null;
   varies_by?: string[];
+  variant_count?: number;
+  image?: string | null;
+  'acom:draft'?: DraftInfo;
+}
+
+/** A variant as `get_product_group` lists it (operators also see cost and scheduled prices). */
+export interface GroupVariant extends Variant {
+  name?: string;
+  offer_id?: string | null;
+  price?: number | null;
+  price_currency?: string | null;
+  cost?: number | null;
+  'acom:safety_stock'?: number | null;
+  'acom:managed'?: boolean;
+  'acom:sale_type'?: string;
+  scheduled_prices?: {unit_price_specification_id: string; price: number; valid_from: string; valid_through: string | null}[];
 }
 
 /** `get_product_group` (catalog view). */
-export interface ProductGroup extends ProductGroupSummary {
+export interface ProductGroup extends Omit<ProductGroupSummary, 'availability'> {
   description?: string | null;
-  has_variant?: Variant[];
+  material?: string | null;
+  release_date?: string | null;
+  has_variant?: GroupVariant[];
   pending_changes?: unknown[];
+}
+
+/** `list_brands` / `get_brand`. */
+export interface Brand {
+  id: string;
+  name: string;
+  logo?: string | null;
+  description?: string | null;
 }
 
 /** `get_product` (sales view; `cost` only for operators). */
@@ -435,6 +477,22 @@ export interface Category {
   parent_id: string | null;
   display_order?: number;
   active: boolean;
+}
+
+/** A standard → display category mapping (`get_category` `mappings`). */
+export interface CategoryMapping {
+  id: string;
+  standard_category_id: string;
+  display_category_id: string;
+  is_primary: boolean;
+}
+
+/** `get_category`. */
+export interface CategoryDetail extends Category {
+  description?: string | null;
+  ancestor_ids?: string[];
+  mappings: CategoryMapping[];
+  product_count: number;
 }
 
 // ─── sales ──────────────────────────────────────────────────────────────────
@@ -662,4 +720,42 @@ export interface CommitResult {
   ok: boolean;
   id: string;
   undo?: {by: 'person'; target: string; until: string | null} | null;
+}
+
+/** `explain_sales_change` (docs/api/analytics.md): a period against a basis, split into causes. */
+export interface SalesExplanation {
+  items: {
+    cause: string;
+    detail: string;
+    amount: Money | number;
+    evidence: string[];
+    expected?: Money | number;
+    actual?: Money | number;
+    since?: string | null;
+    products?: {product_id: string; name: string | null; sizes: string[]; availability_starts: string | null}[];
+    campaign?: {campaign_id: string; name: string; scheduled_time: string | null; error_message: string | null};
+  }[];
+  total: number;
+  'acom:metric': string;
+  period: {valid_from: string; valid_through: string; revenue: Money; order_count: number};
+  compare_to: {basis: string; observation_dates: string[]; revenue: Money; order_count: number};
+  gap: Money | number;
+  change_rate: number | null;
+  unexplained: Money | number;
+}
+
+/** One point of `get_sales_trend`. */
+export interface SalesTrendPoint {
+  observation_date: string;
+  'acom:metric': 'revenue' | 'order_count' | 'average_order_value';
+  value: Money | number | null;
+  'acom:dimension'?: Record<string, string | null>;
+}
+
+/** `GET /v1/platform/store`: the store's currency, zone and clock (the demo clock in demo mode). */
+export interface StoreClock {
+  store_id: string;
+  currency: string;
+  time_zone: string;
+  now: string;
 }

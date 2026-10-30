@@ -145,7 +145,8 @@ impl ReadOp<Cx> for ListTasks {
                 json!({"id": t.id, "title": t.title, "state": t.task_state,
                        "origin": t.task_origin, "at": cx.time.format(t.start_time),
                        "summary": t.summary, "tag": t.tag, "change_set_id": t.change_set_id,
-                       "watcher": t.watcher, "conversation_id": t.conversation_id})
+                       "watcher": t.watcher, "conversation_id": t.conversation_id,
+                       "updated_at": cx.time.format(t.updated_at)})
             })
             .collect();
         let mut out = json!({"items": items, "total": total});

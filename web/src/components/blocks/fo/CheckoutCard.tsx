@@ -77,9 +77,26 @@ export function CheckoutCardBlock({block}: BlockProps) {
         </VStack>
       }>
       <Lines block={block} lines={lines} kind="cart_line" />
-      <Totals blockId={block.block_id} subtotal={data.subtotal} discounts={data.discounts} shipping={data.shipping} total={data.total} />
+      <Totals
+        blockId={block.block_id}
+        subtotal={data.subtotal}
+        discounts={data.discounts}
+        shipping={data.shipping}
+        extra={data.gift_wrap ? [{label: 'Gift wrap', value: data.gift_wrap}] : undefined}
+        total={data.total}
+      />
       <MetadataList>
         {data.delivery?.address_label ? <MetadataListItem label="Ship to">{data.delivery.address_label}</MetadataListItem> : null}
+        {data.order_type === 'gift' ? (
+          <MetadataListItem label="Address">
+            {data.recipient?.mode === 'recipient_accepts' ? 'They give it when they accept the gift' : 'Used for this order only, not saved'}
+          </MetadataListItem>
+        ) : null}
+        {data.gift_options?.card_message ? <MetadataListItem label="Card">{`“${data.gift_options.card_message}”`}</MetadataListItem> : null}
+        {data.gift_options?.gift_receipt ? (
+          <MetadataListItem label="Receipt">{data.gift_options.receipt_hides_prices ? 'Gift receipt, no prices shown' : 'Gift receipt'}</MetadataListItem>
+        ) : null}
+        {data.gift_options?.exchange_until ? <MetadataListItem label="Exchange">{`Size exchange until ${day(data.gift_options.exchange_until)}`}</MetadataListItem> : null}
         {data.delivery?.arrives ? <MetadataListItem label="Arrives">{day(data.delivery.arrives)}</MetadataListItem> : null}
         {data.payment?.label ? <MetadataListItem label="Pay with">{data.payment.label}</MetadataListItem> : null}
         {data.expires_at ? <MetadataListItem label="Prepared until">{dateTime(data.expires_at)}</MetadataListItem> : null}

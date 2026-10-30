@@ -40,7 +40,7 @@
 - 논리주소/REST: `merchandising.category.create` · `POST /v1/merchandising/categories`
 - 요약: 표준 또는 전시 카테고리 노드를 만듭니다.
 - consumes → produces: `parent_id?` → `category_id`
-- 입력: `term_set`(`standard` | `display`), `name`, `parent_id?`, `display_order?`, `term_code?`(의미 있는 영단어, 예 `"summer_outerwear"`)
+- 입력: `term_set`(`standard` | `display`), `name`, `parent_id?`(같은 묶음의 카테고리), `display_order?`(기본 마지막 다음), `term_code?`(의미 있는 영단어, 예 `"summer_outerwear"`; 기본 이름에서). id는 `cat_<term_code>`
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "cat_summer_outerwear", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`
 - 프리뷰: `changes`=`create` `category`(`id: null`). checks `category.max_depth`, `category.term_code_unique`. `needs_approval: false`.
 - 정책: [merchandising.yml](../../policies/merchandising.yml) `category.max_depth`, `category.term_code_unique`
@@ -69,7 +69,7 @@
   | display_category_ids | Text[] | ✓ | 전시 카테고리, 예 `["cat_new_in", "cat_travel"]` |
   | is_primary | Boolean | | 표준 카테고리마다 대표 전시 카테고리 하나(상세의 경로 표시에 씀) |
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "map_221", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`
-- 프리뷰: `changes`=`create` `category_mapping`(`id: null`). checks `category.mapping`(표준 → 전시 방향만), `category.primary_display_per_standard`(대표 매핑 하나). `detail`에 새로 보이게 될 상품 수. `needs_approval: false`.
+- 프리뷰: `changes`=`create` `category_mapping`(`id: null`, `to.category_mapping_id`는 `map_<표준>_<전시>`, `to.products_shown`은 새로 보이게 될 상품 수). 이미 있는 짝은 건너뜀. `is_primary`는 첫 전시 카테고리에만. checks `category.mapping`(표준 → 전시 방향만, 어기면 `cross_set_violation`), `category.primary_display_per_standard`(대표 매핑 하나; 이미 있으면 실패, `fix_tool: unmap_category`). `needs_approval: false`. 매핑은 `merchandising.category_mapping`에 저장되고 `get_category`의 `mappings`가 읽습니다.
 - 정책: [merchandising.yml](../../policies/merchandising.yml) `category.mapping`, `category.primary_display_per_standard`
 - 에러: `cross_set_violation` → `map_category` · `primary_conflict` → `unmap_category` · `display_category_inactive` → `update_category`
 - 멱등성: `(standard_category_id, display_category_id)`로 한 건
@@ -94,6 +94,7 @@
 ### `list_display_slots` — Kind: R  (MVP)
 - 논리주소/REST: `merchandising.display_slot.list` · `GET /v1/merchandising/display-slots?page=main&valid_from=…&valid_through=…`
 - 요약: 한 페이지의 슬롯마다 기간 안의 예약과 **대상별 빈 시간**을 돌려줍니다. `schedule_banner`·`schedule_display` 앞에서 "이 슬롯을 VIP에게 이 주말에 쓸 수 있나"를 확인할 때 씁니다. 빈 시간은 `slot_free` 체크와 같은 규칙으로 계산합니다.
+- 쇼퍼(비회원 포함)가 부르면 그 페이지의 슬롯 목록(`id`, `page`, `name`, `slot_type`, `position`)만 순서대로 돌려주고, 예약·빈 시간은 주지 않습니다. 슬롯마다 지금 무엇이 보이는지는 `get_display_slot`이 정합니다. `audience`는 운영자만 씁니다(쇼퍼가 보내면 `forbidden`).
 - consumes → produces: → `slot_id`
 - 입력 (닫힌 객체):
   | 필드 | 타입 | 필수 | 설명 | 예 |
@@ -131,7 +132,8 @@
 - 요약: 슬롯 하나를 담긴 항목과 특정 시각 기준 노출 상태와 함께 돌려줍니다.
 - consumes → produces: `slot_id` → display_slot
 - 입력: `slot_id`, `as_of?`(DateTime), `fields?[]`
-- 출력: `{id: "slot_home_hero", slot_type: "hero", item_list_element: [], bookings: [], live_now: true, hidden_items: [{product_id: "prd_chore_coat", reason: "out_of_stock"}]}` (단건 읽기라 목록 봉투 없음)
+- 출력: `{id: "slot_home_hero", slot_type: "hero", item_list_element: [], bookings: [], showing: [{audience: "everyone", display_booking_id: "dsp_fall_layers"}], live_now: true, hidden_items: [{product_id: "prd_chore_coat", reason: "out_of_stock"}]}` (단건 읽기라 목록 봉투 없음). 예약마다 `banner`(문구·링크·이미지)가 붙습니다.
+- 운영자는 지금과 앞으로의 예약 전부와 대상별 `showing`을 봅니다. 쇼퍼는 **지금 자기에게 보이는 예약 하나만** 봅니다: 자기 등급(`get_my_profile`의 등급) 예약이 있으면 그것, 없으면 `everyone` 예약. 다가올 예약과 다른 등급의 예약은 보이지 않고, `as_of`는 운영자만 씁니다(쇼퍼가 보내면 `forbidden`). 누가 무엇을 보는지는 서버가 정하고 화면은 받은 예약을 그대로 그립니다.
 - 프리뷰: 해당 없음(읽기)
 - 정책: [merchandising.yml](../../policies/merchandising.yml) `display.visible_when`
 - 에러: `slot_not_found` → `list_display_slots`

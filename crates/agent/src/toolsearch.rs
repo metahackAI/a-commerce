@@ -66,6 +66,25 @@ fn stem(w: &str) -> String {
     }
 }
 
+/// The query's words with the related words the configuration names for them.
+/// Related words chain ("sweater" → "fit" → "measurements"); each word is expanded once.
+pub fn expanded(query: &str, cfg: &ToolSearchConfig) -> Vec<String> {
+    let mut out = tokens(query);
+    let mut expanded: BTreeSet<String> = BTreeSet::new();
+    let mut i = 0;
+    while i < out.len() {
+        let w = out[i].clone();
+        i += 1;
+        if !expanded.insert(w.clone()) {
+            continue;
+        }
+        for extra in cfg.related_words.get(&w).into_iter().flatten() {
+            out.extend(tokens(extra));
+        }
+    }
+    out
+}
+
 /// The text a tool is found by. The name counts three times: it is the strongest signal.
 fn document(t: &ToolSpec) -> Vec<String> {
     let name = t.tool.replace('_', " ");
@@ -131,7 +150,7 @@ pub fn search(
         return Vec::new();
     }
     let docs: Vec<Vec<String>> = scoped.iter().map(|t| document(t)).collect();
-    let raw = bm25(&tokens(query), &docs);
+    let raw = bm25(&expanded(query, cfg), &docs);
     let mut hits: Vec<(f64, &ToolSpec)> = scoped
         .iter()
         .zip(raw)
@@ -212,9 +231,16 @@ pub fn search(
             &mut out,
         );
     }
-    // Too few matches: fill with the scope's reads, so the planner can still look things up.
+    // Too few matches: fill with the scope's reads, the agent's home domains first, so the
+    // planner can still look things up ("Light jacket for spring trips" names no tool).
     let floor = cfg.min_candidates + out.iter().filter(|c| c.via == Via::Pinned).count();
-    for (_, t) in hits.iter().filter(|(s, t)| *s == 0.0 && !t.is_write()) {
+    let mut unmatched: Vec<&ToolSpec> = hits
+        .iter()
+        .filter(|(s, t)| *s == 0.0 && !t.is_write())
+        .map(|(_, t)| *t)
+        .collect();
+    unmatched.sort_by_key(|t| (!profile.is_home(t.domain()), t.tool.clone()));
+    for t in unmatched {
         if out.len() >= floor {
             break;
         }
@@ -350,6 +376,30 @@ mod tests {
         assert_eq!(n[0], "add_to_cart", "{found:#?}");
         assert!(n.contains(&"search_products"));
         assert!(!n.contains(&"set_sale_prices"));
+    }
+
+    #[test]
+    fn with_no_match_the_home_domains_reads_come_first() {
+        let p = repo();
+        let shopper = p.get("shopper").unwrap();
+        let found = search(
+            &manifest(),
+            shopper,
+            "Light jacket for spring trips",
+            &[],
+            &p.runtime.tool_search,
+        );
+        assert!(names(&found).contains(&"search_products"), "{found:?}");
+    }
+
+    #[test]
+    fn related_words_widen_the_query() {
+        let p = repo();
+        let q = expanded("Will M fit in the wool overcoat?", &p.runtime.tool_search);
+        assert!(q.iter().any(|w| w == "measurement"), "{q:?}");
+        assert!(q.iter().any(|w| w == "overcoat"));
+        let q = expanded("What if I just wear a sweater?", &p.runtime.tool_search);
+        assert!(q.iter().any(|w| w == "measurement"), "chains: {q:?}");
     }
 
     #[test]

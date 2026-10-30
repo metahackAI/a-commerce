@@ -87,8 +87,9 @@ A-Commerce의 모든 구성 요소는 컨테이너이고, **어디서 띄우든 
 | `ACOM_GATEWAY_SIGNING_KEY_FILE` / `_PUBLIC_KEY_FILE` | gateway / 나머지 | `infra/secrets/*.pem`(`make keys`) | 비밀 저장소 |
 | `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL`, `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | agent | `.env` | 비밀 저장소 |
 | `ACOM_ENV`, `ACOM_DEMO_MODE`, `RUST_LOG`, `ACOM_LOG_FORMAT` | 전부 | `local`, `true`, `info`, `json` | `production`, `false`, `info`, `json` |
-| `ACOM_STORE_ID`, `ACOM_COOKIE_SECURE`, `ACOM_SESSION_HOURS`, `ACOM_DEMO_PERSONAS` | gateway | `store_northwind`, `false`, `12`, 데모 운영자·쇼퍼 id | 같은 스토어, `true`(HTTPS), `12`, 데모 모드가 아니면 쓰지 않음 |
-| `ACOM_SEED`, `ACOM_SEED_DIR` | migrate | `demo`(마이그레이션 뒤 데모 스토어를 한 번 적재), `seed/demo` | `none`, 이미지의 `/app/seed/demo` |
+| `ACOM_STORE_ID` | gateway(서명하는 스토어), worker(예약 작업을 돌릴 스토어. 쉼표로 여러 개) | `store_northwind` | 같은 스토어. `acom_app`은 RLS 때문에 스토어 목록을 못 읽으므로 worker도 이 값으로 스토어를 받음 |
+| `ACOM_COOKIE_SECURE`, `ACOM_SESSION_HOURS`, `ACOM_DEMO_PERSONAS` | gateway | `false`, `12`, 데모 운영자·쇼퍼 id | `true`(HTTPS), `12`, 데모 모드가 아니면 쓰지 않음 |
+| `ACOM_SEED`, `ACOM_SEED_DIR` | migrate | `demo`(마이그레이션 뒤 데모 스토어를 적재. 시드 행이 바뀌면 비우고 다시 적재), `seed/demo` | `none`, 이미지의 `/app/seed/demo` |
 
 ## 6. 운영 표면
 

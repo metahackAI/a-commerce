@@ -109,6 +109,7 @@ tables:
     - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:account"}
   platform.admin_user_role:
     - {tenant_id: store_northwind, admin_user_id: adm_sj, role_id: rol_merchandiser}
+    - {tenant_id: store_northwind, admin_user_id: adm_sj, role_id: rol_catalog_admin}
     - {tenant_id: store_northwind, admin_user_id: adm_admin, role_id: rol_platform_admin}
     - {tenant_id: store_northwind, admin_user_id: adm_admin, role_id: rol_merchandiser}
     - {tenant_id: store_northwind, admin_user_id: adm_admin, role_id: rol_operator}
@@ -132,6 +133,7 @@ tables:
         - {slot: other, text: "October edit ends at 09:59", value: {display_booking_id: dsp_october_edit}}
       conversation_id: conv_fall_layers
       created_by: adm_sj
+      created_at: "2026-11-06T09:31:00-05:00"
       agent_name: muse-glimmer-30b
       submitted_at: "2026-11-06T09:33:00-05:00"
       approved_by: adm_sj
@@ -147,6 +149,7 @@ tables:
       request_text: ["4 products are priced below cost. Raise each list price to the price floor (cost + 15%)."]
       interpretation: [{slot: products, text: "4 products under cost", value: {product_ids: [prd_breton_tee, prd_canvas_tote, prd_ribbed_beanie, prd_hiking_socks]}}, {slot: benefit, text: "List price to cost + 15%", value: {rule: price_floor}}]
       created_by: sys_watcher
+      created_at: "2026-11-06T07:55:00-05:00"
       submitted_at: "2026-11-06T08:31:00-05:00"
       approved_by: null
       approved_at: "2026-11-06T08:31:00-05:00"
@@ -162,6 +165,7 @@ tables:
       interpretation: [{slot: products, text: "Linen shirt, White, S M L", value: {product_id: prd_linen_shirt, sizes: [S, M, L]}}, {slot: other, text: "240 units: S 70, M 90, L 80", value: {quantities: {S: 70, M: 90, L: 80}}}]
       conversation_id: conv_linen_reorder
       created_by: sys_watcher
+      created_at: "2026-11-06T09:12:00-05:00"
       agent_name: muse-glimmer-30b
       approved_by: null
       undo_until: null
@@ -779,6 +783,7 @@ tables:
         - {entity: claim, id: clm_20409}
       change_set_id: null
       start_time: "2026-11-06T10:40:00-05:00"
+      updated_at: "2026-11-06T10:40:00-05:00"
       end_time: null
     - tenant_id: store_northwind
       id: task_linen_reorder
@@ -794,6 +799,7 @@ tables:
       change_set_id: cs_1041
       conversation_id: conv_linen_reorder
       start_time: "2026-11-06T08:40:00-05:00"
+      updated_at: "2026-11-06T08:40:00-05:00"
       end_time: null
     - tenant_id: store_northwind
       id: task_size_charts
@@ -807,6 +813,7 @@ tables:
       change_set_id: null
       conversation_id: conv_size_charts
       start_time: "2026-11-05T16:20:00-05:00"
+      updated_at: "2026-11-05T16:20:00-05:00"
       end_time: null
     - tenant_id: store_northwind
       id: task_below_cost
@@ -820,6 +827,7 @@ tables:
       related_entities: [{entity: product, id: prd_breton_tee}, {entity: product, id: prd_canvas_tote}, {entity: product, id: prd_ribbed_beanie}, {entity: product, id: prd_hiking_socks}]
       change_set_id: cs_1040
       start_time: "2026-11-06T07:55:00-05:00"
+      updated_at: "2026-11-06T08:31:40-05:00"
       end_time: "2026-11-06T08:31:40-05:00"
     - tenant_id: store_northwind
       id: task_fall_layers
@@ -833,6 +841,7 @@ tables:
       change_set_id: cs_1039
       conversation_id: conv_fall_layers
       start_time: "2026-11-06T09:30:00-05:00"
+      updated_at: "2026-11-06T10:00:00-05:00"
       end_time: "2026-11-06T10:00:00-05:00"
   platform.job:
     - {tenant_id: store_northwind, id: job_watch_returns, kind: watcher.returns_over_refund_threshold, run_at: "2026-11-06T11:10:00-05:00", payload: {}, attempts: 0}

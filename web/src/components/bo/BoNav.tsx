@@ -1,7 +1,8 @@
 'use client';
 
-// The back office's side navigation: every section, the current one selected, a way to ask the
-// agent from anywhere, and who is signed in with a way to sign out.
+// The back office's side navigation: every section, the current one selected, the store's time
+// (movable in demo mode), a way to ask the agent from anywhere, and who is signed in with a way to
+// sign out.
 
 import {useState} from 'react';
 import {usePathname, useRouter} from 'next/navigation';
@@ -14,14 +15,18 @@ import {Icon} from '@astryxdesign/core/Icon';
 import {
   ArrowPathRoundedSquareIcon,
   BuildingStorefrontIcon,
+  ChartBarIcon,
   ChatBubbleOvalLeftEllipsisIcon,
   CircleStackIcon,
   ClipboardDocumentListIcon,
+  DocumentDuplicateIcon,
+  FolderIcon,
   InboxIcon,
   QueueListIcon,
   ReceiptPercentIcon,
   ScaleIcon,
   ShoppingBagIcon,
+  SwatchIcon,
   TagIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline';
@@ -29,6 +34,7 @@ import {
 import {signOut} from '@/lib/session';
 
 import {useAgentDock} from './AgentDock';
+import {StoreClock} from './StoreClock';
 
 interface NavLink {
   label: string;
@@ -44,11 +50,15 @@ const WORK: NavLink[] = [
 
 const STORE: NavLink[] = [
   {label: 'Products', href: '/bo/products', icon: TagIcon},
+  {label: 'Product drafts', href: '/bo/products/drafts', icon: DocumentDuplicateIcon},
+  {label: 'Categories', href: '/bo/categories', icon: FolderIcon},
+  {label: 'Brands', href: '/bo/brands', icon: SwatchIcon},
   {label: 'Promotions', href: '/bo/promotions', icon: ReceiptPercentIcon},
   {label: 'Merchandising', href: '/bo/merchandising', icon: BuildingStorefrontIcon},
   {label: 'Orders', href: '/bo/orders', icon: ShoppingBagIcon},
   {label: 'Returns', href: '/bo/returns', icon: ArrowPathRoundedSquareIcon},
   {label: 'Customers', href: '/bo/customers', icon: UsersIcon},
+  {label: 'Insights', href: '/bo/insights', icon: ChartBarIcon},
 ];
 
 const RULES: NavLink[] = [
@@ -59,6 +69,7 @@ const RULES: NavLink[] = [
 function isCurrent(pathname: string, href: string): boolean {
   if (href === '/bo') return pathname === '/bo' || pathname.startsWith('/bo/tasks');
   if (href === '/bo/returns') return pathname.startsWith('/bo/returns') || pathname.startsWith('/bo/claims');
+  if (href === '/bo/products') return pathname === href || (pathname.startsWith(`${href}/`) && !pathname.startsWith('/bo/products/drafts'));
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -79,13 +90,16 @@ export function BoNav({userName, role}: {userName: string; role: string}) {
   return (
     <SideNav
       header={
-        <VStack gap={0}>
-          <Text type="label" weight="semibold">
-            Northwind Apparel
-          </Text>
-          <Text type="supporting" color="secondary">
-            Back office
-          </Text>
+        <VStack gap={2}>
+          <VStack gap={0}>
+            <Text type="label" weight="semibold">
+              Northwind Apparel
+            </Text>
+            <Text type="supporting" color="secondary">
+              Back office
+            </Text>
+          </VStack>
+          <StoreClock />
         </VStack>
       }
       topContent={

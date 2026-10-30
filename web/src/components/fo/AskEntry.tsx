@@ -6,7 +6,7 @@
 
 import {Button} from '@astryxdesign/core/Button';
 import {Card} from '@astryxdesign/core/Card';
-import {HStack, VStack} from '@astryxdesign/core/Layout';
+import {HStack, StackItem, VStack} from '@astryxdesign/core/Layout';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {TextInput} from '@astryxdesign/core/TextInput';
 import {ChatBubbleLeftEllipsisIcon} from '@heroicons/react/24/outline';
@@ -42,17 +42,19 @@ export function AskEntry({name}: {name?: string | null}) {
           </Text>
         </VStack>
         <HStack gap={2} vAlign="end" ref={target.ref} {...target.props}>
-          <TextInput
-            label="Ask Northwind"
-            isLabelHidden
-            placeholder="Ask about fit, fabric, delivery, returns…"
-            startIcon={ChatBubbleLeftEllipsisIcon}
-            value={text}
-            onChange={setText}
-            onEnter={() => send(text)}
-            width="100%"
-            size="lg"
-          />
+          <StackItem size="fill">
+            <TextInput
+              label="Ask Northwind"
+              isLabelHidden
+              placeholder="Ask about fit, fabric, delivery, returns…"
+              startIcon={ChatBubbleLeftEllipsisIcon}
+              value={text}
+              onChange={setText}
+              onEnter={() => send(text)}
+              width="100%"
+              size="lg"
+            />
+          </StackItem>
           <Button label="Ask" variant="primary" size="lg" onClick={() => send(text)} isDisabled={!text.trim()} />
         </HStack>
         <HStack gap={2} wrap="wrap">

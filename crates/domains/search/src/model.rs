@@ -77,6 +77,32 @@ pub fn expand(query: &str, groups: &[Vec<String>]) -> Vec<String> {
     out
 }
 
+/// One `to_tsquery` text per word of the query, each matching the word or its synonyms. Ranking
+/// counts how many of these a product matches, so a product that covers more of what the
+/// shopper asked for ("light", "jacket", "trips") comes first.
+pub fn concepts(query: &str, groups: &[Vec<String>]) -> Vec<String> {
+    // Words the database's English configuration drops anyway; a query of only one would match
+    // nothing and log a notice for every product.
+    const STOP: &[&str] = &[
+        "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "he", "her", "his", "i",
+        "in", "is", "it", "me", "my", "of", "on", "or", "our", "she", "so", "that", "the", "their",
+        "them", "they", "this", "to", "under", "was", "we", "who", "with", "you", "your",
+    ];
+    let mut out: Vec<String> = Vec::new();
+    for t in tokens(query)
+        .into_iter()
+        .filter(|t| !STOP.contains(&t.as_str()))
+    {
+        let terms = expand(&t, groups);
+        if let Some(q) = tsquery(&terms)
+            && !out.contains(&q)
+        {
+            out.push(q);
+        }
+    }
+    out
+}
+
 /// A `to_tsquery` text that matches any of the terms; ranking favors products matching more of
 /// them. `None` when the query has no words.
 pub fn tsquery(terms: &[String]) -> Option<String> {
@@ -567,6 +593,18 @@ pub fn name_suggestions(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn each_word_is_one_concept_with_its_synonyms() {
+        let groups = vec![
+            vec!["jacket".to_owned(), "windbreaker".to_owned()],
+            vec!["light".to_owned(), "packable".to_owned()],
+        ];
+        assert_eq!(
+            concepts("A light jacket for trips", &groups),
+            ["light | packable", "jacket | windbreaker", "trips"]
+        );
+    }
     use acom_catalog::model::{Summary, Variant};
     use acom_catalog::neighbors::SalePrice;
     use acom_core::Currency;

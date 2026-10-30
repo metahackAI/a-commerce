@@ -5,7 +5,7 @@ use acom_contract::{
     ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
 };
 use acom_core::StoreTime;
-use acom_core::enums::{ApprovalStatus, Availability};
+use acom_core::enums::{ApprovalStatus, Availability, DraftStatus};
 use acom_store::{Cx, Page};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -17,6 +17,7 @@ use crate::cards::{self, ProductCard};
 use crate::model::{self, num};
 use crate::repo::{self, Find, Order, PendingRow};
 use crate::viewer::Viewer;
+use crate::write::{self, DraftItem};
 use crate::{INVALID_FILTER, PRODUCT_NOT_FOUND, is_operator, list, neighbors, project};
 
 /// How `search_product_groups` orders products.
@@ -54,6 +55,13 @@ pub struct SearchProductGroupsInput {
     /// Only products with this availability (derived from their variants).
     #[schemars(example = &"out_of_stock")]
     pub availability: Option<Availability>,
+    /// Only the drafts one supplier sheet import made (`batch_import`).
+    #[schemars(regex(pattern = r"^imp_[a-z0-9_]+$"), example = &"imp_fw26_supplier")]
+    pub import_id: Option<String>,
+    /// Only drafts in this state. ready: every field the sheet needs is there; needs_you: a
+    /// field is missing or unclear; working: still being filled.
+    #[schemars(example = &"needs_you")]
+    pub draft_status: Option<DraftStatus>,
     /// Order of the results.
     #[schemars(example = &"newest")]
     pub sort: Option<GroupSort>,
@@ -93,6 +101,13 @@ impl Operation for SearchProductGroups {
     type Output = Value;
 }
 
+/// Where a draft came from and what is still open on it (`acom:draft`), for operators.
+pub(crate) fn draft_json(i: &DraftItem) -> Value {
+    json!({"import_id": i.product_import_id, "row": i.position, "supplier_code": i.supplier_code,
+           "draft_status": i.draft_status, "open_fields": i.open_fields, "note": i.draft_note,
+           "supplier_text": i.supplier_text})
+}
+
 /// A product in the catalog-management list.
 fn group_item(c: &ProductCard, operator: bool) -> Value {
     let mut out = json!({"id": c.id, "@type": "ProductGroup", "name": c.name,
@@ -124,7 +139,7 @@ impl ReadOp<Cx> for SearchProductGroups {
             at: cx.clock.now(),
         };
         let mut tx = cx.read().await.map_err(ToolError::from)?;
-        let only = match &input.category_id {
+        let mut only = match &input.category_id {
             Some(cat) => Some(
                 neighbors::category_products(&mut tx, cat)
                     .await?
@@ -136,6 +151,18 @@ impl ReadOp<Cx> for SearchProductGroups {
             ),
             None => None,
         };
+        if input.import_id.is_some() || input.draft_status.is_some() {
+            let drafts = write::drafts(
+                &mut tx,
+                input.import_id.as_deref(),
+                input.draft_status.map(|s| s.as_str()),
+            )
+            .await?;
+            only = Some(match only {
+                Some(ids) => ids.into_iter().filter(|i| drafts.contains(i)).collect(),
+                None => drafts,
+            });
+        }
         let ranked = match query {
             Some(q) => Some(repo::match_text(&mut tx, q).await?),
             None => None,
@@ -174,11 +201,22 @@ impl ReadOp<Cx> for SearchProductGroups {
         )
         .await?;
         let found = cards::load(&mut tx, &ids, &viewer).await?;
+        let drafts = if viewer.operator {
+            write::items_of(&mut tx, &ids).await?
+        } else {
+            Vec::new()
+        };
         tx.commit().await.map_err(ToolError::from)?;
         let fields = input.fields.unwrap_or_default();
         let items = found
             .iter()
-            .map(|c| project(group_item(c, viewer.operator), &fields))
+            .map(|c| {
+                let mut item = group_item(c, viewer.operator);
+                if let Some(d) = drafts.iter().find(|d| d.product_group_id == c.id) {
+                    item["acom:draft"] = draft_json(d);
+                }
+                project(item, &fields)
+            })
             .collect();
         Ok(list(items, total, &page))
     }
@@ -256,6 +294,19 @@ impl ReadOp<Cx> for GetProductGroup {
             .filter(|c| c.direct)
             .max_by_key(|c| c.is_primary)
             .map(|c| c.category_id);
+        let draft = if operator {
+            write::items_of(&mut tx, std::slice::from_ref(&g.id))
+                .await?
+                .pop()
+        } else {
+            None
+        };
+        let offers: Vec<String> = variants.iter().filter_map(|v| v.offer_id.clone()).collect();
+        let schedules = if operator {
+            write::schedules(&mut tx, &offers).await?
+        } else {
+            Vec::new()
+        };
         tx.commit().await.map_err(ToolError::from)?;
         let has_variant: Vec<Value> = variants
             .iter()
@@ -268,6 +319,16 @@ impl ReadOp<Cx> for GetProductGroup {
                     "acom:safety_stock": v.safety_stock});
                 if operator {
                     line["cost"] = v.cost_value.map_or(Value::Null, num);
+                    let mine: Vec<Value> = schedules
+                        .iter()
+                        .filter(|s| Some(&s.offer_id) == v.offer_id.as_ref())
+                        .map(|s| json!({"unit_price_specification_id": s.id, "price": num(s.price),
+                                        "valid_from": cx.time.format(s.valid_from),
+                                        "valid_through": s.valid_through.map(|t| cx.time.format(t))}))
+                        .collect();
+                    if !mine.is_empty() {
+                        line["scheduled_prices"] = json!(mine);
+                    }
                 }
                 line
             })
@@ -283,6 +344,10 @@ impl ReadOp<Cx> for GetProductGroup {
             "pending_changes": pending.iter().map(|p| pending_json(p, &cx.time)).collect::<Vec<_>>(),
             "version": g.version, "updated_at": cx.time.format(g.updated_at),
         });
+        let mut out = out;
+        if let Some(d) = &draft {
+            out["acom:draft"] = draft_json(d);
+        }
         Ok(project(out, &input.fields.unwrap_or_default()))
     }
 }
@@ -320,6 +385,8 @@ mod tests {
                     category_id: None,
                     approval_status: Some(ApprovalStatus::Active),
                     availability: None,
+                    import_id: None,
+                    draft_status: None,
                     sort: None,
                     fields: None,
                     limit: None,

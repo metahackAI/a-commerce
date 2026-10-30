@@ -50,6 +50,32 @@ impl StorePage {
     }
 }
 
+/// Whose view a slot read takes: operators see every audience's bookings; a shopper (or guest,
+/// or an agent acting for one) sees only what shows to them now, by their own tier.
+enum View {
+    Operator,
+    Shopper(String),
+}
+
+async fn view(cx: &Cx, tx: &mut TxCx) -> Result<View, ToolError> {
+    if acom_catalog::is_operator(&cx.principal) {
+        return Ok(View::Operator);
+    }
+    let tier = match cx.principal.customer_id() {
+        Some(c) => customers::tier_of(tx, c).await?,
+        None => None,
+    };
+    Ok(View::Shopper(tier.unwrap_or_else(|| "everyone".to_owned())))
+}
+
+fn operators_only(field: &str) -> ToolError {
+    ToolError::new(
+        ErrorCode::FORBIDDEN,
+        format!("Only store operators can set `{field}`."),
+    )
+    .detail(json!({"reason": "scope", "field": field}))
+}
+
 /// The audiences of a slot's bookings: `everyone` and the store's tiers (highest first), or
 /// just the one asked for.
 async fn audiences(tx: &mut TxCx, only: Option<&str>) -> Result<Vec<String>, ToolError> {
@@ -131,12 +157,12 @@ impl Operation for ListDisplaySlots {
         kind: Kind::Read,
         method: Method::Get,
         path: "/v1/merchandising/display-slots",
-        summary: "The slots of one page with their bookings in a period and the free time per audience (everyone and each tier). Use before schedule_banner to see whether a slot is open for, say, VIP on the weekend.",
+        summary: "The slots of one page with their bookings in a period and the free time per audience (everyone and each tier). Use before schedule_banner to see whether a slot is open for, say, VIP on the weekend. A shopper gets only the page's slots, in order, without bookings or free time.",
         consumes: &[],
         produces: &[Slot::one("slot_id")],
         checks: &[],
         errors: &[PAGE_NOT_FOUND, INVALID_PERIOD, TIER_NOT_FOUND],
-        audience: Audience::Operator,
+        audience: Audience::Both,
         action_type: ActionType::SEARCH,
         person_scope: "",
     };
@@ -172,7 +198,15 @@ impl ReadOp<Cx> for ListDisplaySlots {
         }
         let now = cx.clock.now();
         let mut tx = cx.read().await.map_err(ToolError::from)?;
-        let audiences = audiences(&mut tx, input.audience.as_deref()).await?;
+        let shopper = matches!(view(cx, &mut tx).await?, View::Shopper(_));
+        if shopper && input.audience.is_some() {
+            return Err(operators_only("audience"));
+        }
+        let audiences = if shopper {
+            Vec::new()
+        } else {
+            audiences(&mut tx, input.audience.as_deref()).await?
+        };
         let (total, slots) = repo::slots(
             &mut tx,
             input.page.word(),
@@ -189,11 +223,20 @@ impl ReadOp<Cx> for ListDisplaySlots {
             .next("list_display_slots"));
         }
         let ids: Vec<String> = slots.iter().map(|s| s.id.clone()).collect();
-        let bookings = repo::bookings_between(&mut tx, &ids, from, through).await?;
+        let bookings = if shopper {
+            Vec::new()
+        } else {
+            repo::bookings_between(&mut tx, &ids, from, through).await?
+        };
         tx.commit().await.map_err(ToolError::from)?;
         let items: Vec<Value> = slots
             .iter()
             .map(|s| {
+                if shopper {
+                    // What shows to the shopper is `get_display_slot`'s answer, slot by slot.
+                    return json!({"id": s.id, "page": s.page, "name": s.name,
+                                  "slot_type": s.slot_type, "position": s.position});
+                }
                 let mine: Vec<BookingRow> = bookings
                     .iter()
                     .filter(|b| b.display_slot_id == s.id)
@@ -313,11 +356,13 @@ impl ReadOp<Cx> for GetDisplaySlot {
     async fn read(&self, cx: &Cx, input: GetDisplaySlotInput) -> Result<Value, ToolError> {
         check_id("slot_id", "slot", &input.slot_id)?;
         let rules = DisplayRules::from_policy(&cx.policy)?;
-        let at = match &input.as_of {
-            Some(s) => parse_time(&cx.time, "as_of", s)?,
-            None => cx.clock.now(),
-        };
         let mut tx = cx.read().await.map_err(ToolError::from)?;
+        let view = view(cx, &mut tx).await?;
+        let at = match (&input.as_of, &view) {
+            (Some(_), View::Shopper(_)) => return Err(operators_only("as_of")),
+            (Some(s), View::Operator) => parse_time(&cx.time, "as_of", s)?,
+            (None, _) => cx.clock.now(),
+        };
         let slot: SlotRow = repo::slot(&mut tx, &input.slot_id).await?.ok_or_else(|| {
             ToolError::new(
                 SLOT_NOT_FOUND,
@@ -327,7 +372,10 @@ impl ReadOp<Cx> for GetDisplaySlot {
             .next("list_display_slots")
         })?;
         let bookings = repo::bookings_from(&mut tx, &slot.id, at).await?;
-        let audiences = audiences(&mut tx, None).await?;
+        let audiences = match &view {
+            View::Operator => audiences(&mut tx, None).await?,
+            View::Shopper(a) => vec![a.clone()],
+        };
         let item_products: Vec<String> = slot
             .item_list_element
             .as_array()
@@ -364,7 +412,21 @@ impl ReadOp<Cx> for GetDisplaySlot {
             })
             .collect();
         let live_now = !live.is_empty() || item_products.len() > hidden.len();
-        let out_bookings: Vec<Value> = bookings
+        let showing = showing(&audiences, &live);
+        // A shopper sees the one booking that shows to them now, never what is coming or what
+        // other tiers see.
+        let shown: Vec<&BookingRow> = match &view {
+            View::Operator => bookings.iter().collect(),
+            View::Shopper(_) => bookings
+                .iter()
+                .filter(|b| {
+                    showing
+                        .iter()
+                        .any(|s| s["display_booking_id"].as_str() == Some(b.id.as_str()))
+                })
+                .collect(),
+        };
+        let out_bookings: Vec<Value> = shown
             .iter()
             .map(|b| {
                 let mut v = booking_summary(cx, b, at);
@@ -380,7 +442,7 @@ impl ReadOp<Cx> for GetDisplaySlot {
             "position": slot.position,
             "item_list_element": slot.item_list_element,
             "bookings": out_bookings,
-            "showing": showing(&audiences, &live),
+            "showing": showing,
             "live_now": live_now,
             "hidden_items": hidden,
             "as_of": cx.time.format(at),

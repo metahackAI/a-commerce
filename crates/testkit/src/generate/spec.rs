@@ -128,6 +128,8 @@ pub(crate) struct OrdersSpec {
     pub targets: BTreeMap<NaiveDate, (i64, i64)>,
     /// Day -> (orders, revenue in cents) of the named orders the spec subtracts.
     pub named_on_target_days: BTreeMap<NaiveDate, (i64, i64)>,
+    /// Campaign id -> revenue in cents of the orders that came from it (`campaign_orders`).
+    pub campaign_revenue: BTreeMap<String, i64>,
 }
 
 fn at<'a>(v: &'a Value, path: &str) -> Result<&'a Value, String> {
@@ -477,6 +479,16 @@ impl Spec {
                 .ok_or_else(|| format!("generate.yml: revenue of `{day}` is not money"))?;
             named_on_target_days.insert(parse_date(day)?, (n, rev));
         }
+        let mut campaign_revenue = BTreeMap::new();
+        for (campaign, x) in at(v, "orders.campaign_orders.revenue")?
+            .as_object()
+            .ok_or("generate.yml: `campaign_orders.revenue` is not a map")?
+        {
+            let rev = cents(x).ok_or_else(|| {
+                format!("generate.yml: revenue of campaign `{campaign}` is not money")
+            })?;
+            campaign_revenue.insert(campaign.clone(), rev);
+        }
         Ok(OrdersSpec {
             lines,
             quantities: weights(v, "orders.quantity_per_line")?,
@@ -486,6 +498,7 @@ impl Spec {
             status_by_date,
             targets,
             named_on_target_days,
+            campaign_revenue,
         })
     }
 }

@@ -99,6 +99,34 @@
 
 ## `analytics`
 
+### `analytics.campaign_send` (view)
+
+`schema:CreativeWork/acom:CampaignSend` — one row per campaign: when it was due, whether and when it went out, and why it failed.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` |  | ✓ | `-` | store (tenant) the campaign belongs to. |
+| `campaign_id` |  | ✓ | `acom:campaignId` | the campaign (cmp_ id). |
+| `name` |  | ✓ | `schema:name` | campaign name, for example Weekly email. |
+| `template_id` |  | ✓ | `acom:templateId` | template it is made from (tpl_ id); the sends of one template are one recurring campaign. |
+| `message_channel` |  | ✓ | `acom:messageChannel` | channel it goes out on. values: message_channel |
+| `campaign_status` |  | ✓ | `acom:campaignStatus` | where the campaign is. values: campaign_status |
+| `scheduled_time` |  | ✓ | `acom:scheduledTime` | when the send was due. |
+| `date_sent` |  | ✓ | `schema:dateSent` | when the messages went out; NULL when they did not. |
+| `recipient_count` |  | ✓ | `acom:recipientCount` | shoppers it was addressed to. |
+| `error_message` |  | ✓ | `schema:error` | why the send failed, in a few words, for example List import failed; NULL unless it failed. |
+
+### `analytics.daily_new_members` (view)
+
+`schema:Observation/acom:NewMembers` — accounts created per store day, by the tier the members are in now.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` |  | ✓ | `-` | store (tenant) the members belong to. |
+| `observation_date` |  | ✓ | `schema:observationDate` | calendar day in the store's time zone on which the accounts were created. |
+| `member_tier` |  | ✓ | `acom:tierId` | tier the members are in now; NULL for accounts outside every program. |
+| `member_count` |  | ✓ | `acom:memberCount` | accounts created that day. |
+
 ### `analytics.daily_sales` (view)
 
 `schema:Observation/acom:DailySales` — revenue and order count per store and day, with the day taken in the store's time zone; orders still awaiting payment and cancelled orders are left out.
@@ -110,6 +138,65 @@
 | `revenue_value` |  | ✓ | `acom:revenue` | sum of total_payment_due of the day's orders (after discounts, including shipping), in major units. |
 | `revenue_currency` |  | ✓ | `acom:revenue` | ISO 4217 code of revenue_value. |
 | `order_count` |  | ✓ | `acom:orderCount` | number of orders placed that day that were paid and not cancelled. |
+
+### `analytics.member_tier_count` (view)
+
+`schema:Observation/acom:TierCount` — members per tier now, leaving out blocked and withdrawn accounts.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` |  | ✓ | `-` | store (tenant) the members belong to. |
+| `member_tier` |  | ✓ | `acom:tierId` | the tier. |
+| `member_count` |  | ✓ | `acom:memberCount` | members in the tier now. |
+
+### `analytics.order_line_summary` (view)
+
+`schema:OrderItem/acom:OrderLineSummary` — one row per line of the orders that count as sales (paid, not cancelled): day, variant, product, category, campaign, units and net amount, never who bought it.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` |  | ✓ | `-` | store (tenant) the line belongs to. |
+| `order_id` |  | ✓ | `acom:orderId` | the order the line is in (ord_ id). |
+| `observation_date` |  | ✓ | `schema:observationDate` | calendar day in the store's time zone on which the order was placed. |
+| `product_id` |  | ✓ | `schema:orderedItem` | the variant sold (var_ id; API variant_id). |
+| `product_group_id` |  | ✓ | `schema:isVariantOf` | the product the variant belongs to (prd_ id; API product_id). |
+| `category_id` |  | ✓ | `schema:category` | the product's primary standard category (cat_ id); NULL when it has none. |
+| `campaign_id` |  | ✓ | `acom:campaignId` | campaign the order came from (cmp_ id); NULL when it came from anywhere else. |
+| `order_quantity` |  | ✓ | `schema:orderQuantity` | units sold on the line. |
+| `revenue_value` |  | ✓ | `acom:revenue` | price × quantity − line discount, in major units; shipping is not on lines. |
+| `revenue_currency` |  | ✓ | `acom:revenue` | ISO 4217 code of revenue_value. |
+
+### `analytics.order_summary` (view)
+
+`schema:Order/acom:OrderSummary` — one row per paid order with only what aggregates need (day, state, tier, campaign, amount, return request), never who placed it; orders still awaiting payment are left out.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` |  | ✓ | `-` | store (tenant) the order belongs to. |
+| `order_id` |  | ✓ | `acom:orderId` | the order (ord_ id). |
+| `observation_date` |  | ✓ | `schema:observationDate` | calendar day in the store's time zone on which the order was placed. |
+| `order_status` |  | ✓ | `schema:orderStatus` | where the order is now; cancelled orders count for the cancellation rate only. values: order_status |
+| `member_tier` |  | ✓ | `acom:tierId` | the tier the shopper is in now; NULL for guest orders. |
+| `campaign_id` |  | ✓ | `acom:campaignId` | campaign the order came from (cmp_ id); NULL when it came from anywhere else. |
+| `revenue_value` |  | ✓ | `acom:revenue` | total_payment_due of the order (after discounts, with shipping and gift wrap), in major units. |
+| `revenue_currency` |  | ✓ | `acom:revenue` | ISO 4217 code of revenue_value. |
+| `has_return_request` |  | ✓ | `acom:hasReturnRequest` | true when a return was asked for on the order and not declined or withdrawn. |
+
+### `analytics.variant_stock_out` (view)
+
+`schema:Offer/acom:StockOut` — one row per variant that is out of stock now, with when it ran out and when it is expected back.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` |  | ✓ | `-` | store (tenant) the variant belongs to. |
+| `product_id` |  | ✓ | `schema:itemOffered` | the variant that ran out (var_ id; API variant_id). |
+| `product_group_id` |  | ✓ | `schema:isVariantOf` | the product the variant belongs to (prd_ id; API product_id). |
+| `product_name` |  | ✓ | `schema:name` | name of the product, for example Cotton chore coat. |
+| `size` |  | ✓ | `schema:size` | size word of the variant; NULL for one-size products. |
+| `color` |  | ✓ | `schema:color` | color name of the variant; NULL when the product has one color. |
+| `is_bestseller` |  | ✓ | `acom:isBestseller` | true when the store tags the product bestseller (catalog keywords). |
+| `sold_out_at` |  | ✓ | `acom:soldOutAt` | when the variant ran out. |
+| `availability_starts` |  | ✓ | `schema:availabilityStarts` | when stock is expected back; NULL when unknown. |
 
 ## `catalog`
 
@@ -124,6 +211,41 @@
 | `name` | text |  | `schema:name` | brand name. |
 | `logo` | text | ✓ | `schema:logo` | URL of the logo image. |
 | `description` | text | ✓ | `schema:description` | short brand description. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `catalog.data_feed`
+
+`schema:DataFeed` — a supplier sheet as uploaded, one element per row, read by batch_import. id prefix upl_. API: upload_id. · id `upl_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix upl_; the same value the API, logs and events use. |
+| `name` | text |  | `schema:name` | file name as uploaded, for example fw26_supplier.xlsx. |
+| `encoding_format` | text |  | `schema:encodingFormat` | media type of the uploaded file, for example text/csv. |
+| `provider_name` | text | ✓ | `schema:provider` | name of the supplier that sent the sheet; NULL when unknown. |
+| `data_feed_element` | jsonb |  | `schema:dataFeedElement` | the rows in sheet order, each a map from column name to cell text: [{supplier_code, style_name, color, category, brand, sizes, cost, units_per_size, material, image, supplier_text}]. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `catalog.data_feed_item`
+
+`schema:DataFeedItem` — one supplier sheet row and the draft product it became, with what is still open before the draft can be published.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `product_import_id` | text |  | `acom:productImportId` | the import run that read the row (imp_ id). → `catalog.product_import` |
+| `position` | integer |  | `schema:position` | row number in the sheet, from 1. |
+| `product_group_id` | text |  | `schema:item` | the draft product made from the row (prd_ id). → `catalog.product_group` |
+| `supplier_code` | text |  | `acom:supplierCode` | the supplier's own code for the row, for example FW26-OT-014. |
+| `supplier_text` | text | ✓ | `acom:supplierText` | the supplier's description, kept so the store can write its own copy in its tone; NULL when the sheet had none. |
+| `draft_status` | text |  | `acom:draftStatus` | whether the draft is complete or waits for a person. values: draft_status Values: `ready` · `needs_you` · `working`. |
+| `open_fields` | text[] |  | `acom:openFields` | required fields that were missing or unclear in the sheet, from catalog.yml import.required_fields, for example {material}; empty when none. |
+| `draft_note` | text | ✓ | `acom:draftNote` | one sentence for the person about what is open, for example Fabric mix is missing in the sheet; NULL when nothing is. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
@@ -234,6 +356,25 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `catalog.product_import`
+
+`schema:CreateAction/acom:ProductImport` — one batch_import run that turned a supplier sheet into product drafts. id prefix imp_. API: import_id. · id `imp_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix imp_; the same value the API, logs and events use. |
+| `data_feed_id` | text |  | `schema:object` | the supplier sheet imported (upl_ id). → `catalog.data_feed` |
+| `import_mode` | text |  | `acom:importMode` | create makes new drafts only; upsert also refreshes drafts an earlier import made. values: import_mode Values: `create` · `upsert`. |
+| `action_status` | text |  | `schema:actionStatus` | whether the run finished. values: action_status Values: `potential` · `active` · `completed` · `failed`. |
+| `agent_id` | text |  | `schema:agent` | who ran the import: the change-set runner (sys_) or an operator (adm_). |
+| `change_set_id` | text | ✓ | `acom:changeSetId` | the approved change set the import ran in (cs_ id); undoing the set removes its drafts. → `platform.change_set` |
+| `start_time` | timestamptz |  | `schema:startTime` | when the run started. |
+| `end_time` | timestamptz | ✓ | `schema:endTime` | when the run finished; NULL while it runs. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `catalog.review`
 
 `schema:Review` — a shopper review of a product with a fit vote; hidden reviews are left out of summaries. id prefix rev_. · id `rev_…`
@@ -270,6 +411,24 @@
 | `review_id` | text |  | `schema:object` | review voted on (rev_ id). → `catalog.review` |
 | `customer_id` | text |  | `schema:agent` | shopper who voted (cus_ id). → `customer.person` |
 | `is_helpful` | boolean |  | `acom:isHelpful` | true while the shopper marks the review helpful; false after they take the vote back. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `catalog.unit_price_specification`
+
+`schema:UnitPriceSpecification` — a list price scheduled for a period (schedule_price_change); it applies from valid_from, and the offer price applies again after valid_through. id prefix ups_. · id `ups_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix ups_; the same value the API, logs and events use. |
+| `offer_id` | text |  | `acom:offerId` | the offer whose list price this schedules (off_ id). → `catalog.offer` |
+| `price` | numeric(12,2) |  | `schema:price` | the list price per unit during the period. |
+| `price_currency` | char(3) |  | `schema:priceCurrency` | ISO 4217 code of price. |
+| `price_type` | text |  | `schema:priceType` | always list_price here; member and sale prices live in promotion.unit_price_specification. values: price_type Values: `list_price` · `sale_price`. |
+| `valid_from` | timestamptz |  | `schema:validFrom` | first moment the scheduled price applies. |
+| `valid_through` | timestamptz | ✓ | `schema:validThrough` | last moment it applies (inclusive); NULL means until changed. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
@@ -570,6 +729,21 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `merchandising.category_mapping`
+
+`schema:Intangible/acom:CategoryMapping` — links a standard category to a display category, so the display tree shows the standard category's products. id prefix map_. · id `map_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix map_; the same value the API, logs and events use. |
+| `standard_category_id` | text |  | `acom:standardCategory` | the internal category whose products are shown (cat_ id, term set standard). → `merchandising.defined_term` |
+| `display_category_id` | text |  | `acom:displayCategory` | the shopper menu category that shows them (cat_ id, term set display). → `merchandising.defined_term` |
+| `is_primary` | boolean |  | `acom:isPrimary` | true for the one display category a standard category's product pages show as their path. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `merchandising.defined_term`
 
 `schema:DefinedTerm` — a category in the standard set (internal classification) or the display set (shopper menu). id prefix cat_. API: category_id. · id `cat_…`
@@ -642,6 +816,28 @@
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
 ## `messaging`
+
+### `messaging.campaign`
+
+`schema:CreativeWork/acom:Campaign` — a marketing message sent to many shoppers at a scheduled time from one template; sending it reaches customers. id prefix cmp_. · id `cmp_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix cmp_; the same value the API, logs and events use. |
+| `name` | text |  | `schema:name` | name operators know the campaign by, for example Weekly email. |
+| `message_channel` | text |  | `acom:messageChannel` | channel it is sent on; the template must be written for the same channel. values: message_channel Values: `email` · `sms` · `push` · `in_app`. |
+| `template_id` | text | ✓ | `acom:templateId` | template the message is made from (tpl_ id); campaigns of one template are the same recurring send. → `messaging.message_template` |
+| `valid_for_member_tier` | text | ✓ | `schema:validForMemberTier` | tier the campaign goes to; NULL means every member who agreed to marketing messages. → `customer.member_program_tier` |
+| `campaign_status` | text |  | `acom:campaignStatus` | where the campaign is; failed means the send stopped before any message went out. values: campaign_status Values: `draft` · `scheduled` · `sending` · `sent` · `failed` · `cancelled`. |
+| `scheduled_time` | timestamptz | ✓ | `acom:scheduledTime` | when the send is due, on the store clock; NULL while a draft has no time. |
+| `date_sent` | timestamptz | ✓ | `schema:dateSent` | when the messages went out; NULL while not sent, and for failed and cancelled campaigns. |
+| `recipient_count` | integer | ✓ | `acom:recipientCount` | shoppers the campaign was addressed to after consent checks; NULL until the list is built. |
+| `error` | jsonb | ✓ | `schema:error` | why the send failed, as {code, message}; NULL unless campaign_status is failed. |
+| `change_set_id` | text | ✓ | `acom:changeSetId` | change set that approved the campaign; NULL for sends set up before change sets. → `platform.change_set` |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
 ### `messaging.message`
 
@@ -888,6 +1084,7 @@
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `seed_fingerprint` | text | ✓ | `-` | fingerprint (SHA-256 of the rows) of the demo seed this store was loaded from; NULL for a store not loaded from a seed. |
 
 ### `platform.outbox`
 
@@ -1153,6 +1350,24 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `sales.gift_order`
+
+`schema:AcceptAction/acom:GiftOrder` — a gift waiting for its recipient to accept it and give an address; id prefix gift_. API: gift_order. · id `gift_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | gift id (gift_ prefix), the part of the accept link that names the gift (API gift_order_id). |
+| `order_id` | text |  | `schema:object` | the gift order the recipient accepts (ord_ id). → `sales.sales_order` |
+| `recipient_name` | text |  | `schema:recipient` | the name the sender gave for the recipient, printed on the card and the parcel; used for this gift only. |
+| `recipient_contact` | text |  | `acom:recipientContact` | the email or phone the accept link goes to; used for this gift only and never saved to anyone's profile. |
+| `action_status` | text |  | `schema:actionStatus` | the recipient's acceptance: potential until they accept, completed once they did, failed when it lapsed. values: action_status Values: `potential` · `active` · `completed` · `failed`. |
+| `expires` | timestamptz |  | `schema:expires` | the last moment the recipient can accept (order time + gift.auto_cancel_if_no_address_days); payment waits until then. |
+| `accepted_at` | timestamptz | ✓ | `acom:acceptedAt` | when the recipient accepted and gave the address; NULL until then. |
+| `created_at` | timestamptz |  | `-` | when the gift was ordered. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `sales.order_event`
 
 `schema:Action` — one state change of an order; rows are only added.
@@ -1255,6 +1470,7 @@
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `campaign_id` | text | ✓ | `acom:campaignId` | campaign whose message the shopper followed to place the order (cmp_ id); NULL when the order came from anywhere else. → `messaging.campaign` |
 
 ## `search`
 

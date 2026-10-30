@@ -12,10 +12,11 @@ use serde_json::{Value, json};
 
 use crate::{model, repo};
 
-/// The products a text query matches, with relevance, or `None` when there is no query. Uses
-/// the search documents when the store has them, else the same weighted text built from the
-/// catalog (`query.expansion_fallback_keeps_ranking`: either way the ranking is `ts_rank` over
-/// the same weights).
+/// The products a text query matches, with relevance, or `None` when there is no query. Synonyms
+/// widen what matches; the ranking counts how many of the shopper's words (each with its
+/// synonyms) a product covers, then the text rank, with the words they typed counting twice. Uses the search documents when the store has them, else the same
+/// weighted text built from the catalog (`query.expansion_fallback_keeps_ranking`: either way
+/// the ranking is `ts_rank` over the same weights).
 pub(crate) async fn text_ranks(
     cx: &Cx,
     tx: &mut TxCx,
@@ -26,17 +27,26 @@ pub(crate) async fn text_ranks(
         return Ok(None);
     };
     let groups = model::synonyms(&cx.policy, "en");
-    let Some(q) = model::tsquery(&model::expand(query, &groups)) else {
+    let (Some(q), Some(own)) = (
+        model::tsquery(&model::expand(query, &groups)),
+        model::tsquery(&model::expand(query, &[])),
+    ) else {
         // Only punctuation: nothing can match.
         return Ok(Some(Vec::new()));
     };
+    let concepts = model::concepts(query, &groups);
+    let rank = repo::Rank {
+        query: &q,
+        own: &own,
+        concepts: &concepts,
+    };
     if repo::has_documents(tx).await? {
-        return repo::rank_documents(tx, &q, active_only).await.map(Some);
+        return repo::rank_documents(tx, &rank, active_only).await.map(Some);
     }
     let texts = for_search::product_texts(tx, active_only).await?;
     let links = for_search::categories(tx, None).await?;
     let docs = model::docs(&texts, &links);
-    repo::rank_texts(tx, &docs, &q).await.map(Some)
+    repo::rank_texts(tx, &docs, &rank).await.map(Some)
 }
 
 /// The products of a category and the ones under it, or `not_found`.

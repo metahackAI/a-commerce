@@ -19,6 +19,7 @@ acom-sales.workspace = true
 acom-fulfillment.workspace = true
 acom-messaging.workspace = true
 acom-platform.workspace = true
+acom-analytics.workspace = true
 
 [lints]
 workspace = true

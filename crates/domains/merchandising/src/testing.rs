@@ -136,3 +136,28 @@ pub(crate) async fn operator_cx(subject: &str) -> Cx {
         .await
         .expect("context")
 }
+
+/// A signed-in shopper (`cus_…`) or, for anything else, a guest, on the storefront.
+pub(crate) async fn shopper_cx(subject: &str) -> Cx {
+    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
+    let db = Db::connect(&url, 2).await.expect("connect");
+    let runtime = Runtime::new(db, policies(false), true);
+    let signed_in = subject.starts_with("cus_");
+    let principal = Principal {
+        subject: subject.into(),
+        kind: ActorKind::Shopper,
+        tenant: TenantId::parse("store_northwind").unwrap(),
+        surface: Surface::Fo,
+        scopes: if signed_in {
+            acom_auth::scopes::shopper()
+        } else {
+            acom_auth::scopes::guest()
+        },
+        name: None,
+        session_id: Some("ses_test".into()),
+    };
+    runtime
+        .context(principal, "req_test".into())
+        .await
+        .expect("context")
+}

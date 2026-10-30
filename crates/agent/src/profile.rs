@@ -42,6 +42,10 @@ impl ChatSurface {
 pub struct ToolScope {
     pub domains: Vec<String>,
     pub kinds: Vec<ToolKind>,
+    /// Tools always among the candidates, whatever the words (the shopper's product search
+    /// and profile): word matching cannot know that "a light jacket" means searching.
+    #[serde(default)]
+    pub always: Vec<String>,
 }
 
 /// Model aliases from `agents/models.yml`.
@@ -73,6 +77,17 @@ pub struct LayoutRule {
     pub why: String,
 }
 
+/// A next step a block offers for one kind of finding (`agents/insights.yml` `next_actions`).
+/// `{name}` placeholders are filled from the finding; the step is left out when one has no value.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NextAction {
+    /// The button's words.
+    pub label: String,
+    /// What pressing it says to the agent, as the operator's next message.
+    pub request: String,
+}
+
 /// One specialist agent.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -101,6 +116,13 @@ pub struct AgentProfile {
     pub check_intents: BTreeMap<String, String>,
     #[serde(default)]
     pub layout_rules: Vec<LayoutRule>,
+    /// Lower-case phrases that send a request straight to this agent, without the router model
+    /// (`why did sales`); when two agents' phrases match, the model decides.
+    #[serde(default)]
+    pub route_when_said: Vec<String>,
+    /// Next steps a `sales_explainer` block offers, by cause (`out_of_stock`).
+    #[serde(default)]
+    pub next_actions: BTreeMap<String, Vec<NextAction>>,
 }
 
 impl AgentProfile {
@@ -138,18 +160,38 @@ pub struct Limits {
     pub seconds: u64,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ToolSearchConfig {
     pub min_candidates: usize,
     pub max_candidates: usize,
     pub home_domain_boost: f64,
+    /// Words people say that tools name differently ("fit" → measurements, reviews): each
+    /// word adds its related words to the query. Data, not code; embeddings come later.
+    #[serde(default)]
+    pub related_words: BTreeMap<String, Vec<String>>,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RouterConfig {
     pub min_confidence: f64,
+    /// Requests that go straight to one agent, without asking the model.
+    #[serde(default)]
+    pub hints: Vec<RouteHint>,
+}
+
+/// A request that plainly belongs to one agent: a phrase in it, or a kind of file attached.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RouteHint {
+    pub agent: String,
+    /// Phrases (any case) that pick the agent.
+    #[serde(default)]
+    pub when_said: Vec<String>,
+    /// Attachment kinds (`sheet`, `image`) that pick the agent.
+    #[serde(default)]
+    pub when_attached: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -272,6 +314,22 @@ impl Profiles {
                     a.id
                 ));
             }
+            if !a.next_actions.is_empty() && !a.blocks.iter().any(|b| b == "sales_explainer") {
+                problems.push(format!(
+                    "{}: next_actions are for the sales_explainer block, which it does not list",
+                    a.id
+                ));
+            }
+            if let Some(p) = a
+                .route_when_said
+                .iter()
+                .find(|p| p.trim().is_empty() || p.to_lowercase() != **p)
+            {
+                problems.push(format!(
+                    "{}: route_when_said phrase `{p}` must be lower case and not empty",
+                    a.id
+                ));
+            }
             for r in &a.layout_rules {
                 if !a.blocks.contains(&r.ui) {
                     problems.push(format!(
@@ -292,6 +350,11 @@ impl Profiles {
                     "surface {} needs exactly one default agent; it has {defaults}",
                     s.as_str()
                 ));
+            }
+        }
+        for h in &self.runtime.router.hints {
+            if !self.agents.iter().any(|a| a.id == h.agent) {
+                problems.push(format!("router hint for unknown agent `{}`", h.agent));
             }
         }
         let l = &self.runtime.tool_search;
@@ -348,6 +411,21 @@ mod tests {
         let shopper = p.get("shopper").unwrap();
         assert!(!shopper.layout_rules.is_empty());
         assert!(!shopper.instructions_text.is_empty());
+        let insights = p.get("insights").unwrap();
+        assert_eq!(insights.surface, ChatSurface::Bo);
+        assert_eq!(
+            insights.tool_scope.kinds,
+            [ToolKind::Read],
+            "insights only reads"
+        );
+        assert!(insights.blocks.iter().any(|b| b == "sales_explainer"));
+        assert!(
+            insights
+                .route_when_said
+                .iter()
+                .any(|w| w == "why did sales")
+        );
+        assert_eq!(insights.next_actions["out_of_stock"].len(), 2);
     }
 
     #[test]

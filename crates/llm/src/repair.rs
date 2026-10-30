@@ -606,7 +606,8 @@ fn money(
 }
 
 /// A date-time from what people write: RFC 3339, a local date-time, a date, `today`,
-/// `tomorrow`, or a weekday (`Saturday`, `this sat`, `next Sunday`). A date alone starts the
+/// `tomorrow`, `yesterday`, a coming weekday (`Saturday`, `this sat`, `next Sunday`), or a past
+/// one (`last Thursday`, the latest before today). A date alone starts the
 /// day, or ends it (23:59) when `end` is true, because periods include their last minute.
 fn when(s: &str, end: bool, env: &RepairEnv) -> Option<DateTime<Utc>> {
     let trimmed = s.trim();
@@ -619,6 +620,13 @@ fn when(s: &str, end: bool, env: &RepairEnv) -> Option<DateTime<Utc>> {
     let day = match w.as_str() {
         "today" | "now" => Some(today),
         "tomorrow" => today.succ_opt(),
+        "yesterday" => today.pred_opt(),
+        _ if w.starts_with("last_") => w["last_".len()..].parse::<Weekday>().ok().map(|wd| {
+            let back = (7 + today.weekday().num_days_from_monday() as i64
+                - wd.num_days_from_monday() as i64)
+                % 7;
+            today - Duration::days(if back == 0 { 7 } else { back })
+        }),
         _ => {
             let (next, name) = match w.split_once('_') {
                 Some(("next", rest)) => (true, rest),
@@ -809,6 +817,32 @@ mod tests {
             r.errors
                 .iter()
                 .any(|e| e.contains("quantity must be at least 1"))
+        );
+    }
+
+    #[test]
+    fn yesterday_and_last_weekdays_are_days_before_today() {
+        // The clock is Fri Nov 6 2026, as in scene B3.
+        let schema = json!({"type": "object", "additionalProperties": false, "properties": {
+            "valid_from": {"type": "string", "format": "date", "description": "First day."},
+            "valid_through": {"type": "string", "format": "date", "description": "Last day."}}});
+        let r = repair(
+            &json!({"valid_from": "yesterday", "valid_through": "Yesterday"}),
+            &schema,
+            &env(),
+        );
+        assert!(r.is_valid(), "{r:#?}");
+        assert_eq!(r.value["valid_from"], "2026-11-05");
+        assert_eq!(r.value["valid_through"], "2026-11-05");
+        let r = repair(
+            &json!({"valid_from": "last Thursday", "valid_through": "last Friday"}),
+            &schema,
+            &env(),
+        );
+        assert_eq!(r.value["valid_from"], "2026-11-05");
+        assert_eq!(
+            r.value["valid_through"], "2026-10-30",
+            "a week back, not today"
         );
     }
 

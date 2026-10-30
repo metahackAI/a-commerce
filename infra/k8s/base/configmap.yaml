@@ -13,7 +13,8 @@ data:
   ACOM_DEMO_MODE: "false"
   # demo: the migrate Job also loads the demo store once (seed/demo). none: migrations only.
   ACOM_SEED: none
-  # The store this deployment serves, and cookies only over HTTPS.
+  # The store this deployment serves (the gateway signs for it; commerce-worker runs its scheduled
+  # jobs), and cookies only over HTTPS.
   ACOM_STORE_ID: store_northwind
   ACOM_COOKIE_SECURE: "true"
   RUST_LOG: info

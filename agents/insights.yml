@@ -1,0 +1,40 @@
+# The insights agent: questions about how the store is doing. It only reads.
+id: insights
+surface: bo
+title: Insights agent
+description: Questions about how the store is doing, answered from the numbers - why sales or revenue went up or down, daily revenue and orders, members and tiers. Reads only; never changes anything.
+home_domains: [analytics]
+tool_scope:
+  domains: [analytics]
+  kinds: [read]
+blocks: [sales_explainer, product_table]
+models: {worker: glimmer, planner: spark}
+instructions: insights.md
+# Requests that name this agent's work go to it without asking the router model (lower case,
+# matched inside the request).
+route_when_said:
+  - why did sales
+  - why were sales
+  - why are sales
+  - sales drop
+  - sales dropped
+  - sales went down
+  - sales went up
+  - sales down
+  - sales up
+  - revenue
+  - daily sales
+  - sales trend
+# What the sales_explainer block offers next, per cause (`explain_sales_change` items). Each is
+# a `say` button: pressing it sends `request` as the operator's next message, which another
+# agent turns into a change set. {placeholders} come from the cause; an action whose
+# placeholder has no value is left out.
+next_actions:
+  out_of_stock:
+    - label: Reorder {sizes} for the {count} products
+      request: Draft a reorder of sizes {sizes} for {names}.
+    - label: Show “back {back}” on the {back_count} product pages
+      request: Show “back {back}” on the product pages of {back_names}.
+  campaign_not_sent:
+    - label: Send the {campaign} today
+      request: Send the {campaign} today, to the same list as last time.

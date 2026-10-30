@@ -97,7 +97,10 @@ export function RefundReviewBlock({block}: BlockProps) {
                     <VStack gap={0}>
                       <Text>{words(r.reason)}</Text>
                       <Text type="supporting" color="secondary">
-                        {[r.evidence !== undefined ? value(r.evidence) : null, r.day !== undefined && r.day !== null ? `day ${r.day}` : null]
+                        {[
+                          r.evidence !== undefined ? value(r.evidence) : null,
+                          r.day !== undefined && r.day !== null ? `${r.day} ${r.day === 1 ? 'day' : 'days'} since delivery` : null,
+                        ]
                           .filter(Boolean)
                           .join(' · ')}
                       </Text>
@@ -111,6 +114,11 @@ export function RefundReviewBlock({block}: BlockProps) {
                           {r.because}
                         </Text>
                       ) : null}
+                      {(r.flags ?? []).map(f => (
+                        <Text key={f.rule ?? f.detail} type="supporting" weight="medium">
+                          {f.detail ?? words(f.rule)}
+                        </Text>
+                      ))}
                     </VStack>
                   </TableCell>
                 </TargetRow>

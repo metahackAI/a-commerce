@@ -882,6 +882,59 @@ fn b3_sold_out_sizes_sell_on_compare_thursdays_and_not_on_nov_5() {
 }
 
 #[test]
+fn b3_weekly_email_orders_average_1300_on_compare_thursdays_and_none_on_nov_5() {
+    let campaigns: BTreeMap<&str, &Value> =
+        all("messaging.campaign").map(|c| (s(c, "id"), c)).collect();
+    let sold_out: BTreeSet<&str> = all("catalog.offer")
+        .filter(|o| o.get("sold_out_at").is_some_and(|t| !t.is_null()))
+        .map(|o| s(o, "product_id"))
+        .collect();
+    let mut with_sold_out: BTreeSet<&str> = BTreeSet::new();
+    for i in rows(&seed().generated, "sales.order_item") {
+        if sold_out.contains(s(i, "product_id")) {
+            with_sold_out.insert(s(i, "order_id"));
+        }
+    }
+    let mut revenue: BTreeMap<&str, i64> = BTreeMap::new();
+    for o in all("sales.sales_order") {
+        let Some(c) = o.get("campaign_id").and_then(Value::as_str) else {
+            continue;
+        };
+        let sent = time(s(campaigns[c], "date_sent"));
+        let at = time(s(o, "order_date"));
+        assert!(at >= sent && at.date_naive() == sent.date_naive(), "{o}");
+        assert!(
+            !with_sold_out.contains(s(o, "id")),
+            "{o} holds a sold-out size"
+        );
+        *revenue.entry(c).or_default() += cents(o, "total_payment_due_value");
+    }
+    assert_eq!(
+        revenue.into_iter().collect::<Vec<_>>(),
+        [
+            ("cmp_weekly_1008", 124_000),
+            ("cmp_weekly_1015", 141_000),
+            ("cmp_weekly_1022", 118_000),
+            ("cmp_weekly_1029", 137_000),
+        ],
+        "5,200.00 over the four compare Thursdays: 1,300.00 on an average Thursday"
+    );
+    let failed = campaigns["cmp_weekly_1105"];
+    assert_eq!(s(failed, "campaign_status"), "failed");
+    assert!(failed.get("date_sent").is_none_or(Value::is_null));
+    assert_eq!(day(s(failed, "scheduled_time")), d(11, 5));
+}
+
+#[test]
+fn subset_sums_use_each_value_once_and_prefer_early_ones() {
+    use super::orders::subset_sum;
+    assert_eq!(subset_sum(&[500, 300, 200, 700], 1000), Some(vec![0, 1, 2]));
+    assert_eq!(subset_sum(&[400, 400, 300], 800), Some(vec![0, 1]));
+    assert_eq!(subset_sum(&[400, 300], 800), None);
+    assert_eq!(subset_sum(&[], 0), Some(vec![]));
+}
+
+#[test]
 fn rows_reference_only_earlier_rows_in_table_order() {
     let order: Vec<&str> = {
         let mut seen = Vec::new();

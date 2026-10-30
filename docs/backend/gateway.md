@@ -10,7 +10,7 @@
 |---|---|---|---|
 | `operator` | 백오피스 운영자 | 쿠키 세션 | 역할에 따른 `tools:*`, `human:approve`·`human:undo` 등 |
 | `shopper` | 회원 또는 비회원 쇼퍼 | 쿠키 세션(비회원은 익명 세션) | 쇼퍼 툴, `human:order`·`human:return` 등 |
-| `agent_on_behalf` | 우리 에이전트가 위 사람을 대신함 | 게이트웨이가 채팅 요청에 붙여 발급 | 그 사람의 툴 스코프 **에서 `human:*`를 뺀 것** |
+| `agent_on_behalf` | 우리 에이전트가 위 사람을 대신함 | 게이트웨이가 채팅 요청에 붙여 발급 | 그 사람의 툴 스코프 **에서 `human:*`와 `admin:*`를 뺀 것** |
 | `external_agent` | ChatGPT·Gemini 등 | OAuth 클라이언트 토큰 → `/mcp` | `external:*` (읽기, 장바구니, 주문 준비) |
 | `system` | 변경셋 실행기, 예약 작업 | `commerce` 내부 | 실행 전용 |
 
@@ -28,7 +28,7 @@
 | `human:order`, `human:cancel`, `human:return`, `human:exchange`, `human:claim` | 쇼퍼의 주문·클레임 확정 |
 | `human:account` | 탈퇴, 비밀번호, 로그인 아이디 찾기 |
 | `external:read`, `external:cart`, `external:prepare_order` | 외부 에이전트 |
-| `admin:demo` | 데모 시계 조작, 시드 리셋 (데모 모드에서만) |
+| `admin:demo` | 데모 시계 조작(`PUT /v1/platform/demo-clock`, 운영자 본인의 요청만), 시드 리셋 (데모 모드에서만) |
 
 역할 → 스코프 매핑은 `platform` 도메인의 역할 데이터(`platform.role`)에서 오고, 게이트웨이는 시작할 때와 변경 이벤트 때 읽어 둡니다.
 
@@ -88,5 +88,5 @@
 - **쿠키:** `acom_session`(httpOnly, 세션 토큰)과 `acom_csrf`(페이지가 읽음). DB에는 둘 다 SHA-256 해시만 저장합니다. `ACOM_COOKIE_SECURE=true`면 `Secure`.
 - **CSRF:** 세션이 있는 요청이 상태를 바꾸면(GET·HEAD·OPTIONS 외) `X-CSRF-Token: <acom_csrf 값>`이 있어야 하고, 없거나 다르면 `csrf_mismatch`(403)입니다.
 - **세션 없는 요청:** 읽기는 익명(읽기 스코프만)으로 통과합니다. 상태를 바꾸는 첫 요청(게스트의 장바구니 담기)은 그 자리에서 게스트 세션을 만들고 쿠키를 붙여 돌려줍니다.
-- **내부 토큰:** `/api/v1/*`는 사람의 스코프 그대로(수명 5분), `/api/chat/*`는 `on_behalf()`(`human:*` 제거, 운영자는 `changeset:draft` 추가, 한 턴 15분). 브라우저가 보낸 `Authorization`은 버리고, commerce·agent로 쿠키를 넘기지 않습니다.
+- **내부 토큰:** `/api/v1/*`는 사람의 스코프 그대로(수명 5분), `/api/chat/*`는 `on_behalf()`(`human:*`·`admin:*` 제거, 운영자는 `changeset:draft` 추가, 한 턴 15분). 브라우저가 보낸 `Authorization`은 버리고, commerce·agent로 쿠키를 넘기지 않습니다.
 - **운영자 스코프:** 역할(`platform.admin_user_role` → `platform.role_scope`)의 합 + `changeset:draft`. 데모 모드의 플랫폼 관리자는 `admin:demo`도 받습니다. 데모 계정은 `admin` / `admin123`(모든 역할과 승인 역할).

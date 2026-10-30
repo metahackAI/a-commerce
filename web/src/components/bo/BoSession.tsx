@@ -17,13 +17,14 @@ export function useBoSession(): Session | null {
   return useContext(SessionContext);
 }
 
-/** The `human:*` scope a person-only endpoint needs (docs/api/README.md §2.1), or `null`. */
+/** The scope a person-only endpoint needs (`human:*`, docs/api/README.md §2.1; `admin:demo` for the demo clock, §2.2), or `null`. */
 export function personScope(method: string, path: string): string | null {
   if (method !== 'POST' && method !== 'PUT') return null;
   if (/\/change-sets\/[^/]+\/approve$/.test(path)) return 'human:approve';
   if (/\/change-sets\/[^/]+\/reject$/.test(path)) return 'human:reject';
   if (/\/change-sets\/[^/]+\/undo$/.test(path)) return 'human:undo';
   if (/\/tasks\/[^/]+\/dismiss$/.test(path)) return 'human:task';
+  if (/\/platform\/demo-clock$/.test(path)) return 'admin:demo';
   return null;
 }
 

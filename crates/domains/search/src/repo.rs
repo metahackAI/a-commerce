@@ -27,22 +27,43 @@ pub async fn has_documents(tx: &mut TxCx) -> Result<bool, ToolError> {
         .map_err(unavailable)
 }
 
-/// Products whose search document matches the query, with `ts_rank` relevance. Shoppers only
+/// What a text query ranks by (`ops::text_ranks`): the widened query (what matches at all), the
+/// shopper's own words, and one query per word with its synonyms.
+#[derive(Debug, Clone, Copy)]
+pub struct Rank<'a> {
+    pub query: &'a str,
+    pub own: &'a str,
+    pub concepts: &'a [String],
+}
+
+/// The relevance of a document `v` (SQL): the number of concepts it covers, plus `ts_rank` over
+/// the widened query and over the shopper's own words. `$q`, `$o`, `$c` name the parameters.
+fn relevance(v: &str, q: &str, o: &str, c: &str) -> String {
+    format!(
+        "((SELECT count(*) FROM unnest({c}::text[]) AS c(t) WHERE {v} @@ to_tsquery('english', c.t))
+          + ts_rank({v}, to_tsquery('english', {q})) + ts_rank({v}, to_tsquery('english', {o})))::float8"
+    )
+}
+
+/// Products whose search document matches the query, by relevance (`relevance`). Shoppers only
 /// match documents of active products.
 pub async fn rank_documents(
     tx: &mut TxCx,
-    tsquery: &str,
+    rank: &Rank<'_>,
     active_only: bool,
 ) -> Result<Vec<(String, f64)>, ToolError> {
-    sqlx::query_as::<_, (String, f64)>(
-        "SELECT d.product_group_id, ts_rank(d.search_vector, q)::float8
-         FROM search.search_document d, to_tsquery('english', $2) AS q
-         WHERE d.tenant_id = $1 AND d.search_vector @@ q
-           AND (NOT $3 OR d.approval_status = 'active')",
-    )
+    let score = relevance("d.search_vector", "$2", "$4", "$5");
+    sqlx::query_as::<_, (String, f64)>(sqlx::AssertSqlSafe(format!(
+        "SELECT d.product_group_id, {score}
+         FROM search.search_document d
+         WHERE d.tenant_id = $1 AND d.search_vector @@ to_tsquery('english', $2)
+           AND (NOT $3 OR d.approval_status = 'active')"
+    )))
     .bind(tx.tenant.as_str())
-    .bind(tsquery)
+    .bind(rank.query)
     .bind(active_only)
+    .bind(rank.own)
+    .bind(rank.concepts)
     .fetch_all(&mut *tx.tx)
     .await
     .map_err(unavailable)
@@ -54,31 +75,33 @@ pub async fn rank_documents(
 pub async fn rank_texts(
     tx: &mut TxCx,
     docs: &[Doc],
-    tsquery: &str,
+    rank: &Rank<'_>,
 ) -> Result<Vec<(String, f64)>, ToolError> {
     let ids: Vec<&str> = docs.iter().map(|d| d.id.as_str()).collect();
     let names: Vec<&str> = docs.iter().map(|d| d.name.as_str()).collect();
     let labels: Vec<&str> = docs.iter().map(|d| d.labels.as_str()).collect();
     let materials: Vec<&str> = docs.iter().map(|d| d.material.as_str()).collect();
     let descriptions: Vec<&str> = docs.iter().map(|d| d.description.as_str()).collect();
-    sqlx::query_as::<_, (String, f64)>(
-        "SELECT t.id, ts_rank(t.v, q)::float8
+    let score = relevance("t.v", "$6", "$7", "$8");
+    sqlx::query_as::<_, (String, f64)>(sqlx::AssertSqlSafe(format!(
+        "SELECT t.id, {score}
          FROM (SELECT d.id,
                       setweight(to_tsvector('english', d.name), 'A')
                       || setweight(to_tsvector('english', d.labels), 'B')
                       || setweight(to_tsvector('english', d.material), 'C')
                       || setweight(to_tsvector('english', d.description), 'D') AS v
                FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[])
-                    AS d(id, name, labels, material, description)) AS t,
-              to_tsquery('english', $6) AS q
-         WHERE t.v @@ q",
-    )
+                    AS d(id, name, labels, material, description)) AS t
+         WHERE t.v @@ to_tsquery('english', $6)"
+    )))
     .bind(&ids)
     .bind(&names)
     .bind(&labels)
     .bind(&materials)
     .bind(&descriptions)
-    .bind(tsquery)
+    .bind(rank.query)
+    .bind(rank.own)
+    .bind(rank.concepts)
     .fetch_all(&mut *tx.tx)
     .await
     .map_err(unavailable)

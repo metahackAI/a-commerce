@@ -34,9 +34,22 @@ export interface ChangeSetBlockData {
 export interface TaskListBlockData {
   groups: {
     state: TaskState;
-    items: {task_id: string; title: string; origin: TaskOrigin; at: string; summary?: string | null; tag?: string | null; change_set_id?: string | null}[];
+    items: {
+      task_id: string;
+      title: string;
+      origin: TaskOrigin;
+      at: string;
+      summary?: string | null;
+      tag?: string | null;
+      change_set_id?: string | null;
+      /** The platform.yml watcher that keeps it up to date, if any. */
+      watcher?: string | null;
+      updated_at?: string;
+    }[];
   }[];
   agents?: {name: string; stats?: unknown}[];
+  /** Tasks in the store for the filter (`list_tasks` total); more than shown when the list was cut. */
+  total?: number;
 }
 
 export interface RefundReviewBlockData {
@@ -56,6 +69,8 @@ export interface RefundReviewBlockData {
     day?: number | string | null;
     suggested?: string;
     because?: string | null;
+    /** Things a person should look at (for example 4 returns in the last 90 days). */
+    flags?: {rule?: string; detail?: string}[];
   }[];
   checks?: Check[];
   messages?: (string | {to?: string; kind?: string; order_number?: string; text?: string; channel?: string})[];
@@ -63,26 +78,65 @@ export interface RefundReviewBlockData {
 }
 
 export interface ProductDraftsBlockData {
+  import_id?: string | null;
+  upload_id?: string | null;
+  file_name?: string | null;
+  provider_name?: string | null;
+  rows?: number | null;
+  preview_id?: string | null;
+  change_set_id?: string | null;
+  state?: string | null;
   progress?: {total?: number; ready?: number; needs_you?: number; working?: number};
   drafts?: {
     draft_id?: string;
+    product_id?: string;
+    row?: number;
     name: string;
     source_code?: string | null;
+    source_text?: string | null;
+    category?: string | null;
     cost?: Money | number | null;
     price?: Money | number | null;
     sizes?: string[] | string | null;
     status?: string;
+    open_fields?: string[];
     note?: string | null;
   }[];
-  rules?: (string | {rule?: string; text?: string})[];
-  checks?: Check[];
+  rules?: (string | {rule?: string; label?: string; text?: string})[];
+  /** A check as the import ran it; `status` is `open` when drafts were saved but wait for a person. */
+  checks?: (Check & {status?: 'passed' | 'failed' | 'open' | string; label?: string})[];
+  /** "Drafts are not visible to shoppers. Publishing is a separate change set." */
+  visibility?: string | null;
 }
 
+/** `sales_explainer` as the agent builds it from `explain_sales_change` and `get_sales_trend`. */
 export interface SalesExplainerBlockData {
-  summary?: {revenue?: Money | null; baseline?: Money | null; difference?: Money | null; orders?: number | string | null; [k: string]: unknown};
-  series?: {date: string; revenue: Money | number | null}[];
-  causes?: {cause: string; evidence?: string | null; estimated?: Money | number | string | null}[];
-  next?: {label: string; request: string}[];
+  period?: {valid_from: string; valid_through: string; label?: string};
+  summary?: {
+    revenue?: Money | null;
+    baseline?: Money | null;
+    /** "Thursday average". */
+    baseline_label?: string;
+    difference?: Money | null;
+    /** `difference / baseline`, 0–1 (negative for a drop). */
+    change_rate?: number | null;
+    basis?: string;
+    /** "vs the last 4 Thursdays". */
+    basis_label?: string;
+    orders?: {count?: number | null; baseline?: number | null} | number | null;
+  };
+  series?: {date: string; revenue: Money | null}[];
+  /** Causes with the data behind them, then the part left unexplained (`cause: unexplained`). */
+  causes?: {
+    cause: string;
+    title?: string;
+    detail?: string | null;
+    evidence?: string | null;
+    estimated?: Money | number | null;
+    ids?: string[];
+  }[];
+  /** Next steps; each is also a `say` action whose `args.request` is the sentence it sends. */
+  next?: {label: string; request: string; cause?: string}[];
 }
 
 export interface ProductTableBlockData {

@@ -15,6 +15,7 @@
 ### `list_active_promotions` — Kind: R  (MVP)
 - 논리주소/REST: `promotion.promotion.list_active` · `GET /v1/promotion/promotions/active`
 - 요약: 주어진 기간과 **겹치는** 진행 중·예정 프로모션과 각 프로모션의 적용 범위. `set_sale_prices`·`create_promotion`의 `promotion_overlap` 검사가 읽는 것과 같은 데이터라, 에이전트가 겹침을 미리 설명할 수 있습니다.
+- 쇼퍼(비회원 포함)가 부르면 기간과 상관없이 **지금 진행 중인** 프로모션 중 모두 대상이거나 자기 등급 대상인 것만 돌려줍니다. 세일 페이지(`/sale/{slug}`)가 이것으로 세일을 찾습니다. `valid_for_member_tier`·`status`는 운영자만 씁니다(쇼퍼가 보내면 `forbidden`).
 - consumes → produces: `tier_id` → `promotion_id[]`
 - 입력:
   | 필드 | 타입 | 필수 | 설명 | 예 |

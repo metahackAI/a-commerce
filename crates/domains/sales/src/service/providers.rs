@@ -1,6 +1,7 @@
 //! Readers that domains depending on `sales` install at start-up, so order reads can show their
 //! data without a dependency cycle. Fulfillment installs the delivery reader (`get_order` shows
-//! the parcel). A read whose reader is missing falls back to what the order recorded.
+//! the parcel) and the claim reader (`get_order` shows cancel, return and exchange requests). A
+//! read whose reader is missing falls back to what the order recorded.
 
 use std::future::Future;
 use std::pin::Pin;
@@ -39,4 +40,32 @@ pub fn provide_deliveries(f: DeliveryReader) {
 
 pub(crate) fn deliveries() -> Option<DeliveryReader> {
     DELIVERIES.get().copied()
+}
+
+/// A cancel, return or exchange request on an order, as `get_order` shows it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClaimFacts {
+    /// `clm_…`
+    pub id: String,
+    /// `cancel` | `return` | `exchange`.
+    pub claim_type: String,
+    /// `acom:claim_status` word.
+    pub claim_status: String,
+    /// The order lines it covers (`oln_…`).
+    pub order_item_ids: Vec<String>,
+    pub requested_at: DateTime<Utc>,
+}
+
+/// The claims of order `order_id`, oldest first.
+pub type ClaimReader = for<'a> fn(&'a mut TxCx, &'a str) -> Reading<'a, Vec<ClaimFacts>>;
+
+static CLAIMS: OnceLock<ClaimReader> = OnceLock::new();
+
+/// Fulfillment installs this when it registers.
+pub fn provide_claims(f: ClaimReader) {
+    let _ = CLAIMS.set(f);
+}
+
+pub(crate) fn claims() -> Option<ClaimReader> {
+    CLAIMS.get().copied()
 }

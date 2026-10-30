@@ -2,6 +2,9 @@
 //! has (who a sale or coupon reaches), and members with their tier (who may hold a coupon).
 //! Plain reads over the caller's transaction.
 
+/// A shopper's own tier (the promotions that reach them).
+pub use super::for_catalog::tier_of;
+
 use acom_contract::ToolError;
 use acom_store::{StoreError, TxCx};
 use chrono::{DateTime, NaiveDate, Utc};

@@ -13,10 +13,30 @@ tool_search:
   max_candidates: 8
   # Added to a tool's score (as a share of it) when its domain is one of the agent's home domains.
   home_domain_boost: 0.5
+  # Words people say that the tools name differently. Word matching has no sense of meaning
+  # (embeddings are the next layer), so each word on the left adds the words on the right to
+  # the query: "Will M fit?" also looks for measurements, reviews and past orders.
+  related_words:
+    fit: [measurements, reviews, orders]
+    fits: [measurements, reviews, orders]
+    hoodie: [fit]
+    sweater: [fit]
+    gift: [find, products, price, gift, recipient]
+    dad: [gift]
+    mom: [gift]
+    photos: [remember, shown]
+    text: [remember, shown]
+    decline: [message, evaluate]
 
 router:
   # Below this the surface's default agent (or the conversation's last agent) takes the turn.
   min_confidence: 0.5
+  # Requests that plainly belong to one agent go to it without a model call: a phrase they say
+  # (any case) or the kind of file attached. Only when the hints point at exactly one agent.
+  hints:
+    - agent: catalog
+      when_said: [supplier sheet, product drafts, new products from, the drafts]
+      when_attached: [sheet]
 
 planner:
   # A worker plan with more steps than this, or with steps in more than one domain, is planned

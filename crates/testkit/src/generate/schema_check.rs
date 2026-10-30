@@ -1,6 +1,7 @@
 //! Test-only: the checks of `cargo xtask check-seed`, applied to rows in memory.
 //!
-//! Reads `migrations/*.sql` (one column or constraint per line inside `CREATE TABLE`) for
+//! Reads `migrations/*.sql` (one column or constraint per line inside `CREATE TABLE`, and
+//! one-line `ALTER TABLE … ADD COLUMN` / `ADD CONSTRAINT`) for
 //! columns, NOT NULL without a default, `CHECK (col IN (...))` word lists, column references
 //! and primary keys. Then every row: the table and its columns exist, required columns are
 //! present, words are from their list, primary keys are unique, and every reference points
@@ -82,6 +83,10 @@ pub(crate) fn parse(dir: &Path) -> BTreeMap<String, Table> {
         let mut current: Option<(String, Table)> = None;
         for line in sql.lines() {
             let t = line.trim().trim_end_matches(',');
+            if let Some(rest) = t.strip_prefix("ALTER TABLE ") {
+                alter(&mut tables, rest);
+                continue;
+            }
             if let Some(rest) = t.strip_prefix("CREATE TABLE ") {
                 let name = rest.split([' ', '(']).next().unwrap().to_owned();
                 current = Some((name, Table::default()));
@@ -96,40 +101,66 @@ pub(crate) fn parse(dir: &Path) -> BTreeMap<String, Table> {
                 continue;
             }
             if let Some(c) = t.strip_prefix("CONSTRAINT ") {
-                if let Some(p) = c.find("PRIMARY KEY") {
-                    table.primary_key = inner(&c[p..])
-                        .unwrap()
-                        .split(',')
-                        .map(|s| s.trim().to_owned())
-                        .collect();
-                } else if let Some(p) = c.find("FOREIGN KEY") {
-                    let r = c.find(" REFERENCES ").unwrap();
-                    let to = target(&c[r + 12..]);
-                    for col in inner(&c[p..]).unwrap().split(',').map(str::trim) {
-                        if col != "tenant_id" {
-                            let col = table.columns.iter_mut().find(|x| x.name == col).unwrap();
-                            col.references = Some(to.clone());
-                        }
-                    }
-                } else if let Some(p) = c.find("CHECK")
-                    && let Some((col, words)) = inner(&c[p..]).and_then(in_list)
-                    && let Some(col) = table.columns.iter_mut().find(|x| x.name == col)
-                {
-                    col.words = Some(words);
-                }
+                constraint(table, c);
                 continue;
             }
-            let (col, rest) = t.split_once(' ').unwrap();
-            let rest = format!(" {rest}");
-            table.columns.push(Column {
-                name: col.to_owned(),
-                required: rest.contains(" NOT NULL") && !rest.contains(" DEFAULT "),
-                words: None,
-                references: rest.find(" REFERENCES ").map(|r| target(&rest[r + 12..])),
-            });
+            table.columns.push(column(t));
         }
     }
     tables
+}
+
+/// `ALTER TABLE <t> ADD COLUMN …;` and `ALTER TABLE <t> ADD CONSTRAINT …;`, one per line.
+fn alter(tables: &mut BTreeMap<String, Table>, rest: &str) {
+    let rest = rest.trim_end_matches(';');
+    let Some((name, action)) = rest.split_once(' ') else {
+        return;
+    };
+    let Some(table) = tables.get_mut(name) else {
+        return;
+    };
+    if let Some(def) = action.strip_prefix("ADD COLUMN ") {
+        table.columns.push(column(def));
+    } else if let Some(c) = action.strip_prefix("ADD CONSTRAINT ") {
+        constraint(table, c);
+    }
+}
+
+/// One column definition: `name type [NOT NULL] [DEFAULT …] [REFERENCES …]`.
+fn column(def: &str) -> Column {
+    let (col, rest) = def.split_once(' ').unwrap_or((def, ""));
+    let rest = format!(" {rest}");
+    Column {
+        name: col.to_owned(),
+        required: rest.contains(" NOT NULL") && !rest.contains(" DEFAULT "),
+        words: None,
+        references: rest.find(" REFERENCES ").map(|r| target(&rest[r + 12..])),
+    }
+}
+
+/// A named table constraint: primary key, foreign key, or a `CHECK (col IN (…))` word list.
+fn constraint(table: &mut Table, c: &str) {
+    if let Some(p) = c.find("PRIMARY KEY") {
+        table.primary_key = inner(&c[p..])
+            .unwrap()
+            .split(',')
+            .map(|s| s.trim().to_owned())
+            .collect();
+    } else if let Some(p) = c.find("FOREIGN KEY") {
+        let r = c.find(" REFERENCES ").unwrap();
+        let to = target(&c[r + 12..]);
+        for col in inner(&c[p..]).unwrap().split(',').map(str::trim) {
+            if col != "tenant_id" {
+                let col = table.columns.iter_mut().find(|x| x.name == col).unwrap();
+                col.references = Some(to.clone());
+            }
+        }
+    } else if let Some(p) = c.find("CHECK")
+        && let Some((col, words)) = inner(&c[p..]).and_then(in_list)
+        && let Some(col) = table.columns.iter_mut().find(|x| x.name == col)
+    {
+        col.words = Some(words);
+    }
 }
 
 fn scalar(v: &Value) -> Option<String> {

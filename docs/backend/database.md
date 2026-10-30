@@ -187,8 +187,13 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `catalog.measurement` | schema:QuantitativeValue (hasMeasurement) | — | 실측(가슴, 어깨, 소매, 기장) |
 | `catalog.merchant_return_policy` | schema:MerchantReturnPolicy | — | `merchant_return_days`, `return_fees` |
 | `catalog.review` | schema:Review | `rev` | `review_rating_value`, `review_body`, `acom:fit_vote` |
+| `catalog.data_feed` | schema:DataFeed | `upl` | 올린 공급사 시트(API: upload_id). 행은 `data_feed_element` |
+| `catalog.product_import` | schema:CreateAction/acom:ProductImport | `imp` | `batch_import` 실행 한 번 |
+| `catalog.data_feed_item` | schema:DataFeedItem | — | 시트 행 ↔ 초안, `draft_status`, `open_fields` |
+| `catalog.unit_price_specification` | schema:UnitPriceSpecification | `ups` | 예약 정가(`schedule_price_change`), 그때그때 계산 |
 | `merchandising.defined_term` | schema:DefinedTerm | `cat` | 카테고리, `in_defined_term_set`(standard/display) |
 | `merchandising.product_group_category` | - | — | 상품 ↔ 카테고리 |
+| `merchandising.category_mapping` | schema:Intangible/acom:CategoryMapping | `map` | 표준 → 전시 카테고리 |
 | `merchandising.display_slot` | schema:WebPageElement | `slot` | `slot_type`, 페이지 |
 | `merchandising.banner` | schema:CreativeWork/acom:Banner | `bnr` | `headline`, `alternative_headline`, `image`, `url` |
 | `merchandising.display_booking` | schema:Schedule/acom:DisplayBooking | `dsp` | 슬롯 × 대상 × 기간 |
@@ -216,7 +221,11 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `fulfillment.inspection` | schema:CheckAction | `ins` | `inspection_condition` |
 | `fulfillment.refund` | schema:MoneyTransfer/acom:Refund | `rfd` | `refund_status`, `refund_method`, `amount_value`·`amount_currency` |
 | `messaging.message` | schema:Message | `msg` | `recipient_id`, `text`, `message_channel`, `about_id` |
+| `messaging.campaign` | schema:CreativeWork/acom:Campaign | `cmp` | `campaign_status`(`failed` 포함), `scheduled_time`, `date_sent`, `error`. 주문은 `sales_order.campaign_id`로 자기를 데려온 캠페인을 가리킴 |
 | `analytics.daily_sales` | - (뷰) | — | 일별 매출·주문 수 |
+| `analytics.order_summary`, `analytics.order_line_summary` | - (뷰) | — | 주문·주문 줄 하나에 한 행: 날짜, 상태, 등급, 캠페인, 금액. 누가 샀는지는 없음 |
+| `analytics.variant_stock_out`, `analytics.campaign_send` | - (뷰) | — | 지금 품절인 변형과 품절 시각, 캠페인 발송 여부·실패 이유 |
+| `analytics.member_tier_count`, `analytics.daily_new_members` | - (뷰) | — | 등급별 회원 수, 일별 신규 가입 수 |
 | `agent.conversation`, `agent.turn`, `agent.step`, `agent.model_call` | schema:Conversation, schema:Message, schema:Action | `conv`, `turn` | agent 서비스 |
 
 ## 13. 마이그레이션 규칙과 검사

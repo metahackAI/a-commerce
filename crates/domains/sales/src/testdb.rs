@@ -13,6 +13,11 @@ use acom_store::{Cx, Db};
 /// A context for `subject`: `cus_…` is a signed-in shopper, `ses_…` a guest, anything else an
 /// operator.
 pub(crate) async fn cx(subject: &str) -> Cx {
+    cx_at(subject, "2026-11-07T10:00").await
+}
+
+/// The same at another store time (`2026-11-06T11:00`).
+pub(crate) async fn cx_at(subject: &str, at: &str) -> Cx {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
     let db = Db::connect(&url, 2).await.unwrap();
     let time = StoreTime::new(chrono_tz::America::New_York);
@@ -35,7 +40,7 @@ pub(crate) async fn cx(subject: &str) -> Cx {
             session_id: Some("ses_test".to_owned()),
         }),
         request_id: "req_test".to_owned(),
-        clock: Arc::new(FixedClock::at(time.parse("2026-11-07T10:00").unwrap())),
+        clock: Arc::new(FixedClock::at(time.parse(at).unwrap())),
         time,
         currency: acom_core::Currency::parse("USD").unwrap(),
         policy: Arc::new(crate::rules::tests::defaults()),

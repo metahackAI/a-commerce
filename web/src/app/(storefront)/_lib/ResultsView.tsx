@@ -9,7 +9,9 @@ import {Heading, Text} from '@astryxdesign/core/Text';
 import {ErrorNotice} from '@/components/fo/ErrorNotice';
 import {ProductGrid} from '@/components/fo/ProductGrid';
 import {SearchBox} from '@/components/fo/SearchBox';
-import {SearchControls, hrefWith, type SearchParamsState} from '@/components/fo/SearchControls';
+import {SearchControls} from '@/components/fo/SearchControls';
+
+import {hrefWith, type SearchParamsState} from './search-href';
 import type {Page, Query} from '@/lib/api';
 
 import {load, orElse} from './server';

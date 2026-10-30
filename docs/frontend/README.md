@@ -132,16 +132,19 @@ return <tr ref={ref} data-acom-kind="change_row" data-acom-id="prd_seersucker_ov
 | `CartLine` | cart | "금요일까지 와?" | "하나 더", "L로 바꿔" | `get_delivery_dates`, 장바구니 쓰기 |
 | `OrderRow` | order_detail, 주문 목록 | "어디쯤 왔어?" | "반품하고 싶어" | `return_options` 준비(보내기는 사람) |
 | `MeasurementTable` | fit_check | "어깨는 괜찮을까?" | — | 실측 비교 설명 |
+| `FitOption` | fit_check 사이즈 선택지 | "왜 L이야?" | "스웨터만 입으면?" | 같은 읽기로 다시 판단, 선택지 순서 바꿈 |
+| `GiftOptions`·`GiftField` | gift_picker, 선물 결제(`/checkout/gift`) | "포장비는 얼마야?" | "카드 문구 바꿔 줘" | `prepare_gift_order` 다시 프리뷰(주문하기는 사람) |
 | `MemoryNote`·`ProfileFact` | 대화, profile_card | "이건 왜 기억했어?" | "이건 잊어" → 되돌리기 버튼 안내 | 기억 출처 설명 |
 | `SearchBox`·`NaturalInput` | 헤더, 필터, 기간 | — | 자연어 그대로 | 조건으로 풀어 칩으로 확인 |
 | `ProductImage` | 상품, 초안(운영자) | "이 사진 뭐가 문제야?" | (운영자) "배경 지워 줘" | catalog 이미지 오퍼레이션 프리뷰 |
+| `Figure`·`CauseRow`·`SeriesPoint` (`figure`, `cause`, `series_point`) | sales_explainer, `/bo/insights` | "이 날은 왜 낮아?", "−$660은 뭐야?" | 다음 행동 버튼("Send the weekly email today") | `explain_sales_change`·`get_sales_trend`로 설명. 다음 행동은 그 문장으로 새 턴(변경셋은 그 일을 맡은 에이전트가) |
 
 모든 요소는 이 표의 "묻기"를 기본으로 지원하고, "고치기"는 블록 데이터의 `suggested_intents`가 있을 때 보입니다.
 
 ## 5. 사람의 결정 (`PersonButton`)
 
 - 블록의 `person` 버튼은 `PersonButton` 하나로만 그립니다(Astryx 버튼 위에 확인 단계를 얹은 우리 컴포넌트): 확인 문구(`confirm`), CSRF 토큰, `Idempotency-Key`, 진행·결과 표시, 에러(`estimate_changed`면 새 금액을 보여 주고 다시 확인).
-- 대상: 변경셋 승인·거절·되돌리기, 주문하기, 반품·교환·취소 요청 보내기, 기억 되돌리기, 할 일 치우기.
+- 대상: 변경셋 승인·거절·되돌리기, 주문하기, 반품·교환·취소 요청 보내기, 기억 되돌리기, 할 일 치우기, 데모 시계 옮기기(`admin:demo`, 백오피스 머리글의 스토어 시각).
 - 에이전트 이벤트로 눌리지 않고, 페이지 툴로 등록되지 않습니다.
 
 ## 6. 상태
@@ -149,6 +152,7 @@ return <tr ref={ref} data-acom-kind="change_row" data-acom-id="prd_seersucker_ov
 - 대화 상태(대화 id, 턴, 메시지, 블록)는 클라이언트 저장소 하나. 블록은 `block_id`로 저장하고 같은 id가 오면 교체합니다.
 - SSE가 끊기면 `Last-Event-ID`로 이어 받고, 새로고침하면 `GET /api/chat/{surface}/conversations/{id}`로 복원합니다.
 - 서버 데이터는 페이지 첫 로드에 서버 컴포넌트가 가져오고, 쓰기 뒤에는 해당 블록만 새로 받습니다.
+- 스토어 진행 이벤트(`GET /api/v1/platform/events`)는 화면이 데이터를 다시 읽는 신호로만 씁니다: 받은 편지함은 `task.updated`가 오면 할 일 목록을 다시 읽습니다(감시 작업이 갱신한 할 일 포함). 숫자는 이벤트가 아니라 읽기에서 옵니다.
 
 ## 7. 테스트
 

@@ -15,7 +15,7 @@ import {Blockquote} from '@astryxdesign/core/Blockquote';
 import type {ApiErrorBody} from '@/lib/api';
 import {actor, count, date, dateTime, price, value, words} from '@/app/bo/_lib/format';
 import {withParams} from '@/app/bo/_lib/links';
-import type {HistoryEntry, Inventory, Product, ProductGroup, ReviewSummary, Variant} from '@/app/bo/_lib/types';
+import type {Brand, Category, HistoryEntry, Inventory, Product, ProductGroup, ReviewSummary, Variant} from '@/app/bo/_lib/types';
 
 import {useBoSession} from './BoSession';
 import {ErrorState} from './ErrorState';
@@ -24,6 +24,7 @@ import {StateToken} from './StateToken';
 import {DataTable, Figure} from './tables';
 import {TargetFact, TargetInline} from './targets';
 import {VariantEditor, type EditMode} from './VariantEditor';
+import {ProductEditor, type EditorTab} from './ProductEditor';
 
 type InvVariant = Inventory['variants'][number];
 
@@ -38,13 +39,21 @@ export interface ProductViewProps {
   reviewsError: ApiErrorBody | null;
   history: HistoryEntry[] | null;
   historyError: ApiErrorBody | null;
+  /** For the editor: the store's categories and brands. */
+  categories?: Category[];
+  brands?: Brand[];
+  /** Opens the editor on this tab (a new product goes straight to its variants). */
+  initialEdit?: EditorTab | null;
 }
 
 export function ProductView(p: ProductViewProps) {
   const session = useBoSession();
   const canWrite = session?.scopes.includes('tools:write:catalog') ?? false;
   const [editing, setEditing] = useState<{variant: InvVariant; mode: EditMode} | null>(null);
+  const [editor, setEditor] = useState<EditorTab | null>(p.initialEdit ?? null);
+  const draft = p.group?.['acom:draft'];
   const product = p.product;
+  const currency = product?.price_currency ?? p.group?.has_variant?.find(v => v.price_currency)?.price_currency ?? p.group?.price_currency ?? null;
   const name = product?.name ?? p.group?.name ?? p.productId;
   const ids = {product_id: p.productId};
 
@@ -68,7 +77,12 @@ export function ProductView(p: ProductViewProps) {
         </>
       }
       actions={
-        <Button label="Change history in activity" variant="ghost" href={withParams('/bo/activity', {object_id: p.productId})} />
+        <>
+          {canWrite && p.group ? <Button label="Edit details" onClick={() => setEditor('details')} /> : null}
+          {canWrite && p.group ? <Button label="Sizes, colors and prices" onClick={() => setEditor('variants')} /> : null}
+          {draft ? <Button label="Product drafts" variant="ghost" href={withParams('/bo/products/drafts', {import_id: draft.import_id})} /> : null}
+          <Button label="Change history in activity" variant="ghost" href={withParams('/bo/activity', {object_id: p.productId})} />
+        </>
       }
       panel={
         <MetadataList title="Catalog">
@@ -77,9 +91,33 @@ export function ProductView(p: ProductViewProps) {
           <MetadataListItem label="Options">{(product?.varies_by ?? p.group?.varies_by ?? []).map(words).join(', ') || '—'}</MetadataListItem>
           <MetadataListItem label="Approval">{words(p.group?.approval_status ?? product?.approval_status)}</MetadataListItem>
           <MetadataListItem label="Pending changes">{p.group?.pending_changes?.length ? value(p.group.pending_changes) : 'None'}</MetadataListItem>
+          {p.group?.material ? <MetadataListItem label="Material">{p.group.material}</MetadataListItem> : null}
           {p.group?.description ? <MetadataListItem label="Description">{p.group.description}</MetadataListItem> : null}
+          {draft ? (
+            <MetadataListItem label="Draft">
+              <VStack gap={1}>
+                <StateToken state={draft.draft_status} />
+                <Text type="supporting" color="secondary">
+                  {[`Row ${draft.row} · ${draft.supplier_code}`, draft.open_fields.length ? `Open: ${draft.open_fields.map(words).join(', ')}` : null, draft.note]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
+              </VStack>
+            </MetadataListItem>
+          ) : null}
         </MetadataList>
       }>
+      {editor && p.group ? (
+        <ProductEditor
+          group={p.group}
+          categories={p.categories ?? []}
+          brands={p.brands ?? []}
+          currency={currency}
+          tab={editor}
+          onTabChange={setEditor}
+          onClose={() => setEditor(null)}
+        />
+      ) : null}
       {p.productError ? <ErrorState error={p.productError} title="The product’s sales view could not be loaded." /> : null}
 
       {product ? (

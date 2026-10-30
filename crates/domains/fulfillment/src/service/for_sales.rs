@@ -1,16 +1,52 @@
-//! What sales reads from fulfillment: an order's parcel delivery, for `get_order`. Sales cannot
+//! What sales reads from fulfillment: an order's parcel delivery and its claims, for `get_order`. Sales cannot
 //! depend on fulfillment (fulfillment depends on sales), so fulfillment installs this reader into
 //! `acom_sales::service::providers` at start-up: call [`install`] from this crate's `register`.
 
 use acom_contract::ToolError;
-use acom_sales::service::providers::{self, DeliveryFacts, Reading};
+use acom_sales::service::providers::{self, ClaimFacts, DeliveryFacts, Reading};
 use acom_store::{StoreError, TxCx};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
-/// Lets `get_order` show the parcel.
+/// Lets `get_order` show the parcel and the order's cancel, return and exchange requests.
 pub fn install() {
     providers::provide_deliveries(order_delivery);
+    providers::provide_claims(order_claims);
+}
+
+/// The claims of an order with the lines each covers, oldest first.
+pub fn order_claims<'a>(tx: &'a mut TxCx, order_id: &'a str) -> Reading<'a, Vec<ClaimFacts>> {
+    Box::pin(async move {
+        #[allow(clippy::type_complexity)]
+        let rows: Vec<(String, String, String, Vec<String>, DateTime<Utc>)> = sqlx::query_as(
+            "SELECT c.id, c.claim_type, c.claim_status,
+                    coalesce(array_agg(i.order_item_id ORDER BY i.order_item_id)
+                             FILTER (WHERE i.order_item_id IS NOT NULL), '{}'),
+                    c.start_time
+             FROM fulfillment.claim c
+             LEFT JOIN fulfillment.claim_item i ON i.tenant_id = c.tenant_id AND i.claim_id = c.id
+             WHERE c.tenant_id = $1 AND c.order_id = $2
+             GROUP BY c.id, c.claim_type, c.claim_status, c.start_time
+             ORDER BY c.start_time, c.id",
+        )
+        .bind(tx.tenant.as_str())
+        .bind(order_id)
+        .fetch_all(&mut *tx.tx)
+        .await
+        .map_err(|e| ToolError::from(StoreError::from(e)))?;
+        Ok(rows
+            .into_iter()
+            .map(
+                |(id, claim_type, claim_status, order_item_ids, requested_at)| ClaimFacts {
+                    id,
+                    claim_type,
+                    claim_status,
+                    order_item_ids,
+                    requested_at,
+                },
+            )
+            .collect())
+    })
 }
 
 /// The latest parcel delivery of an order, if there is one.

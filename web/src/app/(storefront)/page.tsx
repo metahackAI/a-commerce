@@ -13,7 +13,6 @@ import type {Page} from '@/lib/api';
 import {imageUrl} from './_lib/format';
 import {load, orElse, shopper} from './_lib/server';
 import type {
-  Banner,
   Brand,
   Category,
   DisplayBooking,
@@ -33,29 +32,17 @@ function itemId(item: SlotItem): string | null {
   return item.item_id ?? item.product_id ?? item.id ?? null;
 }
 
-function isLive(b: DisplayBooking): boolean {
-  return b.status === undefined || b.status === 'active';
-}
-
-/** The booking this shopper sees: one for their tier if there is one, else the one for everyone. */
-function bookingFor(slot: DisplaySlot, tierId: string | null): DisplayBooking | null {
-  const live = slot.bookings.filter(isLive);
-  return (tierId ? live.find(b => b.audience === tierId) : undefined) ?? live.find(b => b.audience === 'everyone') ?? null;
-}
-
-function bannerFor(booking: DisplayBooking, banners: Banner[]): Banner | undefined {
-  return banners.find(
-    b => (booking.banner_id && b.id === booking.banner_id) || b.bookings?.some(x => x.display_booking_id === booking.display_booking_id),
-  );
-}
-
-async function heroContent(slot: DisplaySlot, booking: DisplayBooking, banners: Banner[]): Promise<HeroContent | null> {
-  const banner = bannerFor(booking, banners);
+/**
+ * The hero content of a booking. For a shopper, `get_display_slot` returns only the booking that
+ * shows to them now (their tier's, else everyone's), so the page never decides who sees what.
+ */
+async function heroContent(slot: DisplaySlot, booking: DisplayBooking): Promise<HeroContent | null> {
+  const banner = booking.banner ?? null;
   const c = booking.content ?? {};
-  const headline = c.headline ?? booking.headline ?? banner?.headline;
+  const headline = banner?.headline ?? c.headline ?? booking.headline;
   if (!headline) return null;
-  let image = c.content_url ?? banner?.content_url ?? null;
-  const productId = c.image_product_id ?? banner?.image_product_id ?? banner?.image_product_group_id ?? null;
+  let image = banner?.content_url ?? c.content_url ?? null;
+  const productId = banner?.image_product_id ?? c.image_product_id ?? null;
   if (!image && productId) {
     const group = await load<ProductGroup>(`/v1/catalog/product-groups/${encodeURIComponent(productId)}`, {fields: ['id', 'name', 'image']});
     image = group.ok ? imageUrl(group.data.image) : null;
@@ -63,11 +50,11 @@ async function heroContent(slot: DisplaySlot, booking: DisplayBooking, banners: 
   return {
     bookingId: booking.display_booking_id,
     slotId: slot.id,
-    eyebrow: c.eyebrow ?? booking.eyebrow ?? banner?.eyebrow,
+    eyebrow: banner?.eyebrow ?? c.eyebrow ?? booking.eyebrow,
     headline,
-    subline: c.alternative_headline ?? booking.alternative_headline ?? banner?.alternative_headline,
-    ctaLabel: c.cta_label ?? booking.cta_label ?? banner?.cta_label,
-    url: c.url ?? booking.url ?? banner?.url,
+    subline: banner?.alternative_headline ?? c.alternative_headline ?? booking.alternative_headline,
+    ctaLabel: banner?.cta_label ?? c.cta_label ?? booking.cta_label,
+    url: banner?.url ?? c.url ?? booking.url,
     image,
   };
 }
@@ -95,21 +82,18 @@ type Section =
 export default async function StorefrontHome() {
   const who = await shopper();
   const now = new Date();
-  const [slotList, bannerList, categories, featured, profile, brandList] = await Promise.all([
+  const [slotList, categories, featured, profile, brandList] = await Promise.all([
     load<Page<DisplaySlotSummary>>('/v1/merchandising/display-slots', {
       page: 'main',
       valid_from: isoDay(now),
       valid_through: isoDay(new Date(now.getTime() + 86_400_000)),
       limit: 20,
     }),
-    load<Page<Banner>>('/v1/merchandising/banners', {page: 'main', channel: 'web', limit: 50}),
     load<Page<Category>>('/v1/merchandising/categories', {term_set: 'standard', limit: 50}),
     load<Page<ProductSummary>>('/v1/search/products', {sort: 'newest', limit: GRID_LIMIT}),
-    who.isShopper ? load<Profile>('/v1/customer/people/me', {fields: ['name', 'tier_id']}) : null,
+    who.isShopper ? load<Profile>('/v1/customer/people/me', {fields: ['name']}) : null,
     load<Page<Brand>>('/v1/catalog/brands', {limit: 50}),
   ]);
-  const tierId = profile?.ok ? profile.data.tier_id : null;
-  const banners = orElse(bannerList, {items: [], total: 0}).items;
   const brands = orElse(brandList, {items: [], total: 0}).items;
 
   const summaries = orElse(slotList, {items: [], total: 0}).items.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
@@ -121,15 +105,14 @@ export default async function StorefrontHome() {
     const slot = loaded.data;
     const title = slot.name ?? summaries[i].name ?? '';
     if (slot.slot_type === 'hero') {
-      const booking = bookingFor(slot, tierId);
-      const hero = booking ? await heroContent(slot, booking, banners) : null;
+      const booking = slot.bookings[0];
+      const hero = booking ? await heroContent(slot, booking) : null;
       if (hero) sections.push({kind: 'hero', id: slot.id, hero});
     } else if (slot.slot_type === 'product_grid') {
       const products = await slotProducts(slot);
       if (products.length > 0) sections.push({kind: 'products', id: slot.id, title, products});
     } else if (slot.slot_type === 'banner_board') {
-      const live = slot.bookings.filter(b => isLive(b) && (b.audience === 'everyone' || b.audience === tierId));
-      const heroes = (await Promise.all(live.map(b => heroContent(slot, b, banners)))).filter((h): h is HeroContent => !!h);
+      const heroes = (await Promise.all(slot.bookings.map(b => heroContent(slot, b)))).filter((h): h is HeroContent => !!h);
       if (heroes.length > 0) sections.push({kind: 'banners', id: slot.id, title, heroes});
     } else if (slot.slot_type === 'brand_strip') {
       const ids = new Set(slot.item_list_element.map(itemId));

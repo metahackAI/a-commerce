@@ -90,6 +90,60 @@ pub async fn is_seeded(pool: &PgPool, tenant: &str) -> Result<bool, String> {
     Ok(seeded)
 }
 
+/// What the demo store holds now: nothing yet, or the fingerprint of the seed it was loaded from
+/// (`None` inside when it was loaded before fingerprints were kept).
+pub async fn seeded_fingerprint(
+    pool: &PgPool,
+    tenant: &str,
+) -> Result<Option<Option<String>>, String> {
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+    sqlx::query("SELECT set_config('app.tenant_id', $1, true)")
+        .bind(tenant)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+    let row: Option<(Option<String>,)> =
+        sqlx::query_as("SELECT seed_fingerprint FROM platform.online_store WHERE id = $1")
+            .bind(tenant)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| e.to_string())?;
+    tx.rollback().await.map_err(|e| e.to_string())?;
+    Ok(row.map(|(f,)| f))
+}
+
+/// The fingerprint of a seed: SHA-256 of its rows in load order. The generator is
+/// deterministic, so it changes exactly when the rows a load would write change.
+pub fn fingerprint(rows: &SeedRows) -> Result<String, String> {
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    for (table, row) in rows {
+        h.update(table.as_bytes());
+        h.update(serde_json::to_vec(row).map_err(|e| e.to_string())?);
+    }
+    Ok(h.finalize()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>())
+}
+
+/// Records which seed the store was loaded from (owner role).
+pub async fn record_fingerprint(pool: &PgPool, tenant: &str, fp: &str) -> Result<(), String> {
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+    sqlx::query("SELECT set_config('app.tenant_id', $1, true)")
+        .bind(tenant)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+    sqlx::query("UPDATE platform.online_store SET seed_fingerprint = $2 WHERE id = $1")
+        .bind(tenant)
+        .bind(fp)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+    tx.commit().await.map_err(|e| e.to_string())
+}
+
 /// Empties every store table (`TRUNCATE … CASCADE`). Needs the owner role.
 pub async fn reset(pool: &PgPool) -> Result<usize, String> {
     let tables: Vec<String> = sqlx::query_scalar(
@@ -166,6 +220,15 @@ pub async fn load(pool: &PgPool, rows: &SeedRows) -> Result<Report, String> {
         .await
         .map_err(|e| format!("{table} (rows {}–{}): {e}", i + 1, j))?;
         *report.tables.entry(table.to_owned()).or_default() += j - i;
+        // Once a table is loaded, refresh its statistics: foreign-key checks of the tables
+        // loaded after it are planned once per connection, and a plan made while the table
+        // looked empty scans it whole for every row.
+        if rows.get(j).is_none_or(|(t, _)| t != table) {
+            sqlx::query(sqlx::AssertSqlSafe(format!("ANALYZE {table}")))
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| format!("{table}: {e}"))?;
+        }
         i = j;
     }
     tx.commit().await.map_err(|e| e.to_string())?;

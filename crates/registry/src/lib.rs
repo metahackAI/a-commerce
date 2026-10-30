@@ -19,6 +19,7 @@ pub fn build() -> Result<Registry<Cx>, Vec<String>> {
     acom_fulfillment::register(&mut b);
     acom_messaging::register(&mut b);
     acom_platform::register(&mut b);
+    acom_analytics::register(&mut b);
     b.build()
 }
 

@@ -69,9 +69,7 @@ export function ProductCard({
 
   return (
     <VStack gap={2} ref={target.ref} {...target.props}>
-      <Link href={href} label={name}>
-        <ProductImage src={image} alt={name} ratio={ratio} />
-      </Link>
+      <ProductImage src={image} alt={name} ratio={ratio} href={href} />
       <VStack gap={1}>
         <HStack gap={1} vAlign="start" justify="between">
           <Link href={href}>

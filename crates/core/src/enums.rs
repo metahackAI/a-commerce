@@ -316,6 +316,15 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:campaignStatus of a messaging campaign; `failed` means the send stopped before any
+    /// message went out.
+    CampaignStatus = "campaign_status" {
+        Draft = "draft", Scheduled = "scheduled", Sending = "sending", Sent = "sent", Failed = "failed",
+        Cancelled = "cancelled",
+    }
+}
+
+word_enum! {
     /// acom:salesChannel.
     SalesChannel = "sales_channel" { Web = "web", MobileWeb = "mobile_web", App = "app", Agent = "agent" }
 }
@@ -410,6 +419,17 @@ word_enum! {
     }
 }
 
+word_enum! {
+    /// acom:draftStatus of a draft made from a supplier sheet: complete, waiting for a person, or
+    /// still being filled.
+    DraftStatus = "draft_status" { Ready = "ready", NeedsYou = "needs_you", Working = "working" }
+}
+
+word_enum! {
+    /// acom:importMode of `batch_import`: new drafts only, or also refresh drafts made earlier.
+    ImportMode = "import_mode" { Create = "create", Upsert = "upsert" }
+}
+
 /// Every word list, by name. `cargo xtask check-schema` compares database `CHECK` lists with these.
 pub const LISTS: &[(&str, &[&str])] = &[
     (OrderStatus::LIST, OrderStatus::WORDS),
@@ -444,6 +464,7 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (MemberType::LIST, MemberType::WORDS),
     (MessageChannel::LIST, MessageChannel::WORDS),
     (MessageKind::LIST, MessageKind::WORDS),
+    (CampaignStatus::LIST, CampaignStatus::WORDS),
     (SalesChannel::LIST, SalesChannel::WORDS),
     (PaymentMethod::LIST, PaymentMethod::WORDS),
     (ReturnFees::LIST, ReturnFees::WORDS),
@@ -459,6 +480,8 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (CouponStacking::LIST, CouponStacking::WORDS),
     (ChatSurface::LIST, ChatSurface::WORDS),
     (StepKind::LIST, StepKind::WORDS),
+    (DraftStatus::LIST, DraftStatus::WORDS),
+    (ImportMode::LIST, ImportMode::WORDS),
 ];
 
 /// The words of one list, by name.

@@ -63,6 +63,8 @@ pub(crate) struct Order {
     pub shipped_at: Option<DateTime<Tz>>,
     pub delivered_at: Option<DateTime<Tz>>,
     pub expected: Option<(DateTime<Tz>, DateTime<Tz>)>,
+    /// The campaign the order came from (`campaign_orders`).
+    pub campaign: Option<String>,
 }
 
 fn shipping(subtotal: i64) -> i64 {
@@ -91,6 +93,7 @@ impl Order {
             shipped_at: None,
             delivered_at: None,
             expected: None,
+            campaign: None,
         }
     }
 }
@@ -885,6 +888,85 @@ pub(crate) fn generate(
     Ok(orders)
 }
 
+/// `orders.campaign_orders`: marks the orders that came from each campaign email. For each
+/// campaign, the generated orders of its send day placed after the send and holding no
+/// sold-out size are taken, earliest first, so that their totals add up to the listed revenue
+/// exactly. No dice are thrown, so every other generated value stays as it was.
+pub(crate) fn attribute_campaigns(
+    spec: &Spec,
+    named: &Named,
+    skus: &[Sku],
+    orders: &mut [Order],
+) -> Result<(), String> {
+    for (campaign, &revenue) in &spec.orders.campaign_revenue {
+        let sent = named
+            .campaigns
+            .get(campaign)
+            .copied()
+            .flatten()
+            .ok_or_else(|| {
+                format!("campaign_orders: `{campaign}` is not a sent campaign in the named rows")
+            })?;
+        let day = sent.date_naive();
+        let candidates: Vec<usize> = orders
+            .iter()
+            .enumerate()
+            .filter(|(_, o)| {
+                o.at.date_naive() == day
+                    && o.at >= sent
+                    && o.campaign.is_none()
+                    && !o.lines.iter().any(|l| skus[l.sku].sold_out_at.is_some())
+            })
+            .map(|(i, _)| i)
+            .collect();
+        let totals: Vec<i64> = candidates.iter().map(|&i| orders[i].total).collect();
+        let picked = subset_sum(&totals, revenue).ok_or_else(|| {
+            format!("campaign_orders: no orders of {day} after the send add up to {revenue} cents")
+        })?;
+        for k in picked {
+            orders[candidates[k]].campaign = Some(campaign.clone());
+        }
+    }
+    Ok(())
+}
+
+/// Positions in `values` whose values add up to `target` exactly, preferring early ones: each
+/// sum remembers the first value that reached it, and the walk back from `target` uses only
+/// earlier values, so no value is used twice.
+pub(crate) fn subset_sum(values: &[i64], target: i64) -> Option<Vec<usize>> {
+    let t = usize::try_from(target).ok()?;
+    let mut reached = vec![false; t + 1];
+    let mut first: Vec<usize> = vec![usize::MAX; t + 1];
+    reached[0] = true;
+    for (i, &v) in values.iter().enumerate() {
+        let Ok(v) = usize::try_from(v) else { continue };
+        if v == 0 || v > t {
+            continue;
+        }
+        for s in (v..=t).rev() {
+            if !reached[s] && reached[s - v] {
+                reached[s] = true;
+                first[s] = i;
+            }
+        }
+        if reached[t] {
+            break;
+        }
+    }
+    if !reached[t] {
+        return None;
+    }
+    let mut out = Vec::new();
+    let mut s = t;
+    while s > 0 {
+        let i = first[s];
+        out.push(i);
+        s -= usize::try_from(values[i]).ok()?;
+    }
+    out.reverse();
+    Some(out)
+}
+
 /// Rows in load order: orders, items, payments, events, deliveries.
 pub(crate) fn rows(
     spec: &Spec,
@@ -918,6 +1000,11 @@ pub(crate) fn rows(
                 "total_payment_due_currency": cur,
             }),
         ));
+        if let (Some(c), Some((_, row))) = (&o.campaign, out.last_mut())
+            && let Some(map) = row.as_object_mut()
+        {
+            map.insert("campaign_id".to_owned(), json!(c));
+        }
     }
     for o in orders {
         for (i, l) in o.lines.iter().enumerate() {

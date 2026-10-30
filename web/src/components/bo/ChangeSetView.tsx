@@ -58,7 +58,7 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
           <Text type="supporting" color="secondary">
             {`Version ${cs.version}${isLatest ? '' : ` (latest is ${latestVersion})`}`}
           </Text>
-          {cs.needs_approval ? <Token label="Needs approval" size="sm" color="orange" /> : null}
+          {cs.needs_approval && !cs.approved_at ? <Token label="Needs approval" size="sm" color="orange" /> : null}
           {summary ? (
             <StateToken
               state={summary.failed > 0 ? 'failed' : 'passed'}
@@ -143,7 +143,11 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
                 }}>
                 <HStack gap={2} vAlign="center" wrap="wrap">
                   <Heading level={3}>{`${item.position} · ${item.tool}`}</Heading>
-                  {item.needs_approval ? <Token label="Needs approval" size="sm" color="orange" /> : <Token label="No approval needed" size="sm" />}
+                  {item.needs_approval ? (
+                    cs.approved_at ? <Token label="Approved" size="sm" /> : <Token label="Needs approval" size="sm" color="orange" />
+                  ) : (
+                    <Token label="No approval needed" size="sm" />
+                  )}
                   {item.action_status ? <StateToken state={item.action_status} /> : null}
                 </HStack>
                 {item.approval_reason ? <Text>{item.approval_reason}</Text> : null}
@@ -277,6 +281,12 @@ function VerificationTable({verification}: {verification: Verification}) {
   );
 }
 
+/** A person's or agent's name as the change set's history recorded it, else their id. */
+function nameOf(cs: ChangeSet, id: string | null | undefined): string {
+  if (!id) return '—';
+  return cs.history?.find(h => h.agent_id === id && h.agent_name)?.agent_name ?? id;
+}
+
 function ChangeSetFacts({cs, latestVersion}: {cs: ChangeSet; latestVersion: number}) {
   const versions = Array.from({length: latestVersion}, (_, i) => i + 1).reverse();
   return (
@@ -287,11 +297,11 @@ function ChangeSetFacts({cs, latestVersion}: {cs: ChangeSet; latestVersion: numb
           <StateToken state={cs.state} />
         </MetadataListItem>
         <MetadataListItem label="Undo until">{cs.undo_until ? dateTime(cs.undo_until) : 'Can’t be undone or not run yet'}</MetadataListItem>
-        <MetadataListItem label="Requested by">{cs.request?.requested_by ?? cs.created_by ?? '—'}</MetadataListItem>
+        <MetadataListItem label="Requested by">{nameOf(cs, cs.request?.requested_by ?? cs.created_by)}</MetadataListItem>
         <MetadataListItem label="Agent">{actor(cs.agent)}</MetadataListItem>
         <MetadataListItem label="Created">{dateTime(cs.created_at)}</MetadataListItem>
         <MetadataListItem label="Submitted">{dateTime(cs.submitted_at)}</MetadataListItem>
-        <MetadataListItem label="Approved">{cs.approved_at ? `${dateTime(cs.approved_at)} by ${cs.approved_by ?? '—'}` : '—'}</MetadataListItem>
+        <MetadataListItem label="Approved">{cs.approved_at ? `${dateTime(cs.approved_at)} by ${cs.approved_by ? nameOf(cs, cs.approved_by) : 'standing approval'}` : '—'}</MetadataListItem>
         {cs.request?.conversation_id ? <MetadataListItem label="Conversation">{cs.request.conversation_id}</MetadataListItem> : null}
       </MetadataList>
       {versions.length > 1 ? (
