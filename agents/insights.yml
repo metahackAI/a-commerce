@@ -27,6 +27,9 @@ route_when_said:
   - revenue
   - daily sales
   - sales trend
+  - how many
+  - members
+  - customers by tier
 # What the sales_explainer block offers next, per cause (`explain_sales_change` items). Each is
 # a `say` button: pressing it sends `request` as the operator's next message, which another
 # agent turns into a change set. {placeholders} come from the cause; an action whose

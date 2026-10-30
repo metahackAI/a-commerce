@@ -612,15 +612,16 @@ async fn b1_drafts_a_change_set_through_tools_and_never_approves() {
 
     let (usage, models) = done(&events);
     assert_eq!(usage.tool_calls, 6);
-    assert_eq!(usage.model_calls, 3);
-    assert_eq!(usage.input_tokens, 300);
+    // The request names the promotion agent's work ("weekend sale"), so no router call.
+    assert_eq!(usage.model_calls, 2);
+    assert_eq!(usage.input_tokens, 200);
     assert_eq!(models, ["Muse Glimmer 30B"]);
-    assert_eq!(glimmer.asked(), ["route", "plan", "reply"]);
+    assert_eq!(glimmer.asked(), ["plan", "reply"]);
 
     let calls = log.model_calls();
     assert_eq!(
         calls.iter().map(|c| c.purpose.as_str()).collect::<Vec<_>>(),
-        ["route", "plan", "reply"]
+        ["plan", "reply"]
     );
     let steps = log.steps();
     assert!(steps.iter().any(|s| s.kind == "call_tool"
@@ -1364,7 +1365,7 @@ async fn a_reply_with_made_up_numbers_is_written_again_and_what_was_read_is_show
         &rt,
         principal("adm_sj", Surface::Bo),
         ChatSurface::Bo,
-        say("How many VIP members do we have?"),
+        say("Show me our member tiers."),
         commerce,
     )
     .await;

@@ -62,7 +62,7 @@ examples: promotion.examples.yml               # 툴 검색·계획용 몇 개�
 | `insights` | bo | analytics (읽기만) | ✓ |
 | `shopper` | fo | search, catalog(읽기), sales(장바구니·주문 준비), fulfillment(반품 옵션), customer(내 정보) | ✓ |
 
-- **라우터**는 Glimmer에 에이전트 설명 목록과 요청을 주고 가이드 디코딩으로 `{agent, confidence}` 하나를 고르게 합니다. 확신이 낮으면 면(bo/fo)의 기본 에이전트로 갑니다. 그 전에 아래 라우팅 힌트를 보고, 다음으로 요청에 한 에이전트의 `route_when_said` 문구(소문자, 예: insights의 `why did sales`)만 들어 있으면 모델 없이 그 에이전트로 보냅니다. 문장을 말하지 않는 버튼(`ui_event`)은 대화의 에이전트가 이어 받습니다.
+- **라우터**는 Glimmer에 에이전트 설명 목록과 요청을 주고 가이드 디코딩으로 `{agent, confidence}` 하나를 고르게 합니다. 확신이 낮으면 면(bo/fo)의 기본 에이전트로 갑니다. 그 전에 아래 라우팅 힌트를 보고, 다음으로 요청에 든 에이전트별 `route_when_said` 문구(소문자: insights의 `why did sales`, orders의 `return request`, catalog의 `low on stock`, promotion의 `weekend sale`·`needs me`) 중 가장 긴 것의 에이전트로 모델 없이 보냅니다(두 에이전트가 같은 길이로 맞으면 모델이 고름). 열린 변경셋이 있는 대화는 그 에이전트가 이어 받고(다음 말은 대개 고침), 문장을 말하지 않는 버튼(`ui_event`)도 대화의 에이전트가 이어 받습니다.
 - **라우팅 힌트**(`agents/runtime.yml` `router.hints`): 요청에 든 말(대소문자 무시, 예 "supplier sheet")이나 첨부 종류(`sheet`)가 그 면의 에이전트 하나만 가리키면 모델을 부르지 않고 그 에이전트로 갑니다. 버튼 의도(`ui_event`)는 힌트를 쓰지 않습니다.
 - **첨부**: 턴 요청의 `attachments[]{kind, upload_id}`의 `upload_id`는 가리킨 id처럼 툴의 `upload_id` 슬롯을 채웁니다(`batch_import`의 `acom:file`은 `x-slot: upload_id`).
 - **한 요청이 여러 도메인에 걸치는 것은 정상입니다**(VIP 세일 = 회원가 + 쿠폰 + 배너). 특화 에이전트는 도메인 하나에 갇히지 않고 자기 `tool_scope` 안에서 홈 도메인을 우선할 뿐입니다.

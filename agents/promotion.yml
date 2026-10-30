@@ -21,3 +21,18 @@ check_intents:
   promotion_overlap: Show me the promotions it overlaps with
   member_benefits_per_order: Make the coupon not stack with tier coupons
   slot_free: Find a free slot for the banner
+# Phrases that name this agent's work: a request containing one (and no longer phrase of another
+# agent) comes here without asking the router model. "What needs me" is answered here too.
+route_when_said:
+  - weekend sale
+  - "% sale"
+  - "% off"
+  - sale on
+  - coupon
+  - banner
+  - promotion
+  - member price
+  - main page
+  - needs me
+  - my tasks
+  - inbox

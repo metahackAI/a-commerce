@@ -866,16 +866,28 @@ impl<'r> Turn<'r> {
         let button_intent =
             self.request.ui_event.is_some() && self.request.button_request().is_none();
         let attached = self.request.attachment_kinds();
+        // A conversation with an open change set stays with its agent: what is said next is
+        // most likely a correction to it ("drop the low-stock ones").
+        let continuing = previous
+            .as_ref()
+            .filter(|p| self.open_change_set().is_some() && agents.iter().any(|a| &a.id == *p))
+            .map(|p| router::Route {
+                agent: p.clone(),
+                confidence: 1.0,
+                reason: "continues the open change set",
+            });
         let shortcut = if button_intent {
             None
         } else {
-            router::hinted(
-                &profiles.runtime.router.hints,
-                &agents,
-                &self.text,
-                &attached,
-            )
-            .or_else(|| router::by_phrase(&agents, &self.text))
+            continuing.or_else(|| {
+                router::hinted(
+                    &profiles.runtime.router.hints,
+                    &agents,
+                    &self.text,
+                    &attached,
+                )
+                .or_else(|| router::by_phrase(&agents, &self.text))
+            })
         };
         if shortcut.is_none()
             && !self.rt.models.is_empty()

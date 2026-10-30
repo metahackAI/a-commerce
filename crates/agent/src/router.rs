@@ -18,22 +18,33 @@ pub struct Route {
     pub reason: &'static str,
 }
 
-/// The agent whose `route_when_said` phrases the request contains, when exactly one agent's do:
-/// "Why did sales drop yesterday?" goes to the insights agent without a model call.
+/// The agent whose `route_when_said` phrase found in the request is the longest ("why did
+/// sales" beats "sale"); `None` when no phrase matches or two agents tie.
 pub fn by_phrase(agents: &[&AgentProfile], request: &str) -> Option<Route> {
     let text = request.to_lowercase();
-    let mut hits = agents
+    // Each agent's longest phrase found in the request; the longest of those wins ("why did
+    // sales" over "sale"), and a tie between agents is left to the model.
+    let mut best: Vec<(usize, &AgentProfile)> = agents
         .iter()
-        .filter(|a| a.route_when_said.iter().any(|p| text.contains(p.as_str())));
-    let first = hits.next()?;
-    if hits.next().is_some() {
-        return None;
+        .filter_map(|a| {
+            a.route_when_said
+                .iter()
+                .filter(|p| text.contains(p.as_str()))
+                .map(String::len)
+                .max()
+                .map(|n| (n, *a))
+        })
+        .collect();
+    best.sort_by(|x, y| y.0.cmp(&x.0));
+    match best.as_slice() {
+        [] => None,
+        [(n, _), (m, _), ..] if n == m => None,
+        [(_, a), ..] => Some(Route {
+            agent: a.id.clone(),
+            confidence: 1.0,
+            reason: "the request names this agent's work",
+        }),
     }
-    Some(Route {
-        agent: first.id.clone(),
-        confidence: 1.0,
-        reason: "the request names this agent's work",
-    })
 }
 
 /// Whether choosing needs the model.
@@ -202,15 +213,30 @@ mod tests {
             by_phrase(&bo, "How was revenue last week?").map(|r| r.agent),
             Some("insights".to_owned())
         );
-        assert!(
+        assert_eq!(
             by_phrase(
                 &bo,
                 "Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page."
             )
-            .is_none(),
-            "a sale to set up is not a sales question"
+            .map(|r| r.agent),
+            Some("promotion".to_owned()),
+            "a sale to set up is not a sales question: the longer phrase wins"
         );
-        assert!(by_phrase(&bo, "Go through the returns over $200").is_none());
+        let to = |text: &str| by_phrase(&bo, text).map(|r| r.agent);
+        assert_eq!(
+            to("Go through the return requests over $200 and suggest what to do with each."),
+            Some("orders".to_owned())
+        );
+        assert_eq!(
+            to("Which products are low on stock?"),
+            Some("catalog".to_owned())
+        );
+        assert_eq!(
+            to("How many VIP members do we have?"),
+            Some("insights".to_owned())
+        );
+        assert_eq!(to("What needs me today?"), Some("promotion".to_owned()));
+        assert_eq!(to("Hello there"), None);
         let fo = p.for_surface(ChatSurface::Fo);
         assert!(by_phrase(&fo, "Why did sales drop yesterday?").is_none());
     }

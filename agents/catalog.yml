@@ -21,3 +21,16 @@ check_intents:
   import.required_fields: Show me the drafts that need me
   product.publish_requires: What does this product still need before publishing?
   category.primary_display_per_standard: Make this the primary display category instead
+# Phrases that name this agent's work: a request containing one (and no longer phrase of another
+# agent) comes here without asking the router model.
+route_when_said:
+  - low on stock
+  - stock
+  - inventory
+  - product
+  - supplier sheet
+  - draft
+  - category
+  - categories
+  - brand
+  - size chart
