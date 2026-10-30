@@ -7,6 +7,8 @@ home_domains: [analytics]
 tool_scope:
   domains: [analytics]
   kinds: [read]
+  # Always among the candidates: every question here starts from these reads.
+  always: [explain_sales_change, get_sales_trend, get_sales_overview, get_customer_overview]
 blocks: [sales_explainer, product_table]
 models: {worker: glimmer, planner: spark}
 instructions: insights.md

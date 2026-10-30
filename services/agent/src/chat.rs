@@ -9,7 +9,7 @@ use acom_auth::{Principal, Surface, Verifier};
 use acom_contract::{ErrorCode, ToolError};
 use acom_core::enums::ActorKind;
 use axum::body::{Body, Bytes};
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -180,9 +180,18 @@ fn event_stream(rx: tokio::sync::mpsc::UnboundedReceiver<acom_agent::Event>) -> 
 }
 
 /// `GET /chat/{surface}/conversations/{id}`: earlier turns and their blocks, for a reload.
+/// `?log=true` adds each turn's steps and model calls (the turn log) for the person whose
+/// conversation it is.
+#[derive(Debug, serde::Deserialize)]
+struct ConversationQuery {
+    #[serde(default)]
+    log: bool,
+}
+
 async fn conversation(
     State(app): State<Arc<App>>,
     Path((surface, conversation_id)): Path<(String, String)>,
+    Query(q): Query<ConversationQuery>,
     headers: HeaderMap,
 ) -> Response {
     let result = async {
@@ -192,7 +201,7 @@ async fn conversation(
             .runtime
             .clone()
             .ok_or_else(|| unavailable("the agent definitions did not load (see /readyz)"))?;
-        runtime.history(&c.principal, &conversation_id).await
+        runtime.history(&c.principal, &conversation_id, q.log).await
     }
     .await;
     match result {
@@ -216,7 +225,10 @@ mod tests {
 
     /// A throwaway Ed25519 key pair from openssl; `None` (test skipped) without openssl.
     fn keys() -> Option<(Vec<u8>, Vec<u8>)> {
-        let dir = std::env::temp_dir().join(format!("acom-agent-test-{}", std::process::id()));
+        // One folder per call: tests run in parallel and each removes its folder at the end.
+        static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let dir = std::env::temp_dir().join(format!("acom-agent-test-{}-{n}", std::process::id()));
         std::fs::create_dir_all(&dir).ok()?;
         let (private, public) = (dir.join("k.pem"), dir.join("p.pem"));
         let ok = std::process::Command::new("openssl")

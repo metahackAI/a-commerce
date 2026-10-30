@@ -36,7 +36,7 @@ Accept: text/event-stream
               "ids": {"product_id": "prd_seersucker_overshirt", "change_set_id": "cs_1042"}}]}
 ```
 
-`GET /api/chat/{surface}/conversations/{id}`는 지난 턴과 블록을 돌려줍니다(새로고침·다른 기기).
+`GET /api/chat/{surface}/conversations/{id}`는 지난 턴과 블록을 돌려줍니다(새로고침·다른 기기). `?log=true`를 붙이면 턴마다 `log{steps[], model_calls[]}`(단계의 입력·출력·에러, 모델 호출의 목적·모델·토큰·지연·성공 여부·실패 이유)가 더해집니다. 대화의 주인만 볼 수 있습니다.
 
 ## 2. 이벤트 스트림
 

@@ -98,6 +98,16 @@ pub trait TurnLog: Send + Sync {
         tenant: &'a str,
         conversation_id: &'a str,
     ) -> BoxFuture<'a, Result<Option<History>, String>>;
+    /// The log of each turn of a conversation, by turn id: its steps (inputs, outputs, errors)
+    /// and model calls (purpose, model, tokens, errors) in order
+    /// (`GET …/conversations/{id}?log=true`). Stores without a log return nothing.
+    fn turn_logs<'a>(
+        &'a self,
+        _tenant: &'a str,
+        _conversation_id: &'a str,
+    ) -> BoxFuture<'a, Result<Vec<(String, Value)>, String>> {
+        Box::pin(async { Ok(Vec::new()) })
+    }
 }
 
 /// The store's time and money settings for a turn.
@@ -437,6 +447,89 @@ impl TurnLog for PgStore {
             Ok(Some((owner, turns)))
         })
     }
+
+    fn turn_logs<'a>(
+        &'a self,
+        tenant: &'a str,
+        conversation_id: &'a str,
+    ) -> BoxFuture<'a, Result<Vec<(String, Value)>, String>> {
+        Box::pin(self.logs(tenant, conversation_id))
+    }
+}
+
+impl PgStore {
+    /// Steps and model calls of every turn of a conversation, grouped by turn.
+    async fn logs(
+        &self,
+        tenant: &str,
+        conversation_id: &str,
+    ) -> Result<Vec<(String, Value)>, String> {
+        let mut tx = self.begin(tenant).await?;
+        let steps = sqlx::query(
+            "SELECT s.turn_id, s.position, s.kind, s.instrument, s.action_status, s.summary,
+                    s.input, s.output, s.error, s.started_at, s.ended_at
+             FROM agent.step s JOIN agent.turn t ON t.tenant_id = s.tenant_id AND t.id = s.turn_id
+             WHERE s.tenant_id = $1 AND t.conversation_id = $2 ORDER BY s.turn_id, s.position",
+        )
+        .bind(tenant)
+        .bind(conversation_id)
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(db)?;
+        let calls = sqlx::query(
+            "SELECT m.turn_id, m.position, m.model, m.purpose, m.input_tokens, m.output_tokens,
+                    m.latency_ms, m.succeeded, m.error
+             FROM agent.model_call m JOIN agent.turn t ON t.tenant_id = m.tenant_id AND t.id = m.turn_id
+             WHERE m.tenant_id = $1 AND t.conversation_id = $2 ORDER BY m.turn_id, m.position",
+        )
+        .bind(tenant)
+        .bind(conversation_id)
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(db)?;
+        tx.commit().await.map_err(db)?;
+        let mut out: Vec<(String, Value)> = Vec::new();
+        fn entry(out: &mut Vec<(String, Value)>, turn: String) -> usize {
+            match out.iter().position(|(t, _)| *t == turn) {
+                Some(i) => i,
+                None => {
+                    out.push((turn, json!({"steps": [], "model_calls": []})));
+                    out.len() - 1
+                }
+            }
+        }
+        for r in &steps {
+            let i = entry(&mut out, r.try_get("turn_id").map_err(db)?);
+            if let Some(list) = out[i].1["steps"].as_array_mut() {
+                list.push(json!({
+                    "position": r.try_get::<i32, _>("position").unwrap_or_default(),
+                    "kind": r.try_get::<String, _>("kind").unwrap_or_default(),
+                    "tool": r.try_get::<Option<String>, _>("instrument").ok().flatten(),
+                    "status": r.try_get::<String, _>("action_status").unwrap_or_default(),
+                    "summary": r.try_get::<Option<String>, _>("summary").ok().flatten(),
+                    "input": r.try_get::<Option<Value>, _>("input").ok().flatten(),
+                    "output": r.try_get::<Option<Value>, _>("output").ok().flatten(),
+                    "error": r.try_get::<Option<Value>, _>("error").ok().flatten(),
+                }));
+            }
+        }
+        for r in &calls {
+            let i = entry(&mut out, r.try_get("turn_id").map_err(db)?);
+            if let Some(list) = out[i].1["model_calls"].as_array_mut() {
+                list.push(json!({
+                    "position": r.try_get::<i32, _>("position").unwrap_or_default(),
+                    "model": r.try_get::<String, _>("model").unwrap_or_default(),
+                    "purpose": r.try_get::<String, _>("purpose").unwrap_or_default(),
+                    "input_tokens": r.try_get::<i32, _>("input_tokens").unwrap_or_default(),
+                    "output_tokens": r.try_get::<i32, _>("output_tokens").unwrap_or_default(),
+                    "latency_ms": r.try_get::<i32, _>("latency_ms").unwrap_or_default(),
+                    "succeeded": r.try_get::<bool, _>("succeeded").unwrap_or_default(),
+                    "error": r.try_get::<Option<Value>, _>("error").ok().flatten(),
+                }));
+            }
+        }
+        Ok(out)
+    }
 }
 
 /// The tool arguments a step recorded (`{"args": …, "repairs": […]}`).
@@ -767,5 +860,10 @@ mod tests {
         assert!(ctx.owner.same_person(&owner));
         let cs = ctx.change_set.expect("open set");
         assert_eq!(cs.items[0].input, json!({"percent_off": 20}));
+        let logs = store.turn_logs(tenant, &conv).await.expect("turn logs");
+        assert_eq!(logs.len(), 1, "{logs:?}");
+        let (_, log) = &logs[0];
+        assert!(!log["steps"].as_array().unwrap().is_empty(), "{log:#}");
+        assert!(log["model_calls"].is_array(), "{log:#}");
     }
 }

@@ -8,6 +8,8 @@ home_domains: [catalog, merchandising]
 tool_scope:
   domains: [catalog, merchandising, search, platform]
   kinds: [read, write, write_approval]
+  # Always among the candidates: finding products and their stock, and the work waiting.
+  always: [search_products, get_product, get_inventory, list_tasks]
 blocks: [product_drafts, change_set, product_table, action_log]
 models: {worker: glimmer, planner: spark}
 instructions: catalog.md
