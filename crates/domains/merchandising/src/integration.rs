@@ -13,7 +13,7 @@ use crate::banner::{ListBanners, ScheduleBanner, SetBanner};
 use crate::category::{GetCategory, ListCategories};
 use crate::curation::{GetCuration, ListCurations};
 use crate::display_slot::{GetDisplaySlot, ListDisplaySlots};
-use crate::testing::operator_cx;
+use crate::testing::{operator_cx, shopper_cx};
 
 fn input<T: serde::de::DeserializeOwned>(v: Value) -> T {
     serde_json::from_value(v).unwrap()
@@ -285,4 +285,50 @@ async fn b1_vip_weekend_sale_end_to_end() {
         .await
         .unwrap();
     assert_eq!(hero["bookings"].as_array().unwrap().len(), 1, "{hero:#}");
+}
+
+/// A shopper sees the page's slots without bookings or free time, and in a slot only the
+/// booking that shows to them now; `as_of` and `audience` are for operators.
+#[tokio::test]
+#[ignore = "integration: needs a PostgreSQL database"]
+async fn shoppers_see_only_what_shows_to_them() {
+    for who in ["ses_guest", "cus_jamie"] {
+        let cx = shopper_cx(who).await;
+        let page = ListDisplaySlots
+            .read(
+                &cx,
+                input(json!({"page": "main", "valid_from": "2026-11-06T00:00",
+                             "valid_through": "2026-11-08T23:59"})),
+            )
+            .await
+            .unwrap();
+        let slots = page["items"].as_array().unwrap();
+        assert!(!slots.is_empty());
+        assert!(
+            slots
+                .iter()
+                .all(|s| s.get("availability").is_none() && s.get("bookings").is_none()),
+            "{page:#}"
+        );
+        let hero = GetDisplaySlot
+            .read(&cx, input(json!({"slot_id": "slot_home_hero"})))
+            .await
+            .unwrap();
+        let ids: Vec<&str> = hero["bookings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|b| b["display_booking_id"].as_str())
+            .collect();
+        assert_eq!(ids, ["dsp_fall_layers"], "{who}: {hero:#}");
+        assert_eq!(hero["showing"].as_array().unwrap().len(), 1);
+        let e = GetDisplaySlot
+            .read(
+                &cx,
+                input(json!({"slot_id": "slot_home_hero", "as_of": "2026-11-07T10:00"})),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(e.code, "forbidden");
+    }
 }

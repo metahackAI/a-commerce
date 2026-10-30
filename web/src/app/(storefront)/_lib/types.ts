@@ -228,6 +228,8 @@ export interface DisplayBooking {
   cta_label?: string | null;
   url?: string | null;
   content?: BannerContent | null;
+  /** The banner this booking shows (`get_display_slot`), with its image. */
+  banner?: (BannerContent & {id: string}) | null;
 }
 
 export interface BannerContent {

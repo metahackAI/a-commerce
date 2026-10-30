@@ -116,9 +116,15 @@ function EndContent() {
       {pathname === '/ask' ? null : (
         <TopNavItem
           label="Ask Northwind"
+          // The item renders the router link, which needs an href; the click opens the drawer
+          // in place, and the link still works without script.
+          href="/ask"
           icon={<Icon icon={ChatBubbleLeftEllipsisIcon} size="sm" />}
           isIconOnly={isMobile}
-          onClick={openAssistant}
+          onClick={e => {
+            e.preventDefault();
+            openAssistant();
+          }}
         />
       )}
       {isMobile ? null : <TopNavItem label="Orders" href="/orders" isSelected={pathname.startsWith('/orders')} />}
