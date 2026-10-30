@@ -119,6 +119,42 @@ pub fn slots_from_prepared(preview: &Preview) -> BTreeMap<String, Vec<Value>> {
     BTreeMap::from([("preview_id".to_owned(), vec![json!(preview.preview_id)])])
 }
 
+/// Whether the model wrote a stand-in instead of a value for a slot field: the field's or
+/// slot's own name (`"promotion_id"`), an id prefix alone (`"promo_"`), a template
+/// (`"<promotion id>"`, `"{s1.id}"`), or for an id field, a value without the id's prefix.
+/// Such a value is treated as missing, so the step's `uses` fill it.
+fn is_stand_in(v: &Value, field: &str, slot: &str, schema: Option<&Value>) -> bool {
+    let one = |s: &str| {
+        let t = s.trim();
+        let lower = t.to_lowercase();
+        if lower == field || lower == slot || lower.trim_end_matches('s') == slot {
+            return true;
+        }
+        if t.contains(['<', '>', '{', '}']) || t.contains("...") {
+            return true;
+        }
+        let pattern = schema
+            .and_then(|p| p.get("pattern").or_else(|| p.pointer("/items/pattern")))
+            .and_then(Value::as_str);
+        if let Some(prefix) = pattern
+            .and_then(|p| p.strip_prefix('^'))
+            .and_then(|p| p.strip_suffix("[a-z0-9_]+$"))
+            .filter(|p| {
+                p.ends_with('_') && p[..p.len() - 1].bytes().all(|b| b.is_ascii_lowercase())
+            })
+        {
+            // `$item[n].…` is the change set's own placeholder, filled when it runs.
+            return !t.starts_with("$item[") && (!t.starts_with(prefix) || t.len() == prefix.len());
+        }
+        false
+    };
+    match v {
+        Value::String(s) => one(s),
+        Value::Array(a) => !a.is_empty() && a.iter().all(|x| x.as_str().is_some_and(one)),
+        _ => false,
+    }
+}
+
 fn is_empty(v: Option<&Value>) -> bool {
     match v {
         None | Some(Value::Null) => true,
@@ -161,6 +197,17 @@ pub fn bind(
         let Some((field, is_list)) = tool.field_for_slot(&slot.name) else {
             continue;
         };
+        let schema = tool.properties().and_then(|p| p.get(&field));
+        let stand_in = input
+            .get(&field)
+            .is_some_and(|v| is_stand_in(v, &field, &slot.name, schema));
+        if stand_in {
+            notes.push(format!(
+                "{field}: {} is a stand-in, not a value",
+                input[&field]
+            ));
+            input.remove(&field);
+        }
         if !is_empty(input.get(&field)) {
             continue;
         }
@@ -189,6 +236,15 @@ pub fn bind(
             continue;
         };
         if values.is_empty() {
+            continue;
+        }
+        // The model meant one of several (a tier among all tiers) but did not say which: leave it
+        // missing, so the plan is corrected rather than the first one guessed.
+        if stand_in && !is_list && values.len() > 1 {
+            notes.push(format!(
+                "{field}: {source} has {} candidates; which one is not said",
+                values.len()
+            ));
             continue;
         }
         let value = if is_list {
@@ -424,6 +480,92 @@ mod tests {
             &BTreeMap::new(),
         );
         assert_eq!(coupon.input["promotion_id"], "$item[1].promotion_id");
+    }
+
+    #[test]
+    fn stand_ins_for_ids_are_filled_from_uses_and_real_values_stay() {
+        let m = manifest();
+        let sale = get(&m, "set_sale_prices");
+        let mut s3 = record("s3", sale, json!({}));
+        s3.slots = slots_from_item(sale, 1);
+        let done = BTreeMap::from([("s3".to_owned(), s3)]);
+        let order = vec!["s3".to_owned()];
+        for stand_in in [
+            "promotion_id",
+            "promo_",
+            "<promotion id>",
+            "{s3.promotion_id}",
+        ] {
+            let b = bind(
+                &step(
+                    "s4",
+                    "create_coupon",
+                    json!({"code": "VIPWEEKEND20", "promotion_id": stand_in}),
+                    &["s3"],
+                ),
+                get(&m, "create_coupon"),
+                &done,
+                &order,
+                &BTreeMap::new(),
+            );
+            assert_eq!(
+                b.input["promotion_id"], "$item[1].promotion_id",
+                "{stand_in}"
+            );
+            assert!(b.notes.iter().any(|n| n.contains("stand-in")), "{stand_in}");
+        }
+        // A real id the model was given stays as written.
+        let b = bind(
+            &step(
+                "s4",
+                "create_coupon",
+                json!({"promotion_id": "promo_autumn_knit"}),
+                &["s3"],
+            ),
+            get(&m, "create_coupon"),
+            &done,
+            &order,
+            &BTreeMap::new(),
+        );
+        assert_eq!(b.input["promotion_id"], "promo_autumn_knit");
+        assert!(is_stand_in(
+            &json!("tier_id"),
+            "valid_for_member_tier",
+            "tier_id",
+            None
+        ));
+        assert!(!is_stand_in(
+            &json!("vip"),
+            "valid_for_member_tier",
+            "tier_id",
+            None
+        ));
+
+        // One product among several: the stand-in is dropped and nothing is guessed.
+        let search = record(
+            "s1",
+            get(&m, "search_products"),
+            json!({"items": [{"product_id": "prd_a"}, {"product_id": "prd_b"}, {"product_id": "prd_c"}]}),
+        );
+        let done = BTreeMap::from([("s1".to_owned(), search)]);
+        let b = bind(
+            &step(
+                "s2",
+                "add_to_cart",
+                json!({"product_id": "product_id", "size": "M"}),
+                &["s1"],
+            ),
+            get(&m, "add_to_cart"),
+            &done,
+            &["s1".into()],
+            &BTreeMap::new(),
+        );
+        assert!(b.input.get("product_id").is_none(), "{:?}", b.input);
+        assert!(
+            b.notes.iter().any(|n| n.contains("3 candidates")),
+            "{:?}",
+            b.notes
+        );
     }
 
     #[test]

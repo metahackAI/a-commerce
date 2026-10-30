@@ -4,6 +4,7 @@ Rules:
 - Use only the tools listed. Each step calls one tool with arguments that follow its input schema.
 - Keep the plan short: read what you need, then make the changes. No step that the request does not need.
 - Never copy ids from one step's result into another step. Put the earlier step's id in `uses`; the runtime fills ids, lists of ids, and totals from it. Ids you were given (pointed-at elements, the open change set, earlier turns) may be written directly.
+- Never write a stand-in for a value you do not have: no field names (`"promotion_id"`, `"tier_id"`), no bare prefixes (`"promo_"`, `"slot_"`), no templates (`"<id>"`). Leave the field out and name the step that produces it in `uses`. Words the person used are real values: "VIP members" is the tier `vip`, "main page" is the page `main`.
 - For a write, say what should change. The runtime previews it, checks it against the store's rules, and puts it where a person decides. You never approve, order, send a return request, or undo; people do that with buttons.
 - Business limits (discount caps, stock minimums, price floors) are checked by the tools. Do not invent numbers; use the person's words and tool results.
 - Resolve relative times ("this weekend", "Saturday") with the store clock and time zone you are given. A period includes its last minute (for example Sunday 23:59).

@@ -36,6 +36,13 @@ use crate::stream::{Command, Emitter, Event, StepKind, StepStatus, TurnUsage};
 use crate::tools::{ToolKind, ToolSpec};
 use crate::toolsearch;
 
+/// The reply's shape: two or three sentences in one field.
+fn reply_schema() -> Value {
+    json!({"type": "object", "additionalProperties": false, "required": ["text"],
+           "properties": {"text": {"type": "string", "maxLength": 600,
+                                   "description": "Two or three plain sentences for the person."}}})
+}
+
 /// What the planner is told when its plan has no steps.
 const EMPTY_PLAN: &str = "The plan has no steps, so the answer would come from nothing. \
 The person asked about the store: plan at least one read from the tools listed (search, list or get) \
@@ -2709,6 +2716,17 @@ impl<'r> Turn<'r> {
         parts.join(" ")
     }
 
+    /// The reply's text: the `text` of the structured answer, or the answer itself when a model
+    /// wrote plain text.
+    async fn reply_text(&mut self, worker: &str, req: ChatRequest) -> Option<String> {
+        let raw = self.model_text("reply", &[worker], req).await?;
+        let text = acom_llm::parse::extract_json(&raw)
+            .and_then(|v| v.get("text").and_then(Value::as_str).map(str::to_owned))
+            .unwrap_or(raw);
+        let text = text.trim();
+        (!text.is_empty()).then(|| text.to_owned())
+    }
+
     async fn reply(&mut self) -> String {
         let fallback = self.fallback_text();
         if !self.problems.is_empty() && self.blocks.is_empty() {
@@ -2720,6 +2738,8 @@ impl<'r> Turn<'r> {
             self.rt.profiles.prompts.reply.trim(),
             self.profile.instructions_text.trim()
         );
+        // Structured, like the plan: a reasoning model asked for free text can spend the whole
+        // budget thinking and return nothing; a schema makes it write the answer.
         let req = ChatRequest::new(
             "reply",
             vec![
@@ -2727,9 +2747,10 @@ impl<'r> Turn<'r> {
                 Message::user(format!("Results of this turn: {facts}")),
             ],
         )
-        .max_tokens(200);
+        .json("reply", reply_schema())
+        .max_tokens(500);
         let worker = self.worker().to_owned();
-        let Some(mut text) = self.model_text("reply", &[&worker], req.clone()).await else {
+        let Some(mut text) = self.reply_text(&worker, req.clone()).await else {
             return fallback;
         };
         // Owned copies: the retry below calls the model, which needs `self` mutably.
@@ -2764,7 +2785,7 @@ impl<'r> Turn<'r> {
                 "These numbers are not in the results: {}. Write the reply again using only numbers that appear in the results, or none.",
                 unsupported.join(", ")
             )));
-            if let Some(t) = self.model_text("reply", &[&worker], again).await {
+            if let Some(t) = self.reply_text(&worker, again).await {
                 unsupported = checker::unsupported_numbers(&t, &sources, &[&asked]);
                 text = t;
             }
