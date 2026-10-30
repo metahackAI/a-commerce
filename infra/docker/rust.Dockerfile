@@ -57,7 +57,8 @@ CMD ["serve"]
 FROM runtime AS agent
 LABEL org.opencontainers.image.title="acom-agent"
 COPY --from=builder /out/acom-agent /usr/local/bin/acom-agent
-ENV ACOM_AGENT_ADDR=0.0.0.0:7002
+COPY agents /app/agents
+ENV ACOM_AGENT_ADDR=0.0.0.0:7002 ACOM_AGENTS_DIR=/app/agents
 EXPOSE 7002
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 CMD ["/usr/local/bin/acom-agent", "healthcheck"]
 ENTRYPOINT ["/usr/local/bin/acom-agent"]

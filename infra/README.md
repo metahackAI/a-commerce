@@ -82,6 +82,7 @@ A-Commerce의 모든 구성 요소는 컨테이너이고, **어디서 띄우든 
 | `DATABASE_URL` | gateway(세션·로그인), commerce, worker, agent | `acom_app@postgres` | 관리형 Postgres(비밀) |
 | `MIGRATION_DATABASE_URL` | migrate | `acom_owner@postgres` | 관리형 Postgres(비밀) |
 | `ACOM_POLICY_DIR` | commerce | 이미지 안 `/app/policies` | 같음 |
+| `ACOM_AGENTS_DIR` | agent | 이미지 안 `/app/agents`(모델·한도·프롬프트·특화 에이전트) | 같음 |
 | `ACOM_GATEWAY_SIGNING_KEY_FILE` / `_PUBLIC_KEY_FILE` | gateway / 나머지 | `infra/secrets/*.pem`(`make keys`) | 비밀 저장소 |
 | `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL`, `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | agent | `.env` | 비밀 저장소 |
 | `ACOM_ENV`, `ACOM_DEMO_MODE`, `RUST_LOG`, `ACOM_LOG_FORMAT` | 전부 | `local`, `true`, `info`, `json` | `production`, `false`, `info`, `json` |
