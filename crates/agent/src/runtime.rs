@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::blocks::change_set::{ChangeSetView, ItemView};
-use crate::blocks::{Block, shop, table};
+use crate::blocks::{Block, insights, shop, table};
 use crate::checker;
 use crate::client::{ItemRef, NewChangeSet, ToolClient};
 use crate::executor::{self, StepRecord};
@@ -103,10 +103,24 @@ impl TurnRequest {
         Ok(())
     }
 
+    /// The words a button says for the person: a `say` button whose `args.request` is a
+    /// sentence (a `sales_explainer` next step) is taken as if the person had typed it.
+    pub fn button_request(&self) -> Option<&str> {
+        self.ui_event
+            .as_ref()
+            .and_then(|e| e.args.get("request"))
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|r| !r.is_empty())
+    }
+
     /// What the planner reads as the request.
     pub fn text(&self) -> String {
         match (&self.message, &self.ui_event) {
             (Some(m), _) if !m.trim().is_empty() => m.trim().to_owned(),
+            (_, Some(_)) if self.button_request().is_some() => {
+                self.button_request().unwrap_or_default().to_owned()
+            }
             (_, Some(e)) => format!(
                 "(The person pressed the button `{}` on block {} with {})",
                 e.action_id, e.block_id, e.args
@@ -807,12 +821,18 @@ impl<'r> Turn<'r> {
         let previous = self.ctx.agent.clone();
         let mut answer = None;
         let started_at = self.clock.now();
-        if !self.rt.models.is_empty()
-            && router::needs_model(
-                &agents,
-                self.request.ui_event.is_some(),
-                previous.as_deref(),
-            )
+        // A button that says a sentence is routed like typed words; other buttons continue the
+        // conversation's work.
+        let button_intent =
+            self.request.ui_event.is_some() && self.request.button_request().is_none();
+        let by_phrase = if button_intent {
+            None
+        } else {
+            router::by_phrase(&agents, &self.text)
+        };
+        if by_phrase.is_none()
+            && !self.rt.models.is_empty()
+            && router::needs_model(&agents, button_intent, previous.as_deref())
         {
             let msgs = router::messages(
                 &profiles.prompts.router,
@@ -830,13 +850,15 @@ impl<'r> Turn<'r> {
                 .ok()
                 .map(|(v, _)| v);
         }
-        let r = router::decide(
-            answer.as_ref(),
-            &agents,
-            &default,
-            previous.as_deref(),
-            profiles.runtime.router.min_confidence,
-        );
+        let r = by_phrase.unwrap_or_else(|| {
+            router::decide(
+                answer.as_ref(),
+                &agents,
+                &default,
+                previous.as_deref(),
+                profiles.runtime.router.min_confidence,
+            )
+        });
         if let Some(p) = self.rt.profiles.get(&r.agent) {
             self.profile = p;
         }
@@ -2073,6 +2095,14 @@ impl<'r> Turn<'r> {
             "cart" => self
                 .last_output(|r| r.output.as_ref().is_some_and(|o| o.get("lines").is_some()))
                 .and_then(|r| shop::cart(r.output.as_ref()?)),
+            "sales_explainer" => self
+                .last_output(|r| r.tool == "explain_sales_change")
+                .and_then(|r| {
+                    let trend = self
+                        .last_output(|t| t.tool == "get_sales_trend")
+                        .and_then(|t| t.output.as_ref());
+                    insights::sales_explainer(r.output.as_ref()?, trend, &self.profile.next_actions)
+                }),
             "return_options" => self
                 .last_output(|r| r.kind == ToolKind::Read)
                 .and_then(|r| shop::return_options(r.output.as_ref()?, &r.input)),
@@ -2171,6 +2201,9 @@ impl<'r> Turn<'r> {
                     parts.push("Here is what I found.".into())
                 }
                 "cart" => parts.push("Here is your cart.".into()),
+                "sales_explainer" => parts.push(
+                    "Here is how sales compare and what the data shows behind the change.".into(),
+                ),
                 "return_options" => {
                     parts.push("Here are your options; only you can send the request.".into())
                 }

@@ -141,6 +141,15 @@ fn collect(v: &Value, into: &mut BTreeSet<String>) {
         Value::Number(n) => {
             if let Ok(d) = Decimal::from_str(&n.to_string()) {
                 into.insert(d.normalize().to_string());
+                // Text drops the sign ("down $4,660" for -4660.00), and a 0-1 rate is said
+                // as a percent ("20%" for -0.2035, conventions.md §4).
+                let size = d.abs();
+                into.insert(size.normalize().to_string());
+                if !size.is_zero() && size < Decimal::ONE {
+                    let percent = size * Decimal::ONE_HUNDRED;
+                    into.insert(percent.round().normalize().to_string());
+                    into.insert(percent.round_dp(1).normalize().to_string());
+                }
             }
         }
         Value::String(s) => into.extend(numbers_in(s)),
@@ -228,5 +237,17 @@ mod tests {
         assert!(unsupported_numbers(ok, &[&results], &["Run a 20% sale"]).is_empty());
         let made_up = "That saves you $19.99 compared with last week.";
         assert_eq!(unsupported_numbers(made_up, &[&results], &[]), ["19.99"]);
+    }
+
+    #[test]
+    fn a_drop_is_said_without_its_sign_and_a_rate_as_a_percent() {
+        let explained =
+            json!({"gap": {"value": -4660.00, "currency": "USD"}, "change_rate": -0.2035});
+        let reply = "Revenue fell $4,660, about 20% (20.4%) under a normal Thursday.";
+        assert!(unsupported_numbers(reply, &[&explained], &[]).is_empty());
+        assert_eq!(
+            unsupported_numbers("It fell 30%.", &[&explained], &[]),
+            ["30"]
+        );
     }
 }

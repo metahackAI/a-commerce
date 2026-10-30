@@ -132,7 +132,7 @@
 | 목록 | 값 |
 |---|---|
 | 구독 | `active`, `paused`, `cancelled` |
-| 캠페인 | `draft`, `scheduled`, `sending`, `sent`, `cancelled` |
+| 캠페인 `acom:campaign_status` | `draft`, `scheduled`, `sending`, `sent`, `failed`(발송이 메시지 하나 나가기 전에 멈춤, 예: 수신자 목록 가져오기 실패), `cancelled` |
 | 공지 | `draft`, `published` |
 | 게시글 | `published`, `held_for_review`, `blinded`, `deleted` |
 | 리뷰 노출 `review_status` (schema:creativeWorkStatus) | `visible`, `hidden`, `reported` |

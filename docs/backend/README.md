@@ -78,7 +78,8 @@ a-commerce/
 │   │   ├── fulfillment/                  │ 나머지는 착수할 때 크레이트를 추가
 │   │   ├── messaging/                    │
 │   │   ├── platform/                     ┘
-│   │   └── (community, analytics, partner, integration — 착수 시 추가)
+│   │   ├── analytics/ acom-analytics     analytics 뷰(읽기 모델)만 읽는 집계·매출 변화 설명
+│   │   └── (community, partner, integration — 착수 시 추가)
 │   ├── registry/      acom-registry      모든 도메인 오퍼레이션을 하나의 Registry로 조립
 │   ├── http/          acom-http          Registry → axum 라우터, 에러→HTTP, 내부 토큰 추출기
 │   ├── mcp/           acom-mcp           Registry → MCP 서버(rmcp, streamable HTTP)
@@ -127,7 +128,7 @@ llm ◀── agent ◀── services/agent
    | fulfillment | sales, catalog, customer |
    | messaging | customer |
    | community | catalog, customer, sales |
-   | analytics | (읽기 모델만, 모든 도메인의 이벤트) |
+   | analytics | sales(회원 수 세기). 나머지는 자기 읽기 모델(`analytics` 뷰)만 |
    | partner, integration | catalog, sales, fulfillment |
 3. **`agent`는 도메인 크레이트에 의존하지 않습니다.** 툴 정보는 `commerce`가 내놓는 매니페스트(`GET /v1/tools`, 빌드 때 생성되는 `tools.json`)로만 압니다. 에이전트와 커머스는 HTTP로만 만납니다(테스트에서는 같은 프로세스 안의 `ToolClient` 구현으로 대체).
 4. **비즈니스 상수는 코드에 두지 않습니다.** 한도·하한·기간·승인 기준은 `acom-policy` 타입을 통해 `policies/*.yml`에서 옵니다. 리뷰에서 숫자 리터럴을 찾습니다.

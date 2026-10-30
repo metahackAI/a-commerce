@@ -171,7 +171,7 @@ a-commerce API
 
 ## 4. 전체 오퍼레이션 인덱스
 
-툴 **287개**(R 130 · W 117 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 6개(§2.2). **굵게** 표시한 28개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
+툴 **287개**(R 130 · W 117 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 6개(§2.2). **굵게** 표시한 30개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
 
 ### Offer
 
@@ -294,7 +294,7 @@ a-commerce API
 **[analytics](analytics.md)** (읽기 전용)
 | resource | operations |
 |---|---|
-| sales | `explain_sales_change` R · `get_sales_overview` R · `get_sales_trend` R |
+| sales | **`explain_sales_change`** R · `get_sales_overview` R · **`get_sales_trend`** R |
 | customer | `get_customer_overview` R |
 | service | `get_cs_overview` R |
 
@@ -333,6 +333,10 @@ list_tasks ──task_id──▶ search_return_requests ──claim_id[]──�
                                      │                      └──customer_id──▶ get_return_history
                                      └──order_id──▶ get_order
 evaluate_return_request ──claim_id──▶ send_customer_message(ask_for_photos | decline)
+
+B3 매출 질문 (읽기만)
+explain_sales_change ──(원인: 품절 상품 prd_ · 미발송 캠페인 cmp_)──▶ sales_explainer 블록의 다음 행동(각각 변경셋 요청)
+get_sales_trend ──(일별 매출 14일)──▶ sales_explainer 블록의 차트
 
 F1–F6 쇼퍼
 get_my_profile ──▶ search_products ──product_id[]──▶ compare_products ──▶ update_my_preferences ──memory_id──▶ (사람) memories/{id}/undo

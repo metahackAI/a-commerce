@@ -80,11 +80,12 @@ impl ChatModel for Scripted {
     }
 }
 
-/// Commerce as the tools of scenes B1 and F2 behave, recording every call.
+/// Commerce as the tools of scenes B1, B3 and F2 behave, recording every call.
 #[derive(Debug)]
 struct Commerce {
     manifest: Vec<ToolSpec>,
     calls: Mutex<Vec<String>>,
+    reads: Mutex<Vec<(String, Value)>>,
     previews: Mutex<Vec<(String, Value, Option<String>)>>,
     counter: Mutex<u32>,
     version: Mutex<i32>,
@@ -92,9 +93,14 @@ struct Commerce {
 
 impl Commerce {
     fn new() -> Arc<Self> {
+        Self::with_manifest(fixtures::manifest())
+    }
+
+    fn with_manifest(manifest: Vec<ToolSpec>) -> Arc<Self> {
         Arc::new(Self {
-            manifest: fixtures::manifest(),
+            manifest,
             calls: Mutex::new(Vec::new()),
+            reads: Mutex::new(Vec::new()),
             previews: Mutex::new(Vec::new()),
             counter: Mutex::new(0),
             version: Mutex::new(1),
@@ -103,6 +109,10 @@ impl Commerce {
 
     fn calls(&self) -> Vec<String> {
         self.calls.lock().unwrap().clone()
+    }
+
+    fn reads(&self) -> Vec<(String, Value)> {
+        self.reads.lock().unwrap().clone()
     }
 
     fn previews(&self) -> Vec<(String, Value, Option<String>)> {
@@ -186,9 +196,14 @@ impl ToolClient for Commerce {
         input: &'a Value,
     ) -> BoxFuture<'a, Result<Value, ToolError>> {
         self.log(format!("read {tool}"));
-        let _ = input;
+        self.reads
+            .lock()
+            .unwrap()
+            .push((tool.to_owned(), input.clone()));
         Box::pin(async move {
             Ok(match tool {
+                "explain_sales_change" => crate::blocks::insights::tests::b3_explain(),
+                "get_sales_trend" => crate::blocks::insights::tests::b3_trend(),
                 "search_products" => json!({"items": [
                     {"product_id": "prd_windbreaker", "name": "Packable windbreaker", "price": 89.00, "price_currency": "USD", "weight_g": 190},
                     {"product_id": "prd_field_jacket", "name": "Linen blend field jacket", "price": 128.00, "price_currency": "USD", "weight_g": 340},
@@ -1002,4 +1017,150 @@ async fn a_failing_tool_with_a_next_tool_revises_the_plan_once_more() {
     assert_eq!(glimmer.asked(), ["plan", "plan", "reply"]);
     assert!(events.iter().any(|e| matches!(e, Event::Step { kind: StepKind::Plan, summary, .. } if summary.starts_with("Changing the plan"))));
     assert_eq!(blocks(&events)[0].ui, "look_gallery");
+}
+
+// ---- B3: a sales question, read only ------------------------------------------------------
+
+const B3: &str = "Why did sales drop yesterday?";
+
+/// The fixture tools plus the two analytics reads, as commerce lists them.
+fn manifest_with_analytics() -> Vec<ToolSpec> {
+    let date = |what: &str| json!({"type": "string", "format": "date", "description": what});
+    let analytics: crate::tools::Manifest = serde_json::from_value(json!({"items": [
+        {"tool": "explain_sales_change", "address": "analytics.sales.explain_sales_change", "kind": "read",
+         "summary": "Explain why sales went up or down against a basis, split into causes the data shows.",
+         "consumes": [], "produces": [], "checks": [],
+         "input_schema": {"type": "object", "additionalProperties": false,
+            "required": ["valid_from", "valid_through", "compare_mode"],
+            "properties": {
+                "valid_from": date("First day."), "valid_through": date("Last day."),
+                "compare_mode": {"type": "string", "description": "Basis.",
+                                 "enum": ["same_weekday_last_4_weeks", "previous_period", "custom"]}}}},
+        {"tool": "get_sales_trend", "address": "analytics.sales.get_sales_trend", "kind": "read",
+         "summary": "Sales over time per day, week or month.",
+         "consumes": [], "produces": [], "checks": [],
+         "input_schema": {"type": "object", "additionalProperties": false,
+            "required": ["valid_from", "valid_through", "acom:granularity"],
+            "properties": {
+                "valid_from": date("First day."), "valid_through": date("Last day."),
+                "acom:granularity": {"type": "string", "enum": ["day", "week", "month"], "description": "Point length."}}}}
+    ]}))
+    .unwrap();
+    let mut m = fixtures::manifest();
+    m.extend(analytics.items);
+    m
+}
+
+/// What Muse Glimmer answered for scene B3 (recorded): two reads and the explainer block.
+fn b3_plan() -> String {
+    json!({
+        "title": "Sales on Thursday",
+        "interpretation": [{"aspect": "when", "text": "Yesterday, Thu Nov 5"},
+                           {"aspect": "products", "text": "All sales, against the last 4 Thursdays"}],
+        "about": "self",
+        "steps": [
+            {"id": "s1", "tool": "explain_sales_change",
+             "args": {"valid_from": "yesterday", "valid_through": "yesterday",
+                      "compare_mode": "same_weekday_last_4_weeks"}, "uses": []},
+            {"id": "s2", "tool": "get_sales_trend",
+             "args": {"valid_from": "2026-10-23", "valid_through": "yesterday",
+                      "acom:granularity": "day"}, "uses": []}
+        ],
+        "reply_plan": "sales_explainer"
+    })
+    .to_string()
+}
+
+#[tokio::test]
+async fn b3_routes_to_insights_reads_twice_and_answers_with_the_explainer() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            ("plan", b3_plan()),
+            ("reply", "Revenue was $18,240 yesterday, $4,660 (20%) under a normal Thursday. \
+                       Sold-out M and L sizes of three bestsellers cost about $2,700 and the unsent \
+                       weekly email about $1,300; $660 stays unexplained."
+                .into()),
+        ],
+    );
+    let log = Arc::new(MemoryLog::default());
+    let rt = runtime(std::slice::from_ref(&glimmer), log.clone());
+    let commerce = Commerce::with_manifest(manifest_with_analytics());
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say(B3),
+        commerce.clone(),
+    )
+    .await;
+
+    assert_eq!(events[0].data()["agent"], "insights");
+    assert_eq!(
+        glimmer.asked(),
+        ["plan", "reply"],
+        "the sales question is routed by its words, without a model call"
+    );
+    assert_eq!(
+        commerce.calls(),
+        [
+            "manifest",
+            "read explain_sales_change",
+            "read get_sales_trend"
+        ],
+        "reads only: no preview, no change set"
+    );
+    let reads = commerce.reads();
+    assert_eq!(
+        reads[0].1,
+        json!({"valid_from": "2026-11-05", "valid_through": "2026-11-05",
+               "compare_mode": "same_weekday_last_4_weeks"}),
+        "yesterday is Thu Nov 5 on the store clock"
+    );
+    assert_eq!(reads[1].1["valid_through"], "2026-11-05");
+
+    let b = blocks(&events);
+    assert_eq!(b.len(), 1);
+    assert_eq!(b[0].ui, "sales_explainer");
+    assert_eq!(
+        b[0].data["summary"]["difference"]["value"].to_string(),
+        "-4660.00"
+    );
+    assert_eq!(b[0].data["causes"].as_array().unwrap().len(), 3);
+    assert_eq!(b[0].person_actions().count(), 0);
+    assert_eq!(b[0].actions.len(), 3, "three next steps, each a say button");
+    assert!(message(&events).starts_with("Revenue was $18,240 yesterday"));
+    let (usage, _) = done(&events);
+    assert_eq!((usage.tool_calls, usage.model_calls), (2, 2));
+}
+
+#[tokio::test]
+async fn a_next_step_button_speaks_its_request() {
+    let req = TurnRequest {
+        ui_event: Some(UiEvent {
+            block_id: "blk_1".into(),
+            action_id: "next_3".into(),
+            args: json!({"request": "Send the weekly email today, to the same list as last time."}),
+        }),
+        ..TurnRequest::default()
+    };
+    assert_eq!(
+        req.text(),
+        "Send the weekly email today, to the same list as last time."
+    );
+    let plain = TurnRequest {
+        ui_event: Some(UiEvent {
+            block_id: "blk_1".into(),
+            action_id: "more".into(),
+            args: json!({}),
+        }),
+        ..TurnRequest::default()
+    };
+    assert!(plain.button_request().is_none());
+    assert!(
+        plain
+            .text()
+            .starts_with("(The person pressed the button `more`")
+    );
 }

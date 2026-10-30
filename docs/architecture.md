@@ -120,7 +120,7 @@ Each operation has three names generated from one definition:
 | | `messaging` | Message, template, campaign | `send_customer_message`, `create_campaign` | one tool |
 | | `community` | post, reply, board | `list_posts`, `create_reply`, `report_post` | later |
 | **Operate**: running the store | `platform` | policy, change set, action log, enumerations, roles, store (tenant) | `get_policy`, `verify_change_set`, `search_action_log`, `list_enums` | yes |
-| | `analytics` | sales, customer, and service metrics | `explain_sales_change`, `get_sales_overview` | later |
+| | `analytics` | sales, customer, and service metrics | `explain_sales_change`, `get_sales_trend`, `get_sales_overview` | reads |
 | | `partner` | Organization (seller), contract | `onboard_seller`, `get_seller` | later |
 | | `integration` | external channels, bulk import, carrier and payment events | `import_products`, `receive_carrier_event` | later |
 
@@ -166,6 +166,8 @@ Each operation has three names generated from one definition:
 | `get_product_measurements` | `catalog.product.get_measurements` | read | shopper |
 | `get_review_summary` | `catalog.review.summarize` | read | shopper |
 | `get_delivery_dates` | `fulfillment.parcel_delivery.get_delivery_dates` | read | shopper |
+| `explain_sales_change` | `analytics.sales.explain_sales_change` | read | operator |
+| `get_sales_trend` | `analytics.sales.get_sales_trend` | read | operator |
 
 Inputs, outputs, checks, and errors for each tool are in the domain files of [api/](api/README.md). The scenes that use them, with expected results, are in [scenarios.md](scenarios.md) §6.
 
@@ -414,7 +416,7 @@ Each area of the business has its own agent that people can talk to. A specialis
 | Shopper agent | storefront | search, catalog (read), sales (cart, `prepare_order`), fulfillment (return options), customer (own profile) | "A light jacket that packs small for a trip" | cart and preferences only |
 | Outside agents | MCP | reads, cart, `prepare_order` | via ChatGPT, Gemini | cart only |
 
-Specialists are data (`agents/*.yml`: tool scope, home domains, instructions, allowed blocks, models), not code. The MVP runs the router, the promotion agent, the orders and returns agent, and the shopper agent ([backend/agent.md](backend/agent.md) §2).
+Specialists are data (`agents/*.yml`: tool scope, home domains, instructions, allowed blocks, models), not code. The MVP runs the router, the promotion agent, the orders and returns agent, the insights agent, and the shopper agent ([backend/agent.md](backend/agent.md) §2).
 
 ### 6.4 Policy as data
 

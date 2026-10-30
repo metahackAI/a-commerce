@@ -48,6 +48,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "acom-analytics"
+version = "0.1.0"
+dependencies = [
+ "acom-auth",
+ "acom-contract",
+ "acom-core",
+ "acom-policy",
+ "acom-sales",
+ "acom-store",
+ "chrono",
+ "chrono-tz",
+ "rust_decimal",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "acom-auth"
 version = "0.1.0"
 dependencies = [
@@ -376,6 +396,7 @@ dependencies = [
 name = "acom-registry"
 version = "0.1.0"
 dependencies = [
+ "acom-analytics",
  "acom-catalog",
  "acom-contract",
  "acom-customer",

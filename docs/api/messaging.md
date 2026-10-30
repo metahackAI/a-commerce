@@ -123,7 +123,7 @@
 - 논리주소/REST: `messaging.campaign.search` · `GET /v1/messaging/campaigns`
 - 요약: 캠페인 검색(상태·채널·기간·템플릿).
 - consumes → produces: → `campaign_id[]`
-- 입력: `status`(`draft` \| `scheduled` \| `sending` \| `sent` \| `cancelled`), `channel`, `scheduled_from`, `scheduled_through`, `template_id`, `limit`(기본 20), `cursor`
+- 입력: `status`(`draft` \| `scheduled` \| `sending` \| `sent` \| `failed` \| `cancelled`), `channel`, `scheduled_from`, `scheduled_through`, `template_id`, `limit`(기본 20), `cursor`
 - 출력: `{"items": [{"id": "cmp_77", "name": "VIP weekend reminder", "channel": "email", "status": "scheduled", "scheduled_time": "2026-11-07T10:00:00-05:00"}], "total": 14}`
 - 정책: 없음(읽기).
 - 에러: `invalid_filter` → `search_campaigns`

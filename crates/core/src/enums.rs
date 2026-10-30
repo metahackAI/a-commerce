@@ -316,6 +316,15 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:campaignStatus of a messaging campaign; `failed` means the send stopped before any
+    /// message went out.
+    CampaignStatus = "campaign_status" {
+        Draft = "draft", Scheduled = "scheduled", Sending = "sending", Sent = "sent", Failed = "failed",
+        Cancelled = "cancelled",
+    }
+}
+
+word_enum! {
     /// acom:salesChannel.
     SalesChannel = "sales_channel" { Web = "web", MobileWeb = "mobile_web", App = "app", Agent = "agent" }
 }
@@ -444,6 +453,7 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (MemberType::LIST, MemberType::WORDS),
     (MessageChannel::LIST, MessageChannel::WORDS),
     (MessageKind::LIST, MessageKind::WORDS),
+    (CampaignStatus::LIST, CampaignStatus::WORDS),
     (SalesChannel::LIST, SalesChannel::WORDS),
     (PaymentMethod::LIST, PaymentMethod::WORDS),
     (ReturnFees::LIST, ReturnFees::WORDS),

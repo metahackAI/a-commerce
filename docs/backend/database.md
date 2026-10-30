@@ -216,7 +216,11 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `fulfillment.inspection` | schema:CheckAction | `ins` | `inspection_condition` |
 | `fulfillment.refund` | schema:MoneyTransfer/acom:Refund | `rfd` | `refund_status`, `refund_method`, `amount_value`·`amount_currency` |
 | `messaging.message` | schema:Message | `msg` | `recipient_id`, `text`, `message_channel`, `about_id` |
+| `messaging.campaign` | schema:CreativeWork/acom:Campaign | `cmp` | `campaign_status`(`failed` 포함), `scheduled_time`, `date_sent`, `error`. 주문은 `sales_order.campaign_id`로 자기를 데려온 캠페인을 가리킴 |
 | `analytics.daily_sales` | - (뷰) | — | 일별 매출·주문 수 |
+| `analytics.order_summary`, `analytics.order_line_summary` | - (뷰) | — | 주문·주문 줄 하나에 한 행: 날짜, 상태, 등급, 캠페인, 금액. 누가 샀는지는 없음 |
+| `analytics.variant_stock_out`, `analytics.campaign_send` | - (뷰) | — | 지금 품절인 변형과 품절 시각, 캠페인 발송 여부·실패 이유 |
+| `analytics.member_tier_count`, `analytics.daily_new_members` | - (뷰) | — | 등급별 회원 수, 일별 신규 가입 수 |
 | `agent.conversation`, `agent.turn`, `agent.step`, `agent.model_call` | schema:Conversation, schema:Message, schema:Action | `conv`, `turn` | agent 서비스 |
 
 ## 13. 마이그레이션 규칙과 검사
