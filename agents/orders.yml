@@ -1,0 +1,16 @@
+# The orders agent: returns, refunds, deliveries, and the messages that go with them.
+id: orders
+surface: bo
+title: Orders agent
+description: Orders, returns and refunds, deliveries, and messages to customers about them.
+home_domains: [fulfillment, sales, messaging]
+tool_scope:
+  domains: [fulfillment, sales, messaging, customer, catalog, platform]
+  kinds: [read, write, write_approval]
+blocks: [change_set, order_detail, action_log, product_table]
+models: {worker: glimmer, planner: spark}
+instructions: orders.md
+check_intents:
+  return_window_days: Show me why this one is outside the return window
+  damage_claim_needs_photo: Ask the customer for photos instead
+  return_suggestions.flag_return_history: Show me this customer's return history

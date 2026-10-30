@@ -61,6 +61,7 @@ hyper = "1"
 hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
 metrics = "0.24"
 metrics-exporter-prometheus = { version = "0.18", default-features = false }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
 chrono-tz = { version = "0.10", features = ["serde"] }
 futures = "0.3"

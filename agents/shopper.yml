@@ -1,0 +1,27 @@
+# The shopper agent: finding, comparing, sizing, the cart, preparing an order, and returns.
+id: shopper
+surface: fo
+default: true
+title: Shopping assistant
+description: Finds and compares products, checks fit, keeps the cart, prepares the order, and lays out return options.
+home_domains: [search, catalog, sales]
+tool_scope:
+  domains: [search, catalog, merchandising, promotion, sales, fulfillment, customer]
+  kinds: [read, write]
+blocks: [compare_table, look_gallery, product_list, cart, checkout_card, return_options, order_detail, memory_note]
+models: {worker: glimmer, planner: spark}
+instructions: shopper.md
+# How product results are laid out (docs/api/chat.md §3.4). The first rule that matches wins;
+# what the shopper says now beats the profile, and the profile beats a first visit.
+layout_rules:
+  - ui: compare_table
+    when_said: [compare, which is lighter, which one, lightest, smallest, packs smallest, specs]
+    when_profile: [compares_specs]
+    why: Shown as a table because you compare specs. Say "show photos" to change it.
+  - ui: look_gallery
+    when_said: [photos, pictures, less text, what it looks like]
+    when_profile: [prefers_photos]
+    first_visit: true
+    why: Shown as photos. Say "compare them" for a table.
+  - ui: product_list
+    why: Say "compare them" for a table or "show photos" for pictures.
