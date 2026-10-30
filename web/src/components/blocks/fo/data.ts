@@ -35,7 +35,7 @@ export interface ProductListData {
 }
 
 export interface FitCheckData {
-  product: {product_id?: string; name?: string; image?: unknown; facts?: string[]; summary?: string | null; price?: MoneyLike; note?: string | null};
+  product: {product_id?: string; name?: string; image?: unknown; facts?: string[]; summary?: string | null; price?: MoneyLike; list_price?: MoneyLike; note?: string | null};
   options: {label?: string; size: string; reason?: string | null; price?: MoneyLike; recommended?: boolean}[];
   measurements: {columns: string[]; rows: unknown[][] | {label: string; values: unknown[]}[]; caption?: string | null};
   reviews: {sample?: string | number | null; fit?: unknown[]; mentions?: unknown[]};
@@ -77,6 +77,11 @@ export interface CheckoutCardData extends CartBlockData {
   preview_id: string;
   expires_at?: string | null;
   note?: string | null;
+  /** A gift prepared by prepare_gift_order: its wrap line, options and recipient. */
+  order_type?: 'gift' | string | null;
+  gift_wrap?: MoneyLike;
+  gift_options?: {card_message?: string | null; gift_receipt?: boolean; receipt_hides_prices?: boolean; exchange_until?: string | null} | null;
+  recipient?: {name?: string; mode?: 'address_known' | 'recipient_accepts' | string} | null;
 }
 
 export interface ReturnOptionsData {
@@ -109,5 +114,6 @@ export interface MemoryNoteData {
 }
 
 export interface ProfileCardData {
+  /** Remembered preferences (with the memory the Forget button undoes) and saved sizes. */
   facts: {key: string; value: unknown; source?: string | null; memory_id?: string | null}[];
 }

@@ -370,6 +370,23 @@ export interface OrderDraft {
   gift_wrap?: Money | null;
 }
 
+/** `changes[0].to` of a `prepare_gift_order` preview (docs/api/sales.md §gift_order). */
+export interface GiftDraft extends Omit<OrderDraft, 'delivery'> {
+  order_type?: 'gift';
+  /** The cart's total before the gift's own charges. */
+  goods_total?: Money;
+  delivery?: (DeliverySummary & {to?: string | null; recipient_contact?: string | null}) | null;
+  gift_options?: {
+    wrap?: boolean;
+    wrap_fee?: Money | null;
+    card_message?: string | null;
+    gift_receipt?: boolean;
+    receipt_hides_prices?: boolean;
+    exchange_until?: string | null;
+  };
+  recipient?: {name: string; mode: 'address_known' | 'recipient_accepts'};
+}
+
 /** `POST /v1/sales/orders` (person-only). */
 export interface PlacedOrder {
   ok: boolean;
@@ -377,6 +394,9 @@ export interface PlacedOrder {
   order_number: string;
   order_status: OrderStatus;
   undo: null;
+  /** A gift its recipient accepts by link: where they accept it. */
+  gift_order_id?: string;
+  accept_url?: string;
 }
 
 export type OrderStatus = 'payment_due' | 'processing' | 'in_transit' | 'delivered' | 'returned' | 'cancelled' | 'problem';

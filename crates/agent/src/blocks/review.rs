@@ -290,11 +290,6 @@ pub fn refund_review(
                     json!({"change_set_id": v.id}),
                 ));
             }
-            b.actions.push(Action::open(
-                "open_change_set",
-                format!("Open change set {number}"),
-                format!("/bo/change-sets/{}", v.id),
-            ));
         }
         None => {
             let to_send = count(rows_in, "ask_for_photos") + count(rows_in, "decline");

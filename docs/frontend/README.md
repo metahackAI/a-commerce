@@ -132,6 +132,8 @@ return <tr ref={ref} data-acom-kind="change_row" data-acom-id="prd_seersucker_ov
 | `CartLine` | cart | "금요일까지 와?" | "하나 더", "L로 바꿔" | `get_delivery_dates`, 장바구니 쓰기 |
 | `OrderRow` | order_detail, 주문 목록 | "어디쯤 왔어?" | "반품하고 싶어" | `return_options` 준비(보내기는 사람) |
 | `MeasurementTable` | fit_check | "어깨는 괜찮을까?" | — | 실측 비교 설명 |
+| `FitOption` | fit_check 사이즈 선택지 | "왜 L이야?" | "스웨터만 입으면?" | 같은 읽기로 다시 판단, 선택지 순서 바꿈 |
+| `GiftOptions`·`GiftField` | gift_picker, 선물 결제(`/checkout/gift`) | "포장비는 얼마야?" | "카드 문구 바꿔 줘" | `prepare_gift_order` 다시 프리뷰(주문하기는 사람) |
 | `MemoryNote`·`ProfileFact` | 대화, profile_card | "이건 왜 기억했어?" | "이건 잊어" → 되돌리기 버튼 안내 | 기억 출처 설명 |
 | `SearchBox`·`NaturalInput` | 헤더, 필터, 기간 | — | 자연어 그대로 | 조건으로 풀어 칩으로 확인 |
 | `ProductImage` | 상품, 초안(운영자) | "이 사진 뭐가 문제야?" | (운영자) "배경 지워 줘" | catalog 이미지 오퍼레이션 프리뷰 |
