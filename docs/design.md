@@ -1,6 +1,27 @@
 # A-Commerce design
 
-Status: draft (Oct 27). This document is the brief for everyone building A-Commerce, people and coding agents alike.
+Status: draft (Oct 27; principles set Oct 31). This document is the brief for everyone building A-Commerce, people and coding agents alike.
+
+## Principles
+
+**People state the goal and approve the result; the system does the rest. Intelligence comes from the model; trust comes from the structure.**
+
+This is the one list of principles. The README repeats it in short and links here. Each principle names the sign that it is broken, so a code review or a demo can check it.
+
+1. **Tools work in the units people use.** A tool finds things by what people say (an order number, an email, a product name) and returns what the decision needs, not raw rows.
+   *Broken when:* the agent asks the person for an internal id.
+2. **Every change is a proposal first.** The agent never changes the store directly. It drafts a change set with a preview and checks, and a person reviews it like a pull request where the rules require a person. A change that can be undone says how; one that cannot (a sent message, a refund) says so before approval.
+   *Broken when:* a call changes state without a preview.
+3. **Rules are data, and the system checks them.** Business rules such as discount limits and approval thresholds live in policy files, and the back-end enforces them, so a wrong model answer cannot break them.
+   *Broken when:* a business number (a discount rate, an amount) appears in a prompt or in harness code as a rule.
+4. **The system brings the work.** Events such as low stock or a spike in returns create tasks, and the agent prepares a draft before anyone asks.
+   *Broken when:* nothing happens until a person asks.
+5. **The screen is the result of the work.** Instead of menus to navigate, the UI for the task at hand appears, fitted to the person.
+   *Broken when:* the answer is text only and the person has to finish the job on another screen.
+
+**Evidence rule.** A claim that a principle holds is made only with numbers from the shared task set ([../eval](../eval), design and held-out tasks). One scene working is not evidence.
+
+The tool rules in §3 are how principles 1–3 are built. [research.md](research.md) §3 records the research that led to this list.
 
 ## 1. Goal
 
