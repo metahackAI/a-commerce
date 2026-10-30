@@ -300,6 +300,14 @@ pub fn implied_each(
         return None;
     }
     let source = done.get(&step.uses[0])?;
+    // A ranked text search means its best hit ("the wool overcoat"), not every hit.
+    if source
+        .input
+        .get("query")
+        .is_some_and(|q| !is_empty(Some(q)))
+    {
+        return None;
+    }
     tool.consumes.iter().find_map(|slot| {
         let (field, is_list) = tool.field_for_slot(&slot.name)?;
         let given = step.args.get(&field);
@@ -312,9 +320,10 @@ pub fn implied_each(
 }
 
 /// The rows of a result a step can run once per row for (`each`): its `items` (or a block's
-/// `requests`, `picks`, `lines`), or the result itself when it is one object.
+/// `requests`, `picks`, `lines`, a screen grid's `list`), or the result itself when it is one
+/// object.
 pub fn rows(output: &Value) -> Vec<Value> {
-    for key in ["items", "requests", "picks", "lines", "products"] {
+    for key in ["items", "requests", "picks", "lines", "products", "list"] {
         if let Some(Value::Array(a)) = output.get(key) {
             return a.iter().filter(|r| r.is_object()).cloned().collect();
         }
@@ -370,7 +379,24 @@ pub fn bind_row(step: &PlanStep, tool: &ToolSpec, row: &Value) -> Bound {
         if !is_empty(input.get(&field)) {
             continue;
         }
-        if let Some(v) = row.get(&slot.name).filter(|v| v.is_string()) {
+        // The row's field named like the slot, else its own `id` when it has the field's prefix
+        // (search rows name a product by `id`).
+        let prefix = schema
+            .and_then(|p| p.get("pattern").or_else(|| p.pointer("/items/pattern")))
+            .and_then(Value::as_str)
+            .and_then(|p| p.strip_prefix('^'))
+            .and_then(|p| p.strip_suffix("[a-z0-9_]+$"));
+        let own_id = || {
+            row.get("id").filter(|v| {
+                v.as_str()
+                    .is_some_and(|s| prefix.is_some_and(|p| s.starts_with(p)))
+            })
+        };
+        if let Some(v) = row
+            .get(&slot.name)
+            .filter(|v| v.is_string())
+            .or_else(own_id)
+        {
             input.insert(field.clone(), if is_list { json!([v]) } else { v.clone() });
             notes.push(format!("{field}: from the row"));
         }
@@ -639,6 +665,21 @@ mod tests {
         );
         let b = bind_row(&meant, read, &json!({"product_id": "prd_b"}));
         assert_eq!(b.input["product_id"], "prd_b");
+        let b = bind_row(&meant, read, &json!({"id": "prd_c", "name": "C"}));
+        assert_eq!(
+            b.input["product_id"], "prd_c",
+            "a search row names its product by id"
+        );
+
+        // A ranked text search means its best hit: no fan-out.
+        let mut searched = record(
+            "s1",
+            get(&m, "search_products"),
+            json!({"items": [{"product_id": "prd_a"}, {"product_id": "prd_b"}]}),
+        );
+        searched.input = json!({"query": "wool overcoat"});
+        let done = BTreeMap::from([("s1".to_owned(), searched)]);
+        assert_eq!(implied_each(&meant, read, &done), None);
     }
 
     #[test]

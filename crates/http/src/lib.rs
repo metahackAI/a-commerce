@@ -5,6 +5,9 @@
 //! `GET /v1/tools`, the change-set endpoints, the store event stream, and turns `ToolError` into
 //! `{"error": {...}}` with the status from the error catalog (`docs/api/errors.md`).
 //!
+//! In demo mode only, `?set=facade` on the manifest and the tool endpoint serves the
+//! screen-shaped facade the evaluation compares against (`acom-facade`, `docs/api/README.md` §7).
+//!
 //! Every request must carry the gateway's internal token (`Authorization: Bearer …`); the
 //! token's `tenant` claim alone decides the store.
 
@@ -33,6 +36,8 @@ pub struct Api {
     pub runtime: Arc<Runtime>,
     pub registry: Arc<Registry<Cx>>,
     pub verifier: Arc<Verifier>,
+    /// The evaluation's screen-shaped tool set, served only in demo mode with `?set=facade`.
+    pub facade: Arc<acom_facade::Facade>,
 }
 
 impl std::fmt::Debug for Api {

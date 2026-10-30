@@ -70,7 +70,7 @@
 | search | `circular_synonym`, `reindex_pending` |
 | merchandising | `slot_taken`(policy_violation), `cross_set_violation`, `primary_needs_reassign`, `cycle_detected` |
 | integration | `status_unmapped`, `category_unmapped` |
-| platform | `change_set_not_found`, `preview_not_found`, `irreversible_change`(되돌릴 수 없는 항목이 있는 변경셋 되돌리기), `demo_mode_off`(invalid_state, 데모 모드가 아닌 스토어에서 데모 시계 옮기기), `demo_reset_unavailable`(invalid_state, 데모 스택이 아닌 곳에서 데모 스토어 다시 적재) |
+| platform | `change_set_not_found`, `preview_not_found`, `irreversible_change`(되돌릴 수 없는 항목이 있는 변경셋 되돌리기), `demo_mode_off`(invalid_state, 데모 모드가 아닌 스토어에서 데모 시계 옮기기, 또는 평가용 화면형 파사드 쓰기: `GET /v1/tools?set=facade`, 턴의 `tool_set: facade`), `demo_reset_unavailable`(invalid_state, 데모 스택이 아닌 곳에서 데모 스토어 다시 적재) |
 | analytics | `no_data_for_period`(비교할 날에 매출이 없음), `invalid_period`·`invalid_granularity`·`dimension_not_supported`(invalid_input) |
 
 ## 3. 구현

@@ -84,6 +84,8 @@ impl ChatModel for Scripted {
 #[derive(Debug)]
 struct Commerce {
     manifest: Vec<ToolSpec>,
+    /// The screen-shaped facade's manifest (`GET /v1/tools?set=facade`).
+    facade: Vec<ToolSpec>,
     calls: Mutex<Vec<String>>,
     reads: Mutex<Vec<(String, Value)>>,
     previews: Mutex<Vec<(String, Value, Option<String>)>>,
@@ -99,6 +101,7 @@ impl Commerce {
     fn with_manifest(manifest: Vec<ToolSpec>) -> Arc<Self> {
         Arc::new(Self {
             manifest,
+            facade: facade_manifest(),
             calls: Mutex::new(Vec::new()),
             reads: Mutex::new(Vec::new()),
             previews: Mutex::new(Vec::new()),
@@ -359,6 +362,100 @@ impl ToolClient for Commerce {
             })
         })
     }
+
+    fn facade_manifest(&self) -> BoxFuture<'_, Result<Vec<ToolSpec>, ToolError>> {
+        self.log("facade_manifest".into());
+        Box::pin(async move { Ok(self.facade.clone()) })
+    }
+
+    fn facade_call<'a>(
+        &'a self,
+        tool: &'a str,
+        input: &'a Value,
+    ) -> BoxFuture<'a, Result<Value, ToolError>> {
+        self.log(format!("facade {tool}"));
+        self.reads
+            .lock()
+            .unwrap()
+            .push((tool.to_owned(), input.clone()));
+        Box::pin(async move {
+            Ok(match tool {
+                "getPrmtGridList" => json!({"list": [
+                    {"prmtNo": "promo_autumn_knit", "prmtNm": "Autumn knitwear 15%", "prmtTpCd": "T01", "prmtStatCd": "20"},
+                    {"prmtNo": "promo_gold_10", "prmtNm": "Gold tier 10%", "prmtTpCd": "T02", "prmtStatCd": "20"}],
+                    "pageNo": 1, "pageSize": 20}),
+                "getMbrGrdList" => json!({"list": [
+                    {"mbrGrdCd": "G03", "mbrGrdNm": "VIP", "mbrCnt": 1284},
+                    {"mbrGrdCd": "G02", "mbrGrdNm": "Gold", "mbrCnt": 2900}]}),
+                "savePrmtList" => json!({"resultCd": "0000", "resultMsg": "Saved.", "procCnt": 1,
+                    "list": [{"rowNo": 1, "rowStat": "I", "prmtNo": "promo_901"}]}),
+                _ => json!({"list": [], "pageNo": 1, "pageSize": 20}),
+            })
+        })
+    }
+}
+
+/// A few screens of the facade, in the shape commerce serves at `GET /v1/tools?set=facade`:
+/// screen names, codes without meaning, no links, no checks.
+fn facade_manifest() -> Vec<ToolSpec> {
+    fn screen(tool: &str, address: &str, kind: &str, summary: &str, properties: Value) -> Value {
+        json!({"tool": tool, "address": address, "kind": kind, "summary": summary,
+               "consumes": [], "produces": [], "checks": [], "group": "engage", "method": "POST",
+               "path": format!("/v1/tools/{tool}"), "errors": [], "audience": "operator",
+               "action_type": "SearchAction", "person_scope": "",
+               "input_schema": {"type": "object", "additionalProperties": false,
+                                "properties": properties, "required": []}})
+    }
+    let text = |d: &str| json!({"type": "string", "description": d});
+    let row = json!({"type": "object", "additionalProperties": false, "required": ["rowStat"],
+        "properties": {
+            "rowStat": {"type": "string", "enum": ["I", "U", "D"], "description": "Row status."},
+            "prmtNo": text("Promotion no."), "prmtNm": text("Promotion name."),
+            "prmtTpCd": {"type": "string", "enum": ["T01", "T02", "T03", "T04", "T05"], "description": "Promotion type code."},
+            "tgtMbrGrdCd": text("Target member grade code."),
+            "strtDtm": text("Start date-time."), "endDtm": text("End date-time."),
+            "aplyTgtCd": {"type": "string", "enum": ["C", "P"], "description": "Apply target code."},
+            "ctgNo": text("Category no."),
+            "dcRt": {"type": "number", "description": "Discount rate."}}});
+    let items = json!([
+        screen(
+            "getPrmtGridList",
+            "promotion.prmt.getPrmtGridList",
+            "read",
+            "Promotion grid list.",
+            json!({"prmtStatCd": {"type": "string", "enum": ["00", "10", "20", "30", "90"], "description": "Promotion status code."},
+                      "pageNo": {"type": "integer", "description": "Page no."}})
+        ),
+        screen(
+            "getPrmtGridListCnt",
+            "promotion.prmt.getPrmtGridListCnt",
+            "read",
+            "Promotion grid list count.",
+            json!({"prmtStatCd": {"type": "string", "enum": ["00", "10", "20", "30", "90"], "description": "Promotion status code."}})
+        ),
+        screen(
+            "getMbrGrdList",
+            "customer.mbr.getMbrGrdList",
+            "read",
+            "Member grade list.",
+            json!({})
+        ),
+        screen(
+            "getPrdGridList",
+            "search.prd.getPrdGridList",
+            "read",
+            "Product grid list.",
+            json!({"srchKwd": text("Search keyword."), "ctgNo": text("Category no.")})
+        ),
+        screen(
+            "savePrmtList",
+            "promotion.prmt.savePrmtList",
+            "write",
+            "Promotion list save.",
+            json!({"rows": {"type": "array", "items": row, "description": "Grid rows."}})
+        ),
+    ]);
+    serde_json::from_value(items).unwrap()
 }
 
 fn settings() -> StoreSettings {
@@ -630,6 +727,11 @@ async fn b1_drafts_a_change_set_through_tools_and_never_approves() {
     assert!(
         steps.iter().all(|s| s.status != "active"),
         "every step ended"
+    );
+    assert_eq!(
+        log.ended()[0].usage["tool_set"],
+        "commerce",
+        "the turn log says which tools the turn used"
     );
 }
 
@@ -1374,4 +1476,162 @@ async fn a_reply_with_made_up_numbers_is_written_again_and_what_was_read_is_show
     assert_eq!(b.len(), 1, "the tiers read, shown as a table");
     assert_eq!(b[0].ui, "product_table");
     assert_eq!(glimmer.asked().iter().filter(|p| *p == "reply").count(), 2);
+}
+
+fn on_facade(text: &str) -> TurnRequest {
+    TurnRequest {
+        message: Some(text.into()),
+        tool_set: ToolSet::Facade,
+        ..TurnRequest::default()
+    }
+}
+
+#[test]
+fn a_turn_request_names_its_tool_set_only_for_the_facade() {
+    let r: TurnRequest =
+        serde_json::from_value(json!({"message": "hi", "tool_set": "facade"})).unwrap();
+    assert_eq!(r.tool_set, ToolSet::Facade);
+    let normal: TurnRequest = serde_json::from_value(json!({"message": "hi"})).unwrap();
+    assert_eq!(normal.tool_set, ToolSet::Commerce);
+    assert!(
+        serde_json::to_value(&normal)
+            .unwrap()
+            .get("tool_set")
+            .is_none()
+    );
+    assert!(
+        serde_json::from_value::<TurnRequest>(json!({"message": "hi", "tool_set": "x"})).is_err()
+    );
+}
+
+#[tokio::test]
+async fn a_facade_turn_plans_with_facade_tools_only_and_saves_at_once() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            ("plan", json!({
+                "interpretation": [{"aspect": "who", "text": "VIP members"}, {"aspect": "benefit", "text": "20% off"}],
+                "about": "self", "reply_plan": "text",
+                "steps": [
+                    {"id": "s1", "tool": "getMbrGrdList", "args": {}, "uses": []},
+                    {"id": "s2", "tool": "savePrmtList", "uses": ["s1"], "args": {"rows": [
+                        {"rowStat": "I", "prmtNm": "VIP weekend", "prmtTpCd": "T03", "tgtMbrGrdCd": "G03",
+                         "strtDtm": "2026-11-07T00:00", "endDtm": "2026-11-08T23:59",
+                         "aplyTgtCd": "C", "ctgNo": "cat_summer_outerwear", "dcRt": 20}]}}]})
+            .to_string()),
+            ("reply", "The VIP weekend promotion is saved.".into()),
+        ],
+    );
+    let log = Arc::new(MemoryLog::default());
+    let rt = runtime(std::slice::from_ref(&glimmer), log.clone());
+    let commerce = Commerce::new();
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        // Tool search matches words: the screens' terse names and descriptions only surface
+        // for a request in their own words ("save", "promotion").
+        on_facade("Save a promotion for VIP members: 20% off summer outerwear this weekend."),
+        commerce.clone(),
+    )
+    .await;
+
+    assert_eq!(
+        commerce.calls(),
+        [
+            "facade_manifest",
+            "facade getMbrGrdList",
+            "facade savePrmtList"
+        ],
+        "the facade's manifest only; the write runs at once: no preview, no change set, no submit"
+    );
+    let screens: Vec<String> = facade_manifest().into_iter().map(|t| t.tool).collect();
+    let steps = log.steps();
+    let search = steps
+        .iter()
+        .find(|s| s.kind == "search_tools")
+        .expect("tool search step");
+    let candidates: Vec<&str> = search
+        .output
+        .as_ref()
+        .unwrap()
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|c| c["tool"].as_str())
+        .collect();
+    assert!(!candidates.is_empty());
+    assert!(
+        candidates.iter().all(|c| screens.iter().any(|s| s == c)),
+        "only facade tools are planned with: {candidates:?}"
+    );
+    let saved = &commerce.reads()[1];
+    assert_eq!(saved.0, "savePrmtList");
+    assert_eq!(saved.1["rows"][0]["prmtTpCd"], "T03");
+    assert!(
+        steps
+            .iter()
+            .all(|s| s.preview_id.is_none() && s.change_set_id.is_none())
+    );
+    let route = steps.iter().find(|s| s.kind == "route").unwrap();
+    assert_eq!(route.output.as_ref().unwrap()["tool_set"], "facade");
+
+    assert!(blocks(&events).iter().all(|b| b.ui != "change_set"));
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::ChangeSetUpdated { .. }))
+    );
+    assert_eq!(message(&events), "The VIP weekend promotion is saved.");
+    let (usage, _) = done(&events);
+    assert_eq!(usage.tool_calls, 2);
+    let ended = log.ended();
+    assert_eq!(ended[0].usage["tool_set"], "facade");
+    assert_eq!(ended[0].usage["tool_calls"], 2);
+}
+
+#[tokio::test]
+async fn a_facade_grid_is_shown_as_a_table_and_a_plan_naming_a_store_tool_is_refused() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            // The worker reaches for a tool of the other set: not among the candidates.
+            ("plan", json!({"interpretation": [], "about": "self", "reply_plan": "product_table",
+                "steps": [{"id": "s1", "tool": "list_active_promotions", "args": {}, "uses": []}]})
+            .to_string()),
+            ("plan", json!({"interpretation": [], "about": "self", "reply_plan": "product_table",
+                "steps": [{"id": "s1", "tool": "getPrmtGridList", "args": {"prmtStatCd": "20"}, "uses": []}]})
+            .to_string()),
+            ("reply", "Here are the running promotions.".into()),
+        ],
+    );
+    let log = Arc::new(MemoryLog::default());
+    let rt = runtime(std::slice::from_ref(&glimmer), log.clone());
+    let commerce = Commerce::new();
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        on_facade("Which promotions are running?"),
+        commerce.clone(),
+    )
+    .await;
+    assert_eq!(
+        commerce.calls(),
+        ["facade_manifest", "facade getPrmtGridList"]
+    );
+    assert_eq!(
+        glimmer.asked(),
+        ["plan", "plan", "reply"],
+        "the plan naming a tool outside the facade was refused and made again"
+    );
+    let b = blocks(&events);
+    assert_eq!(b.len(), 1);
+    assert_eq!(b[0].ui, "product_table");
+    assert_eq!(b[0].data["rows"][0]["prmtNo"], "promo_autumn_knit");
+    assert_eq!(b[0].data["rows"].as_array().unwrap().len(), 2);
+    assert_eq!(message(&events), "Here are the running promotions.");
+    assert_eq!(log.ended()[0].usage["tool_set"], "facade");
 }

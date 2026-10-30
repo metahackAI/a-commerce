@@ -21,6 +21,12 @@ Accept: text/event-stream
 }
 ```
 
+`tool_set`(선택)은 이 턴이 쓸 툴 세트입니다. 기본은 `commerce`(A-Commerce 툴)이고, `facade`는 평가용 화면형 파사드([README.md](README.md) §7)입니다. `facade`는 데모 모드에서만 받고, 아니면 `demo_mode_off`(409)로 거절합니다. 그 턴은 같은 라우팅·툴 검색·계획·실행을 파사드의 매니페스트로 하고, 쓰기는 프리뷰·변경셋 없이 바로 실행됩니다. 어느 세트를 썼는지는 턴 기록의 `usage.tool_set`(`commerce` | `facade`)에 남아 `?log=true` 조회로 읽습니다. 게이트웨이는 턴 본문을 그대로 넘깁니다.
+
+```json
+{"message": "Save a promotion for VIP members: 20% off summer outerwear this weekend.", "tool_set": "facade"}
+```
+
 블록의 `say` 버튼은 `message` 대신 `ui_event`를 보냅니다.
 
 ```json

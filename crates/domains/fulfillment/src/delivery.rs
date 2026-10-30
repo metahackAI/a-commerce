@@ -292,9 +292,15 @@ fn events(cx: &Cx, d: &DeliveryRow) -> Vec<Value> {
             json!({"at": cx.time.format(t), "delivery_state": "delivered", "location": place}),
         );
     }
+    // A parcel in transit has no scan of its own beyond the pickup: the pickup is its last event.
+    // Another state shows when the row last changed, but only when that time makes sense (after
+    // the pickup, not after now); a row's write time is not a carrier scan.
     let covered = (d.delivery_state == "delivered" && d.delivered_at.is_some())
-        || (d.delivery_state == "picked_up" && d.shipped_at.is_some());
-    if !covered {
+        || (matches!(d.delivery_state.as_str(), "picked_up" | "in_transit")
+            && d.shipped_at.is_some());
+    let plausible =
+        d.shipped_at.is_none_or(|s| d.updated_at >= s) && d.updated_at <= cx.clock.now();
+    if !covered && plausible {
         out.push(
             json!({"at": cx.time.format(d.updated_at), "delivery_state": d.delivery_state,
                         "location": null}),

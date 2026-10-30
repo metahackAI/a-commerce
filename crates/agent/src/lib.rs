@@ -36,3 +36,4 @@ pub use client::{HttpToolClient, ToolClient};
 pub use profile::{ChatSurface, Profiles};
 pub use runtime::{Prepared, Runtime, TurnRequest};
 pub use stream::{Emitter, Event, encode};
+pub use tools::ToolSet;

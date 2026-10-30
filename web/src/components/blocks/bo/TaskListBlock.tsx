@@ -12,7 +12,7 @@ import {MetadataList} from '@astryxdesign/core/MetadataList';
 import type {TaskListBlockData} from '@/app/bo/_lib/blocks';
 import {value} from '@/app/bo/_lib/format';
 import type {TaskSummary} from '@/app/bo/_lib/types';
-import {TASK_GROUPS, TaskTable} from '@/components/bo/TaskTable';
+import {TASK_GROUPS, TaskList} from '@/components/bo/TaskTable';
 import {TargetFact} from '@/components/bo/targets';
 
 import type {BlockProps} from '../types';
@@ -54,7 +54,7 @@ export function TaskListBlock({block}: BlockProps) {
                   Nothing here.
                 </Text>
               ) : (
-                <TaskTable tasks={tasks} changeSets={{}} blockId={block.block_id} intentsFor={intentsFor} />
+                <TaskList tasks={tasks} blockId={block.block_id} intentsFor={intentsFor} />
               )}
             </VStack>
           );

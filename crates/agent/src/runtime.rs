@@ -5,6 +5,11 @@
 //! change set, which is handed to people (`submit`) only when its rule checks pass; the runtime
 //! never approves. On the storefront a write that needs no approval is previewed and committed
 //! with its `preview_id`, and an order is only prepared: the shopper's button places it.
+//!
+//! For the evaluation (docs/design.md §7) a turn may use the screen-shaped facade instead
+//! (`tool_set: facade`, demo mode only): the same routing, tool search, planning and execution,
+//! over the facade's manifest, where every call runs at once (reads and direct writes alike).
+//! The turn's stored usage records which tool set it used.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -29,11 +34,11 @@ use crate::client::{ItemRef, NewChangeSet, ToolClient};
 use crate::executor::{self, StepRecord};
 use crate::memory::{ConversationContext, OpenChangeSet, Owner};
 use crate::planner::{self, About, Plan, PlanInput, PlanStep};
-use crate::profile::{AgentProfile, ChatSurface, Limits, Profiles};
+use crate::profile::{AgentProfile, ChatSurface, LayoutRule, Limits, Profiles};
 use crate::router;
 use crate::store::{StepRow, StoreInfo, StoreSettings, SystemStore, TurnEnd, TurnLog, TurnStart};
 use crate::stream::{Command, Emitter, Event, StepKind, StepStatus, TurnUsage};
-use crate::tools::{ToolKind, ToolSpec};
+use crate::tools::{ToolKind, ToolSet, ToolSpec};
 use crate::toolsearch;
 
 /// The reply's shape: two or three sentences in one field.
@@ -87,6 +92,10 @@ pub struct TurnRequest {
     pub ui_event: Option<UiEvent>,
     #[serde(default)]
     pub context: Vec<ElementContext>,
+    /// The tools this turn uses: A-Commerce's (default) or, for the evaluation, the
+    /// screen-shaped facade. The agent service accepts `facade` only in demo mode.
+    #[serde(default, skip_serializing_if = "ToolSet::is_commerce")]
+    pub tool_set: ToolSet,
 }
 
 /// The longest message a turn takes.
@@ -469,6 +478,7 @@ struct Turn<'r> {
     profile: &'r AgentProfile,
     emit: Emitter,
     tools: Arc<dyn ToolClient>,
+    tool_set: ToolSet,
     settings: StoreSettings,
     clock: TurnClock,
     started: Instant,
@@ -507,6 +517,7 @@ impl<'r> Turn<'r> {
             rt,
             text: p.request.text(),
             pointed: p.request.pointed(),
+            tool_set: p.request.tool_set,
             principal: p.principal,
             tenant,
             surface: p.surface,
@@ -549,7 +560,11 @@ impl<'r> Turn<'r> {
             let message = self.rt.models.not_configured_message();
             return self.fail("upstream_unavailable", message).await;
         }
-        self.manifest = match self.tools.manifest().await {
+        let manifest = match self.tool_set {
+            ToolSet::Commerce => self.tools.manifest().await,
+            ToolSet::Facade => self.tools.facade_manifest().await,
+        };
+        self.manifest = match manifest {
             Ok(m) => m,
             Err(e) => {
                 return self
@@ -568,6 +583,7 @@ impl<'r> Turn<'r> {
             }
         }
         self.finish_change_set().await;
+        self.compare_for_layout().await;
         self.build_blocks();
         let reply = self.reply().await;
         self.finish(Some(reply), None).await;
@@ -960,7 +976,8 @@ impl<'r> Turn<'r> {
             "completed",
             StepEnd {
                 summary,
-                output: Some(json!({"agent": r.agent, "confidence": r.confidence})),
+                output: Some(json!({"agent": r.agent, "confidence": r.confidence,
+                                    "tool_set": self.tool_set.as_str()})),
                 ..StepEnd::default()
             },
             Some(self.clock.now()),
@@ -1001,8 +1018,12 @@ impl<'r> Turn<'r> {
         }
     }
 
+    /// The conversation's open change set. The facade has none: its writes run at once.
     fn open_change_set(&self) -> Option<&OpenChangeSet> {
-        self.ctx.change_set.as_ref().filter(|c| c.is_open())
+        self.ctx
+            .change_set
+            .as_ref()
+            .filter(|c| c.is_open() && self.tool_set.is_commerce())
     }
 
     async fn search(&mut self) -> bool {
@@ -1494,6 +1515,9 @@ impl<'r> Turn<'r> {
         }
         let record = match (tool.kind, self.surface) {
             (ToolKind::Read, _) => self.run_read(step, tool, input, &notes).await,
+            _ if self.tool_set == ToolSet::Facade => {
+                self.run_direct_write(step, tool, input, &notes).await
+            }
             (_, ChatSurface::Bo) => {
                 self.run_change_set_write(plan, step, tool, input, &notes)
                     .await
@@ -1537,6 +1561,15 @@ impl<'r> Turn<'r> {
                 return Err(Flow::Stop(why));
             }
             let bound = executor::bind_row(step, tool, &row);
+            // A row that cannot fill the step is left out, not asked about one model call at a
+            // time.
+            if tool
+                .required()
+                .iter()
+                .any(|f| bound.input.get(*f).is_none_or(Value::is_null))
+            {
+                continue;
+            }
             let record = self
                 .call(plan, &step.id, tool, bound.input, bound.notes)
                 .await?;
@@ -1620,8 +1653,8 @@ impl<'r> Turn<'r> {
             .map(|i| i.input.clone())
     }
 
-    /// A tool error: try again with the tool commerce suggests when this agent may use it,
-    /// otherwise stop and show the reason.
+    /// A tool error: try again with the tool commerce suggests when this agent may use it, or
+    /// with the message when the arguments were wrong; otherwise stop and show the reason.
     fn tool_failure(&mut self, tool: &str, e: &ToolError) -> Flow {
         let next = e
             .next_tool
@@ -1637,6 +1670,12 @@ impl<'r> Turn<'r> {
                     e.code, e.message
                 ))
             }
+            // Arguments the plan got wrong (a field missing, a value out of range) are fixed by
+            // planning again with the message; anything else is shown to the person.
+            None if e.class == acom_contract::ErrorClass::InvalidInput => Flow::Revise(format!(
+                "{tool} failed ({}): {} Plan it again with the arguments it needs.",
+                e.code, e.message
+            )),
             None => Flow::Stop(format!("{tool} failed: {}", e.message)),
         }
     }
@@ -1656,7 +1695,11 @@ impl<'r> Turn<'r> {
                 Some(&tool.tool),
             )
             .await;
-        match self.tools.read(&tool.tool, &input).await {
+        let read = match self.tool_set {
+            ToolSet::Commerce => self.tools.read(&tool.tool, &input).await,
+            ToolSet::Facade => self.tools.facade_call(&tool.tool, &input).await,
+        };
+        match read {
             Ok(out) => {
                 let count = out.get("total").and_then(Value::as_u64).or_else(|| {
                     out.get("items")
@@ -1683,6 +1726,64 @@ impl<'r> Turn<'r> {
                     tool: tool.tool.clone(),
                     kind: tool.kind,
                     slots: executor::slots_from_read(tool, &out),
+                    input,
+                    output: Some(out),
+                    preview: None,
+                    item: None,
+                })
+            }
+            Err(e) => {
+                self.end_step(
+                    &h,
+                    StepStatus::Failed,
+                    StepEnd {
+                        summary: e.message.clone(),
+                        input: Some(input),
+                        error: Some(json!(e)),
+                        ..StepEnd::default()
+                    },
+                )
+                .await;
+                Err(self.tool_failure(&tool.tool, &e))
+            }
+        }
+    }
+
+    /// A facade write: one call that changes the store at once, as a screen's save button does.
+    /// There is no preview to show and no change set to hand to people.
+    async fn run_direct_write(
+        &mut self,
+        step: &str,
+        tool: &ToolSpec,
+        input: Value,
+        notes: &[String],
+    ) -> Result<StepRecord, Flow> {
+        self.tool_calls += 1;
+        let h = self
+            .begin_step(
+                StepKind::CallTool,
+                format!("Saving with {}", tool.tool),
+                Some(&tool.tool),
+            )
+            .await;
+        match self.tools.facade_call(&tool.tool, &input).await {
+            Ok(out) => {
+                self.end_step(
+                    &h,
+                    StepStatus::Done,
+                    StepEnd {
+                        summary: format!("{}: done", tool.tool),
+                        input: Some(json!({"args": input, "repairs": notes})),
+                        output: Some(out.clone()),
+                        ..StepEnd::default()
+                    },
+                )
+                .await;
+                Ok(StepRecord {
+                    step: step.to_owned(),
+                    tool: tool.tool.clone(),
+                    kind: tool.kind,
+                    slots: executor::slots_from_commit(tool, &out),
                     input,
                     output: Some(out),
                     preview: None,
@@ -2377,6 +2478,65 @@ impl<'r> Turn<'r> {
 
     /// Products this turn read, else the rows of an earlier block of one of `uis` it used,
     /// else the latest such block in the conversation.
+    /// The product block this turn shows: the layout rule that fits the shopper and their words
+    /// (agents/shopper.yml `layout_rules`), else the plan's choice.
+    fn product_layout(&self, reply_plan: &str) -> (String, Option<&LayoutRule>) {
+        let facts = self.profile_facts();
+        // A first visit: a guest with no history yet. A signed-in shopper has a record.
+        let first_visit =
+            self.principal.customer_id().is_none() && self.ctx.is_first_turn() && facts.is_empty();
+        let said = self.layout_words();
+        let rule = shop::layout(&self.profile.layout_rules, &said, &facts, first_visit)
+            .filter(|r| self.profile.blocks.contains(&r.ui));
+        let ui = rule.map_or(reply_plan, |r| r.ui.as_str()).to_owned();
+        (ui, rule)
+    }
+
+    /// A comparison shows the products' attributes side by side, which only `compare_products`
+    /// reads. When the turn will show one and the plan only searched, compare the top few.
+    async fn compare_for_layout(&mut self) {
+        let Some(plan) = self.plan.clone() else {
+            return;
+        };
+        let reply_plan = plan.reply_plan.clone().unwrap_or_default();
+        if !["compare_table", "look_gallery", "product_list"].contains(&reply_plan.as_str())
+            || self.history.iter().any(|r| r.tool == "compare_products")
+            || self.product_layout(&reply_plan).0 != "compare_table"
+        {
+            return;
+        }
+        let Some(tool) = self
+            .tool("compare_products")
+            .filter(|t| self.profile.allows(t))
+            .cloned()
+        else {
+            return;
+        };
+        let ids: Vec<Value> = self
+            .product_rows(&["compare_table", "look_gallery", "product_list"])
+            .iter()
+            .filter_map(|i| {
+                i.get("product_id")
+                    .or_else(|| i.get("id"))
+                    .filter(|v| v.as_str().is_some_and(|s| s.starts_with("prd_")))
+                    .cloned()
+            })
+            .take(4)
+            .collect();
+        if ids.len() < 2 {
+            return;
+        }
+        let _ = self
+            .call(
+                &plan,
+                "compare",
+                &tool,
+                json!({"product_ids": ids}),
+                vec!["product_ids: the top results, for the comparison the layout shows".into()],
+            )
+            .await;
+    }
+
     fn product_rows(&self, uis: &[&str]) -> Vec<Value> {
         if let Some(r) = self.last_output(|r| {
             r.kind == ToolKind::Read
@@ -2527,17 +2687,8 @@ impl<'r> Turn<'r> {
                 .last_output(|r| r.kind == ToolKind::Read)
                 .and_then(|r| shop::return_options(r.output.as_ref()?, &r.input)),
             "compare_table" | "look_gallery" | "product_list" => {
-                let facts = self.profile_facts();
-                // A first visit: a guest with no history yet. A signed-in shopper has a record.
-                let first_visit = self.principal.customer_id().is_none()
-                    && self.ctx.is_first_turn()
-                    && facts.is_empty();
-                let said = self.layout_words();
-                let rule = shop::layout(&self.profile.layout_rules, &said, &facts, first_visit);
-                let ui = rule
-                    .map(|r| r.ui.as_str())
-                    .filter(|u| allowed(u))
-                    .unwrap_or(reply_plan.as_str());
+                let (ui, rule) = self.product_layout(&reply_plan);
+                let ui = ui.as_str();
                 // Nothing read this turn: the results shown last, laid out again.
                 let rows = self.product_rows(&["compare_table", "look_gallery", "product_list"]);
                 shop::products(
@@ -2612,6 +2763,11 @@ impl<'r> Turn<'r> {
             .filter(|r| r.kind == ToolKind::Read)
             .map(|r| json!({"tool": r.tool, "result": compact(r.output.as_ref().unwrap_or(&Value::Null))}))
             .collect();
+        // Writes that ran at once (the facade's saves) and what they answered.
+        let saved: Vec<Value> = self
+            .direct_writes()
+            .map(|r| json!({"tool": r.tool, "result": compact(r.output.as_ref().unwrap_or(&Value::Null))}))
+            .collect();
         // A block's summary (a review's counts and refund total) is what the reply may cite.
         let blocks: Vec<Value> = self
             .blocks
@@ -2624,9 +2780,16 @@ impl<'r> Turn<'r> {
                 v
             })
             .collect();
-        json!({"request": self.text, "change_set": cs, "reads": reads, "blocks_shown": blocks,
+        json!({"request": self.text, "change_set": cs, "reads": reads, "saved": saved, "blocks_shown": blocks,
                "problems": self.problems,
                "interpretation": self.plan.as_ref().map(|p| p.interpretation.iter().map(|u| u.text.clone()).collect::<Vec<_>>())})
+    }
+
+    /// Writes this turn ran at once, without a preview (the facade's saves).
+    fn direct_writes(&self) -> impl Iterator<Item = &StepRecord> {
+        self.history
+            .iter()
+            .filter(|r| r.kind != ToolKind::Read && r.preview.is_none() && r.output.is_some())
     }
 
     /// The last list a read returned, as a block this agent may show.
@@ -2708,6 +2871,9 @@ impl<'r> Turn<'r> {
                 "change_set" => {}
                 _ => parts.push("Here is what I found.".into()),
             }
+        }
+        for r in self.direct_writes() {
+            parts.push(format!("{} is saved.", r.tool));
         }
         parts.dedup();
         parts.extend(self.problems.iter().cloned());
@@ -2855,7 +3021,7 @@ impl<'r> Turn<'r> {
                     .iter()
                     .filter_map(|b| serde_json::to_value(b).ok())
                     .collect(),
-                usage: serde_json::to_value(&usage).unwrap_or(Value::Null),
+                usage: self.stored_usage(&usage),
                 error,
                 ended_at: self.clock.now(),
             };
@@ -2871,6 +3037,16 @@ impl<'r> Turn<'r> {
             usage,
             models,
         });
+    }
+
+    /// The usage the turn row keeps: the totals, and which tool set the turn used, for the
+    /// evaluation to read back (`GET …/conversations/{id}?log=true`).
+    fn stored_usage(&self, usage: &TurnUsage) -> Value {
+        let mut v = serde_json::to_value(usage).unwrap_or_else(|_| json!({}));
+        if let Value::Object(o) = &mut v {
+            o.insert("tool_set".into(), json!(self.tool_set.as_str()));
+        }
+        v
     }
 
     fn totals(&self) -> TurnUsage {

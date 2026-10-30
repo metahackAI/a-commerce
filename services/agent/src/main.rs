@@ -157,6 +157,7 @@ async fn main() -> ExitCode {
         verifier,
         commerce_url: cli.commerce_url.clone(),
         http: reqwest::Client::new(),
+        demo_mode: cli.demo_mode,
     });
     let app = acom_server::ops_router("agent", Arc::new(AgentReady { db, problems }))
         .merge(chat::routes(state));

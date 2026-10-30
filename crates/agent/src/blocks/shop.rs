@@ -26,11 +26,13 @@ const NOT_FACTS: &[&str] = &[
     "facts",
 ];
 
-/// Items of a list read (`{items: [...]}`) or a bare list.
+/// Items of a list read (`{items: [...]}`, or a screen grid's `{list: [...]}`) or a bare list.
 pub fn items_of(output: &Value) -> Vec<Value> {
     output
         .get("items")
         .or_else(|| output.get("products"))
+        // A screen-shaped grid (the evaluation's facade) answers its rows as `list`.
+        .or_else(|| output.get("list"))
         .and_then(Value::as_array)
         .or_else(|| output.as_array())
         .cloned()
@@ -156,7 +158,9 @@ pub fn products(ui: &str, output: &Value, why: Option<&str>) -> Option<Block> {
     if items.is_empty() {
         return None;
     }
-    let shown: Vec<&Value> = items.iter().take(6).collect();
+    // Side by side, four columns are what a person can compare (and what fits the canvas).
+    let most = if ui == "compare_table" { 4 } else { 6 };
+    let shown: Vec<&Value> = items.iter().take(most).collect();
     let data = match ui {
         "compare_table" => compare_data(output, &shown),
         "look_gallery" => json!({"items": shown.iter().map(|i| json!({
@@ -216,11 +220,52 @@ fn compare_data(output: &Value, shown: &[&Value]) -> Value {
             json!({"product_id": product_id(i), "name": name(i),
                    "color": i.get("color").cloned().unwrap_or(Value::Null),
                    "material": i.get("material").cloned().unwrap_or(Value::Null),
+                   "image": i.get("image").cloned().unwrap_or(Value::Null),
                    "badge": i.get("badge").cloned().unwrap_or(Value::Null)})
         })
         .collect();
+    // `compare_products` gives each product its attributes (`values[]{attribute, display}`): one
+    // row per attribute, as the person reads it. Price has its own row; material is under the name.
+    let attributes: Vec<String> = shown
+        .iter()
+        .flat_map(|i| {
+            i.get("values")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default()
+        })
+        .filter_map(|v| {
+            v.get("attribute")
+                .and_then(Value::as_str)
+                .map(str::to_owned)
+        })
+        .filter(|a| a != "price" && a != "material")
+        .fold(Vec::new(), |mut seen, a| {
+            if !seen.contains(&a) {
+                seen.push(a);
+            }
+            seen
+        });
     let rows = match output.get("rows") {
         Some(r @ Value::Array(_)) => r.clone(),
+        _ if !attributes.is_empty() => Value::Array(
+            attributes
+                .iter()
+                .map(|a| {
+                    let values: Vec<Value> = shown
+                        .iter()
+                        .map(|i| {
+                            i.get("values")
+                                .and_then(Value::as_array)
+                                .and_then(|vs| vs.iter().find(|v| v["attribute"] == a.as_str()))
+                                .and_then(|v| v.get("display").cloned())
+                                .unwrap_or(Value::Null)
+                        })
+                        .collect();
+                    json!({"label": words(a), "values": values})
+                })
+                .collect(),
+        ),
         _ => {
             let mut keys: Vec<String> = Vec::new();
             for i in shown {
@@ -425,6 +470,29 @@ pub fn memory_note(memory_id: &str, text: &str) -> Block {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn a_comparison_shows_each_attribute_as_a_row() {
+        let compared = json!({"items": [
+            {"product_id": "prd_windbreaker", "name": "Packable windbreaker", "image": "/media/garment/wind-slate.svg",
+             "price": 89.0, "price_currency": "USD", "values": [
+                {"attribute": "weight", "display": "190 g"}, {"attribute": "rain", "display": "Light rain"},
+                {"attribute": "price", "display": "$89.00"}]},
+            {"product_id": "prd_field_jacket", "name": "Linen blend field jacket", "price": 128.0, "price_currency": "USD",
+             "values": [{"attribute": "weight", "display": "340 g"}, {"attribute": "rain", "display": "No"}]}
+        ], "total": 2});
+        let b = products("compare_table", &compared, None).unwrap();
+        let rows = b.data["rows"].as_array().unwrap();
+        assert_eq!(rows.len(), 2, "{rows:?}");
+        assert_eq!(rows[0]["label"], "weight");
+        assert_eq!(rows[0]["values"], json!(["190 g", "340 g"]));
+        assert_eq!(rows[1]["values"], json!(["Light rain", "No"]));
+        assert_eq!(
+            b.data["products"][0]["image"],
+            "/media/garment/wind-slate.svg"
+        );
+    }
+
     use super::*;
     use crate::profile::fixtures::repo;
 

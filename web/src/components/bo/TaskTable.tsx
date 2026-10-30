@@ -20,7 +20,7 @@ import type {ChangeSet, TaskState, TaskSummary} from '@/app/bo/_lib/types';
 import {useBoSession} from './BoSession';
 import {StateToken} from './StateToken';
 import type {IntentsFor as IntentsLookup} from './ChangeParts';
-import {TargetRow} from './targets';
+import {TargetBlock, TargetRow} from './targets';
 
 export const TASK_GROUPS: {state: TaskState; title: string; empty: string}[] = [
   {state: 'needs_you', title: 'Needs your decision', empty: 'Nothing is waiting for you.'},
@@ -29,9 +29,9 @@ export const TASK_GROUPS: {state: TaskState; title: string; empty: string}[] = [
   {state: 'dismissed', title: 'Dismissed', empty: 'Nothing dismissed.'},
 ];
 
-const ORIGIN: Record<string, string> = {you_asked: 'You asked', agent_noticed: 'Agent noticed', automation: 'Automation'};
+export const ORIGIN: Record<string, string> = {you_asked: 'You asked', agent_noticed: 'Agent noticed', automation: 'Automation'};
 
-function dot(state: string) {
+export function dot(state: string) {
   switch (state) {
     case 'needs_you':
       return <StatusDot variant="warning" label="Needs you" />;
@@ -231,6 +231,53 @@ export function TaskGroups({
               <TaskTable tasks={group} changeSets={changeSets} blockId={blockId} intentsFor={intentsFor} />
             )}
           </VStack>
+        );
+      })}
+    </VStack>
+  );
+}
+
+/**
+ * One group of tasks as a compact list, for narrow places such as the conversation's canvas:
+ * the state, the task (linked), where it came from, its summary and the way in. Dismiss and undo
+ * stay on the inbox and the change set, where there is room to read before deciding.
+ */
+export function TaskList({tasks, blockId, intentsFor}: {tasks: TaskSummary[]; blockId?: string; intentsFor?: IntentsLookup}) {
+  return (
+    <VStack gap={3}>
+      {tasks.map(task => {
+        const review = task.change_set_id && task.state === 'needs_you';
+        return (
+          <TargetBlock
+            key={task.id}
+            target={{
+              kind: 'task_item',
+              label: `${task.title}${task.summary ? ` · ${task.summary}` : ''}`,
+              ids: {task_id: task.id, ...(task.change_set_id ? {change_set_id: task.change_set_id} : {})},
+              term: 'acom:Task',
+              blockId,
+            }}
+            intents={intentsFor?.('task_item', task.id)}>
+            <HStack gap={2} vAlign="start">
+              <span style={{paddingTop: 6}}>{dot(task.state)}</span>
+              <VStack gap={0.5}>
+                <Link href={`/bo/tasks/${encodeURIComponent(task.id)}`} color="primary">
+                  {task.title}
+                </Link>
+                <Text type="supporting" color="secondary">
+                  {`${ORIGIN[task.origin] ?? words(task.origin)} · ${dateTime(task.at)}${task.tag ? ` · ${words(task.tag)}` : ''}`}
+                </Text>
+                {task.summary ? <Text>{task.summary}</Text> : null}
+                <HStack gap={1}>
+                  {review ? (
+                    <Button label="Review" size="sm" href={`/bo/change-sets/${encodeURIComponent(task.change_set_id ?? '')}`} />
+                  ) : (
+                    <Button label="Open" size="sm" variant="ghost" href={`/bo/tasks/${encodeURIComponent(task.id)}`} />
+                  )}
+                </HStack>
+              </VStack>
+            </HStack>
+          </TargetBlock>
         );
       })}
     </VStack>
