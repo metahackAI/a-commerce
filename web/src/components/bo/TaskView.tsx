@@ -154,7 +154,7 @@ export function TaskView({task, changeSet}: {task: Task; changeSet: ChangeSet | 
           rows={task.history}
           rowKey={h => `${h.at}-${h.state}`}
           empty={{title: 'No history yet'}}
-          target={h => ({kind: 'task_history', label: `${dateTime(h.at)} ${h.state}${h.note ? `: ${h.note}` : ''}`, ids: {...ids, at: h.at}})}
+          target={h => ({kind: 'task_history', label: `${dateTime(h.at)} ${h.state}${h.note ? `: ${h.note}` : ''}`, ids: {at: h.at, ...ids}})}
           columns={[
             {header: 'When', cell: h => <Text>{dateTime(h.at)}</Text>},
             {header: 'State', cell: h => <StateToken state={h.state} />},

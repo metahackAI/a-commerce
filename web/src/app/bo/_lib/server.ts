@@ -62,6 +62,18 @@ export function param(sp: Record<string, string | string[] | undefined>, key: st
   return s === '' ? undefined : s;
 }
 
+/** A calendar date `days` from today as `YYYY-MM-DD`: only a default for date filters. */
+export function isoDate(days = 0): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** A date filter's end as the last minute of that day (periods include their end, by minute). */
+export function endOfDay(d: string | undefined): string | undefined {
+  return d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? `${d}T23:59` : d;
+}
+
 /** A repeated search param as a list (`?state=a&state=b`). Commas also split. */
 export function params(sp: Record<string, string | string[] | undefined>, key: string): string[] {
   const v = sp[key];
