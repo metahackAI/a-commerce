@@ -251,10 +251,15 @@ export function GiftCheckoutFlow({cart}: {cart: Cart}) {
               title={`Gift order ${placed.order_number} placed`}
               description={
                 placed.accept_url
-                  ? 'They get a link to accept it and give their address. Your card is charged when they accept.'
+                  ? `${to} accepts it through a link and gives their address and size. Your card is charged when they accept.`
                   : 'It is on its way. You can follow it in your orders.'
               }
-              endContent={<Button label="Your orders" size="sm" href={`/orders/${encodeURIComponent(placed.id)}`} />}
+              endContent={
+                <HStack gap={2}>
+                  {placed.accept_url ? <Button label="Their link" size="sm" href={placed.accept_url} /> : null}
+                  <Button label="Your order" size="sm" href={`/orders/${encodeURIComponent(placed.id)}`} />
+                </HStack>
+              }
             />
           ) : null}
           {draft ? (

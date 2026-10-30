@@ -323,13 +323,19 @@ pub(crate) struct OrderRow {
     pub shipping_currency: String,
     pub total_payment_due_value: Decimal,
     pub total_payment_due_currency: String,
+    /// The wrap fee of a wrapped gift.
+    pub gift_wrap_value: Option<Decimal>,
+    pub gift_wrap_currency: Option<String>,
+    /// `{card_message, gift_receipt, …, recipient, recipient_mode}` of a gift; `None` otherwise.
+    pub gift_options: Option<Value>,
 }
 
 const ORDER_COLUMNS: &str = "id, order_number, order_date, order_status, customer_id,
     sales_channel, discount_code, coupon_id, subtotal_value,
     subtotal_currency::text AS subtotal_currency, shipping_value,
     shipping_currency::text AS shipping_currency, total_payment_due_value,
-    total_payment_due_currency::text AS total_payment_due_currency";
+    total_payment_due_currency::text AS total_payment_due_currency, gift_wrap_value,
+    gift_wrap_currency::text AS gift_wrap_currency, gift_options";
 
 pub(crate) async fn order(tx: &mut TxCx, id: &str) -> Result<Option<OrderRow>, ToolError> {
     sqlx::query_as::<_, OrderRow>(sqlx::AssertSqlSafe(format!(
@@ -751,6 +757,35 @@ pub(crate) async fn gift_order_for_update(
     )
     .bind(tx.tenant.as_str())
     .bind(id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// The gift as its recipient sees it, without locking it.
+pub(crate) async fn gift_order(tx: &mut TxCx, id: &str) -> Result<Option<GiftOrderRow>, ToolError> {
+    sqlx::query_as::<_, GiftOrderRow>(
+        "SELECT id, order_id, recipient_name, action_status, expires FROM sales.gift_order
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// The acceptance of a gift order, if it waits (or waited) for its recipient.
+pub(crate) async fn gift_order_of(
+    tx: &mut TxCx,
+    order_id: &str,
+) -> Result<Option<GiftOrderRow>, ToolError> {
+    sqlx::query_as::<_, GiftOrderRow>(
+        "SELECT id, order_id, recipient_name, action_status, expires FROM sales.gift_order
+         WHERE tenant_id = $1 AND order_id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(order_id)
     .fetch_optional(&mut *tx.tx)
     .await
     .map_err(db)
