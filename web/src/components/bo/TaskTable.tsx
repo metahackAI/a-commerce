@@ -46,10 +46,12 @@ export function dot(state: string) {
 
 /**
  * When a watcher wrote what it observed again after the task appeared (docs/api/platform.md#task):
- * the task keeps its state and summary, and its title and observation are the latest.
+ * the task keeps its state and summary, and its title and observation are the latest. Only an
+ * open task is checked again; a done one was last changed by finishing.
  */
 function watcherLine(task: TaskSummary): string | null {
   if (!task.watcher || !task.updated_at) return null;
+  if (task.state !== 'needs_you' && task.state !== 'working') return null;
   const updated = Date.parse(task.updated_at);
   if (Number.isNaN(updated) || updated <= Date.parse(task.at)) return null;
   return `Watcher ${words(task.watcher)} checked again ${dateTime(task.updated_at)}`;

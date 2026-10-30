@@ -91,6 +91,11 @@ inventory:
     enabled: true
     alert_only: true                     # 판매 상태와 무관, 알림만
 
+reorder:                                 # 공급처 재주문 (create_reorder). 주문한 재고는 받을 때 팔 수 있는 재고가 됨
+  lead_time_days: 7                      # 주문한 날(스토어 날짜)부터 도착 예정일까지 달력 일수
+  max_units_per_line: 500                # check: reorder.max_units_per_line. 한 변형을 한 번에 이만큼까지
+  orderable_availability: [in_stock, out_of_stock, pre_order, back_order]   # check: reorder.variant_orderable. 단종(discontinued) 변형은 재주문하지 않음
+
 bundle:                                  # 묶음 상품 (create_bundle)
   derive_price_from: components
   derive_stock_from: components

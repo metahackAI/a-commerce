@@ -27,6 +27,8 @@ route_when_said:
   - low on stock
   - stock
   - inventory
+  - reorder
+  - restock
   - product
   - supplier sheet
   - draft

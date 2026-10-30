@@ -272,7 +272,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 
 ## task
 
-할 일(`acom:Task`)은 운영자 홈(`task_list` 블록, [chat.md](chat.md) §3.3)에 보이는 일 단위입니다. 상태는 `acom:task_state`(`needs_you` \| `working` \| `done` \| `dismissed`, [enums.md](enums.md) §1.14), 출처 `origin`은 셋 중 하나입니다.
+할 일(`acom:Task`)은 운영자 홈(`task_list` 블록, [chat.md](chat.md) §3.3)에 보이는 일 단위입니다. 상태는 `acom:task_state`(`needs_you` \| `working` \| `done` \| `dismissed`, [enums.md](enums.md) §1.14), 출처 `origin`은 셋 중 하나입니다. 묶인 변경셋이 `live`나 `rejected`가 되면 할 일은 `done`이 되고 `summary`는 그 끝을 말합니다(`"#1041 ran: Reorder linen shirt: 3 sizes, 240 units"`, `"#1041 was rejected: …"`).
 
 | `origin` | 어떻게 생기나 | 예(장면 B2·B5) |
 |---|---|---|

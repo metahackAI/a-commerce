@@ -4,7 +4,7 @@
 >
 > **설계 축**: ① 상품 = `ProductGroup`(`prd_`, 사람이 말하는 상품) → 변형 = `Product`(`var_`, 사이즈·색, SKU 단위). 다른 엔티티는 상품을 `product_id`, 변형을 `variant_id`로 가리킵니다([conventions.md](conventions.md) §9). ② 재고·가격은 변형 단위, 상품의 재고·상태는 변형에서 파생(읽기 전용). ③ 원가와 마진은 운영자에게만 보이고 쇼퍼에게는 보이지 않음(`pricing.cost_visibility`). ④ 설명·이미지 같은 콘텐츠 변경은 승인 없이, 가격·구조·단종은 승인 대상. ⑤ `price_floor`(원가 × 1.15) 아래 판매는 서버가 막음.
 
-리소스: [product_group](#product_group) · [product](#product) · [offer](#offer) · [inventory](#inventory) · [approval](#approval) · [brand](#brand) · [review](#review) · [question](#question) · [bundle](#bundle) · [restock_alert](#restock_alert)
+리소스: [product_group](#product_group) · [product](#product) · [offer](#offer) · [inventory](#inventory) · [reorder](#reorder) · [approval](#approval) · [brand](#brand) · [review](#review) · [question](#question) · [bundle](#bundle) · [restock_alert](#restock_alert)
 
 > 상품 검색 `search_products`는 [search.md](search.md#product)에 한 번만 정의합니다(`search.product.search`).
 
@@ -332,7 +332,8 @@
 - 요약: 상품의 변형별 가용 재고, 안전재고, 파생된 `availability`를 돌려줍니다.
 - consumes → produces: `product_id` → inventory
 - 입력: `product_id`, `fields?[]`
-- 출력: `{product_id: "prd_chore_coat", inventory_level: 7, variants: [{variant_id: "var_chore_coat_s_olive", sku: "cc-olive-s", inventory_level: 3, acom:safety_stock: 2, acom:managed: true, availability: "in_stock"}, {variant_id: "var_chore_coat_m_olive", sku: "cc-olive-m", inventory_level: 0, acom:safety_stock: 2, acom:managed: true, availability: "out_of_stock"}]}` (단건 읽기라 목록 봉투 없음)
+- 출력: `{product_id: "prd_chore_coat", inventory_level: 7, variants: [{variant_id: "var_chore_coat_s_olive", sku: "cc-olive-s", inventory_level: 3, acom:safety_stock: 2, acom:managed: true, availability: "in_stock", on_order: 0}, {variant_id: "var_chore_coat_m_olive", sku: "cc-olive-m", inventory_level: 0, acom:safety_stock: 2, acom:managed: true, availability: "out_of_stock", on_order: 40}], reorders: [{id: "ro_01jd2k8", order_status: "processing", total_units: 40, expected_arrival_until: "2026-11-13T23:59:00-05:00"}]}` (단건 읽기라 목록 봉투 없음)
+  - `on_order`: 받지 않은 재주문([reorder](#reorder), `processing`·`in_transit`)에 든 수량. 아직 팔 수 있는 재고가 아니므로 `inventory_level`에 더하지 않습니다. `reorders[]`는 그 재주문들(도착 예정 빠른 순).
 - 프리뷰: 해당 없음(읽기)
 - 정책: [catalog.yml](../../policies/catalog.yml) `inventory`
 - 에러: `product_not_found` → `search_products`
@@ -359,6 +360,30 @@
 - 정책: [catalog.yml](../../policies/catalog.yml) `inventory.safety_stock`
 - 에러: `negative_value` → `set_safety_stock`
 - 멱등성: `Idempotency-Key`
+
+---
+
+## reorder
+
+공급처에 재고를 더 주문하는 것(재주문). 스토어가 사는 쪽인 schema.org `Order`(`ro_`)이고, 줄은 변형별 수량과 단가(그 변형의 원가)입니다. 주문한 재고는 받을 때 팔 수 있는 재고가 되므로, 그 전까지는 `get_inventory`의 `on_order`로만 보입니다. 상태는 주문 상태 단어([enums.md](enums.md) §1.1)를 씁니다: `processing`(주문함) → `in_transit`(공급처가 보냄) → `delivered`(받음), 받기 전 취소는 `cancelled`.
+
+### `create_reorder` — Kind: W
+- 논리주소/REST: `catalog.reorder.create` · `POST /v1/catalog/reorders`
+- 요약: 한 상품의 변형별 수량을 공급처에 재주문합니다. 단가는 각 변형의 원가, 도착 예정은 오늘(스토어 날짜) + 정책의 리드타임입니다. 실행하면 재주문이 `processing`으로 남고, 재고는 받을 때 늘어납니다.
+- consumes → produces: `product_id`, `variant_id[]` → `reorder_id`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명 | 예 |
+  |------|------|:--:|------|----|
+  | product_id | Text, `^prd_` | ✓ | 재주문할 상품 | `"prd_linen_shirt"` |
+  | lines | Object[] (1–50) | ✓ | 변형별 수량 `{variant_id ✓, order_quantity ✓ ≥1}`. 같은 변형은 한 번만 | `[{"variant_id": "var_linen_shirt_s_white", "order_quantity": 70}]` |
+  | description | Text (≤500) | | 공급처에 남길 말이나 이유 | `"Sells out in about 4 days at the current rate."` |
+- 출력: 프리뷰 형식 → 실행 `{ok: true, id: "ro_01jd2k8", undo: {by: "person", target: "cs_1041", until: "…"}}`
+- 프리뷰: `changes`=`create` `reorder`(`id: null`, `to: {product_id, name, total_units, total_payment_due: {value, currency}, expected_arrival_until}`)와 줄마다 `create` `reorder_item`(`to: {variant_id, size, color, order_quantity, price, price_currency}`). checks `reorder.max_units_per_line`(줄마다 상한), `reorder.variant_orderable`(`reorder.orderable_availability`에 없는 변형, 예 단종이 있으면 실패). 원가 없는 변형은 단가를 정할 수 없어 프리뷰가 `invalid_state`(→ `set_price`)로 거절합니다. 원가 합계가 [approval.yml](../../policies/approval.yml) `thresholds.reorder_spend`를 넘으면 `needs_approval: true`, 예 `approval_reason: "Reorder cost over $1000.00"`.
+  - 예: Linen shirt(White) S 70 · M 90 · L 80 = 240 units, 단가 $26.00, 합계 $6,240.00, Fri Nov 6에 주문하면 Fri Nov 13 도착 예정(B 시나리오의 재주문 할 일, #1041).
+- 정책: [catalog.yml](../../policies/catalog.yml) `reorder.lead_time_days`, `reorder.max_units_per_line`, `reorder.orderable_availability`, [approval.yml](../../policies/approval.yml) `thresholds.reorder_spend`
+- 에러: `product_not_found`(상품이나 변형이 없음) → `search_products` · `invalid_input`(그 상품의 변형이 아님 `detail.reason: other_product`, 같은 변형 두 번 `duplicate`) → `get_inventory` · `invalid_state`(원가 없는 변형) → `set_price`
+- 되돌리기: 받기 전(`processing`)이면 재주문을 `cancelled`로 바꿉니다. 공급처가 보냈거나 받은 재주문은 되돌리지 않습니다(`invalid_state`).
+- 멱등성: 프리뷰 → 실행(`preview_id`)
 
 ---
 

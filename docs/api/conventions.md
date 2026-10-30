@@ -99,6 +99,7 @@ schema.org `MonetaryAmount` 형태입니다.
 | 팝업 | `pop` | 기획전 `CollectionPage` | `col` |
 | 캐시 무효화 | `cin` | 리뷰 / 상품 문의 / 답변 | `rev` / `qst` / `ans` |
 | 재입고 알림 | `rsa` | 생성 이미지 | `img` |
+| 재주문(공급처에 하는 주문) | `ro` | | |
 | 가져오기 작업 | `imp` | 색인 재구성 작업 | `rij` |
 | 장바구니 / 장바구니 줄 | `cart` / `cln` | 주문 / 주문 품목 | `ord` / `oln` |
 | 프리뷰(주문 준비·구독 준비 포함) | `pv` | 선물 주문 | `gift` |

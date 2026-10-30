@@ -94,10 +94,19 @@ export function words(s: string | null | undefined): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-/** Any value from a change or a policy, as one line of text. Money and prices are formatted. */
+/** A policy rule as a name: `reorder.max_units_per_line` → `Reorder: max units per line`. */
+export function ruleName(rule: string): string {
+  const [head, ...rest] = rule.split('.');
+  return rest.length === 0 ? words(head) : `${words(head)}: ${rest.join(' ').replace(/_/g, ' ')}`;
+}
+
+/** A whole date or timestamp (`2026-11-13`, `2026-11-13T23:59:00-05:00`), not text that starts with one. */
+const WHOLE_STAMP = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?$/;
+
+/** Any value from a change or a policy, as one line of text. Money, prices and dates are formatted. */
 export function value(v: unknown): string {
   if (v === null || v === undefined) return '—';
-  if (typeof v === 'string') return v;
+  if (typeof v === 'string') return WHOLE_STAMP.test(v) ? dateTime(v) : v;
   if (typeof v === 'number') return integer.format(v);
   if (typeof v === 'boolean') return v ? 'Yes' : 'No';
   if (isMoney(v)) return money(v);

@@ -375,6 +375,40 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `catalog.reorder`
+
+`schema:Order/acom:Reorder` — stock the store orders from its supplier for one product; id prefix ro_. API: reorder. · id `ro_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | reorder id (ro_ prefix, API reorder_id). |
+| `product_group_id` | text |  | `schema:orderedItem` | the product the reorder is for (prd_ id, API product_id); its items name the variants. → `catalog.product_group` |
+| `order_status` | text |  | `schema:orderStatus` | processing once ordered, in_transit when the supplier sends it, delivered when received, cancelled when called off before that. values: order_status Values: `payment_due` · `processing` · `in_transit` · `delivered` · `returned` · `cancelled` · `problem`. |
+| `order_date` | timestamptz |  | `schema:orderDate` | when the store placed the reorder (store clock). |
+| `expected_arrival_until` | timestamptz |  | `schema:expectedArrivalUntil` | the end of the day the stock is expected (order date + reorder.lead_time_days). |
+| `total_payment_due_value` | numeric(12,2) |  | `schema:totalPaymentDue` | what the store owes the supplier: the sum of each item's quantity times its unit cost. |
+| `total_payment_due_currency` | char(3) |  | `schema:priceCurrency` | currency of total_payment_due_value (ISO 4217). |
+| `description` | text | ✓ | `schema:description` | a note for the supplier or why it was ordered; NULL when none. |
+| `created_at` | timestamptz |  | `-` | when the row was written. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `catalog.reorder_item`
+
+`schema:OrderItem` — one variant of a reorder and how many of it. API: reorder_item.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `reorder_id` | text |  | `-` | the reorder this item belongs to (ro_ id). → `catalog.reorder` |
+| `position` | integer |  | `-` | the item's place in the reorder, from 1. |
+| `product_id` | text |  | `schema:orderedItem` | the variant ordered (var_ id, API variant_id). → `catalog.product` |
+| `order_quantity` | integer |  | `schema:orderQuantity` | how many units of the variant are ordered. |
+| `price` | numeric(12,2) |  | `schema:price` | what the store pays the supplier for one unit: the variant's cost when it was ordered. |
+| `price_currency` | char(3) |  | `schema:priceCurrency` | currency of price (ISO 4217). |
+| `created_at` | timestamptz |  | `-` | when the row was written. |
+
 ### `catalog.review`
 
 `schema:Review` — a shopper review of a product with a fit vote; hidden reviews are left out of summaries. id prefix rev_. · id `rev_…`

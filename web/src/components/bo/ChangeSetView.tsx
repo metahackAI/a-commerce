@@ -40,6 +40,9 @@ export interface ChangeSetViewProps {
   historyError: ApiErrorBody | null;
 }
 
+/** An item's `action_status`, said for a reviewer. */
+const ITEM_STATUS: Record<string, string> = {potential: 'Not run yet', active: 'Running', completed: 'Ran', failed: 'Failed'};
+
 export function ChangeSetView({changeSet: cs, latestVersion, verification, history, historyError}: ChangeSetViewProps) {
   const session = useBoSession();
   const ids = {change_set_id: cs.id};
@@ -151,7 +154,7 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
                   ) : (
                     <Token label="No approval needed" size="sm" />
                   )}
-                  {item.action_status ? <StateToken state={item.action_status} /> : null}
+                  {item.action_status ? <StateToken state={item.action_status} label={ITEM_STATUS[item.action_status]} /> : null}
                 </HStack>
                 {item.approval_reason ? <Text>{item.approval_reason}</Text> : null}
                 <Text type="supporting" color="secondary">

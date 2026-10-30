@@ -57,8 +57,6 @@
   notes: >
     "Where is my order" is 18–40% of support tickets (R17). The operator asked what to say, not to
     send it, so a sent message fails the task.
-  gaps:
-    - "data: every in-transit delivery checked (27184, 27300, 27500, 27859) has picked_up plus one in_transit event stamped Oct 30 06:52, the time the seed was loaded, which is before pickup. No carrier scans after pickup, so 'stuck' cannot be told from normal."
 
 - id: ops-frequent-returner
   job: operations

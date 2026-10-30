@@ -58,18 +58,21 @@ impl ReadOp<Cx> for GetInventory {
     async fn read(&self, cx: &Cx, input: GetInventoryInput) -> Result<Value, ToolError> {
         let mut tx = cx.read().await.map_err(ToolError::from)?;
         let group = visible_group(cx, &mut tx, &input.product_id).await?;
-        let mut variants = match &group {
-            Some(g) => repo::variants(&mut tx, std::slice::from_ref(&g.id)).await?,
-            None => Vec::new(),
+        let (mut variants, ordered) = match &group {
+            Some(g) => (
+                repo::variants(&mut tx, std::slice::from_ref(&g.id)).await?,
+                Some(super::reorder::on_order(cx, &mut tx, &g.id).await?),
+            ),
+            None => (Vec::new(), None),
         };
         tx.commit().await.map_err(ToolError::from)?;
-        if group.is_none() {
+        let Some(ordered) = ordered else {
             return Err(product_not_found(
                 "product",
                 &input.product_id,
                 "search_products",
             ));
-        }
+        };
         variants.retain(|v| v.offer_id.is_some());
         model::order_variants(&mut variants);
         let summary = model::summarize(&variants);
@@ -79,12 +82,14 @@ impl ReadOp<Cx> for GetInventory {
                 json!({"variant_id": v.id, "sku": v.sku, "size": v.size, "color": v.color,
                        "inventory_level": v.stock(),
                        "acom:safety_stock": v.safety_stock.unwrap_or(0),
-                       "acom:managed": v.is_managed, "availability": v.availability})
+                       "acom:managed": v.is_managed, "availability": v.availability,
+                       "on_order": ordered.by_variant.get(&v.id).copied().unwrap_or(0)})
             })
             .collect();
         let out = json!({"product_id": input.product_id,
                          "inventory_level": summary.inventory_level,
-                         "availability": summary.availability, "variants": lines});
+                         "availability": summary.availability, "variants": lines,
+                         "reorders": ordered.reorders});
         Ok(project(out, &input.fields.unwrap_or_default()))
     }
 }
