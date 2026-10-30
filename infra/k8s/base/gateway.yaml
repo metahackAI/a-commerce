@@ -51,6 +51,13 @@ spec:
           envFrom:
             - configMapRef:
                 name: acom-config
+          env:
+            # Sessions (platform.session) and sign-in (platform.admin_user).
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: acom-database
+                  key: DATABASE_URL
           volumeMounts:
             - name: gateway-keys
               mountPath: /run/secrets/acom

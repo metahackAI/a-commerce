@@ -28,7 +28,7 @@ A-Commerce의 모든 구성 요소는 컨테이너이고, **어디서 띄우든 
 
 | 구성 요소 | 이미지 | 명령 | 포트 | 하는 일 | 확장 |
 |---|---|---|---|---|---|
-| **gateway** | `acom-gateway` | (기본) | 7000 | 유일한 입구. `/api/v1/*`·`/mcp` → commerce, `/api/chat/*` → agent(SSE 스트리밍), 나머지 → web. 세션·스코프·내부 토큰은 M3 | 수평 |
+| **gateway** | `acom-gateway` | (기본) | 7000 | 유일한 입구. `/api/v1/*`·`/mcp` → commerce, `/api/chat/*` → agent(SSE 스트리밍), 나머지 → web. `/api/auth/*`(로그인·세션) 자체 처리, 요청마다 내부 토큰 서명 | 수평 |
 | **web** | `acom-web` | `node server.js` | 3000 | Next.js(Meta Astryx). `/`(스토어프론트), `/bo`(백오피스) | 수평 |
 | **commerce** | `acom-commerce` | `serve` | 7001 | 툴 REST·MCP·사람 전용 엔드포인트, 정책 엔진, 변경셋 | 수평 |
 | **commerce-worker** | `acom-commerce` | `work` | 7003(헬스·지표) | 예약 작업, 아웃박스 | 수평(작업을 잠금으로 나눔) |
@@ -79,12 +79,13 @@ A-Commerce의 모든 구성 요소는 컨테이너이고, **어디서 띄우든 
 |---|---|---|---|
 | `ACOM_*_ADDR` | 각 서비스 | `0.0.0.0:<포트>` | 같음 |
 | `ACOM_COMMERCE_URL`, `ACOM_AGENT_URL`, `ACOM_WEB_URL` | gateway, agent | 서비스 이름(`http://commerce:7001`) | 같음 |
-| `DATABASE_URL` | commerce, worker, agent | `acom_app@postgres` | 관리형 Postgres(비밀) |
+| `DATABASE_URL` | gateway(세션·로그인), commerce, worker, agent | `acom_app@postgres` | 관리형 Postgres(비밀) |
 | `MIGRATION_DATABASE_URL` | migrate | `acom_owner@postgres` | 관리형 Postgres(비밀) |
 | `ACOM_POLICY_DIR` | commerce | 이미지 안 `/app/policies` | 같음 |
 | `ACOM_GATEWAY_SIGNING_KEY_FILE` / `_PUBLIC_KEY_FILE` | gateway / 나머지 | `infra/secrets/*.pem`(`make keys`) | 비밀 저장소 |
 | `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL`, `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | agent | `.env` | 비밀 저장소 |
 | `ACOM_ENV`, `ACOM_DEMO_MODE`, `RUST_LOG`, `ACOM_LOG_FORMAT` | 전부 | `local`, `true`, `info`, `json` | `production`, `false`, `info`, `json` |
+| `ACOM_STORE_ID`, `ACOM_COOKIE_SECURE`, `ACOM_SESSION_HOURS`, `ACOM_DEMO_PERSONAS` | gateway | `store_northwind`, `false`, `12`, 데모 운영자·쇼퍼 id | 같은 스토어, `true`(HTTPS), `12`, 데모 모드가 아니면 쓰지 않음 |
 | `ACOM_SEED`, `ACOM_SEED_DIR` | migrate | `demo`(마이그레이션 뒤 데모 스토어를 한 번 적재), `seed/demo` | `none`, 이미지의 `/app/seed/demo` |
 
 ## 6. 운영 표면
@@ -110,7 +111,7 @@ make up-observability   # Prometheus :9090, Grafana :3001
 make down          # 멈춤(DB 볼륨 유지) / make clean: 볼륨까지 삭제
 ```
 
-- 시작 순서: `postgres`(healthy) → `migrate`(성공 종료) → `commerce`·`commerce-worker`·`agent` → `web`·`gateway`.
+- 시작 순서: `postgres`(healthy) → `migrate`(성공 종료, `ACOM_SEED=demo`면 데모 스토어 적재) → `commerce`·`commerce-worker`·`agent` → `web`·`gateway`.
 - 컨테이너는 읽기 전용 루트 파일 시스템, 권한 제거, `no-new-privileges`로 뜹니다(운영과 같음).
 - 시드 데이터 적재(`seed` 작업)는 M2에서 같은 방식(한 번 실행되는 서비스)으로 추가합니다.
 

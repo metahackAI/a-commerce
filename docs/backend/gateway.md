@@ -68,8 +68,25 @@
 
 ## 5. 기타
 
-- **세션:** 서버 세션(`platform.session`, httpOnly·SameSite=Lax 쿠키). 비밀번호는 argon2. 데모 모드에서는 `/api/auth/demo-login {persona}`로 시나리오의 운영자·쇼퍼로 바로 들어갑니다.
+- **세션:** 서버 세션(`platform.session`, httpOnly·SameSite=Lax 쿠키). 비밀번호는 argon2. 데모 모드에서는 `/api/auth/demo-login {persona}`로 시나리오의 운영자·쇼퍼로 바로 들어갑니다. 엔드포인트는 아래 §6.
 - **테넌트 결정:** 호스트 이름 → 스토어. 데모는 스토어 하나. 토큰의 `tenant`가 유일한 근거이고 클라이언트가 보낸 테넌트 헤더는 무시합니다.
 - **레이트 리밋:** governor로 주체·테넌트별. 채팅 턴, 쓰기, 읽기를 따로 셉니다. 한도는 설정 파일.
 - **관측성:** 요청 id를 만들어(`X-Request-Id`가 오면 이어받음) 내부 토큰과 로그에 싣습니다. 이 id가 에이전트 턴과 커머스 액션 로그를 잇습니다.
 - **타임아웃:** 일반 요청 30초, 채팅 SSE는 턴 상한(60초) + 여유. 업스트림 오류는 `{"error": {"code": "upstream_unavailable", ...}}`로 통일.
+
+## 6. 로그인과 세션 API (`/api/auth/*`)
+
+| 엔드포인트 | 본문 | 응답 |
+|---|---|---|
+| `POST /api/auth/login` | `{login_id, password}` | 운영자 로그인(`platform.admin_user.login_id` + argon2id). `{ok, user, scopes, csrf_token, expires_at}`. 틀리면 `invalid_credentials`(401, 아이디가 없는 경우와 같은 응답), 정지·잠금이면 `account_locked`(423) |
+| `POST /api/auth/demo-login` | `{persona}` | 데모 모드만. `adm_…`(운영자), `cus_…`(쇼퍼), `guest` |
+| `GET /api/auth/personas` | — | 데모 모드만. `ACOM_DEMO_PERSONAS`의 사람들(`{persona, kind, name, description}`) |
+| `POST /api/auth/guest` | — | 게스트 세션(로그인 없이 장바구니). 살아 있는 세션이 있으면 그대로 |
+| `GET /api/auth/session` | — | `{signed_in, user, scopes, csrf_token, expires_at, demo_mode}`. `user.kind`는 `operator` \| `shopper` \| `guest` |
+| `POST /api/auth/logout` | — | 세션 폐기, 쿠키 삭제 |
+
+- **쿠키:** `acom_session`(httpOnly, 세션 토큰)과 `acom_csrf`(페이지가 읽음). DB에는 둘 다 SHA-256 해시만 저장합니다. `ACOM_COOKIE_SECURE=true`면 `Secure`.
+- **CSRF:** 세션이 있는 요청이 상태를 바꾸면(GET·HEAD·OPTIONS 외) `X-CSRF-Token: <acom_csrf 값>`이 있어야 하고, 없거나 다르면 `csrf_mismatch`(403)입니다.
+- **세션 없는 요청:** 읽기는 익명(읽기 스코프만)으로 통과합니다. 상태를 바꾸는 첫 요청(게스트의 장바구니 담기)은 그 자리에서 게스트 세션을 만들고 쿠키를 붙여 돌려줍니다.
+- **내부 토큰:** `/api/v1/*`는 사람의 스코프 그대로(수명 5분), `/api/chat/*`는 `on_behalf()`(`human:*` 제거, 운영자는 `changeset:draft` 추가, 한 턴 15분). 브라우저가 보낸 `Authorization`은 버리고, commerce·agent로 쿠키를 넘기지 않습니다.
+- **운영자 스코프:** 역할(`platform.admin_user_role` → `platform.role_scope`)의 합 + `changeset:draft`. 데모 모드의 플랫폼 관리자는 `admin:demo`도 받습니다. 데모 계정은 `admin` / `admin123`(모든 역할과 승인 역할).

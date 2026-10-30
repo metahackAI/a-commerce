@@ -132,12 +132,19 @@ Everything runs in containers with the same layout as production; only internal 
 ### Run the whole stack locally
 
 ```bash
-make up          # creates .env and local keys if missing, builds the images, runs migrations, starts everything
+make up          # creates .env and local keys if missing, builds the images, runs migrations,
+                 # loads the demo store once, starts everything
                  # → http://localhost:8080   storefront /   back office /bo
 make ps          # containers and health
 make logs SERVICE=gateway
+make reseed      # empty the store and load the demo store again
 make down        # stop (make clean also deletes the database volume)
 ```
+
+Sign in to the back office as **`admin` / `admin123`** (a demo account with every role). In demo mode the
+sign-in pages also offer the scenario's people: operator Son SeongJun (`adm_sj`), shoppers Jamie (VIP) and
+Alex (member), or continuing as a guest. These accounts and the local keys are for a local demo only;
+don't expose this setup publicly.
 
 Add model access in `.env` (`META_API_KEY`, `GLIMMER_BASE_URL`, …) to use real models. `make up-models` serves the worker model on a local GPU, and `make up-observability` adds Prometheus and Grafana. `make help` lists every command.
 

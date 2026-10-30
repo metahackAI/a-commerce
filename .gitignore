@@ -378,3 +378,6 @@ vite.config.ts.timestamp-*
 data/raw/
 *.gguf
 *.safetensors
+
+# Agent worktrees (local only)
+.claude/worktrees/
