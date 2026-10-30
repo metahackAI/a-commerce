@@ -63,19 +63,35 @@ export interface RefundReviewBlockData {
 }
 
 export interface ProductDraftsBlockData {
+  import_id?: string | null;
+  upload_id?: string | null;
+  file_name?: string | null;
+  provider_name?: string | null;
+  rows?: number | null;
+  preview_id?: string | null;
+  change_set_id?: string | null;
+  state?: string | null;
   progress?: {total?: number; ready?: number; needs_you?: number; working?: number};
   drafts?: {
     draft_id?: string;
+    product_id?: string;
+    row?: number;
     name: string;
     source_code?: string | null;
+    source_text?: string | null;
+    category?: string | null;
     cost?: Money | number | null;
     price?: Money | number | null;
     sizes?: string[] | string | null;
     status?: string;
+    open_fields?: string[];
     note?: string | null;
   }[];
-  rules?: (string | {rule?: string; text?: string})[];
-  checks?: Check[];
+  rules?: (string | {rule?: string; label?: string; text?: string})[];
+  /** A check as the import ran it; `status` is `open` when drafts were saved but wait for a person. */
+  checks?: (Check & {status?: 'passed' | 'failed' | 'open' | string; label?: string})[];
+  /** "Drafts are not visible to shoppers. Publishing is a separate change set." */
+  visibility?: string | null;
 }
 
 export interface SalesExplainerBlockData {

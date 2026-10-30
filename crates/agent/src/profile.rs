@@ -146,10 +146,26 @@ pub struct ToolSearchConfig {
     pub home_domain_boost: f64,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RouterConfig {
     pub min_confidence: f64,
+    /// Requests that go straight to one agent, without asking the model.
+    #[serde(default)]
+    pub hints: Vec<RouteHint>,
+}
+
+/// A request that plainly belongs to one agent: a phrase in it, or a kind of file attached.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RouteHint {
+    pub agent: String,
+    /// Phrases (any case) that pick the agent.
+    #[serde(default)]
+    pub when_said: Vec<String>,
+    /// Attachment kinds (`sheet`, `image`) that pick the agent.
+    #[serde(default)]
+    pub when_attached: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -292,6 +308,11 @@ impl Profiles {
                     "surface {} needs exactly one default agent; it has {defaults}",
                     s.as_str()
                 ));
+            }
+        }
+        for h in &self.runtime.router.hints {
+            if !self.agents.iter().any(|a| a.id == h.agent) {
+                problems.push(format!("router hint for unknown agent `{}`", h.agent));
             }
         }
         let l = &self.runtime.tool_search;

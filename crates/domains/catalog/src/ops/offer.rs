@@ -77,10 +77,12 @@ impl ReadOp<Cx> for GetPriceBreakdown {
         let mut tx = cx.read().await.map_err(ToolError::from)?;
         let viewer = Viewer::resolve(cx, &mut tx, tier, as_of).await?;
         let missing = || product_not_found("variant", &input.variant_id, "search_products");
-        let v = repo::variant(&mut tx, &input.variant_id)
+        let mut v = repo::variant(&mut tx, &input.variant_id)
             .await?
             .filter(|v| v.offer_id.is_some())
             .ok_or_else(missing)?;
+        crate::write::apply_scheduled_prices(&mut tx, std::slice::from_mut(&mut v), viewer.at)
+            .await?;
         let group = super::product::visible_group(cx, &mut tx, &v.product_group_id)
             .await?
             .ok_or_else(missing)?;

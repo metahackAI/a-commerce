@@ -157,12 +157,21 @@ impl ReadOp<Cx> for GetCategory {
                 .next("list_categories")
             })?;
         let count = repo::product_count(&mut tx, &c.id).await?;
+        let mappings = crate::category_write::mappings_of(&mut tx, &c.id).await?;
         tx.commit().await.map_err(ToolError::from)?;
         let mut out = category_json(&c);
         out["description"] = json!(c.description);
         out["ancestor_ids"] = json!(c.ancestors);
-        // Standard → display mappings are not stored yet (no mapping table in the schema).
-        out["mappings"] = json!([]);
+        out["mappings"] = json!(
+            mappings
+                .iter()
+                .map(
+                    |m| json!({"id": m.id, "standard_category_id": m.standard_category_id,
+                                "display_category_id": m.display_category_id,
+                                "is_primary": m.is_primary})
+                )
+                .collect::<Vec<_>>()
+        );
         out["product_count"] = json!(count);
         Ok(pick(out, input.fields.as_deref()))
     }

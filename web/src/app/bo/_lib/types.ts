@@ -248,6 +248,17 @@ export interface Variant {
   availability?: string;
 }
 
+/** Where a draft made from a supplier sheet came from, and what is still open on it (`acom:draft`). */
+export interface DraftInfo {
+  import_id: string;
+  row: number;
+  supplier_code: string;
+  draft_status: 'ready' | 'needs_you' | 'working' | string;
+  open_fields: string[];
+  note: string | null;
+  supplier_text: string | null;
+}
+
 /** One row of `search_product_groups` (a `ProductGroup`). */
 export interface ProductGroupSummary {
   id: string;
@@ -258,15 +269,42 @@ export interface ProductGroupSummary {
   availability?: string;
   price?: number | null;
   price_currency?: string | null;
+  cost?: number | null;
   inventory_level?: number | null;
   varies_by?: string[];
+  variant_count?: number;
+  image?: string | null;
+  'acom:draft'?: DraftInfo;
+}
+
+/** A variant as `get_product_group` lists it (operators also see cost and scheduled prices). */
+export interface GroupVariant extends Variant {
+  name?: string;
+  offer_id?: string | null;
+  price?: number | null;
+  price_currency?: string | null;
+  cost?: number | null;
+  'acom:safety_stock'?: number | null;
+  'acom:managed'?: boolean;
+  'acom:sale_type'?: string;
+  scheduled_prices?: {unit_price_specification_id: string; price: number; valid_from: string; valid_through: string | null}[];
 }
 
 /** `get_product_group` (catalog view). */
-export interface ProductGroup extends ProductGroupSummary {
+export interface ProductGroup extends Omit<ProductGroupSummary, 'availability'> {
   description?: string | null;
-  has_variant?: Variant[];
+  material?: string | null;
+  release_date?: string | null;
+  has_variant?: GroupVariant[];
   pending_changes?: unknown[];
+}
+
+/** `list_brands` / `get_brand`. */
+export interface Brand {
+  id: string;
+  name: string;
+  logo?: string | null;
+  description?: string | null;
 }
 
 /** `get_product` (sales view; `cost` only for operators). */
@@ -435,6 +473,22 @@ export interface Category {
   parent_id: string | null;
   display_order?: number;
   active: boolean;
+}
+
+/** A standard → display category mapping (`get_category` `mappings`). */
+export interface CategoryMapping {
+  id: string;
+  standard_category_id: string;
+  display_category_id: string;
+  is_primary: boolean;
+}
+
+/** `get_category`. */
+export interface CategoryDetail extends Category {
+  description?: string | null;
+  ancestor_ids?: string[];
+  mappings: CategoryMapping[];
+  product_count: number;
 }
 
 // ─── sales ──────────────────────────────────────────────────────────────────

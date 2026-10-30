@@ -2,7 +2,7 @@
 //! catalog, customer, promotion, merchandising and sales in the crate graph, so it is the
 //! place where catalog's lookups meet their service functions. Installed once by `register`.
 
-use acom_catalog::neighbors::{CategoryLink, Neighbors, PurchasedItem, SalePrice};
+use acom_catalog::neighbors::{CategoryLink, CategoryTerm, Neighbors, PurchasedItem, SalePrice};
 use acom_contract::ToolError;
 use acom_store::TxCx;
 use chrono::{DateTime, Utc};
@@ -107,5 +107,47 @@ impl Neighbors for Wiring {
                 })
                 .collect())
         })
+    }
+
+    fn category_terms<'a>(
+        &'a self,
+        tx: &'a mut TxCx,
+    ) -> BoxFuture<'a, Result<Vec<CategoryTerm>, ToolError>> {
+        Box::pin(async move {
+            let rows = acom_merchandising::service::for_catalog::terms(tx).await?;
+            Ok(rows
+                .into_iter()
+                .map(|t| CategoryTerm {
+                    id: t.id,
+                    name: t.name,
+                    term_code: t.term_code,
+                    term_set: t.term_set,
+                    active: t.active,
+                })
+                .collect())
+        })
+    }
+
+    fn place_product<'a>(
+        &'a self,
+        tx: &'a mut TxCx,
+        product_id: &'a str,
+        category_id: &'a str,
+    ) -> BoxFuture<'a, Result<(), ToolError>> {
+        Box::pin(acom_merchandising::service::for_catalog::place_product(
+            tx,
+            product_id,
+            category_id,
+        ))
+    }
+
+    fn remove_placements<'a>(
+        &'a self,
+        tx: &'a mut TxCx,
+        product_id: &'a str,
+    ) -> BoxFuture<'a, Result<(), ToolError>> {
+        Box::pin(acom_merchandising::service::for_catalog::remove_placements(
+            tx, product_id,
+        ))
     }
 }

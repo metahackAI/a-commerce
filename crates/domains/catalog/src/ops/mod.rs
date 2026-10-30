@@ -1,12 +1,20 @@
 //! One type per operation of `docs/api/catalog.md`, grouped by resource.
 
+pub mod approval;
 pub mod brand;
+pub mod brand_write;
+pub mod group_write;
 pub mod history;
+pub mod import;
 pub mod inventory;
+pub mod moderate;
 pub mod offer;
 pub mod product;
 pub mod product_group;
 pub mod review;
+pub mod safety;
+pub mod schedule;
+pub mod variant;
 
 use acom_contract::{ErrorCode, ToolError};
 use serde_json::json;

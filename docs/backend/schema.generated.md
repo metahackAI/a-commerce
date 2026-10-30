@@ -128,6 +128,41 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `catalog.data_feed`
+
+`schema:DataFeed` — a supplier sheet as uploaded, one element per row, read by batch_import. id prefix upl_. API: upload_id. · id `upl_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix upl_; the same value the API, logs and events use. |
+| `name` | text |  | `schema:name` | file name as uploaded, for example fw26_supplier.xlsx. |
+| `encoding_format` | text |  | `schema:encodingFormat` | media type of the uploaded file, for example text/csv. |
+| `provider_name` | text | ✓ | `schema:provider` | name of the supplier that sent the sheet; NULL when unknown. |
+| `data_feed_element` | jsonb |  | `schema:dataFeedElement` | the rows in sheet order, each a map from column name to cell text: [{supplier_code, style_name, color, category, brand, sizes, cost, units_per_size, material, image, supplier_text}]. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `catalog.data_feed_item`
+
+`schema:DataFeedItem` — one supplier sheet row and the draft product it became, with what is still open before the draft can be published.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `product_import_id` | text |  | `acom:productImportId` | the import run that read the row (imp_ id). → `catalog.product_import` |
+| `position` | integer |  | `schema:position` | row number in the sheet, from 1. |
+| `product_group_id` | text |  | `schema:item` | the draft product made from the row (prd_ id). → `catalog.product_group` |
+| `supplier_code` | text |  | `acom:supplierCode` | the supplier's own code for the row, for example FW26-OT-014. |
+| `supplier_text` | text | ✓ | `acom:supplierText` | the supplier's description, kept so the store can write its own copy in its tone; NULL when the sheet had none. |
+| `draft_status` | text |  | `acom:draftStatus` | whether the draft is complete or waits for a person. values: draft_status Values: `ready` · `needs_you` · `working`. |
+| `open_fields` | text[] |  | `acom:openFields` | required fields that were missing or unclear in the sheet, from catalog.yml import.required_fields, for example {material}; empty when none. |
+| `draft_note` | text | ✓ | `acom:draftNote` | one sentence for the person about what is open, for example Fabric mix is missing in the sheet; NULL when nothing is. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `catalog.measurement`
 
 `schema:QuantitativeValue` — one garment measurement of one size (hasMeasurement), for fit checks.
@@ -234,6 +269,25 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `catalog.product_import`
+
+`schema:CreateAction/acom:ProductImport` — one batch_import run that turned a supplier sheet into product drafts. id prefix imp_. API: import_id. · id `imp_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix imp_; the same value the API, logs and events use. |
+| `data_feed_id` | text |  | `schema:object` | the supplier sheet imported (upl_ id). → `catalog.data_feed` |
+| `import_mode` | text |  | `acom:importMode` | create makes new drafts only; upsert also refreshes drafts an earlier import made. values: import_mode Values: `create` · `upsert`. |
+| `action_status` | text |  | `schema:actionStatus` | whether the run finished. values: action_status Values: `potential` · `active` · `completed` · `failed`. |
+| `agent_id` | text |  | `schema:agent` | who ran the import: the change-set runner (sys_) or an operator (adm_). |
+| `change_set_id` | text | ✓ | `acom:changeSetId` | the approved change set the import ran in (cs_ id); undoing the set removes its drafts. → `platform.change_set` |
+| `start_time` | timestamptz |  | `schema:startTime` | when the run started. |
+| `end_time` | timestamptz | ✓ | `schema:endTime` | when the run finished; NULL while it runs. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `catalog.review`
 
 `schema:Review` — a shopper review of a product with a fit vote; hidden reviews are left out of summaries. id prefix rev_. · id `rev_…`
@@ -270,6 +324,24 @@
 | `review_id` | text |  | `schema:object` | review voted on (rev_ id). → `catalog.review` |
 | `customer_id` | text |  | `schema:agent` | shopper who voted (cus_ id). → `customer.person` |
 | `is_helpful` | boolean |  | `acom:isHelpful` | true while the shopper marks the review helpful; false after they take the vote back. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `catalog.unit_price_specification`
+
+`schema:UnitPriceSpecification` — a list price scheduled for a period (schedule_price_change); it applies from valid_from, and the offer price applies again after valid_through. id prefix ups_. · id `ups_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix ups_; the same value the API, logs and events use. |
+| `offer_id` | text |  | `acom:offerId` | the offer whose list price this schedules (off_ id). → `catalog.offer` |
+| `price` | numeric(12,2) |  | `schema:price` | the list price per unit during the period. |
+| `price_currency` | char(3) |  | `schema:priceCurrency` | ISO 4217 code of price. |
+| `price_type` | text |  | `schema:priceType` | always list_price here; member and sale prices live in promotion.unit_price_specification. values: price_type Values: `list_price` · `sale_price`. |
+| `valid_from` | timestamptz |  | `schema:validFrom` | first moment the scheduled price applies. |
+| `valid_through` | timestamptz | ✓ | `schema:validThrough` | last moment it applies (inclusive); NULL means until changed. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
@@ -566,6 +638,21 @@
 | `image` | text | ✓ | `schema:image` | URL of an uploaded or generated image; NULL when a product image is used. |
 | `image_product_group_id` | text | ✓ | `acom:imageProduct` | product whose main image the banner shows (prd_ id). → `catalog.product_group` |
 | `image_color` | text | ✓ | `acom:imageColor` | color variant of image_product_group_id to photograph, for example Sand. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `merchandising.category_mapping`
+
+`schema:Intangible/acom:CategoryMapping` — links a standard category to a display category, so the display tree shows the standard category's products. id prefix map_. · id `map_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix map_; the same value the API, logs and events use. |
+| `standard_category_id` | text |  | `acom:standardCategory` | the internal category whose products are shown (cat_ id, term set standard). → `merchandising.defined_term` |
+| `display_category_id` | text |  | `acom:displayCategory` | the shopper menu category that shows them (cat_ id, term set display). → `merchandising.defined_term` |
+| `is_primary` | boolean |  | `acom:isPrimary` | true for the one display category a standard category's product pages show as their path. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |

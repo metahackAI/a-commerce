@@ -36,6 +36,15 @@
       "rdfs:comment": "One line of a cart. Used as additionalType on an OrderItem."
     },
     {
+      "@id": "acom:CategoryMapping",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CategoryMapping",
+      "rdfs:subClassOf": {
+        "@id": "schema:Intangible"
+      },
+      "rdfs:comment": "links a standard category to a display category, so the display tree shows the standard category's products. id prefix map_."
+    },
+    {
       "@id": "acom:CategoryPlacement",
       "@type": "rdfs:Class",
       "rdfs:label": "CategoryPlacement",
@@ -151,6 +160,15 @@
         "@id": "schema:PropertyValue"
       },
       "rdfs:comment": "Something the store remembers about a shopper, visible to the shopper and undoable. Used as additionalType on a PropertyValue."
+    },
+    {
+      "@id": "acom:ProductImport",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ProductImport",
+      "rdfs:subClassOf": {
+        "@id": "schema:CreateAction"
+      },
+      "rdfs:comment": "one batch_import run that turned a supplier sheet into product drafts. id prefix imp_. API: import_id."
     },
     {
       "@id": "acom:Promotion",
@@ -570,6 +588,9 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:DisplayBooking"
+        },
+        {
+          "@id": "acom:ProductImport"
         },
         {
           "@id": "acom:Promotion"
@@ -1005,6 +1026,22 @@
       "rdfs:comment": "Where a discount applies: item price, order, or add-on."
     },
     {
+      "@id": "acom:displayCategory",
+      "@type": "rdf:Property",
+      "rdfs:label": "displayCategory",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CategoryMapping"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DefinedTerm"
+        }
+      ],
+      "rdfs:comment": "the shopper menu category that shows them (cat_ id, term set display)."
+    },
+    {
       "@id": "acom:displayStatus",
       "@type": "rdf:Property",
       "rdfs:label": "displayStatus",
@@ -1019,6 +1056,38 @@
         }
       ],
       "rdfs:comment": "Where a display booking is in its life."
+    },
+    {
+      "@id": "acom:draftNote",
+      "@type": "rdf:Property",
+      "rdfs:label": "draftNote",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:DataFeedItem"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "one sentence for the person about what is open, for example Fabric mix is missing in the sheet; NULL when nothing is."
+    },
+    {
+      "@id": "acom:draftStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "draftStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:DataFeedItem"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:DraftStatus"
+        }
+      ],
+      "rdfs:comment": "whether the draft is complete or waits for a person. values: draft_status"
     },
     {
       "@id": "acom:dueAt",
@@ -1266,6 +1335,22 @@
       "rdfs:comment": "product whose main image the banner shows (prd_ id)."
     },
     {
+      "@id": "acom:importMode",
+      "@type": "rdf:Property",
+      "rdfs:label": "importMode",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ProductImport"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ImportMode"
+        }
+      ],
+      "rdfs:comment": "create makes new drafts only; upsert also refreshes drafts an earlier import made. values: import_mode"
+    },
+    {
       "@id": "acom:input",
       "@type": "rdf:Property",
       "rdfs:label": "input",
@@ -1398,6 +1483,9 @@
       "@type": "rdf:Property",
       "rdfs:label": "isPrimary",
       "schema:domainIncludes": [
+        {
+          "@id": "acom:CategoryMapping"
+        },
         {
           "@id": "acom:CategoryPlacement"
         },
@@ -1742,7 +1830,23 @@
           "@id": "schema:Offer"
         }
       ],
-      "rdfs:comment": "offer the price applies to (off_ id); the Offer's priceSpecification."
+      "rdfs:comment": "the offer whose list price this schedules (off_ id)."
+    },
+    {
+      "@id": "acom:openFields",
+      "@type": "rdf:Property",
+      "rdfs:label": "openFields",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:DataFeedItem"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "required fields that were missing or unclear in the sheet, from catalog.yml import.required_fields, for example {material}; empty when none."
     },
     {
       "@id": "acom:operation",
@@ -2063,6 +2167,22 @@
         }
       ],
       "rdfs:comment": "product measured (prd_ id)."
+    },
+    {
+      "@id": "acom:productImportId",
+      "@type": "rdf:Property",
+      "rdfs:label": "productImportId",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:DataFeedItem"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ProductImport"
+        }
+      ],
+      "rdfs:comment": "the import run that read the row (imp_ id)."
     },
     {
       "@id": "acom:promotionId",
@@ -2579,6 +2699,22 @@
       "rdfs:comment": "which other coupons may be used in the same order. values: coupon_stacking"
     },
     {
+      "@id": "acom:standardCategory",
+      "@type": "rdf:Property",
+      "rdfs:label": "standardCategory",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CategoryMapping"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DefinedTerm"
+        }
+      ],
+      "rdfs:comment": "the internal category whose products are shown (cat_ id, term set standard)."
+    },
+    {
       "@id": "acom:startedAt",
       "@type": "rdf:Property",
       "rdfs:label": "startedAt",
@@ -2720,6 +2856,38 @@
         }
       ],
       "rdfs:comment": "preview that replaced this one in its change set."
+    },
+    {
+      "@id": "acom:supplierCode",
+      "@type": "rdf:Property",
+      "rdfs:label": "supplierCode",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:DataFeedItem"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the supplier's own code for the row, for example FW26-OT-014."
+    },
+    {
+      "@id": "acom:supplierText",
+      "@type": "rdf:Property",
+      "rdfs:label": "supplierText",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:DataFeedItem"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the supplier's description, kept so the store can write its own copy in its tone; NULL when the sheet had none."
     },
     {
       "@id": "acom:surface",
@@ -3284,6 +3452,16 @@
       "acom:wireList": "display_status"
     },
     {
+      "@id": "acom:DraftStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "DraftStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the draft_status list (docs/api/enums.md).",
+      "acom:wireList": "draft_status"
+    },
+    {
       "@id": "acom:FitVote",
       "@type": "rdfs:Class",
       "rdfs:label": "FitVote",
@@ -3302,6 +3480,16 @@
       },
       "rdfs:comment": "Values of the fulfillment_stage list (docs/api/enums.md).",
       "acom:wireList": "fulfillment_stage"
+    },
+    {
+      "@id": "acom:ImportMode",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ImportMode",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the import_mode list (docs/api/enums.md).",
+      "acom:wireList": "import_mode"
     },
     {
       "@id": "acom:InspectionCondition",
@@ -4172,6 +4360,27 @@
       "schema:position": 4
     },
     {
+      "@id": "acom:DraftStatusReady",
+      "@type": "acom:DraftStatus",
+      "rdfs:label": "Ready",
+      "acom:wireWord": "ready",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:DraftStatusNeedsYou",
+      "@type": "acom:DraftStatus",
+      "rdfs:label": "NeedsYou",
+      "acom:wireWord": "needs_you",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:DraftStatusWorking",
+      "@type": "acom:DraftStatus",
+      "rdfs:label": "Working",
+      "acom:wireWord": "working",
+      "schema:position": 3
+    },
+    {
       "@id": "acom:FitVoteTrueToSize",
       "@type": "acom:FitVote",
       "rdfs:label": "TrueToSize",
@@ -4219,6 +4428,20 @@
       "rdfs:label": "Shipped",
       "acom:wireWord": "shipped",
       "schema:position": 4
+    },
+    {
+      "@id": "acom:ImportModeCreate",
+      "@type": "acom:ImportMode",
+      "rdfs:label": "Create",
+      "acom:wireWord": "create",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:ImportModeUpsert",
+      "@type": "acom:ImportMode",
+      "rdfs:label": "Upsert",
+      "acom:wireWord": "upsert",
+      "schema:position": 2
     },
     {
       "@id": "acom:InspectionConditionAsNew",

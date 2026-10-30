@@ -40,7 +40,7 @@
 - 논리주소/REST: `merchandising.category.create` · `POST /v1/merchandising/categories`
 - 요약: 표준 또는 전시 카테고리 노드를 만듭니다.
 - consumes → produces: `parent_id?` → `category_id`
-- 입력: `term_set`(`standard` | `display`), `name`, `parent_id?`, `display_order?`, `term_code?`(의미 있는 영단어, 예 `"summer_outerwear"`)
+- 입력: `term_set`(`standard` | `display`), `name`, `parent_id?`(같은 묶음의 카테고리), `display_order?`(기본 마지막 다음), `term_code?`(의미 있는 영단어, 예 `"summer_outerwear"`; 기본 이름에서). id는 `cat_<term_code>`
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "cat_summer_outerwear", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`
 - 프리뷰: `changes`=`create` `category`(`id: null`). checks `category.max_depth`, `category.term_code_unique`. `needs_approval: false`.
 - 정책: [merchandising.yml](../../policies/merchandising.yml) `category.max_depth`, `category.term_code_unique`
@@ -69,7 +69,7 @@
   | display_category_ids | Text[] | ✓ | 전시 카테고리, 예 `["cat_new_in", "cat_travel"]` |
   | is_primary | Boolean | | 표준 카테고리마다 대표 전시 카테고리 하나(상세의 경로 표시에 씀) |
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "map_221", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`
-- 프리뷰: `changes`=`create` `category_mapping`(`id: null`). checks `category.mapping`(표준 → 전시 방향만), `category.primary_display_per_standard`(대표 매핑 하나). `detail`에 새로 보이게 될 상품 수. `needs_approval: false`.
+- 프리뷰: `changes`=`create` `category_mapping`(`id: null`, `to.category_mapping_id`는 `map_<표준>_<전시>`, `to.products_shown`은 새로 보이게 될 상품 수). 이미 있는 짝은 건너뜀. `is_primary`는 첫 전시 카테고리에만. checks `category.mapping`(표준 → 전시 방향만, 어기면 `cross_set_violation`), `category.primary_display_per_standard`(대표 매핑 하나; 이미 있으면 실패, `fix_tool: unmap_category`). `needs_approval: false`. 매핑은 `merchandising.category_mapping`에 저장되고 `get_category`의 `mappings`가 읽습니다.
 - 정책: [merchandising.yml](../../policies/merchandising.yml) `category.mapping`, `category.primary_display_per_standard`
 - 에러: `cross_set_violation` → `map_category` · `primary_conflict` → `unmap_category` · `display_category_inactive` → `update_category`
 - 멱등성: `(standard_category_id, display_category_id)`로 한 건

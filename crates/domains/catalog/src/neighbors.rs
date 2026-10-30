@@ -40,6 +40,19 @@ pub struct CategoryLink {
     pub direct: bool,
 }
 
+/// One category of the store (`merchandising.defined_term`), to check and match a product's
+/// category.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CategoryTerm {
+    pub id: String,
+    pub name: String,
+    pub term_code: String,
+    /// `standard` or `display`.
+    pub term_set: String,
+    /// `false` when it or a category above it is inactive.
+    pub active: bool,
+}
+
 /// One line of a shopper's order (`sales.order_item`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PurchasedItem {
@@ -96,6 +109,28 @@ pub trait Neighbors: Send + Sync + 'static {
         customer_id: &'a str,
         order_id: &'a str,
     ) -> BoxFuture<'a, Result<Vec<PurchasedItem>, ToolError>>;
+
+    /// Every category of the store, both term sets.
+    fn category_terms<'a>(
+        &'a self,
+        tx: &'a mut TxCx,
+    ) -> BoxFuture<'a, Result<Vec<CategoryTerm>, ToolError>>;
+
+    /// Places a product in a standard category as its primary category, replacing the primary
+    /// placement it had.
+    fn place_product<'a>(
+        &'a self,
+        tx: &'a mut TxCx,
+        product_id: &'a str,
+        category_id: &'a str,
+    ) -> BoxFuture<'a, Result<(), ToolError>>;
+
+    /// Takes a product out of every category (undoing a product that is being removed).
+    fn remove_placements<'a>(
+        &'a self,
+        tx: &'a mut TxCx,
+        product_id: &'a str,
+    ) -> BoxFuture<'a, Result<(), ToolError>>;
 }
 
 static NEIGHBORS: OnceLock<Box<dyn Neighbors>> = OnceLock::new();
@@ -168,5 +203,37 @@ pub(crate) async fn purchased_items(
     match get() {
         Some(n) => n.purchased_items(tx, customer_id, order_id).await,
         None => Ok(Vec::new()),
+    }
+}
+
+pub(crate) async fn category_terms(tx: &mut TxCx) -> Result<Vec<CategoryTerm>, ToolError> {
+    match get() {
+        Some(n) => n.category_terms(tx).await,
+        None => Ok(Vec::new()),
+    }
+}
+
+fn not_wired() -> ToolError {
+    ToolError::new(
+        acom_contract::ErrorCode::UPSTREAM_UNAVAILABLE,
+        "Categories cannot be changed here: the merchandising lookups are not installed.",
+    )
+}
+
+pub(crate) async fn place_product(
+    tx: &mut TxCx,
+    product_id: &str,
+    category_id: &str,
+) -> Result<(), ToolError> {
+    match get() {
+        Some(n) => n.place_product(tx, product_id, category_id).await,
+        None => Err(not_wired()),
+    }
+}
+
+pub(crate) async fn remove_placements(tx: &mut TxCx, product_id: &str) -> Result<(), ToolError> {
+    match get() {
+        Some(n) => n.remove_placements(tx, product_id).await,
+        None => Err(not_wired()),
     }
 }

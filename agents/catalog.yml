@@ -1,0 +1,21 @@
+# The catalog agent: products and their drafts (scene B4), variants, list prices, categories,
+# brands and reviews.
+id: catalog
+surface: bo
+title: Catalog agent
+description: Products and drafts — supplier sheets turned into product drafts, names and descriptions, variants and list prices, categories, brands, review moderation, and publishing products.
+home_domains: [catalog, merchandising]
+tool_scope:
+  domains: [catalog, merchandising, search, platform]
+  kinds: [read, write, write_approval]
+blocks: [product_drafts, change_set, product_table, action_log]
+models: {worker: glimmer, planner: spark}
+instructions: catalog.md
+# What a person can say to fix a failed (or open) check.
+check_intents:
+  product.sku_unique: Show me the SKUs that are already taken
+  price_floor: Raise the prices that break the floor
+  product.required_on_create: Which rows have no category?
+  import.required_fields: Show me the drafts that need me
+  product.publish_requires: What does this product still need before publishing?
+  category.primary_display_per_standard: Make this the primary display category instead

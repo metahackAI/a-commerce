@@ -57,12 +57,14 @@ examples: promotion.examples.yml               # 툴 검색·계획용 몇 개�
 | `router` | 둘 다 | — (에이전트 선택만) | ✓ |
 | `promotion` | bo | promotion, merchandising | ✓ |
 | `orders` | bo | fulfillment, sales, messaging | ✓ |
-| `catalog` | bo | catalog, search | |
+| `catalog` | bo | catalog, merchandising | ✓ (B4: 공급사 시트 → 초안, `product_drafts` 블록) |
 | `care` | bo | customer, messaging, community | |
 | `insights` | bo | analytics (읽기만) | |
 | `shopper` | fo | search, catalog(읽기), sales(장바구니·주문 준비), fulfillment(반품 옵션), customer(내 정보) | ✓ |
 
 - **라우터**는 Glimmer에 에이전트 설명 목록과 요청을 주고 가이드 디코딩으로 `{agent, confidence}` 하나를 고르게 합니다. 확신이 낮으면 면(bo/fo)의 기본 에이전트로 갑니다.
+- **라우팅 힌트**(`agents/runtime.yml` `router.hints`): 요청에 든 말(대소문자 무시, 예 "supplier sheet")이나 첨부 종류(`sheet`)가 그 면의 에이전트 하나만 가리키면 모델을 부르지 않고 그 에이전트로 갑니다. 버튼 의도(`ui_event`)는 힌트를 쓰지 않습니다.
+- **첨부**: 턴 요청의 `attachments[]{kind, upload_id}`의 `upload_id`는 가리킨 id처럼 툴의 `upload_id` 슬롯을 채웁니다(`batch_import`의 `acom:file`은 `x-slot: upload_id`).
 - **한 요청이 여러 도메인에 걸치는 것은 정상입니다**(VIP 세일 = 회원가 + 쿠폰 + 배너). 특화 에이전트는 도메인 하나에 갇히지 않고 자기 `tool_scope` 안에서 홈 도메인을 우선할 뿐입니다.
 - **에이전트끼리 넘길 때는 id를 넘깁니다**(요약 텍스트가 아니라). 넘김은 같은 턴의 계획에 다른 에이전트의 단계를 붙이는 것으로 구현합니다.
 

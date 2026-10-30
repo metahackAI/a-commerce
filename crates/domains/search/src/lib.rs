@@ -13,6 +13,9 @@ mod ops;
 mod repo;
 mod wiring;
 
+#[cfg(test)]
+mod b4;
+
 use acom_contract::{ErrorClass, ErrorCode, RegistryBuilder};
 use acom_store::Cx;
 

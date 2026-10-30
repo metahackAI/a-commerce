@@ -6,6 +6,7 @@
 //! prefixes the block id to make the `element_ref`.
 
 pub mod change_set;
+pub mod drafts;
 pub mod shop;
 pub mod table;
 
@@ -28,6 +29,7 @@ pub const KNOWN_BLOCKS: &[&str] = &[
     "checkout_card",
     "return_options",
     "memory_note",
+    "product_drafts",
 ];
 
 /// Block data format version (`schema`).

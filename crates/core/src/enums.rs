@@ -410,6 +410,17 @@ word_enum! {
     }
 }
 
+word_enum! {
+    /// acom:draftStatus of a draft made from a supplier sheet: complete, waiting for a person, or
+    /// still being filled.
+    DraftStatus = "draft_status" { Ready = "ready", NeedsYou = "needs_you", Working = "working" }
+}
+
+word_enum! {
+    /// acom:importMode of `batch_import`: new drafts only, or also refresh drafts made earlier.
+    ImportMode = "import_mode" { Create = "create", Upsert = "upsert" }
+}
+
 /// Every word list, by name. `cargo xtask check-schema` compares database `CHECK` lists with these.
 pub const LISTS: &[(&str, &[&str])] = &[
     (OrderStatus::LIST, OrderStatus::WORDS),
@@ -459,6 +470,8 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (CouponStacking::LIST, CouponStacking::WORDS),
     (ChatSurface::LIST, ChatSurface::WORDS),
     (StepKind::LIST, StepKind::WORDS),
+    (DraftStatus::LIST, DraftStatus::WORDS),
+    (ImportMode::LIST, ImportMode::WORDS),
 ];
 
 /// The words of one list, by name.

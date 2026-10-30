@@ -22,6 +22,7 @@ const GREEN = new Set([
   'visible',
   'refund',
   'approved',
+  'ready',
 ]);
 const ORANGE = new Set([
   'waiting_for_approval',
@@ -38,6 +39,7 @@ const ORANGE = new Set([
   'needs_approval',
   'potential',
   'in_grace',
+  'open',
 ]);
 const RED = new Set([
   'failed',

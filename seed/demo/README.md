@@ -8,7 +8,7 @@ members and sales history) under fixed counts and a fixed random seed.
 
 | File | Holds |
 |---|---|
-| `01_platform.yml` | Store `store_northwind` (USD, America/New_York), operator `adm_sj` with role `rol_merchandiser` and its scopes, the other system roles, store policy overrides, the demo clock (Fri Nov 6 2026 11:00), change sets #1039 (Fall layers banner, live), #1040 (below-cost fix, live, undo until Nov 7 23:59) and #1041 (linen reorder draft) with previews, items, events and action log rows, the five home tasks of B5, and scheduled jobs |
+| `01_platform.yml` | Store `store_northwind` (USD, America/New_York), operator `adm_sj` with roles `rol_merchandiser` and `rol_catalog_admin` (B4 saves and publishes drafts) and their scopes, the other system roles, store policy overrides, the demo clock (Fri Nov 6 2026 11:00), change sets #1039 (Fall layers banner, live), #1040 (below-cost fix, live, undo until Nov 7 23:59) and #1041 (linen reorder draft) with previews, items, events and action log rows, the five home tasks of B5, and scheduled jobs |
 | `02_customer.yml` | 13 named shoppers (Jamie vip; Alex member; the customers behind the B2 returns), home addresses, program `prg_rewards` with tiers `member`, `gold`, `vip`, memberships, Jamie's four remembered preferences |
 | `03_catalog.yml` | 3 brands, 2 return policies, the 18 named products with all 127 variants and offers (list price, cost, stock), measurements (windbreaker M; wool overcoat M and L), 41 wool overcoat reviews |
 | `04_promotion.yml` | The six promotions of §4, autumn knitwear sale prices of the cashmere sweater, the birthday and Gold tier coupons, three used birthday coupons |
@@ -16,6 +16,7 @@ members and sales history) under fixed counts and a fixed random seed.
 | `06_sales.yml` | 21 named orders with items, payments and events |
 | `07_fulfillment.yml` | Deliveries of those orders, the 12 B2 return requests (`requested`), cus_4431's three completed returns with inspections and refunds |
 | `08_messaging.yml` | Refund notices for cus_4431's completed returns |
+| `09_supplier_sheet.yml` | Scene B4's supplier sheet `upl_fw26_supplier` (`fw26_supplier.xlsx`, 30 rows); the scene imports it |
 | `generate.yml` | Spec for the generator (not data) |
 
 Load the files in name order, and the tables inside each file in the order written; foreign keys are

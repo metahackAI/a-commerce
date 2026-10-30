@@ -286,3 +286,153 @@ async fn b1_vip_weekend_sale_end_to_end() {
         .unwrap();
     assert_eq!(hero["bookings"].as_array().unwrap().len(), 1, "{hero:#}");
 }
+
+/// Removes the category and mapping [`categories_are_created_mapped_and_switched_off`] makes.
+async fn clean_gift_ideas(cx: &Cx) {
+    let mut tx = cx.begin().await.unwrap();
+    for sql in [
+        "DELETE FROM merchandising.category_mapping WHERE tenant_id = $1 AND display_category_id = 'cat_gift_ideas'",
+        "DELETE FROM merchandising.defined_term WHERE tenant_id = $1 AND id = 'cat_gift_ideas'",
+    ] {
+        sqlx::query(sql)
+            .bind(cx.tenant.as_str())
+            .execute(&mut *tx.tx)
+            .await
+            .unwrap();
+    }
+    tx.commit().await.unwrap();
+}
+
+/// Previews and runs a write that needs no approval; returns the preview.
+async fn run(registry: &Registry<Cx>, cx: &Cx, tool: &str, input: Value) -> acom_contract::Preview {
+    let p = acom_changeset::preview(registry, cx, tool, input, None)
+        .await
+        .unwrap_or_else(|e| panic!("{tool}: {e}"));
+    assert!(!p.needs_approval);
+    acom_changeset::commit(registry, cx, tool, &p.preview_id)
+        .await
+        .unwrap_or_else(|e| panic!("{tool}: {e}"));
+    p
+}
+
+#[tokio::test]
+#[ignore = "integration: needs a PostgreSQL database"]
+async fn categories_are_created_mapped_and_switched_off() {
+    let registry = registry();
+    let sj = operator_cx("adm_sj").await;
+    clean_gift_ideas(&sj).await;
+
+    let p = run(
+        &registry,
+        &sj,
+        "create_category",
+        json!({"term_set": "display", "name": "Gift ideas"}),
+    )
+    .await;
+    assert!(p.checks.iter().all(|c| c.passed), "{:#?}", p.checks);
+    let e = acom_changeset::preview(
+        &registry,
+        &sj,
+        "create_category",
+        json!({"term_set": "display", "name": "Gift ideas"}),
+        None,
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(e.code, "duplicate_term_code");
+    let e = acom_changeset::preview(
+        &registry,
+        &sj,
+        "create_category",
+        json!({"term_set": "standard", "name": "Gift boxes", "parent_id": "cat_gift_ideas"}),
+        None,
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(e.code, "cross_set_violation");
+
+    // Standard → display only; the summer outerwear products show under the new category.
+    let e = acom_changeset::preview(
+        &registry,
+        &sj,
+        "map_category",
+        json!({"standard_category_id": "cat_new_in", "display_category_ids": ["cat_gift_ideas"]}),
+        None,
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(e.code, "cross_set_violation");
+    let m = run(
+        &registry,
+        &sj,
+        "map_category",
+        json!({"standard_category_id": "cat_summer_outerwear",
+        "display_category_ids": ["cat_gift_ideas"], "is_primary": true}),
+    )
+    .await;
+    assert_eq!(m.changes[0].to["products_shown"], 42);
+    let one = GetCategory
+        .read(&sj, input(json!({"category_id": "cat_summer_outerwear"})))
+        .await
+        .unwrap();
+    assert_eq!(one["mappings"][0]["id"], "map_summer_outerwear_gift_ideas");
+    assert_eq!(one["mappings"][0]["is_primary"], true);
+
+    // A category with a mapping cannot be switched off; without one it can.
+    let off = acom_changeset::preview(
+        &registry,
+        &sj,
+        "update_category",
+        json!({"category_id": "cat_gift_ideas", "active": false}),
+        None,
+    )
+    .await
+    .unwrap();
+    let c = off
+        .checks
+        .iter()
+        .find(|c| c.rule == "category.delete_only_if")
+        .unwrap();
+    assert!(!c.passed);
+    assert_eq!(c.fix_tool.as_deref(), Some("unmap_category"));
+    run(
+        &registry,
+        &sj,
+        "unmap_category",
+        json!({"category_mapping_id": "map_summer_outerwear_gift_ideas"}),
+    )
+    .await;
+    run(
+        &registry,
+        &sj,
+        "update_category",
+        json!({"category_id": "cat_gift_ideas", "active": false, "name": "Gifts"}),
+    )
+    .await;
+    let after = GetCategory
+        .read(&sj, input(json!({"category_id": "cat_gift_ideas"})))
+        .await
+        .unwrap();
+    assert_eq!(
+        (after["name"].clone(), after["active"].clone()),
+        (json!("Gifts"), json!(false))
+    );
+    let e = acom_changeset::preview(
+        &registry,
+        &sj,
+        "update_category",
+        json!({"category_id": "cat_outerwear", "parent_id": "cat_summer_outerwear"}),
+        None,
+    )
+    .await
+    .unwrap();
+    assert!(
+        !e.checks
+            .iter()
+            .find(|c| c.rule == "category.no_cycle")
+            .unwrap()
+            .passed
+    );
+
+    clean_gift_ideas(&sj).await;
+}

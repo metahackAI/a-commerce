@@ -9,6 +9,7 @@ pub mod service;
 
 mod banner;
 mod category;
+mod category_write;
 mod curation;
 mod display_slot;
 mod model;
@@ -38,6 +39,10 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
     );
     b.read(category::ListCategories)
         .read(category::GetCategory)
+        .write(category_write::CreateCategory)
+        .write(category_write::UpdateCategory)
+        .write(category_write::MapCategory)
+        .write(category_write::UnmapCategory)
         .read(display_slot::ListDisplaySlots)
         .read(display_slot::GetDisplaySlot)
         .write(banner::ScheduleBanner)
@@ -49,6 +54,19 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
 
 pub const TIER_NOT_FOUND: ErrorCode = ErrorCode::new("tier_not_found", ErrorClass::NotFound);
 pub const INVALID_PERIOD: ErrorCode = ErrorCode::new("invalid_period", ErrorClass::InvalidInput);
+
+/// Whether `approval.yml` asks for a person on this write (`thresholds.*` whose `applies_to`
+/// names the tool and whose `when` holds for `facts`). Writes with no threshold run without one.
+pub(crate) fn policy_approval(cx: &Cx, tool: &str, facts: &Value) -> acom_contract::ApprovalNeed {
+    let a = cx.policy.approval_for(tool, facts);
+    match a.reason {
+        Some(reason) if a.needed => acom_contract::ApprovalNeed::Needed { reason },
+        _ if a.needed => acom_contract::ApprovalNeed::Needed {
+            reason: format!("The store asks a person to approve {tool}"),
+        },
+        _ => acom_contract::ApprovalNeed::NotNeeded,
+    }
+}
 
 /// Store time from an input field; a bad value is `invalid_input` naming the field.
 pub(crate) fn parse_time(

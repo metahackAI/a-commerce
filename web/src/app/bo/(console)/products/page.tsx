@@ -1,3 +1,5 @@
+import {Button} from '@astryxdesign/core/Button';
+
 import {FilterBar} from '@/components/bo/FilterBar';
 import {ErrorState} from '@/components/bo/ErrorState';
 import {PageFrame} from '@/components/bo/PageFrame';
@@ -33,6 +35,12 @@ export default async function ProductsPage({searchParams}: {searchParams: Search
     <PageFrame
       title="Products"
       description="Search the catalog, open a product to see its prices, stock, reviews and history, and change a variant’s price or stock."
+      actions={
+        <>
+          <Button label="Product drafts" variant="ghost" href="/bo/products/drafts" />
+          <Button label="New product" href="/bo/products/new" />
+        </>
+      }
       toolbar={
         <FilterBar
           values={values}

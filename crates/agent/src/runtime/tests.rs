@@ -247,6 +247,13 @@ impl ToolClient for Commerce {
                     json!([check("slot_free", true, "Hero slot open Nov 7–8 for VIP")]),
                     true,
                 ),
+                "batch_import" => (
+                    serde_json::to_value(&crate::blocks::drafts::fixtures::b4_preview().changes)
+                        .unwrap(),
+                    serde_json::to_value(&crate::blocks::drafts::fixtures::b4_preview().checks)
+                        .unwrap(),
+                    true,
+                ),
                 "prepare_order" => (
                     json!([{"op": "create", "entity": "order", "id": "", "to": {
                         "lines": [{"name": "Packable windbreaker", "size": "M", "quantity": 1}],
@@ -1002,4 +1009,129 @@ async fn a_failing_tool_with_a_next_tool_revises_the_plan_once_more() {
     assert_eq!(glimmer.asked(), ["plan", "plan", "reply"]);
     assert!(events.iter().any(|e| matches!(e, Event::Step { kind: StepKind::Plan, summary, .. } if summary.starts_with("Changing the plan"))));
     assert_eq!(blocks(&events)[0].ui, "look_gallery");
+}
+
+const B4: &str = "List the 30 products in this supplier sheet. Use our usual pricing and write the descriptions in our tone.";
+
+/// What the worker model answered for scene B4 (recorded): one import, the drafts block.
+fn b4_plan() -> String {
+    json!({
+        "title": "FW26 supplier sheet",
+        "interpretation": [
+            {"aspect": "products", "text": "The 30 rows of the attached supplier sheet"},
+            {"aspect": "benefit", "text": "Prices from the store's usual pricing rule"},
+            {"aspect": "other", "text": "Descriptions in the store's tone, from the supplier's text"}],
+        "about": "self",
+        "steps": [{"id": "s1", "tool": "batch_import", "args": {"acom:mode": "create"}, "uses": []}],
+        "reply_plan": "product_drafts"
+    })
+    .to_string()
+}
+
+#[tokio::test]
+async fn b4_turns_the_supplier_sheet_into_drafts_and_leaves_saving_to_a_person() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            ("plan", b4_plan()),
+            ("reply", "I turned the 30 rows into drafts: 26 are ready and 4 need you. Shoppers do not see drafts; saving them waits for you.".into()),
+        ],
+    );
+    let log = Arc::new(MemoryLog::default());
+    let rt = runtime(std::slice::from_ref(&glimmer), log.clone());
+    let commerce = Commerce::new();
+    let mut request = say(B4);
+    request.attachments = vec![json!({"kind": "sheet", "upload_id": "upl_fw26_supplier"})];
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        request,
+        commerce.clone(),
+    )
+    .await;
+
+    // The request names a supplier sheet: the catalog agent takes it without a routing call.
+    assert_eq!(glimmer.asked(), ["plan", "reply"]);
+    assert_eq!(events[0].data()["agent"], "catalog");
+    assert!(events.iter().any(
+        |e| matches!(e, Event::Step { kind: StepKind::Route, summary, .. }
+        if summary.contains("matched a routing hint"))
+    ));
+
+    // One import previewed into a new change set, handed to people, never approved.
+    assert_eq!(
+        commerce.calls(),
+        [
+            "manifest",
+            "create_change_set FW26 supplier sheet",
+            "preview batch_import into cs_1042",
+            "submit cs_1042 v1"
+        ]
+    );
+    let (tool, input, cs) = &commerce.previews()[0];
+    assert_eq!(tool, "batch_import");
+    assert_eq!(cs.as_deref(), Some("cs_1042"));
+    assert_eq!(
+        input["acom:file"], "upl_fw26_supplier",
+        "the attached sheet fills the upload slot"
+    );
+    assert_eq!(input["acom:mode"], "create");
+
+    // The answer is the drafts block, which carries the change set; no second change_set block.
+    let b = blocks(&events);
+    assert_eq!(b.len(), 1);
+    let drafts = b[0];
+    assert_eq!(drafts.ui, "product_drafts");
+    assert_eq!(
+        drafts.data["progress"],
+        json!({"total": 30, "ready": 26, "needs_you": 4, "working": 0})
+    );
+    assert_eq!(drafts.data["change_set_id"], "cs_1042");
+    assert_eq!(drafts.data["state"], "waiting_for_approval");
+    let checks: Vec<(&str, &str)> = drafts.data["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| (c["rule"].as_str().unwrap(), c["status"].as_str().unwrap()))
+        .collect();
+    assert_eq!(
+        checks,
+        [
+            ("product.required_on_create", "passed"),
+            ("product.sku_unique", "passed"),
+            ("price_floor", "passed"),
+            ("import.required_fields", "open")
+        ]
+    );
+    let save = drafts
+        .actions
+        .iter()
+        .find_map(|a| match a {
+            Action::Person { path, body, .. } => Some((path.clone(), body.clone())),
+            _ => None,
+        })
+        .expect("saving the drafts is the person's button");
+    assert_eq!(
+        save,
+        (
+            "/v1/platform/change-sets/cs_1042/approve".to_owned(),
+            json!({"version": 1})
+        )
+    );
+    // The open check is pointed at, never the person's button.
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::UiCommand { target, .. }
+        if target.ends_with("#check_row:import.required_fields")))
+    );
+    assert!(message(&events).contains("26 are ready"));
+    let steps = log.steps();
+    assert!(
+        steps
+            .iter()
+            .any(|s| s.kind == "call_tool" && s.change_set_id.as_deref() == Some("cs_1042"))
+    );
 }

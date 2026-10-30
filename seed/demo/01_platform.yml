@@ -109,6 +109,7 @@ tables:
     - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:account"}
   platform.admin_user_role:
     - {tenant_id: store_northwind, admin_user_id: adm_sj, role_id: rol_merchandiser}
+    - {tenant_id: store_northwind, admin_user_id: adm_sj, role_id: rol_catalog_admin}
     - {tenant_id: store_northwind, admin_user_id: adm_admin, role_id: rol_platform_admin}
     - {tenant_id: store_northwind, admin_user_id: adm_admin, role_id: rol_merchandiser}
     - {tenant_id: store_northwind, admin_user_id: adm_admin, role_id: rol_operator}

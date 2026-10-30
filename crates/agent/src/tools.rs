@@ -229,7 +229,15 @@ pub(crate) mod fixtures {
                  "Remember what the shopper said they like.", json!([]), json!([{"name": "memory_id", "many": false}]),
                  json!({"add": {"type": "array", "items": {"type": "string", "description": "Fact."}, "description": "Facts to add."}}),
                  json!([])),
-        ], "total": 11})
+            tool("batch_import", "catalog.product.batch_import", "write_approval",
+                 "Turn an uploaded supplier sheet into product drafts: names, categories, variants and prices from the store's pricing rule, with the fields a person still has to fill flagged.",
+                 json!([{"name": "upload_id", "many": false}]),
+                 json!([{"name": "import_id", "many": false}, {"name": "product_id", "many": true}]),
+                 json!({"acom:file": {"type": "string", "pattern": "^upl_[a-z0-9_]+$", "x-slot": "upload_id",
+                                      "description": "The uploaded supplier sheet."},
+                        "acom:mode": {"type": "string", "enum": ["create", "upsert"], "description": "create or upsert."}}),
+                 json!(["acom:file", "acom:mode"])),
+        ], "total": 12})
     }
 
     pub fn manifest() -> Vec<ToolSpec> {
@@ -252,7 +260,11 @@ mod tests {
     #[test]
     fn reads_the_manifest_shape_and_finds_slot_fields() {
         let m = manifest();
-        assert_eq!(m.len(), 11);
+        assert_eq!(m.len(), 12);
+        assert_eq!(
+            get(&m, "batch_import").field_for_slot("upload_id"),
+            Some(("acom:file".to_owned(), false))
+        );
         let sale = get(&m, "set_sale_prices");
         assert_eq!(sale.domain(), "promotion");
         assert!(sale.is_write() && !sale.preview_only());

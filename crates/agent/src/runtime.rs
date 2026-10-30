@@ -67,7 +67,8 @@ pub struct TurnRequest {
     pub conversation_id: Option<String>,
     #[serde(default)]
     pub message: Option<String>,
-    /// Uploaded files (`upl_…`). Accepted, not yet used by any tool.
+    /// Uploaded files (`{kind, upload_id}`, `upl_…`). Their ids fill a tool's `upload_id`
+    /// (`batch_import` reads an attached supplier sheet).
     #[serde(default)]
     pub attachments: Vec<Value>,
     #[serde(default)]
@@ -115,6 +116,15 @@ impl TurnRequest {
         }
     }
 
+    /// Kinds of the attached files (`sheet`, `image`).
+    pub fn attachment_kinds(&self) -> Vec<String> {
+        self.attachments
+            .iter()
+            .filter_map(|a| a.get("kind").and_then(Value::as_str))
+            .map(str::to_owned)
+            .collect()
+    }
+
     /// Ids the person pointed at or a button carried, by field name.
     pub fn pointed(&self) -> BTreeMap<String, Vec<String>> {
         let mut out: BTreeMap<String, Vec<String>> = BTreeMap::new();
@@ -134,6 +144,11 @@ impl TurnRequest {
                 if let Some(s) = v.as_str().filter(|_| k.ends_with("_id")) {
                     add(k, s);
                 }
+            }
+        }
+        for a in &self.attachments {
+            if let Some(u) = a.get("upload_id").and_then(Value::as_str) {
+                add("upload_id", u);
             }
         }
         out
@@ -807,7 +822,16 @@ impl<'r> Turn<'r> {
         let previous = self.ctx.agent.clone();
         let mut answer = None;
         let started_at = self.clock.now();
-        if !self.rt.models.is_empty()
+        let attached = self.request.attachment_kinds();
+        let hint = router::hinted(
+            &profiles.runtime.router.hints,
+            &agents,
+            &self.text,
+            &attached,
+        )
+        .filter(|_| self.request.ui_event.is_none());
+        if hint.is_none()
+            && !self.rt.models.is_empty()
             && router::needs_model(
                 &agents,
                 self.request.ui_event.is_some(),
@@ -830,13 +854,15 @@ impl<'r> Turn<'r> {
                 .ok()
                 .map(|(v, _)| v);
         }
-        let r = router::decide(
-            answer.as_ref(),
-            &agents,
-            &default,
-            previous.as_deref(),
-            profiles.runtime.router.min_confidence,
-        );
+        let r = hint.unwrap_or_else(|| {
+            router::decide(
+                answer.as_ref(),
+                &agents,
+                &default,
+                previous.as_deref(),
+                profiles.runtime.router.min_confidence,
+            )
+        });
         if let Some(p) = self.rt.profiles.get(&r.agent) {
             self.profile = p;
         }
@@ -1034,6 +1060,12 @@ impl<'r> Turn<'r> {
                     .ui_event
                     .iter()
                     .map(|e| json!({"button": e.action_id, "args": e.args})),
+            )
+            .chain(
+                self.request
+                    .attachments
+                    .iter()
+                    .map(|a| json!({"attached": a})),
             )
             .collect();
         let input = PlanInput {
@@ -2038,7 +2070,28 @@ impl<'r> Turn<'r> {
 
     fn build_blocks(&mut self) {
         let mut out: Vec<Block> = Vec::new();
-        if let Some(view) = &self.view {
+        let reply_plan = self
+            .plan
+            .as_ref()
+            .and_then(|p| p.reply_plan.clone())
+            .unwrap_or_default();
+        // A supplier sheet's drafts: the drafts block carries the change set (its save button
+        // approves it), so the change set block is not shown twice.
+        let drafts = (reply_plan == "product_drafts")
+            .then(|| {
+                self.history
+                    .iter()
+                    .rev()
+                    .find(|r| r.tool == "batch_import")
+                    .and_then(|r| {
+                        crate::blocks::drafts::product_drafts(
+                            r.preview.as_ref()?,
+                            self.view.as_ref(),
+                        )
+                    })
+            })
+            .flatten();
+        if let Some(view) = self.view.as_ref().filter(|_| drafts.is_none()) {
             let title = self.plan.as_ref().and_then(|p| p.title.clone());
             let b = crate::blocks::change_set::block(
                 view,
@@ -2054,13 +2107,9 @@ impl<'r> Turn<'r> {
                 out.push(shop::checkout_card(p));
             }
         }
-        let reply_plan = self
-            .plan
-            .as_ref()
-            .and_then(|p| p.reply_plan.clone())
-            .unwrap_or_default();
         let allowed = |ui: &str| self.profile.blocks.iter().any(|b| b == ui);
         let block = match reply_plan.as_str() {
+            "product_drafts" => drafts,
             "product_table" => self
                 .last_output(|r| r.kind == ToolKind::Read)
                 .and_then(|r| table::product_table(r.output.as_ref()?)),
@@ -2098,10 +2147,11 @@ impl<'r> Turn<'r> {
         out.extend(block);
         for b in out {
             self.emit.send(Event::Block(Box::new(b.clone())));
-            if b.ui == "change_set"
-                && let Some(failed) = b.data["checks"]
-                    .as_array()
-                    .and_then(|c| c.iter().find(|c| c["passed"] == false))
+            if matches!(b.ui.as_str(), "change_set" | "product_drafts")
+                && let Some(failed) = b.data["checks"].as_array().and_then(|c| {
+                    c.iter()
+                        .find(|c| c["passed"] == false || c["status"] == "open")
+                })
                 && let Some(element) = failed["element"].as_str()
             {
                 let note = failed["detail"].as_str().map(str::to_owned);
@@ -2174,6 +2224,10 @@ impl<'r> Turn<'r> {
                 "return_options" => {
                     parts.push("Here are your options; only you can send the request.".into())
                 }
+                "product_drafts" => parts.push(
+                    "I turned the sheet into drafts. Shoppers do not see them; publishing is a separate change set."
+                        .into(),
+                ),
                 _ => {}
             }
         }
