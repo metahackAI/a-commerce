@@ -67,7 +67,7 @@ export default async function ReturnsPage({searchParams}: {searchParams: SearchP
           filters={[
             {kind: 'multi', key: 'status', label: 'Status', placeholder: 'Requested', options: STATUSES.map(s => ({value: s, label: label(s)}))},
             {kind: 'multi', key: 'reason', label: 'Reason', options: REASONS.map(s => ({value: s, label: label(s)}))},
-            {kind: 'text', key: 'min_amount', label: 'At least', placeholder: '200.00', width: 140},
+            {kind: 'text', key: 'min_amount', label: 'At least', placeholder: 'e.g. 200.00', width: 140},
             {
               kind: 'select',
               key: 'sort',

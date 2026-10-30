@@ -41,13 +41,12 @@ struct TaskRow {
     conversation_id: Option<String>,
     start_time: DateTime<Utc>,
     end_time: Option<DateTime<Utc>>,
-    created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
 
 const COLUMNS: &str = "id, title, task_state, task_origin, summary, tag, request_text, watcher,
     watcher_observation, related_entities, change_set_id, conversation_id, start_time, end_time,
-    created_at, updated_at";
+    updated_at";
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -246,7 +245,9 @@ impl ReadOp<Cx> for GetTask {
             "related": {"change_set_id": t.change_set_id, "conversation_id": t.conversation_id,
                         "entities": t.related_entities},
             "history": history,
-            "created_at": cx.time.format(t.created_at), "updated_at": cx.time.format(t.updated_at),
+            // When the task appeared on the store's clock; the row's own `created_at` is the
+            // database's wall clock (a seed load, or real time under the demo clock).
+            "created_at": cx.time.format(t.start_time), "updated_at": cx.time.format(t.updated_at),
         }))
     }
 }

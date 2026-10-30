@@ -40,9 +40,9 @@ export default async function ActivityPage({searchParams}: {searchParams: Search
           values={values}
           filters={[
             {kind: 'text', key: 'agent', label: 'Who', placeholder: 'adm_sj or a model name', width: 200},
-            {kind: 'text', key: 'instrument', label: 'Tool', placeholder: 'set_sale_prices', width: 180},
-            {kind: 'text', key: 'object_id', label: 'Record', placeholder: 'prd_windbreaker', width: 180},
-            {kind: 'text', key: 'change_set_id', label: 'Change set', placeholder: 'cs_1042', width: 140},
+            {kind: 'text', key: 'instrument', label: 'Tool', placeholder: 'e.g. set_sale_prices', width: 180},
+            {kind: 'text', key: 'object_id', label: 'Record', placeholder: 'e.g. prd_windbreaker', width: 180},
+            {kind: 'text', key: 'change_set_id', label: 'Change set', placeholder: 'e.g. cs_1042', width: 140},
             {
               kind: 'select',
               key: 'action_status',

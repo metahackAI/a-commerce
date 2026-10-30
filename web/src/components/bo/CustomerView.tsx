@@ -81,7 +81,7 @@ export function CustomerView({member: m, tier, tierError, tierNames, returns, re
               <>
                 <Text weight="semibold">{`${tierName(tier.tier_id)} since ${date(tier.since)}`}</Text>
                 <Text type="supporting" color="secondary">
-                  {`${tier.why.rule}${tier.why.value !== null && tier.why.value !== undefined ? ` · ${amount(tier.why.value)}` : ''} · ${words(tier.source)}`}
+                  {tier.why.rule}
                 </Text>
               </>
             }>
@@ -90,6 +90,8 @@ export function CustomerView({member: m, tier, tierError, tierNames, returns, re
                 <StateToken state={tier.retention.status} />
               </MetadataListItem>
               <MetadataListItem label="Next evaluation">{dateTime(tier.next_evaluation)}</MetadataListItem>
+              {tier.why.value !== null && tier.why.value !== undefined ? <MetadataListItem label="Counted so far">{amount(tier.why.value)}</MetadataListItem> : null}
+              <MetadataListItem label="Decided by">{words(tier.source)}</MetadataListItem>
               {tier.override ? <MetadataListItem label="Set by hand">{value(tier.override)}</MetadataListItem> : null}
               {tier.has_tier_benefit && tier.has_tier_benefit.length > 0 ? (
                 <MetadataListItem label="Benefits">{tier.has_tier_benefit.map(b => words(b.type)).join(', ')}</MetadataListItem>

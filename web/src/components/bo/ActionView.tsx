@@ -10,7 +10,7 @@ import {Link} from '@astryxdesign/core/Link';
 import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
 import {CodeBlock} from '@astryxdesign/core/CodeBlock';
 
-import {actor, count, dateTime, value} from '@/app/bo/_lib/format';
+import {actionStatus, actor, count, dateTime, value} from '@/app/bo/_lib/format';
 import {entityHref, withParams} from '@/app/bo/_lib/links';
 import type {ActionEntry, Change, Check} from '@/app/bo/_lib/types';
 
@@ -61,7 +61,7 @@ export function ActionView({action: a}: {action: ActionEntry}) {
       title={`${a['@type'] ?? 'Action'} · ${a.instrument ?? a.id}`}
       meta={
         <>
-          <StateToken state={a.action_status} size="md" />
+          <StateToken state={a.action_status} label={actionStatus(a.action_status)} size="md" />
           <Text type="supporting" color="secondary">
             {`${a.id} · ${dateTime(a.start_time)}`}
           </Text>

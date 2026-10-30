@@ -94,6 +94,12 @@ export function words(s: string | null | undefined): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/** An action-log row's `action_status` (schema.org ActionStatusType): a `potential` action is a preview. */
+export function actionStatus(status: string | null | undefined): string {
+  const said: Record<string, string> = {potential: 'Previewed', active: 'Running', completed: 'Completed', failed: 'Failed'};
+  return (status && said[status]) ?? words(status);
+}
+
 /** A policy rule as a name: `reorder.max_units_per_line` → `Reorder: max units per line`. */
 export function ruleName(rule: string): string {
   const [head, ...rest] = rule.split('.');
