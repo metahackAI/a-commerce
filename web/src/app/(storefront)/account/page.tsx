@@ -84,7 +84,9 @@ export default async function AccountPage() {
             <HStack gap={3} vAlign="center" justify="between" wrap="wrap">
               <VStack gap={0.5}>
                 <Heading level={1}>{p ? `Hi, ${p.name}` : 'Your account'}</Heading>
-                {p?.tier_id ? <Text color="secondary">{words(p.tier_id)} member</Text> : null}
+                {p?.tier_id ? (
+                  <Text color="secondary">{p.tier_id === 'member' ? 'Member' : `${words(p.tier_id)} member`}</Text>
+                ) : null}
               </VStack>
               <HStack gap={2}>
                 <Button label="Your orders" href="/orders" />
