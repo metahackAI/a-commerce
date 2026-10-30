@@ -8,7 +8,7 @@ tool_scope:
   domains: [fulfillment, sales, messaging, customer, catalog, platform]
   kinds: [read, write, write_approval]
   # Always among the candidates: the work waiting and the reads most requests start from.
-  always: [list_tasks, search_return_requests, search_orders, get_order]
+  always: [list_tasks, search_return_requests, search_orders, get_order, get_return_history, track_shipment]
 blocks: [change_set, refund_review, order_detail, action_log, product_table, task_list]
 models: {worker: glimmer, planner: spark}
 instructions: orders.md

@@ -9,6 +9,8 @@
 //!   references), without a database.
 //! - `check-eval`: the agent task set in `eval/tasks/` is well formed and names only tools that
 //!   are built or specified; prints each task's derived coverage (`eval/README.md`).
+//! - `eval --base <url> [--set design|held_out] [--tool-set acom|facade|both] [--repeat N] [--reset]`:
+//!   runs the task set through a running stack's chat API and scores it (eval/README.md §8).
 //! - `hash-password <password>`: an argon2id hash for seed accounts.
 //! - `dev-token <persona> [--agent]`: an internal token signed with the local key
 //!   (`infra/secrets/gateway_signing_key.pem`), to call commerce without the gateway while
@@ -16,6 +18,7 @@
 //!   token a chat turn would carry.
 
 mod eval;
+mod run_eval;
 mod schema;
 mod seed;
 mod vocab;
@@ -32,6 +35,7 @@ fn main() -> ExitCode {
         "check-schema" => check_schema(&repo_root(), std::env::args().any(|a| a == "--write")),
         "check-seed" => check_seed(&repo_root()),
         "check-eval" => check_eval(&repo_root()),
+        "eval" => run_eval::eval(&repo_root()),
         "hash-password" => match std::env::args().nth(2) {
             Some(pw) => match acom_auth::password::hash(&pw) {
                 Ok(h) => {
@@ -55,7 +59,7 @@ fn main() -> ExitCode {
         ),
         _ => {
             eprintln!(
-                "usage: cargo xtask check-docs | check-schema [--write] | check-seed | check-eval | hash-password <password> | dev-token <admin|jamie|alex|guest> [--agent]"
+                "usage: cargo xtask check-docs | check-schema [--write] | check-seed | check-eval | eval --base <url> | hash-password <password> | dev-token <admin|jamie|alex|guest> [--agent]"
             );
             ExitCode::FAILURE
         }

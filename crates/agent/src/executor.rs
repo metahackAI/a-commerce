@@ -287,6 +287,30 @@ pub fn bind(
     }
 }
 
+/// The step a read should run once per row of, when the plan meant it but did not say `each`: the
+/// read needs one id it was not given (or got a stand-in for), and the one step it `uses`
+/// returned several ("evaluate the requests" after a search). Writes are never fanned out on a
+/// guess.
+pub fn implied_each(
+    step: &PlanStep,
+    tool: &ToolSpec,
+    done: &BTreeMap<String, StepRecord>,
+) -> Option<String> {
+    if step.each.is_some() || tool.is_write() || step.uses.len() != 1 {
+        return None;
+    }
+    let source = done.get(&step.uses[0])?;
+    tool.consumes.iter().find_map(|slot| {
+        let (field, is_list) = tool.field_for_slot(&slot.name)?;
+        let given = step.args.get(&field);
+        let schema = tool.properties().and_then(|p| p.get(&field));
+        let missing =
+            is_empty(given) || given.is_some_and(|v| is_stand_in(v, &field, &slot.name, schema));
+        let several = source.slots.get(&slot.name).is_some_and(|v| v.len() > 1);
+        (!is_list && missing && several).then(|| step.uses[0].clone())
+    })
+}
+
 /// The rows of a result a step can run once per row for (`each`): its `items` (or a block's
 /// `requests`, `picks`, `lines`), or the result itself when it is one object.
 pub fn rows(output: &Value) -> Vec<Value> {
@@ -336,6 +360,13 @@ pub fn bind_row(step: &PlanStep, tool: &ToolSpec, row: &Value) -> Bound {
         let Some((field, is_list)) = tool.field_for_slot(&slot.name) else {
             continue;
         };
+        let schema = tool.properties().and_then(|p| p.get(&field));
+        if input
+            .get(&field)
+            .is_some_and(|v| is_stand_in(v, &field, &slot.name, schema))
+        {
+            input.remove(&field);
+        }
         if !is_empty(input.get(&field)) {
             continue;
         }
@@ -566,6 +597,48 @@ mod tests {
             "{:?}",
             b.notes
         );
+    }
+
+    #[test]
+    fn a_read_meant_for_every_row_runs_per_row_and_rows_replace_stand_ins() {
+        let m = manifest();
+        let search = record(
+            "s1",
+            get(&m, "search_products"),
+            json!({"items": [{"product_id": "prd_a"}, {"product_id": "prd_b"}]}),
+        );
+        let done = BTreeMap::from([("s1".to_owned(), search)]);
+        let get_product: ToolSpec = serde_json::from_value(json!({
+            "tool": "get_product", "address": "catalog.product.get_product", "kind": "read",
+            "summary": "One product.", "consumes": [{"name": "product_id", "many": false}],
+            "produces": [], "checks": [], "group": "offer", "method": "GET", "path": "/v1/x",
+            "errors": [], "audience": "both", "action_type": "SearchAction", "person_scope": "",
+            "input_schema": {"type": "object", "additionalProperties": false, "required": ["product_id"],
+                "properties": {"product_id": {"type": "string", "pattern": "^prd_[a-z0-9_]+$", "description": "Product."}}}
+        }))
+        .unwrap();
+        let read = &get_product;
+        let meant = step(
+            "s2",
+            "get_product",
+            json!({"product_id": "product_id"}),
+            &["s1"],
+        );
+        assert_eq!(implied_each(&meant, read, &done).as_deref(), Some("s1"));
+        let chosen = step("s2", "get_product", json!({"product_id": "prd_b"}), &["s1"]);
+        assert_eq!(
+            implied_each(&chosen, read, &done),
+            None,
+            "the plan chose one"
+        );
+        let write = step("s2", "add_to_cart", json!({"size": "M"}), &["s1"]);
+        assert_eq!(
+            implied_each(&write, get(&m, "add_to_cart"), &done),
+            None,
+            "never a write"
+        );
+        let b = bind_row(&meant, read, &json!({"product_id": "prd_b"}));
+        assert_eq!(b.input["product_id"], "prd_b");
     }
 
     #[test]
