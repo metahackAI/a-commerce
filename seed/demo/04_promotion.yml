@@ -1,0 +1,246 @@
+# Promotion: the six promotions of docs/scenarios.md §4 (four running, one scheduled, one ended),
+# the autumn knitwear sale prices of the named cashmere sweater, the birthday and Gold tier coupons,
+# and the birthday coupons used on the three B2 orders that had a coupon (#20352, #20388, #20395).
+tables:
+  promotion.promotion:
+    - tenant_id: store_northwind
+      id: promo_autumn_knit
+      name: "Autumn knitwear 15%"
+      description: "15% off all knitwear for everyone."
+      promotion_status: running
+      discount_layer: item_price
+      valid_for_member_tier: null
+      valid_from: "2026-11-01T00:00:00-04:00"
+      valid_through: "2026-11-15T23:59:00-05:00"
+      percent_off: 15.00
+      applies_to: {scope: categories, category_ids: [cat_knitwear]}
+      change_set_id: null
+    - tenant_id: store_northwind
+      id: promo_free_ship_80
+      name: "Free shipping over $80"
+      description: "Free standard shipping when the item subtotal before member benefits is $80.00 or more."
+      promotion_status: running
+      discount_layer: add_on
+      valid_for_member_tier: null
+      valid_from: "2026-01-01T00:00:00-05:00"
+      valid_through: null
+      eligible_transaction_volume_value: 80.00
+      eligible_transaction_volume_currency: USD
+      applies_to: {scope: order}
+      change_set_id: null
+    - tenant_id: store_northwind
+      id: promo_birthday
+      name: Birthday coupon
+      description: "$10.00 off one order in the member's birthday month."
+      promotion_status: running
+      discount_layer: order_discount
+      valid_for_member_tier: member
+      valid_from: "2026-01-01T00:00:00-05:00"
+      valid_through: null
+      amount_off_value: 10.00
+      amount_off_currency: USD
+      applies_to: {scope: order}
+      change_set_id: null
+    - tenant_id: store_northwind
+      id: promo_gold_10
+      name: "Gold tier 10%"
+      description: "Gold members get a 10% order coupon every month."
+      promotion_status: running
+      discount_layer: order_discount
+      valid_for_member_tier: gold
+      valid_from: "2026-01-01T00:00:00-05:00"
+      valid_through: null
+      percent_off: 10.00
+      applies_to: {scope: order}
+      change_set_id: null
+    - tenant_id: store_northwind
+      id: promo_denim_bundle
+      name: Denim bundle
+      description: "$20.00 off an order with a denim jacket and denim trousers."
+      promotion_status: scheduled
+      discount_layer: order_discount
+      valid_for_member_tier: null
+      valid_from: "2026-11-13T00:00:00-05:00"
+      valid_through: "2026-11-20T23:59:00-05:00"
+      amount_off_value: 20.00
+      amount_off_currency: USD
+      applies_to: {scope: categories, category_ids: [cat_denim, cat_outerwear]}
+      change_set_id: null
+    - tenant_id: store_northwind
+      id: promo_linen_clearance
+      name: Linen clearance
+      description: "20% off linen shirts and overshirts."
+      promotion_status: ended
+      discount_layer: item_price
+      valid_for_member_tier: null
+      valid_from: "2026-10-01T00:00:00-04:00"
+      valid_through: "2026-10-20T23:59:00-04:00"
+      percent_off: 20.00
+      applies_to: {scope: products, product_ids: [prd_linen_shirt, prd_camp_overshirt]}
+      change_set_id: null
+  promotion.unit_price_specification:
+    - tenant_id: store_northwind
+      id: ups_cashmere_sweater_xs_oatmeal_autumn_knit
+      offer_id: off_cashmere_sweater_xs_oatmeal
+      promotion_id: promo_autumn_knit
+      price: 210.80
+      price_currency: USD
+      price_type: sale_price
+      valid_for_member_tier: null
+      valid_from: "2026-11-01T00:00:00-04:00"
+      valid_through: "2026-11-15T23:59:00-05:00"
+      percent_off: 15.00
+    - tenant_id: store_northwind
+      id: ups_cashmere_sweater_s_oatmeal_autumn_knit
+      offer_id: off_cashmere_sweater_s_oatmeal
+      promotion_id: promo_autumn_knit
+      price: 210.80
+      price_currency: USD
+      price_type: sale_price
+      valid_for_member_tier: null
+      valid_from: "2026-11-01T00:00:00-04:00"
+      valid_through: "2026-11-15T23:59:00-05:00"
+      percent_off: 15.00
+    - tenant_id: store_northwind
+      id: ups_cashmere_sweater_m_oatmeal_autumn_knit
+      offer_id: off_cashmere_sweater_m_oatmeal
+      promotion_id: promo_autumn_knit
+      price: 210.80
+      price_currency: USD
+      price_type: sale_price
+      valid_for_member_tier: null
+      valid_from: "2026-11-01T00:00:00-04:00"
+      valid_through: "2026-11-15T23:59:00-05:00"
+      percent_off: 15.00
+    - tenant_id: store_northwind
+      id: ups_cashmere_sweater_l_oatmeal_autumn_knit
+      offer_id: off_cashmere_sweater_l_oatmeal
+      promotion_id: promo_autumn_knit
+      price: 210.80
+      price_currency: USD
+      price_type: sale_price
+      valid_for_member_tier: null
+      valid_from: "2026-11-01T00:00:00-04:00"
+      valid_through: "2026-11-15T23:59:00-05:00"
+      percent_off: 15.00
+    - tenant_id: store_northwind
+      id: ups_cashmere_sweater_xl_oatmeal_autumn_knit
+      offer_id: off_cashmere_sweater_xl_oatmeal
+      promotion_id: promo_autumn_knit
+      price: 210.80
+      price_currency: USD
+      price_type: sale_price
+      valid_for_member_tier: null
+      valid_from: "2026-11-01T00:00:00-04:00"
+      valid_through: "2026-11-15T23:59:00-05:00"
+      percent_off: 15.00
+    - tenant_id: store_northwind
+      id: ups_cashmere_sweater_xs_navy_autumn_knit
+      offer_id: off_cashmere_sweater_xs_navy
+      promotion_id: promo_autumn_knit
+      price: 210.80
+      price_currency: USD
+      price_type: sale_price
+      valid_for_member_tier: null
+      valid_from: "2026-11-01T00:00:00-04:00"
+      valid_through: "2026-11-15T23:59:00-05:00"
+      percent_off: 15.00
+    - tenant_id: store_northwind
+      id: ups_cashmere_sweater_s_navy_autumn_knit
+      offer_id: off_cashmere_sweater_s_navy
+      promotion_id: promo_autumn_knit
+      price: 210.80
+      price_currency: USD
+      price_type: sale_price
+      valid_for_member_tier: null
+      valid_from: "2026-11-01T00:00:00-04:00"
+      valid_through: "2026-11-15T23:59:00-05:00"
+      percent_off: 15.00
+    - tenant_id: store_northwind
+      id: ups_cashmere_sweater_m_navy_autumn_knit
+      offer_id: off_cashmere_sweater_m_navy
+      promotion_id: promo_autumn_knit
+      price: 210.80
+      price_currency: USD
+      price_type: sale_price
+      valid_for_member_tier: null
+      valid_from: "2026-11-01T00:00:00-04:00"
+      valid_through: "2026-11-15T23:59:00-05:00"
+      percent_off: 15.00
+    - tenant_id: store_northwind
+      id: ups_cashmere_sweater_l_navy_autumn_knit
+      offer_id: off_cashmere_sweater_l_navy
+      promotion_id: promo_autumn_knit
+      price: 210.80
+      price_currency: USD
+      price_type: sale_price
+      valid_for_member_tier: null
+      valid_from: "2026-11-01T00:00:00-04:00"
+      valid_through: "2026-11-15T23:59:00-05:00"
+      percent_off: 15.00
+    - tenant_id: store_northwind
+      id: ups_cashmere_sweater_xl_navy_autumn_knit
+      offer_id: off_cashmere_sweater_xl_navy
+      promotion_id: promo_autumn_knit
+      price: 210.80
+      price_currency: USD
+      price_type: sale_price
+      valid_for_member_tier: null
+      valid_from: "2026-11-01T00:00:00-04:00"
+      valid_through: "2026-11-15T23:59:00-05:00"
+      percent_off: 15.00
+  promotion.coupon:
+    - tenant_id: store_northwind
+      id: cpn_birthday
+      name: Birthday coupon
+      discount_code: BIRTHDAY10
+      promotion_id: promo_birthday
+      valid_for_member_tier: member
+      application: download
+      stacking: no_other_coupons
+      is_benefit_record_only: true
+      valid_through: null
+    - tenant_id: store_northwind
+      id: cpn_gold_10
+      name: "Gold tier 10%"
+      discount_code: GOLD10
+      promotion_id: promo_gold_10
+      valid_for_member_tier: gold
+      application: download
+      stacking: no_other_coupons
+      is_benefit_record_only: true
+      valid_through: null
+  promotion.member_coupon:
+    - tenant_id: store_northwind
+      id: mcp_elena_birthday
+      coupon_id: cpn_birthday
+      customer_id: cus_elena
+      coupon_status: used
+      owned_from: "2026-10-01T00:00:00-04:00"
+      owned_through: "2026-10-31T23:59:00-04:00"
+      order_id: ord_20352
+      used_at: "2026-10-13T21:05:00-04:00"
+      benefit_recorded_value: 10.00
+      benefit_recorded_currency: USD
+    - tenant_id: store_northwind
+      id: mcp_noor_birthday
+      coupon_id: cpn_birthday
+      customer_id: cus_noor
+      coupon_status: used
+      owned_from: "2026-10-01T00:00:00-04:00"
+      owned_through: "2026-10-31T23:59:00-04:00"
+      order_id: ord_20388
+      used_at: "2026-10-25T15:33:00-04:00"
+      benefit_recorded_value: 10.00
+      benefit_recorded_currency: USD
+    - tenant_id: store_northwind
+      id: mcp_theo_birthday
+      coupon_id: cpn_birthday
+      customer_id: cus_theo
+      coupon_status: used
+      owned_from: "2026-10-01T00:00:00-04:00"
+      owned_through: "2026-10-31T23:59:00-04:00"
+      order_id: ord_20395
+      used_at: "2026-10-26T09:48:00-04:00"
+      benefit_recorded_value: 10.00
+      benefit_recorded_currency: USD

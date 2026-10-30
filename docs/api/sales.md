@@ -20,7 +20,7 @@
   | 필드 | 타입 | 필수 | 설명 | 예 |
   |------|------|:--:|------|----|
   | fields | Text[] | | 돌려받을 최상위 필드만(conventions.md §6). 값: `id`, `lines`, `subtotal`, `discounts`, `shipping`, `total`, `delivery`, `payment`, `coupons_recorded` | `["lines", "total"]` |
-- 출력: `acom:Cart` 한 건(목록 봉투 없음)
+- 출력: 장바구니 한 건(`Order` + `additionalType: acom:Cart`, 목록 봉투 없음)
   ```jsonc
   {"id": "cart_jamie",
    "customer_id": "cus_jamie",

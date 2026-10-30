@@ -1,6 +1,6 @@
 # A-Commerce build plan
 
-Status: rewritten Oct 30, 2026. This file says **what we ship and by when**. Why we build it this way is in [design.md](design.md) and [architecture.md](architecture.md); how each part is built is in [backend/](backend/README.md); the operations are in [api/](api/README.md); the demo store, people, and expected results are in [scenarios.md](scenarios.md). Change this file by pull request.
+Status: rewritten Oct 30, 2026; milestones added Oct 30. This file says **what we ship and by when**. Why we build it this way is in [design.md](design.md) and [architecture.md](architecture.md); how each part is built is in [backend/](backend/README.md), [backend/database.md](backend/database.md), and [frontend/](frontend/README.md); the operations are in [api/](api/README.md); the demo store, people, and expected results are in [scenarios.md](scenarios.md). Change this file by pull request.
 
 Contents: 1 direction · 2 MVP scope · 3 tools · 4 milestones · 5 work tracks · 6 definition of done · 7 risks · 8 changes
 
@@ -9,7 +9,8 @@ Contents: 1 direction · 2 MVP scope · 3 tools · 4 milestones · 5 work tracks
 | Decision | Choice |
 |---|---|
 | Server side | **Rust, all of it**: gateway, commerce back end, agent runtime, evaluation runner. No Python stage. |
-| Front end | Next.js (App Router, latest stable), `/bo` and `/fo`, types generated from the Rust contract, components from Meta Astryx ([frontend-ui.md](frontend-ui.md)) |
+| Front end | Next.js (App Router, latest stable), `/bo` and `/fo`, types generated from the Rust contract, components from Meta Astryx ([frontend-ui.md](frontend-ui.md)). Every element is an AI target: people can ask about it or ask to change it, and the agent can point at it ([frontend/](frontend/README.md)) |
+| Data | PostgreSQL with schema.org table and column names, a comment with the schema.org term on every table and column, one prefixed id, words for states ([backend/database.md](backend/database.md)) |
 | Storage | PostgreSQL 17 + pgvector, one database for the MVP |
 | Contract | Operations defined once in Rust; REST, MCP, the agent's tool manifest, OpenAPI, and TS types are generated from that definition; `cargo xtask check-docs` keeps it equal to [api/](api/README.md) |
 | Trust boundary | The agent plans and previews; only `commerce` runs approved change sets; person-only actions need scopes a chat turn never has |
@@ -49,19 +50,24 @@ Tools are the operations in [api/](api/README.md); bold there marks the MVP set.
 | P1 | `search_return_requests`, `get_order`, `evaluate_return_request`, `get_return_history`, `refund_return`, `send_customer_message`, `get_return_options`, `get_my_orders`, `get_product_measurements`, `get_review_summary`; person-only `POST /v1/fulfillment/returns` |
 | P2 | `get_delivery_dates`, `prepare_gift_order`, `explain_sales_change`, `list_tasks`, product draft operations |
 
-## 4. Milestones (Korea time)
+## 4. Milestones
 
-Submission closes at the end of Nov 4 (US Eastern). Our internal deadline is **Thu Nov 5, 10:00 KST**.
+Each milestone ends with something that can be checked without a person explaining it. Unit and contract tests run in every milestone; **tests that need a running database or several services together (integration tests) run only when asked**. Nothing is deployed or served; the demo runs locally.
 
-| Day | Goal | Demo-able at the end of the day |
-|---|---|---|
-| Fri Oct 30 | Direction, docs, and the Rust workspace merged (this plan) | `cargo test` green; `cargo xtask check-docs` runs |
-| Sat Oct 31 | `core`/`contract`/`policy` complete for P0; `store` with migrations for P0 tables; demo seed loads; commerce serves the P0 reads; gateway demo login and internal tokens; agent calls Glimmer with a closed schema | `GET /api/v1/search/products?...` through the gateway returns the 42 summer outerwear products |
-| Sun Nov 1 | P0 writes with preview; change-set engine (draft, submit, approve, run, verify, undo); cart, `prepare_order`, place order | B1 and F2 replay tests pass without a model |
-| Mon Nov 2 | Agent runtime: router, tool search, planner, executor, intent check, UI blocks, SSE; web renders `change_set`, `compare_table`, `look_gallery`, `cart`, `checkout_card` | B1 and F2 from a real model in the browser |
-| Tue Nov 3 | P1 scenes; facade and evaluation on the design set; deploy the demo | Numbers for the design set; demo URL |
-| Wed Nov 4 | Held-out evaluation, README numbers, video, buffer | Video recorded |
-| Thu Nov 5 | Submit by 10:00 | |
+Every milestone is held to the same AI-native bar:
+- **Back end:** each new operation has a closed schema with a description and example per field, a preview for writes, checks that name the policy key and the fix tool, errors with a class and a next tool, and a schema.org action type.
+- **Data:** each new table and column has a schema.org comment.
+- **Front end:** each new element registers itself as an AI target (ask about it; suggested intents when it can change).
+
+| # | Days (KST) | Milestone | Deliverables | Done when |
+|---|---|---|---|---|
+| M0 | Oct 30 | Direction | Docs, contract, scenarios, Rust workspace, CI | Merged (#26) |
+| **M1** ✓ | Oct 30 | **Data foundation** | `migrations/` for the P0 and P1 schemas following [backend/database.md](backend/database.md); `cargo xtask check-schema` (rules, generated data dictionary `schema.generated.md` + `schema-map.json`); `acom-core` enums and ids for those tables; `acom-store` (pool, store-scoped transaction with RLS, migrator, `Cx`/`TxCx`); demo seed files `seed/demo/*.yml` from [scenarios.md](scenarios.md) | `check-schema` passes and the dictionary is generated; Rust enums equal the migrations' `CHECK` lists (unit test); seed files cover every number the scenes assert; migrations parse with the PostgreSQL parser |
+| M2 | Oct 31–Nov 1 | Commerce P0 | Seed generator and loader (`xtask db reset`, from `seed/demo/generate.yml`); API JSON-LD context from the contract types; `acom-http` (registry → routes, manifest, errors); typed policy views and P0 checks; `calculate_benefits`; P0 reads and writes; preview store; change-set engine; person-only order placement and memory undo; `describe_data` | Contract tests per operation; B1 and F2 replay tests written (run on request) |
+| M3 | Nov 1–2 | Gateway and agent | Demo login, internal tokens, routing, SSE passthrough; model client with guided JSON and argument repair; tool search; planner with slot binding; executor; intent check; blocks with `suggested_intents`; `ui.command`; `agents/*.yml` | Unit tests for parsing, repair, tool search, binding, and blocks against recorded model outputs; the B1 request produces v1 → v2 against a model (run on request) |
+| M4 | Nov 2–3 | Web | Next.js app with Meta Astryx (pinned versions, our theme, [frontend-ui.md](frontend-ui.md)); AI layer (`AiProvider`, `useAiTarget`, `AskAbout`, `NaturalInput`, `commands`); blocks for P0 (`change_set`, `task_list`, `looking_for`, `compare_table`, `look_gallery`, `product_list`, `cart`, `checkout_card`, `memory_note`); `PersonButton`; JSON-LD on product pages | Component tests on fixtures; every element registers `data-acom-*`; `person` buttons ignore `ui.command` |
+| M5 | Nov 3 | P1 and evaluation | Returns (B2, F5), fit check (F3), layout change (F6); facade and task set | Replay tests for P1; design-set numbers |
+| M6 | Nov 4–5 | Story | Held-out evaluation, README numbers, video recorded from a local run | Submitted by Nov 5, 10:00 KST |
 
 ## 5. Work tracks
 
@@ -70,7 +76,7 @@ Each track has a first deliverable that unblocks others. Owners are set at kicko
 | Track | Crates and folders | First deliverable | Depends on |
 |---|---|---|---|
 | **A. Contract and core** | `core`, `contract`, `policy`, `xtask` | Typed policy views for P0 checks; manifest and codegen (`tools.json`, `ui-blocks.schema.json`, TS types) | — |
-| **B. Store and seed** | `store`, `migrations/`, `seed/demo/`, `testkit` | P0 tables + demo seed matching [scenarios.md](scenarios.md) | A (types) |
+| **B. Data and seed** | `migrations/`, `store`, `seed/demo/`, `testkit`, `xtask check-schema` | schema.org-named, commented P0/P1 tables + data dictionary + demo seed matching [scenarios.md](scenarios.md) | A (types) |
 | **C. Commerce domains** | `domains/*`, `registry`, `http`, `services/commerce` | P0 reads, then P0 writes with checks | A, B |
 | **D. Change sets** | `changeset` | Preview store; approve → run → verify → undo for B1 | A, B |
 | **E. Gateway and auth** | `auth`, `services/gateway` | Demo login, internal tokens, routing, SSE passthrough | — |
@@ -87,6 +93,8 @@ A piece of work is done when:
 
 - its operations exist in [api/](api/README.md) with the same name, address, kind, and REST path, and `cargo xtask check-docs` passes;
 - input schemas are closed, every field has a description and an example, and business numbers come from `policies/` or the store's overrides;
+- new tables and columns follow [backend/database.md](backend/database.md) and `cargo xtask check-schema` passes;
+- new web elements register as AI targets and use `PersonButton` for any person-only action ([frontend/](frontend/README.md));
 - contract tests cover the output shape and each listed error; writes prove that preview changes nothing and that running a `preview_id` twice gives one result;
 - the scenes it touches pass their replay tests against the numbers in [scenarios.md](scenarios.md);
 - `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace` pass.
@@ -105,4 +113,6 @@ A piece of work is done when:
 
 | Date | Change |
 |---|---|
+| Oct 30 | M1 done: 12 migrations (57 tables and one view, every table and column commented with its schema.org or `acom:` term), `check-schema` (rules, data dictionary, generated vocabulary `vocab/acom.jsonld`), `check-seed`, demo seed (812 rows), enums and ids in `acom-core`, principals in `acom-auth`, `acom-store`. Extension terms are schema.org `@type` + `additionalType` ([api/vocabulary.md](api/vocabulary.md)). |
+| Oct 30 | Milestones M0–M6 with the AI-native bar for back end, data, and front end; database design ([backend/database.md](backend/database.md)); front-end design ([frontend/](frontend/README.md)). Integration tests run only on request. |
 | Oct 30 | Rewritten. The server side is Rust from the start (gateway, commerce, agent), with PostgreSQL and a Next.js front end. Scenario data now comes from the mockups through [scenarios.md](scenarios.md); tool contracts from [api/](api/README.md); UI blocks and the chat stream from [api/chat.md](api/chat.md). The earlier plan (Python back end, flat `policy.yaml`, signatures and seed data in this file) is replaced. |

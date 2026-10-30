@@ -1,6 +1,6 @@
 [package]
 name = "acom-store"
-description = "Postgres access: pool, migrations, store-scoped transactions with row-level security, events, outbox, jobs, idempotency."
+description = "Postgres access: pool, embedded migrations, store-scoped transactions with row-level security, events, outbox, jobs, idempotency."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,8 +8,16 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
-acom-core.workspace = true
+acom-auth.workspace = true
 acom-contract.workspace = true
+acom-core.workspace = true
+acom-policy.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
 
 [lints]
 workspace = true

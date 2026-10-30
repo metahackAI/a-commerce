@@ -1,0 +1,123 @@
+# Merchandising: the 24 standard categories and 3 display categories, where the named products sit,
+# the four main-page slots, and the hero bookings: the October edit (ended Fri 09:59) and Fall layers
+# for everyone from Fri Nov 6 10:00 (change set #1039). The VIP booking for Nov 7-8 is made in scene B1.
+tables:
+  merchandising.defined_term:
+    - {tenant_id: store_northwind, id: cat_outerwear, name: Outerwear, term_code: outerwear, in_defined_term_set: standard, position: 1, is_active: true}
+    - {tenant_id: store_northwind, id: cat_summer_outerwear, name: Summer outerwear, term_code: summer_outerwear, in_defined_term_set: standard, broader_id: cat_outerwear, position: 3, is_active: true}
+    - {tenant_id: store_northwind, id: cat_knitwear, name: Knitwear, term_code: knitwear, in_defined_term_set: standard, position: 2, is_active: true}
+    - {tenant_id: store_northwind, id: cat_shirts, name: Shirts, term_code: shirts, in_defined_term_set: standard, position: 3, is_active: true}
+    - {tenant_id: store_northwind, id: cat_tees, name: Tees, term_code: tees, in_defined_term_set: standard, position: 4, is_active: true}
+    - {tenant_id: store_northwind, id: cat_sweatshirts, name: Sweatshirts, term_code: sweatshirts, in_defined_term_set: standard, position: 5, is_active: true}
+    - {tenant_id: store_northwind, id: cat_pants, name: Pants, term_code: pants, in_defined_term_set: standard, position: 6, is_active: true}
+    - {tenant_id: store_northwind, id: cat_denim, name: Denim, term_code: denim, in_defined_term_set: standard, position: 7, is_active: true}
+    - {tenant_id: store_northwind, id: cat_shorts, name: Shorts, term_code: shorts, in_defined_term_set: standard, position: 8, is_active: true}
+    - {tenant_id: store_northwind, id: cat_dresses, name: Dresses, term_code: dresses, in_defined_term_set: standard, position: 9, is_active: true}
+    - {tenant_id: store_northwind, id: cat_skirts, name: Skirts, term_code: skirts, in_defined_term_set: standard, position: 10, is_active: true}
+    - {tenant_id: store_northwind, id: cat_activewear, name: Activewear, term_code: activewear, in_defined_term_set: standard, position: 11, is_active: true}
+    - {tenant_id: store_northwind, id: cat_loungewear, name: Loungewear, term_code: loungewear, in_defined_term_set: standard, position: 12, is_active: true}
+    - {tenant_id: store_northwind, id: cat_swimwear, name: Swimwear, term_code: swimwear, in_defined_term_set: standard, position: 13, is_active: true}
+    - {tenant_id: store_northwind, id: cat_underwear, name: Underwear, term_code: underwear, in_defined_term_set: standard, position: 14, is_active: true}
+    - {tenant_id: store_northwind, id: cat_shoes, name: Shoes, term_code: shoes, in_defined_term_set: standard, position: 15, is_active: true}
+    - {tenant_id: store_northwind, id: cat_sneakers, name: Sneakers, term_code: sneakers, in_defined_term_set: standard, broader_id: cat_shoes, position: 1, is_active: true}
+    - {tenant_id: store_northwind, id: cat_sandals, name: Sandals, term_code: sandals, in_defined_term_set: standard, broader_id: cat_shoes, position: 2, is_active: true}
+    - {tenant_id: store_northwind, id: cat_accessories, name: Accessories, term_code: accessories, in_defined_term_set: standard, position: 16, is_active: true}
+    - {tenant_id: store_northwind, id: cat_bags, name: Bags, term_code: bags, in_defined_term_set: standard, broader_id: cat_accessories, position: 1, is_active: true}
+    - {tenant_id: store_northwind, id: cat_hats, name: Hats, term_code: hats, in_defined_term_set: standard, broader_id: cat_accessories, position: 2, is_active: true}
+    - {tenant_id: store_northwind, id: cat_socks, name: Socks, term_code: socks, in_defined_term_set: standard, broader_id: cat_accessories, position: 3, is_active: true}
+    - {tenant_id: store_northwind, id: cat_scarves, name: Scarves, term_code: scarves, in_defined_term_set: standard, broader_id: cat_accessories, position: 4, is_active: true}
+    - {tenant_id: store_northwind, id: cat_belts, name: Belts, term_code: belts, in_defined_term_set: standard, broader_id: cat_accessories, position: 5, is_active: true}
+    - {tenant_id: store_northwind, id: cat_new_in, name: New in, term_code: new_in, in_defined_term_set: display, position: 1, is_active: true}
+    - {tenant_id: store_northwind, id: cat_travel, name: Travel, term_code: travel, in_defined_term_set: display, position: 2, is_active: true}
+    - {tenant_id: store_northwind, id: cat_fall_layers, name: Fall layers, term_code: fall_layers, in_defined_term_set: display, position: 3, is_active: true}
+  merchandising.product_group_category:
+    - {tenant_id: store_northwind, product_group_id: prd_field_jacket, category_id: cat_summer_outerwear, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_windbreaker, category_id: cat_summer_outerwear, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_seersucker_overshirt, category_id: cat_summer_outerwear, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_utility_jacket, category_id: cat_summer_outerwear, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_chore_coat, category_id: cat_summer_outerwear, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_rain_parka, category_id: cat_summer_outerwear, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_camp_overshirt, category_id: cat_summer_outerwear, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_wool_overcoat, category_id: cat_outerwear, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_chelsea_boots, category_id: cat_shoes, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_cashmere_sweater, category_id: cat_knitwear, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_fleece_half_zip, category_id: cat_outerwear, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_merino_tee, category_id: cat_shirts, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_denim_jacket, category_id: cat_outerwear, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_linen_shirt, category_id: cat_shirts, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_breton_tee, category_id: cat_tees, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_canvas_tote, category_id: cat_bags, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_ribbed_beanie, category_id: cat_hats, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_hiking_socks, category_id: cat_socks, is_primary: true}
+    - {tenant_id: store_northwind, product_group_id: prd_windbreaker, category_id: cat_travel, is_primary: false, position: 1}
+    - {tenant_id: store_northwind, product_group_id: prd_field_jacket, category_id: cat_travel, is_primary: false, position: 2}
+    - {tenant_id: store_northwind, product_group_id: prd_seersucker_overshirt, category_id: cat_travel, is_primary: false, position: 3}
+    - {tenant_id: store_northwind, product_group_id: prd_camp_overshirt, category_id: cat_travel, is_primary: false, position: 4}
+    - {tenant_id: store_northwind, product_group_id: prd_merino_tee, category_id: cat_travel, is_primary: false, position: 5}
+    - {tenant_id: store_northwind, product_group_id: prd_fleece_half_zip, category_id: cat_travel, is_primary: false, position: 6}
+    - {tenant_id: store_northwind, product_group_id: prd_rain_parka, category_id: cat_travel, is_primary: false, position: 7}
+    - {tenant_id: store_northwind, product_group_id: prd_wool_overcoat, category_id: cat_fall_layers, is_primary: false, position: 1}
+    - {tenant_id: store_northwind, product_group_id: prd_cashmere_sweater, category_id: cat_fall_layers, is_primary: false, position: 2}
+    - {tenant_id: store_northwind, product_group_id: prd_fleece_half_zip, category_id: cat_fall_layers, is_primary: false, position: 3}
+    - {tenant_id: store_northwind, product_group_id: prd_chore_coat, category_id: cat_fall_layers, is_primary: false, position: 4}
+    - {tenant_id: store_northwind, product_group_id: prd_denim_jacket, category_id: cat_fall_layers, is_primary: false, position: 5}
+    - {tenant_id: store_northwind, product_group_id: prd_wool_overcoat, category_id: cat_new_in, is_primary: false, position: 1}
+    - {tenant_id: store_northwind, product_group_id: prd_cashmere_sweater, category_id: cat_new_in, is_primary: false, position: 2}
+    - {tenant_id: store_northwind, product_group_id: prd_fleece_half_zip, category_id: cat_new_in, is_primary: false, position: 3}
+  merchandising.display_slot:
+    - {tenant_id: store_northwind, id: slot_home_hero, name: Home hero, page: main, slot_type: hero, position: 1, item_list_element: []}
+    - tenant_id: store_northwind
+      id: slot_home_new_in
+      name: New in
+      page: main
+      slot_type: product_grid
+      position: 2
+      item_list_element: [{position: 1, item_id: prd_wool_overcoat}, {position: 2, item_id: prd_cashmere_sweater}, {position: 3, item_id: prd_fleece_half_zip}, {position: 4, item_id: prd_denim_jacket}]
+    - {tenant_id: store_northwind, id: slot_home_stories, name: Stories, page: main, slot_type: banner_board, position: 3, item_list_element: []}
+    - tenant_id: store_northwind
+      id: slot_home_brands
+      name: Brands
+      page: main
+      slot_type: brand_strip
+      position: 4
+      item_list_element: [{position: 1, item_id: brn_northwind}, {position: 2, item_id: brn_fieldstone}, {position: 3, item_id: brn_ridgeline}]
+  merchandising.banner:
+    - tenant_id: store_northwind
+      id: bnr_october_edit
+      name: October edit
+      eyebrow: OCTOBER
+      headline: The October edit
+      alternative_headline: Light layers for crisp days
+      cta_label: Shop the edit
+      url: "/c/new-in"
+      image_product_group_id: prd_field_jacket
+      image_color: Sand
+    - tenant_id: store_northwind
+      id: bnr_fall_layers
+      name: Fall layers
+      eyebrow: NEW SEASON
+      headline: Fall layers
+      alternative_headline: "Coats, knits and fleece for cold starts"
+      cta_label: Shop fall layers
+      url: "/c/fall-layers"
+      image_product_group_id: prd_wool_overcoat
+      image_color: Charcoal
+  merchandising.display_booking:
+    - tenant_id: store_northwind
+      id: dsp_october_edit
+      display_slot_id: slot_home_hero
+      banner_id: bnr_october_edit
+      valid_for_member_tier: null
+      valid_from: "2026-10-01T00:00:00-04:00"
+      valid_through: "2026-11-06T09:59:00-05:00"
+      display_status: ended
+      change_set_id: null
+    - tenant_id: store_northwind
+      id: dsp_fall_layers
+      display_slot_id: slot_home_hero
+      banner_id: bnr_fall_layers
+      valid_for_member_tier: null
+      valid_from: "2026-11-06T10:00:00-05:00"
+      valid_through: null
+      display_status: active
+      change_set_id: cs_1039

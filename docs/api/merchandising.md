@@ -89,7 +89,7 @@
 
 ## display_slot
 
-> 진열 슬롯은 `acom:DisplaySlot`(`ItemList`의 하위 타입, `slot_`)입니다. `item_list_element`에 상품·배너·기획전을 순서대로 담고, 예약(`display_booking`, `dsp_`)마다 대상(`audience`)·`valid_from`·`valid_through`를 가집니다. 노출 = 기간 ∧ 재고 ∧ 판매 가능 상태로 그때그때 계산합니다(`display.visible_when`). 슬롯 종류 `slot_type`은 `hero` | `banner_board` | `product_grid` | `brand_strip` | `collection_feed`, 예약 상태는 `draft` | `scheduled` | `active` | `ended`입니다([enums.md](enums.md) §1.12).
+> 진열 슬롯은 schema.org `WebPageElement`(`slot_`)입니다. `item_list_element`에 상품·배너·기획전을 순서대로 담고, 예약(`display_booking`, `dsp_`)마다 대상(`audience`)·`valid_from`·`valid_through`를 가집니다. 노출 = 기간 ∧ 재고 ∧ 판매 가능 상태로 그때그때 계산합니다(`display.visible_when`). 슬롯 종류 `slot_type`은 `hero` | `banner_board` | `product_grid` | `brand_strip` | `collection_feed`, 예약 상태는 `draft` | `scheduled` | `active` | `ended`입니다([enums.md](enums.md) §1.12).
 
 ### `list_display_slots` — Kind: R  (MVP)
 - 논리주소/REST: `merchandising.display_slot.list` · `GET /v1/merchandising/display-slots?page=main&valid_from=…&valid_through=…`

@@ -95,6 +95,7 @@
 | 프로모션 `acom:promotion_status` | `draft`, `scheduled`, `running`, `paused`, `ended` |
 | 쿠폰 `acom:coupon_status` | `issued`, `available`, `used`, `restored`, `expired`, `revoked` |
 | 쿠폰 적용 `acom:coupon_application` | `automatic_at_checkout`, `code_entry`, `download` |
+| 쿠폰 중복 `acom:coupon_stacking` | `no_tier_coupons`, `with_tier_coupons`, `no_other_coupons` |
 | 할인 층 `acom:discount_layer` (예전 정수 `stacking_tier` 1·2·3) | `item_price`, `order_discount`, `add_on` |
 | 이벤트 `acom:event_status` | `draft`, `scheduled`, `running`, `paused`, `closed`, `drawing`, `announced`, `fulfilling`, `completed`, `cancelled` |
 | 응모 `acom:entry_status` | `entered`, `invalid`, `won`, `lost`, `waitlist`, `cancelled` |
@@ -134,12 +135,26 @@
 | 캠페인 | `draft`, `scheduled`, `sending`, `sent`, `cancelled` |
 | 공지 | `draft`, `published` |
 | 게시글 | `published`, `held_for_review`, `blinded`, `deleted` |
-| 리뷰 노출 | `visible`, `hidden`, `reported` |
+| 리뷰 노출 `review_status` (schema:creativeWorkStatus) | `visible`, `hidden`, `reported` |
+| 리뷰의 사이즈 평가 `acom:fit_vote` | `true_to_size`, `runs_small`, `runs_large` |
+| 실측 항목 `acom:measurement_name` | `chest`, `shoulder`, `sleeve`, `length`, `waist`, `hip`, `inseam`, `rise`, `foot_length` |
 | 판매자 | `applied`, `under_review`, `approved`, `active`, `suspended`, `terminated` |
-| 운영자 계정 | `active`, `suspended`, `locked` |
 | API 키 | `active`, `revoked` |
 | 채널 연결 | `connected`, `degraded`, `disconnected` |
 | 할 일 `acom:task_state` | `needs_you`, `working`, `done`, `dismissed` |
+| 할 일 출처 `acom:task_origin` | `you_asked`, `agent_noticed`, `automation` |
+| 운영자 계정 `acom:admin_status` | `active`, `suspended`, `locked` |
+
+### 1.15 에이전트
+
+| 목록 | 값 |
+|---|---|
+| 대화 면 `acom:chat_surface` | `bo`, `fo` |
+| 단계 종류 `acom:step_kind` | `route`, `search_tools`, `plan`, `call_tool`, `check` |
+| 주체 종류 `acom:actor_kind` | `operator`, `shopper`, `agent_on_behalf`, `external_agent`, `system` |
+| 주소 용도 `acom:address_usage` | `shipping`, `billing`, `return` |
+| 기억 키 `acom:preference_key` | `size`, `fit_note`, `fabric_preference`, `compares_specs`, `layout_preference`, `travel_priority`, `other` |
+| 메시지 종류 `acom:message_kind` | `ask_for_photos`, `decline`, `refund_done`, `custom` |
 
 ---
 

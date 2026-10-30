@@ -4,7 +4,7 @@
 >
 > **설계 축**: ① 사람의 로그인·세션은 게이트웨이가 하고, 서비스는 게이트웨이가 서명한 내부 토큰만 받습니다. 스토어(테넌트)는 토큰의 `tenant` 클레임 하나로 정해집니다. ② enum은 숫자·문자 코드 대신 의미 있는 단어로 주고, 각 값의 뜻과 허용 전이를 함께 노출(목록의 출처는 enums.md). ③ 정책은 데이터로, 값마다 사람이 읽는 표기와 함께. ④ 쓰기 프리뷰는 변경셋으로 묶이고, 승인·거절·되돌리기는 사람만 누르는 엔드포인트. ⑤ 운영자 홈의 할 일은 감시 작업(watcher)과 대화에서 생기고, 무시는 사람만. ⑥ 모든 툴 호출·프리뷰·승인·실행은 schema.org `Action`으로 액션 로그에 남음.
 
-리소스: [policy](#policy) · [change_set](#change_set) · [task](#task) · [action_log](#action_log) · [enum](#enum) · [auth](#auth) · [tenant](#tenant) · [role](#role) · [menu](#menu) · [admin_user](#admin_user) · [org](#org) · [api_key](#api_key) · [내부 엔드포인트](#내부-엔드포인트)
+리소스: [policy](#policy) · [change_set](#change_set) · [task](#task) · [action_log](#action_log) · [schema](#schema) · [enum](#enum) · [auth](#auth) · [tenant](#tenant) · [role](#role) · [menu](#menu) · [admin_user](#admin_user) · [org](#org) · [api_key](#api_key) · [내부 엔드포인트](#내부-엔드포인트)
 
 ---
 
@@ -18,7 +18,7 @@
   | 필드 | 타입 | 필수 | 설명 | 예 |
   |---|---|:--:|---|---|
   | `key` | Text, `^[a-z][a-z0-9_]*(\.[a-z0-9_]+)*$` | ✓ | 정책 키 또는 그 앞부분(점으로 구분, 파일 이름은 빼고). 리프 값만 돌려줌 | `"max_discount"` |
-  | `file` | enum | | `approval` \| `catalog` \| `community` \| `customer` \| `fulfillment` \| `integration` \| `merchandising` \| `order` \| `partner` \| `platform` \| `promotion` \| `search`. 같은 키가 여러 파일에 있을 때 좁힘 | `"promotion"` |
+  | `file` | enum | | `approval` \| `catalog` \| `community` \| `customer` \| `fulfillment` \| `integration` \| `merchandising` \| `messaging` \| `order` \| `partner` \| `platform` \| `promotion` \| `search`. 같은 키가 여러 파일에 있을 때 좁힘 | `"promotion"` |
 - 출력(데모 스토어, [../scenarios.md](../scenarios.md) §5):
   ```jsonc
   {"items": [
@@ -414,6 +414,35 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 - 멱등성: 읽기(부작용 없음)
 
 ---
+
+
+## schema
+
+### `describe_data` — Kind: R
+- 논리 주소 · REST: `platform.schema.describe` · `GET /v1/platform/schema?term=orderStatus`
+- 요약: DB의 데이터 사전을 돌려줍니다. 테이블·컬럼마다 schema.org 용어, 한 문장 설명, 타입, 값 목록, 참조 대상, API 이름이 있습니다. 인사이트 에이전트가 "order_status가 무슨 뜻인가", "일별 매출은 어디에 있나"를 확인할 때 씁니다. 원천은 마이그레이션의 주석이고 `cargo xtask check-schema --write`가 만든 `schema-map.json`과 같습니다([../backend/database.md](../backend/database.md) §7).
+- consumes → produces: — → `table_name[]`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명 | 예 |
+  |---|---|:--:|---|---|
+  | `term` | Text | | schema.org 또는 acom 용어(`orderStatus`, `schema:Order`, `acom:percentOff`). 이 용어를 쓰는 테이블·컬럼만 | `"orderStatus"` |
+  | `schema` | enum | | `platform` \| `catalog` \| `merchandising` \| `search` \| `promotion` \| `customer` \| `sales` \| `fulfillment` \| `messaging` \| `analytics`. 그 스키마만 | `"sales"` |
+  | `table` | Text | | `<스키마>.<테이블>` 하나 | `"sales.sales_order"` |
+  | `api_name` | Text | | API에서 쓰는 이름으로 찾기(`variant_id`, `product_id`) | `"variant_id"` |
+- 출력:
+  ```jsonc
+  {"items": [
+     {"table": "sales.sales_order", "term": "schema:Order", "id_prefix": "ord", "api_name": "order",
+      "description": "An order a shopper placed. order_number is what people see.",
+      "columns": [
+        {"name": "order_status", "type": "text", "nullable": false, "term": "schema:orderStatus",
+         "description": "Where the order is as a whole.", "values": ["payment_due", "processing", "in_transit", "delivered", "returned", "cancelled", "problem"]}]}],
+   "total": 1}
+  ```
+- 프리뷰: 해당 없음(읽기)
+- 정책: 운영자 스코프만(`tools:read:platform`). 원가처럼 운영자 전용 컬럼도 설명은 보이지만 값은 이 툴로 읽지 않습니다
+- 에러: `not_found`(`detail.entity: term` 또는 `table`) → `describe_data`(조건 없이 다시)
+- 멱등성: 읽기(부작용 없음). 배포된 마이그레이션 버전에 따라 바뀜
 
 ## enum
 

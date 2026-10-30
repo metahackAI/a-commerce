@@ -286,16 +286,24 @@ Muse Glimmer 30B does routing, tool selection, arguments, and short plans. Muse 
 
 ### 5.4 Our extensions
 
-| Term | Subtype of | Why schema.org is not enough |
+We extend schema.org the least we can ([api/vocabulary.md](api/vocabulary.md)):
+
+1. **Use the schema.org type when one exists.** A return is a `ReturnAction`, a cancellation a `CancelAction`, an inspection a `CheckAction`, a display slot a `WebPageElement`, a promotion an `OfferCatalog`, a payment a `PayAction`.
+2. **Specialize with `additionalType`, keep the schema.org `@type`.** A coupon is `{"@type": "Offer", "additionalType": "acom:Coupon", "discountCode": "VIPWEEKEND20"}`. An agent or a search engine that knows only schema.org still reads it as an offer with a price, a period, and a member tier.
+3. **New properties and types are a last resort**, each declared under the closest schema.org term (`rdfs:subClassOf`, `domainIncludes`, `rangeIncludes`) in a machine-readable vocabulary, [`vocab/acom.jsonld`](../vocab/acom.jsonld).
+
+| Concept | `@type` | `additionalType` |
 |---|---|---|
-| `acom:Promotion` | `Offer` | schema.org has offers and prices but no promotion that groups member prices for a period |
-| `acom:Coupon` | `Offer` | schema.org has only `discountCode` on an order; we need stacking and issue rules |
-| `acom:Cart` | `Order` | no cart type; a cart is an order before `OrderPaymentDue` |
-| `acom:Refund` | `MoneyTransfer` | no refund type with method and status |
-| `acom:ChangeSet` | `ItemList` | a versioned group of actions with checks and an undo deadline |
-| `acom:Preference` | `PropertyValue` | a remembered shopper preference with its source and an undo |
-| `acom:CompareAction`, `acom:RefundAction` | `AssessAction`, `PayAction` | the verbs behind `compare_products` and `refund_return` |
-| `acom:percentOff` | property of `UnitPriceSpecification` | the requested discount behind a computed sale price |
+| Promotion (sale prices for a tier and a period) | `OfferCatalog` | `acom:Promotion` |
+| Coupon | `Offer` | `acom:Coupon` |
+| Cart | `Order` | `acom:Cart` |
+| Return or exchange request / cancellation | `ReturnAction` / `CancelAction` | `acom:Claim` |
+| Refund | `MoneyTransfer` | `acom:Refund` |
+| Banner / display booking | `CreativeWork` / `Schedule` | `acom:Banner` / `acom:DisplayBooking` |
+| Remembered shopper preference | `PropertyValue` | `acom:Preference` |
+| Change set | `ItemList` | `acom:ChangeSet` |
+| Operator task | `Action` | `acom:Task` |
+| Requested discount behind a sale price | property of `UnitPriceSpecification` | `acom:percentOff` |
 
 ### 5.5 Operations are schema.org actions
 
@@ -333,15 +341,18 @@ The action status gives one vocabulary to the whole lifecycle: a preview is an a
 }
 ```
 
-### 5.6 Database naming
+### 5.6 A database an AI can read
 
-- Tables are schema.org types in snake_case, singular: `product_group`, `product`, `offer`, `unit_price_specification`, `order_item`, `merchant_return_policy`, `parcel_delivery`.
-- SQL reserved words get a domain prefix: `Order` → `sales_order`.
-- Columns are schema.org properties in snake_case: `price_currency`, `valid_from`, `order_status`. Foreign keys are `<type>_id`.
-- Status columns store the enumeration word (`in_stock`, `delivered`), never a code.
-- Money is `numeric` with a currency column; timestamps are stored in UTC.
-- Every store-scoped table has `tenant_id`; every row has `created_at` and `updated_at`.
-- State history lives in event tables (`order_status_event`, `return_action_event`, `action_log`), appended and never updated.
+The database is designed to be read by agents as well as people ([backend/database.md](backend/database.md)):
+
+- **schema.org names.** Tables are schema.org types in snake_case, singular (`product_group`, `product`, `offer`, `unit_price_specification`, `order_item`, `parcel_delivery`); columns are schema.org properties (`price_currency`, `valid_from`, `order_status`, `inventory_level`). SQL reserved words get the schema name: `Order` → `sales.sales_order`.
+- **Self-describing.** Every table and column carries a comment that starts with its term (`schema:inventoryLevel — units that can be sold now`). A generated data dictionary is served to agents by the `describe_data` tool.
+- **One id.** The primary key is the same prefixed id the API and logs use (`prd_windbreaker`, `ord_20402`). There is no hidden numeric key.
+- **Words and units in plain sight.** Status columns store enumeration words under a `CHECK` list; money is `price` + `price_currency` or `*_value` + `*_currency`; quantities are `*_value` + `*_unit_text`. No abbreviations.
+- **Store isolation.** Every store-scoped table has `tenant_id` and a row-level security policy.
+- **History as actions.** Event tables use the properties of schema.org `Action` (`agent`, `object`, `instrument`, `action_status`, `result`, `start_time`, `end_time`) and are appended, never updated.
+
+`cargo xtask check-schema` enforces these rules on every migration.
 
 ### 5.7 Designing one interface, step by step
 

@@ -1,0 +1,735 @@
+{
+  "@context": {
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "schema": "https://schema.org/",
+    "acom": "https://metahackai.github.io/a-commerce/vocab#"
+  },
+  "rdfs:comment": "Hand-written A-Commerce terms: better comments, super-types, and terms not in the database yet. `cargo xtask check-schema --write` merges these with the terms used in migration comments and the word lists in crates/core/src/enums.rs into vocab/acom.jsonld. Rules: docs/api/vocabulary.md.",
+  "@graph": [
+    {
+      "@id": "acom:wireList",
+      "@type": "rdf:Property",
+      "rdfs:label": "wireList",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Enumeration"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "Name of the word list this enumeration is stored as in the API and database (docs/api/enums.md)."
+    },
+    {
+      "@id": "acom:wireWord",
+      "@type": "rdf:Property",
+      "rdfs:label": "wireWord",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Enumeration"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "The snake_case word this member is written as in the API and database."
+    },
+    {
+      "@id": "acom:Promotion",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Promotion",
+      "rdfs:subClassOf": {
+        "@id": "schema:OfferCatalog"
+      },
+      "rdfs:comment": "A set of sale prices for some products, for some shoppers, for a period. Used as additionalType on an OfferCatalog."
+    },
+    {
+      "@id": "acom:Coupon",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Coupon",
+      "rdfs:subClassOf": {
+        "@id": "schema:Offer"
+      },
+      "rdfs:comment": "A discount a shopper can apply to an order, identified by schema:discountCode. Used as additionalType on an Offer. It records a benefit on the order; it does not add a second discount on top of a member price."
+    },
+    {
+      "@id": "acom:MemberCoupon",
+      "@type": "rdfs:Class",
+      "rdfs:label": "MemberCoupon",
+      "rdfs:subClassOf": {
+        "@id": "schema:OwnershipInfo"
+      },
+      "rdfs:comment": "A coupon issued to one member, with its own status and validity. Used as additionalType on OwnershipInfo."
+    },
+    {
+      "@id": "acom:Cart",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Cart",
+      "rdfs:subClassOf": {
+        "@id": "schema:Order"
+      },
+      "rdfs:comment": "An order the shopper has not placed yet. Used as additionalType on an Order."
+    },
+    {
+      "@id": "acom:CartLine",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CartLine",
+      "rdfs:subClassOf": {
+        "@id": "schema:OrderItem"
+      },
+      "rdfs:comment": "One line of a cart. Used as additionalType on an OrderItem."
+    },
+    {
+      "@id": "acom:Claim",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Claim",
+      "rdfs:subClassOf": {
+        "@id": "schema:Action"
+      },
+      "rdfs:comment": "A shopper's request to cancel, return, or exchange order items. Used as additionalType on CancelAction (cancel) or ReturnAction (return, exchange)."
+    },
+    {
+      "@id": "acom:Refund",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Refund",
+      "rdfs:subClassOf": {
+        "@id": "schema:MoneyTransfer"
+      },
+      "rdfs:comment": "Money paid back to a shopper for a claim. Used as additionalType on a MoneyTransfer."
+    },
+    {
+      "@id": "acom:Banner",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Banner",
+      "rdfs:subClassOf": {
+        "@id": "schema:CreativeWork"
+      },
+      "rdfs:comment": "Content shown in a display slot: headline, image, link. Used as additionalType on a CreativeWork."
+    },
+    {
+      "@id": "acom:DisplayBooking",
+      "@type": "rdfs:Class",
+      "rdfs:label": "DisplayBooking",
+      "rdfs:subClassOf": {
+        "@id": "schema:Schedule"
+      },
+      "rdfs:comment": "A banner placed in a display slot for an audience and a period. Used as additionalType on a Schedule."
+    },
+    {
+      "@id": "acom:Preference",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Preference",
+      "rdfs:subClassOf": {
+        "@id": "schema:PropertyValue"
+      },
+      "rdfs:comment": "Something the store remembers about a shopper, visible to the shopper and undoable. Used as additionalType on a PropertyValue."
+    },
+    {
+      "@id": "acom:ChangeSet",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ChangeSet",
+      "rdfs:subClassOf": {
+        "@id": "schema:ItemList"
+      },
+      "rdfs:comment": "A versioned list of previewed actions that a person approves, runs, and can undo together. Used as additionalType on an ItemList."
+    },
+    {
+      "@id": "acom:Task",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Task",
+      "rdfs:subClassOf": {
+        "@id": "schema:Action"
+      },
+      "rdfs:comment": "Work proposed to an operator (by a person, an agent, or an automation), opened as a conversation. Used as additionalType on an Action."
+    },
+    {
+      "@id": "acom:Segment",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Segment",
+      "rdfs:subClassOf": {
+        "@id": "schema:Audience"
+      },
+      "rdfs:comment": "A group of customers defined by conditions. Used as additionalType on an Audience."
+    },
+    {
+      "@id": "acom:EventReward",
+      "@type": "rdfs:Class",
+      "rdfs:label": "EventReward",
+      "rdfs:subClassOf": {
+        "@id": "schema:Offer"
+      },
+      "rdfs:comment": "A prize for one rank of an event. Used as additionalType on an Offer."
+    },
+    {
+      "@id": "acom:DrawRecord",
+      "@type": "rdfs:Class",
+      "rdfs:label": "DrawRecord",
+      "rdfs:subClassOf": {
+        "@id": "schema:ChooseAction"
+      },
+      "rdfs:comment": "A reproducible record of a prize draw: method, seed commitment, entrants, result. Used as additionalType on a ChooseAction."
+    },
+    {
+      "@id": "acom:TierRequirement",
+      "@type": "rdfs:Class",
+      "rdfs:label": "TierRequirement",
+      "rdfs:subClassOf": {
+        "@id": "schema:StructuredValue"
+      },
+      "rdfs:comment": "What a member must reach to hold a tier (spend, order count, points) over a window."
+    },
+    {
+      "@id": "acom:ComplianceRule",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ComplianceRule",
+      "rdfs:subClassOf": {
+        "@id": "schema:PropertyValue"
+      },
+      "rdfs:comment": "A store-defined rule for prize reporting, withholding, or winner information in a jurisdiction."
+    },
+    {
+      "@id": "acom:safetyStock",
+      "@type": "rdf:Property",
+      "rdfs:label": "safetyStock",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Offer"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "Units kept back from sale; inventory_level minus this is what shoppers can buy."
+    },
+    {
+      "@id": "acom:percentOff",
+      "@type": "rdf:Property",
+      "rdfs:label": "percentOff",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:UnitPriceSpecification"
+        },
+        {
+          "@id": "schema:Offer"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Number"
+        }
+      ],
+      "rdfs:comment": "The requested discount behind a computed sale price, 0-100."
+    },
+    {
+      "@id": "acom:inventoryCost",
+      "@type": "rdf:Property",
+      "rdfs:label": "inventoryCost",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Offer"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:MonetaryAmount"
+        }
+      ],
+      "rdfs:comment": "What one unit costs the store. Visible to operators only; used for price floors."
+    },
+    {
+      "@id": "acom:rank",
+      "@type": "rdf:Property",
+      "rdfs:label": "rank",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:MemberProgramTier"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "Order of a tier within its program; higher is better."
+    },
+    {
+      "@id": "acom:confirmedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "confirmedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Order"
+        },
+        {
+          "@id": "schema:OrderItem"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "When the purchase was confirmed after delivery."
+    },
+    {
+      "@id": "acom:approvalStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "approvalStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:ProductGroup"
+        },
+        {
+          "@id": "schema:Product"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ApprovalStatus"
+        }
+      ],
+      "rdfs:comment": "Where a product is in review before shoppers can see it."
+    },
+    {
+      "@id": "acom:fulfillmentStage",
+      "@type": "rdf:Property",
+      "rdfs:label": "fulfillmentStage",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:OrderItem"
+        },
+        {
+          "@id": "schema:ParcelDelivery"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:FulfillmentStage"
+        }
+      ],
+      "rdfs:comment": "The warehouse step of an order item or delivery."
+    },
+    {
+      "@id": "acom:deliveryState",
+      "@type": "rdf:Property",
+      "rdfs:label": "deliveryState",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:ParcelDelivery"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:DeliveryState"
+        }
+      ],
+      "rdfs:comment": "Where a parcel is."
+    },
+    {
+      "@id": "acom:claimType",
+      "@type": "rdf:Property",
+      "rdfs:label": "claimType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Claim"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ClaimType"
+        }
+      ],
+      "rdfs:comment": "Cancel, return, or exchange."
+    },
+    {
+      "@id": "acom:claimStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "claimStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Claim"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ClaimStatus"
+        }
+      ],
+      "rdfs:comment": "Where a claim is."
+    },
+    {
+      "@id": "acom:claimReason",
+      "@type": "rdf:Property",
+      "rdfs:label": "claimReason",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Claim"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ClaimReason"
+        }
+      ],
+      "rdfs:comment": "Why the shopper returns or exchanges."
+    },
+    {
+      "@id": "acom:cancelReason",
+      "@type": "rdf:Property",
+      "rdfs:label": "cancelReason",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Claim"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:CancelReason"
+        }
+      ],
+      "rdfs:comment": "Why an order is cancelled."
+    },
+    {
+      "@id": "acom:liability",
+      "@type": "rdf:Property",
+      "rdfs:label": "liability",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Claim"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:Liability"
+        }
+      ],
+      "rdfs:comment": "Who is responsible, which decides who pays."
+    },
+    {
+      "@id": "acom:inspectionCondition",
+      "@type": "rdf:Property",
+      "rdfs:label": "inspectionCondition",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:CheckAction"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:InspectionCondition"
+        }
+      ],
+      "rdfs:comment": "Condition of a returned item after inspection."
+    },
+    {
+      "@id": "acom:refundStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "refundStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Refund"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:RefundStatus"
+        }
+      ],
+      "rdfs:comment": "Where a refund is."
+    },
+    {
+      "@id": "acom:refundMethod",
+      "@type": "rdf:Property",
+      "rdfs:label": "refundMethod",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Refund"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:RefundMethod"
+        }
+      ],
+      "rdfs:comment": "Where the money goes back."
+    },
+    {
+      "@id": "acom:couponApplication",
+      "@type": "rdf:Property",
+      "rdfs:label": "couponApplication",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Coupon"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:CouponApplication"
+        }
+      ],
+      "rdfs:comment": "How a coupon reaches an order."
+    },
+    {
+      "@id": "acom:discountLayer",
+      "@type": "rdf:Property",
+      "rdfs:label": "discountLayer",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Offer"
+        },
+        {
+          "@id": "schema:UnitPriceSpecification"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:DiscountLayer"
+        }
+      ],
+      "rdfs:comment": "Where a discount applies: item price, order, or add-on."
+    },
+    {
+      "@id": "acom:promotionStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "promotionStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Promotion"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:PromotionStatus"
+        }
+      ],
+      "rdfs:comment": "Where a promotion is in its life."
+    },
+    {
+      "@id": "acom:displayStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "displayStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:DisplayBooking"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:DisplayStatus"
+        }
+      ],
+      "rdfs:comment": "Where a display booking is in its life."
+    },
+    {
+      "@id": "acom:slotType",
+      "@type": "rdf:Property",
+      "rdfs:label": "slotType",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:WebPageElement"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:SlotType"
+        }
+      ],
+      "rdfs:comment": "What a display slot holds."
+    },
+    {
+      "@id": "acom:memberState",
+      "@type": "rdf:Property",
+      "rdfs:label": "memberState",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Person"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:MemberState"
+        }
+      ],
+      "rdfs:comment": "Whether a member can use the store."
+    },
+    {
+      "@id": "acom:preferenceKey",
+      "@type": "rdf:Property",
+      "rdfs:label": "preferenceKey",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Preference"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:PreferenceKey"
+        }
+      ],
+      "rdfs:comment": "What a remembered preference is about.",
+      "rdfs:subPropertyOf": {
+        "@id": "schema:propertyID"
+      }
+    },
+    {
+      "@id": "acom:changeSetState",
+      "@type": "rdf:Property",
+      "rdfs:label": "changeSetState",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ChangeSet"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ChangeSetState"
+        }
+      ],
+      "rdfs:comment": "Where a change set is: drafting to live or undone."
+    },
+    {
+      "@id": "acom:taskState",
+      "@type": "rdf:Property",
+      "rdfs:label": "taskState",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Task"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:TaskState"
+        }
+      ],
+      "rdfs:comment": "Whether a task needs a person, is being worked on, or is done."
+    },
+    {
+      "@id": "acom:taskOrigin",
+      "@type": "rdf:Property",
+      "rdfs:label": "taskOrigin",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Task"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:TaskOrigin"
+        }
+      ],
+      "rdfs:comment": "How a task started."
+    },
+    {
+      "@id": "acom:startedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "startedAt",
+      "rdfs:subPropertyOf": {
+        "@id": "schema:startTime"
+      },
+      "schema:domainIncludes": [],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "When the step, turn, or job started."
+    },
+    {
+      "@id": "acom:endedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "endedAt",
+      "rdfs:subPropertyOf": {
+        "@id": "schema:endTime"
+      },
+      "schema:domainIncludes": [],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "When the step, turn, or job ended."
+    },
+    {
+      "@id": "acom:expiresAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "expiresAt",
+      "rdfs:subPropertyOf": {
+        "@id": "schema:expires"
+      },
+      "schema:domainIncludes": [],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "When this stops being valid (a preview, a session, an idempotency record)."
+    },
+    {
+      "@id": "acom:title",
+      "@type": "rdf:Property",
+      "rdfs:label": "title",
+      "rdfs:subPropertyOf": {
+        "@id": "schema:name"
+      },
+      "schema:domainIncludes": [],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "A short name shown to people (a change set, a task)."
+    },
+    {
+      "@id": "acom:label",
+      "@type": "rdf:Property",
+      "rdfs:label": "label",
+      "rdfs:subPropertyOf": {
+        "@id": "schema:name"
+      },
+      "schema:domainIncludes": [],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "A short name the owner gave this (for example an address called Home)."
+    },
+    {
+      "@id": "acom:summary",
+      "@type": "rdf:Property",
+      "rdfs:label": "summary",
+      "rdfs:subPropertyOf": {
+        "@id": "schema:description"
+      },
+      "schema:domainIncludes": [],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "One or two sentences that say what happened or what is needed."
+    },
+    {
+      "@id": "acom:number",
+      "@type": "rdf:Property",
+      "rdfs:label": "number",
+      "rdfs:subPropertyOf": {
+        "@id": "schema:identifier"
+      },
+      "schema:domainIncludes": [],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "The number people see, such as change set 1042."
+    }
+  ]
+}

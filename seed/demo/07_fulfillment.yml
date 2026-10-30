@@ -1,0 +1,901 @@
+# Fulfillment: one delivery per named order, the 12 return requests of scene B2 in claim_status
+# requested (visible: #20402 #20431 #20418 #20377 #20366 #20290; hidden: #20333 #20341 #20352 #20388
+# #20395 #20409), and cus_4431's three completed returns with inspections and refunds.
+# The 9 refund suggestions sum to $2,463.00; the 5 hidden refunds to $1,389.00.
+tables:
+  fulfillment.parcel_delivery:
+    - tenant_id: store_northwind
+      id: dlv_20105
+      order_id: ord_20105
+      delivery_state: delivered
+      delivery_address_id: adr_home
+      delivery_address: {name: Jamie Rivera, street_address: "12 Harbor St, Apt 3", address_locality: Brooklyn, address_region: NY, postal_code: "11201", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW201050001"
+      tracking_url: "https://track.example/1ZNW201050001"
+      expected_arrival_from: "2026-01-22T08:00:00-05:00"
+      expected_arrival_until: "2026-01-22T20:00:00-05:00"
+      shipped_at: "2026-01-19T16:00:00-05:00"
+      delivered_at: "2026-01-22T13:10:00-05:00"
+    - tenant_id: store_northwind
+      id: dlv_20151
+      order_id: ord_20151
+      delivery_state: delivered
+      delivery_address_id: adr_home
+      delivery_address: {name: Jamie Rivera, street_address: "12 Harbor St, Apt 3", address_locality: Brooklyn, address_region: NY, postal_code: "11201", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW201510001"
+      tracking_url: "https://track.example/1ZNW201510001"
+      expected_arrival_from: "2026-03-13T08:00:00-04:00"
+      expected_arrival_until: "2026-03-13T20:00:00-04:00"
+      shipped_at: "2026-03-10T15:30:00-04:00"
+      delivered_at: "2026-03-13T11:45:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20188
+      order_id: ord_20188
+      delivery_state: delivered
+      delivery_address_id: adr_home
+      delivery_address: {name: Jamie Rivera, street_address: "12 Harbor St, Apt 3", address_locality: Brooklyn, address_region: NY, postal_code: "11201", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW201880001"
+      tracking_url: "https://track.example/1ZNW201880001"
+      expected_arrival_from: "2026-05-07T08:00:00-04:00"
+      expected_arrival_until: "2026-05-07T20:00:00-04:00"
+      shipped_at: "2026-05-04T15:10:00-04:00"
+      delivered_at: "2026-05-07T14:20:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20236
+      order_id: ord_20236
+      delivery_state: delivered
+      delivery_address_id: adr_home
+      delivery_address: {name: Jamie Rivera, street_address: "12 Harbor St, Apt 3", address_locality: Brooklyn, address_region: NY, postal_code: "11201", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW202360001"
+      tracking_url: "https://track.example/1ZNW202360001"
+      expected_arrival_from: "2026-07-16T08:00:00-04:00"
+      expected_arrival_until: "2026-07-16T20:00:00-04:00"
+      shipped_at: "2026-07-13T14:00:00-04:00"
+      delivered_at: "2026-07-16T12:35:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20268
+      order_id: ord_20268
+      delivery_state: delivered
+      delivery_address_id: adr_home
+      delivery_address: {name: Jamie Rivera, street_address: "12 Harbor St, Apt 3", address_locality: Brooklyn, address_region: NY, postal_code: "11201", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW202680001"
+      tracking_url: "https://track.example/1ZNW202680001"
+      expected_arrival_from: "2026-09-11T08:00:00-04:00"
+      expected_arrival_until: "2026-09-11T20:00:00-04:00"
+      shipped_at: "2026-09-08T17:00:00-04:00"
+      delivered_at: "2026-09-11T15:05:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20290
+      order_id: ord_20290
+      delivery_state: delivered
+      delivery_address_id: adr_dana_home
+      delivery_address: {name: Dana Whitfield, street_address: "7 Bay St", address_locality: Hoboken, address_region: NJ, postal_code: "07030", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW202900001"
+      tracking_url: "https://track.example/1ZNW202900001"
+      expected_arrival_from: "2026-09-28T08:00:00-04:00"
+      expected_arrival_until: "2026-09-28T20:00:00-04:00"
+      shipped_at: "2026-09-25T16:20:00-04:00"
+      delivered_at: "2026-09-28T16:00:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20298
+      order_id: ord_20298
+      delivery_state: delivered
+      delivery_address_id: adr_4431_home
+      delivery_address: {name: Morgan Reyes, street_address: "85 Elm St", address_locality: Albany, address_region: NY, postal_code: "12203", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW202980001"
+      tracking_url: "https://track.example/1ZNW202980001"
+      expected_arrival_from: "2026-10-01T08:00:00-04:00"
+      expected_arrival_until: "2026-10-01T20:00:00-04:00"
+      shipped_at: "2026-09-28T15:40:00-04:00"
+      delivered_at: "2026-10-01T13:25:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20311
+      order_id: ord_20311
+      delivery_state: delivered
+      delivery_address_id: adr_4431_home
+      delivery_address: {name: Morgan Reyes, street_address: "85 Elm St", address_locality: Albany, address_region: NY, postal_code: "12203", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW203110001"
+      tracking_url: "https://track.example/1ZNW203110001"
+      expected_arrival_from: "2026-10-05T08:00:00-04:00"
+      expected_arrival_until: "2026-10-05T20:00:00-04:00"
+      shipped_at: "2026-10-02T16:10:00-04:00"
+      delivered_at: "2026-10-05T12:50:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20324
+      order_id: ord_20324
+      delivery_state: delivered
+      delivery_address_id: adr_4431_home
+      delivery_address: {name: Morgan Reyes, street_address: "85 Elm St", address_locality: Albany, address_region: NY, postal_code: "12203", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW203240001"
+      tracking_url: "https://track.example/1ZNW203240001"
+      expected_arrival_from: "2026-10-09T08:00:00-04:00"
+      expected_arrival_until: "2026-10-09T20:00:00-04:00"
+      shipped_at: "2026-10-06T17:30:00-04:00"
+      delivered_at: "2026-10-09T10:40:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20333
+      order_id: ord_20333
+      delivery_state: delivered
+      delivery_address_id: adr_priya_home
+      delivery_address: {name: Priya Shah, street_address: "260 Grove St", address_locality: Jersey City, address_region: NJ, postal_code: "07302", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW203330001"
+      tracking_url: "https://track.example/1ZNW203330001"
+      expected_arrival_from: "2026-10-12T08:00:00-04:00"
+      expected_arrival_until: "2026-10-12T20:00:00-04:00"
+      shipped_at: "2026-10-09T15:00:00-04:00"
+      delivered_at: "2026-10-12T11:00:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20341
+      order_id: ord_20341
+      delivery_state: delivered
+      delivery_address_id: adr_marcus_home
+      delivery_address: {name: Marcus Bell, street_address: "33 Water St", address_locality: New Haven, address_region: CT, postal_code: "06510", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW203410001"
+      tracking_url: "https://track.example/1ZNW203410001"
+      expected_arrival_from: "2026-10-14T08:00:00-04:00"
+      expected_arrival_until: "2026-10-14T20:00:00-04:00"
+      shipped_at: "2026-10-12T14:30:00-04:00"
+      delivered_at: "2026-10-14T16:15:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20352
+      order_id: ord_20352
+      delivery_state: delivered
+      delivery_address_id: adr_elena_home
+      delivery_address: {name: Elena Costa, street_address: "15 Spring St", address_locality: Cambridge, address_region: MA, postal_code: "02141", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW203520001"
+      tracking_url: "https://track.example/1ZNW203520001"
+      expected_arrival_from: "2026-10-16T08:00:00-04:00"
+      expected_arrival_until: "2026-10-16T20:00:00-04:00"
+      shipped_at: "2026-10-14T15:00:00-04:00"
+      delivered_at: "2026-10-16T13:40:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20366
+      order_id: ord_20366
+      delivery_state: delivered
+      delivery_address_id: adr_riley_home
+      delivery_address: {name: Riley Park, street_address: "410 Oak Ave", address_locality: Burlington, address_region: VT, postal_code: "05401", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW203660001"
+      tracking_url: "https://track.example/1ZNW203660001"
+      expected_arrival_from: "2026-11-04T08:00:00-05:00"
+      expected_arrival_until: "2026-11-04T20:00:00-05:00"
+      shipped_at: "2026-11-02T16:00:00-05:00"
+      delivered_at: "2026-11-04T14:30:00-05:00"
+    - tenant_id: store_northwind
+      id: dlv_20377
+      order_id: ord_20377
+      delivery_state: delivered
+      delivery_address_id: adr_sam_home
+      delivery_address: {name: Sam Ortiz, street_address: "19 Mill Rd", address_locality: Providence, address_region: RI, postal_code: "02903", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW203770001"
+      tracking_url: "https://track.example/1ZNW203770001"
+      expected_arrival_from: "2026-10-28T08:00:00-04:00"
+      expected_arrival_until: "2026-10-28T20:00:00-04:00"
+      shipped_at: "2026-10-24T15:20:00-04:00"
+      delivered_at: "2026-10-28T13:30:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20381
+      order_id: ord_20381
+      delivery_state: delivered
+      delivery_address_id: adr_home
+      delivery_address: {name: Jamie Rivera, street_address: "12 Harbor St, Apt 3", address_locality: Brooklyn, address_region: NY, postal_code: "11201", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW203810001"
+      tracking_url: "https://track.example/1ZNW203810001"
+      expected_arrival_from: "2026-10-28T08:00:00-04:00"
+      expected_arrival_until: "2026-10-28T20:00:00-04:00"
+      shipped_at: "2026-10-26T14:10:00-04:00"
+      delivered_at: "2026-10-28T12:05:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20388
+      order_id: ord_20388
+      delivery_state: delivered
+      delivery_address_id: adr_noor_home
+      delivery_address: {name: Noor Haddad, street_address: "88 Pearl St", address_locality: Hartford, address_region: CT, postal_code: "06103", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW203880001"
+      tracking_url: "https://track.example/1ZNW203880001"
+      expected_arrival_from: "2026-10-29T08:00:00-04:00"
+      expected_arrival_until: "2026-10-29T20:00:00-04:00"
+      shipped_at: "2026-10-26T16:40:00-04:00"
+      delivered_at: "2026-10-29T11:50:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20395
+      order_id: ord_20395
+      delivery_state: delivered
+      delivery_address_id: adr_theo_home
+      delivery_address: {name: Theo Grant, street_address: "52 Union St", address_locality: Brooklyn, address_region: NY, postal_code: "11231", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW203950001"
+      tracking_url: "https://track.example/1ZNW203950001"
+      expected_arrival_from: "2026-10-30T08:00:00-04:00"
+      expected_arrival_until: "2026-10-30T20:00:00-04:00"
+      shipped_at: "2026-10-27T15:05:00-04:00"
+      delivered_at: "2026-10-30T10:25:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20402
+      order_id: ord_20402
+      delivery_state: delivered
+      delivery_address_id: adr_alex_home
+      delivery_address: {name: Alex Kim, street_address: "220 Fore St", address_locality: Portland, address_region: ME, postal_code: "04101", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW204020001"
+      tracking_url: "https://track.example/1ZNW204020001"
+      expected_arrival_from: "2026-10-31T08:00:00-04:00"
+      expected_arrival_until: "2026-10-31T20:00:00-04:00"
+      shipped_at: "2026-10-28T16:30:00-04:00"
+      delivered_at: "2026-10-31T14:02:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20409
+      order_id: ord_20409
+      delivery_state: delivered
+      delivery_address_id: adr_grace_home
+      delivery_address: {name: Grace Liu, street_address: "301 Main St", address_locality: Stamford, address_region: CT, postal_code: "06901", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW204090001"
+      tracking_url: "https://track.example/1ZNW204090001"
+      expected_arrival_from: "2026-10-31T08:00:00-04:00"
+      expected_arrival_until: "2026-10-31T20:00:00-04:00"
+      shipped_at: "2026-10-28T17:45:00-04:00"
+      delivered_at: "2026-10-31T15:30:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20418
+      order_id: ord_20418
+      delivery_state: delivered
+      delivery_address_id: adr_owen_home
+      delivery_address: {name: Owen Doyle, street_address: "9 Ash Ln", address_locality: Princeton, address_region: NJ, postal_code: "08540", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW204180001"
+      tracking_url: "https://track.example/1ZNW204180001"
+      expected_arrival_from: "2026-10-30T08:00:00-04:00"
+      expected_arrival_until: "2026-10-30T20:00:00-04:00"
+      shipped_at: "2026-10-28T18:10:00-04:00"
+      delivered_at: "2026-10-30T12:00:00-04:00"
+    - tenant_id: store_northwind
+      id: dlv_20431
+      order_id: ord_20431
+      delivery_state: delivered
+      delivery_address_id: adr_4431_home
+      delivery_address: {name: Morgan Reyes, street_address: "85 Elm St", address_locality: Albany, address_region: NY, postal_code: "12203", address_country: US}
+      has_delivery_method: standard
+      carrier: UPS
+      tracking_number: "1ZNW204310001"
+      tracking_url: "https://track.example/1ZNW204310001"
+      expected_arrival_from: "2026-11-02T08:00:00-05:00"
+      expected_arrival_until: "2026-11-02T20:00:00-05:00"
+      shipped_at: "2026-10-30T14:15:00-04:00"
+      delivered_at: "2026-11-02T15:20:00-05:00"
+  fulfillment.claim:
+    - tenant_id: store_northwind
+      id: clm_20290
+      order_id: ord_20290
+      customer_id: cus_dana
+      claim_type: return
+      claim_status: requested
+      claim_path: store_review
+      claim_reason: changed_mind
+      reason_text: "I don't wear it as much as I thought."
+      liability: customer_fault
+      return_fees: return_fees_customer_responsibility
+      send_back_method: drop_off
+      evidence: []
+      amount_value: 248.00
+      amount_currency: USD
+      refund_estimate_value: 248.00
+      refund_estimate_currency: USD
+      start_time: "2026-11-05T09:20:00-05:00"
+      end_time: null
+    - tenant_id: store_northwind
+      id: clm_20298
+      order_id: ord_20298
+      customer_id: cus_4431
+      claim_type: return
+      claim_status: completed
+      claim_path: store_review
+      claim_reason: wrong_size
+      reason_text: Runs large.
+      liability: customer_fault
+      return_fees: return_fees_customer_responsibility
+      send_back_method: drop_off
+      evidence: []
+      amount_value: 84.00
+      amount_currency: USD
+      refund_estimate_value: 84.00
+      refund_estimate_currency: USD
+      start_time: "2026-10-05T18:20:00-04:00"
+      end_time: "2026-10-12T11:00:00-04:00"
+    - tenant_id: store_northwind
+      id: clm_20311
+      order_id: ord_20311
+      customer_id: cus_4431
+      claim_type: return
+      claim_status: completed
+      claim_path: store_review
+      claim_reason: changed_mind
+      reason_text: Not what I expected.
+      liability: customer_fault
+      return_fees: return_fees_customer_responsibility
+      send_back_method: drop_off
+      evidence: []
+      amount_value: 248.00
+      amount_currency: USD
+      refund_estimate_value: 248.00
+      refund_estimate_currency: USD
+      start_time: "2026-10-19T12:05:00-04:00"
+      end_time: "2026-10-26T15:30:00-04:00"
+    - tenant_id: store_northwind
+      id: clm_20324
+      order_id: ord_20324
+      customer_id: cus_4431
+      claim_type: return
+      claim_status: completed
+      claim_path: store_review
+      claim_reason: wrong_size
+      reason_text: Too big.
+      liability: customer_fault
+      return_fees: return_fees_customer_responsibility
+      send_back_method: drop_off
+      evidence: []
+      amount_value: 58.00
+      amount_currency: USD
+      refund_estimate_value: 58.00
+      refund_estimate_currency: USD
+      start_time: "2026-10-14T08:45:00-04:00"
+      end_time: "2026-10-21T10:10:00-04:00"
+    - tenant_id: store_northwind
+      id: clm_20333
+      order_id: ord_20333
+      customer_id: cus_priya
+      claim_type: return
+      claim_status: requested
+      claim_path: store_review
+      claim_reason: wrong_size
+      reason_text: Too big in the shoulders.
+      liability: customer_fault
+      return_fees: return_fees_customer_responsibility
+      send_back_method: drop_off
+      evidence: []
+      amount_value: 289.00
+      amount_currency: USD
+      refund_estimate_value: 289.00
+      refund_estimate_currency: USD
+      start_time: "2026-11-04T09:12:00-05:00"
+      end_time: null
+    - tenant_id: store_northwind
+      id: clm_20341
+      order_id: ord_20341
+      customer_id: cus_marcus
+      claim_type: return
+      claim_status: requested
+      claim_path: store_review
+      claim_reason: defect
+      reason_text: Stitching came loose on the left boot.
+      liability: store_fault
+      return_fees: free_return
+      send_back_method: drop_off
+      evidence: [{id: evd_20341_1, evidence_type: product_defect, content_url: "https://cdn.northwind.example/evidence/evd_20341_1.jpg"}]
+      amount_value: 312.00
+      amount_currency: USD
+      refund_estimate_value: 312.00
+      refund_estimate_currency: USD
+      start_time: "2026-11-04T13:40:00-05:00"
+      end_time: null
+    - tenant_id: store_northwind
+      id: clm_20352
+      order_id: ord_20352
+      customer_id: cus_elena
+      claim_type: return
+      claim_status: requested
+      claim_path: store_review
+      claim_reason: wrong_size
+      reason_text: Both jackets are tight in the chest.
+      liability: customer_fault
+      return_fees: return_fees_customer_responsibility
+      send_back_method: drop_off
+      evidence: []
+      amount_value: 256.00
+      amount_currency: USD
+      refund_estimate_value: 256.00
+      refund_estimate_currency: USD
+      start_time: "2026-11-04T21:30:00-05:00"
+      end_time: null
+    - tenant_id: store_northwind
+      id: clm_20366
+      order_id: ord_20366
+      customer_id: cus_riley
+      claim_type: return
+      claim_status: requested
+      claim_path: store_review
+      claim_reason: damaged_in_transit
+      reason_text: Both arrived torn.
+      liability: store_fault
+      return_fees: free_return
+      send_back_method: drop_off
+      evidence: []
+      amount_value: 236.00
+      amount_currency: USD
+      refund_estimate_value: 236.00
+      refund_estimate_currency: USD
+      start_time: "2026-11-05T18:10:00-05:00"
+      end_time: null
+    - tenant_id: store_northwind
+      id: clm_20377
+      order_id: ord_20377
+      customer_id: cus_sam
+      claim_type: return
+      claim_status: requested
+      claim_path: store_review
+      claim_reason: changed_mind
+      reason_text: Changed my mind about both.
+      liability: customer_fault
+      return_fees: return_fees_customer_responsibility
+      send_back_method: drop_off
+      evidence: []
+      amount_value: 217.00
+      amount_currency: USD
+      refund_estimate_value: 217.00
+      refund_estimate_currency: USD
+      start_time: "2026-11-04T19:05:00-05:00"
+      end_time: null
+    - tenant_id: store_northwind
+      id: clm_20388
+      order_id: ord_20388
+      customer_id: cus_noor
+      claim_type: return
+      claim_status: requested
+      claim_path: store_review
+      claim_reason: changed_mind
+      reason_text: Not the color I expected in person.
+      liability: customer_fault
+      return_fees: return_fees_customer_responsibility
+      send_back_method: drop_off
+      evidence: []
+      amount_value: 248.00
+      amount_currency: USD
+      refund_estimate_value: 248.00
+      refund_estimate_currency: USD
+      start_time: "2026-11-05T12:25:00-05:00"
+      end_time: null
+    - tenant_id: store_northwind
+      id: clm_20395
+      order_id: ord_20395
+      customer_id: cus_theo
+      claim_type: return
+      claim_status: requested
+      claim_path: store_review
+      claim_reason: changed_mind
+      reason_text: "Bought two, only need one... returning both."
+      liability: customer_fault
+      return_fees: return_fees_customer_responsibility
+      send_back_method: drop_off
+      evidence: []
+      amount_value: 284.00
+      amount_currency: USD
+      refund_estimate_value: 284.00
+      refund_estimate_currency: USD
+      start_time: "2026-11-05T20:05:00-05:00"
+      end_time: null
+    - tenant_id: store_northwind
+      id: clm_20402
+      order_id: ord_20402
+      customer_id: cus_alex
+      claim_type: return
+      claim_status: requested
+      claim_path: store_review
+      claim_reason: defect
+      reason_text: The sole on my chelsea boots is coming apart after a week.
+      liability: store_fault
+      return_fees: free_return
+      send_back_method: pickup
+      pickup_window: {start: "2026-11-09T09:00:00-05:00", end: "2026-11-09T12:00:00-05:00"}
+      evidence: [{id: evd_877, evidence_type: product_defect, content_url: "https://cdn.northwind.example/evidence/evd_877.jpg"}, {id: evd_878, evidence_type: product_defect, content_url: "https://cdn.northwind.example/evidence/evd_878.jpg"}]
+      amount_value: 312.00
+      amount_currency: USD
+      refund_estimate_value: 312.00
+      refund_estimate_currency: USD
+      start_time: "2026-11-06T09:52:00-05:00"
+      end_time: null
+    - tenant_id: store_northwind
+      id: clm_20409
+      order_id: ord_20409
+      customer_id: cus_grace
+      claim_type: return
+      claim_status: requested
+      claim_path: store_review
+      claim_reason: damaged_in_transit
+      reason_text: The box was crushed and the coat has a tear.
+      liability: store_fault
+      return_fees: free_return
+      send_back_method: drop_off
+      evidence: []
+      amount_value: 289.00
+      amount_currency: USD
+      refund_estimate_value: 289.00
+      refund_estimate_currency: USD
+      start_time: "2026-11-06T07:30:00-05:00"
+      end_time: null
+    - tenant_id: store_northwind
+      id: clm_20418
+      order_id: ord_20418
+      customer_id: cus_owen
+      claim_type: return
+      claim_status: requested
+      claim_path: store_review
+      claim_reason: wrong_size
+      reason_text: Both are too small in the shoulders.
+      liability: customer_fault
+      return_fees: return_fees_customer_responsibility
+      send_back_method: drop_off
+      evidence: []
+      amount_value: 256.00
+      amount_currency: USD
+      refund_estimate_value: 256.00
+      refund_estimate_currency: USD
+      start_time: "2026-11-05T10:15:00-05:00"
+      end_time: null
+    - tenant_id: store_northwind
+      id: clm_20431
+      order_id: ord_20431
+      customer_id: cus_4431
+      claim_type: return
+      claim_status: requested
+      claim_path: store_review
+      claim_reason: not_as_described
+      reason_text: The color is much darker than the photos.
+      liability: store_fault
+      return_fees: free_return
+      send_back_method: drop_off
+      evidence: [{id: evd_20431_1, evidence_type: damage_photo, content_url: "https://cdn.northwind.example/evidence/evd_20431_1.jpg"}]
+      amount_value: 289.00
+      amount_currency: USD
+      refund_estimate_value: 289.00
+      refund_estimate_currency: USD
+      start_time: "2026-11-05T16:40:00-05:00"
+      end_time: null
+  fulfillment.claim_item:
+    - {tenant_id: store_northwind, claim_id: clm_20290, order_item_id: oln_20290_1, order_quantity: 1}
+    - {tenant_id: store_northwind, claim_id: clm_20298, order_item_id: oln_20298_1, order_quantity: 1}
+    - {tenant_id: store_northwind, claim_id: clm_20311, order_item_id: oln_20311_1, order_quantity: 1}
+    - {tenant_id: store_northwind, claim_id: clm_20324, order_item_id: oln_20324_1, order_quantity: 1}
+    - {tenant_id: store_northwind, claim_id: clm_20333, order_item_id: oln_20333_1, order_quantity: 1}
+    - {tenant_id: store_northwind, claim_id: clm_20341, order_item_id: oln_20341_1, order_quantity: 1}
+    - {tenant_id: store_northwind, claim_id: clm_20352, order_item_id: oln_20352_1, order_quantity: 2}
+    - {tenant_id: store_northwind, claim_id: clm_20366, order_item_id: oln_20366_1, order_quantity: 2}
+    - {tenant_id: store_northwind, claim_id: clm_20377, order_item_id: oln_20377_1, order_quantity: 1}
+    - {tenant_id: store_northwind, claim_id: clm_20377, order_item_id: oln_20377_2, order_quantity: 1}
+    - {tenant_id: store_northwind, claim_id: clm_20388, order_item_id: oln_20388_1, order_quantity: 1}
+    - {tenant_id: store_northwind, claim_id: clm_20395, order_item_id: oln_20395_1, order_quantity: 2}
+    - {tenant_id: store_northwind, claim_id: clm_20402, order_item_id: oln_20402_1, order_quantity: 1}
+    - {tenant_id: store_northwind, claim_id: clm_20409, order_item_id: oln_20409_1, order_quantity: 1}
+    - {tenant_id: store_northwind, claim_id: clm_20418, order_item_id: oln_20418_1, order_quantity: 2}
+    - {tenant_id: store_northwind, claim_id: clm_20431, order_item_id: oln_20431_1, order_quantity: 1}
+  fulfillment.claim_event:
+    - tenant_id: store_northwind
+      claim_id: clm_20290
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_dana
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-11-05T09:20:00-05:00"
+      end_time: "2026-11-05T09:20:00-05:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20298
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_4431
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-10-05T18:20:00-04:00"
+      end_time: "2026-10-05T18:20:00-04:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20298
+      position: 2
+      action_type: RefundAction
+      action_status: completed
+      agent_id: sys_executor
+      instrument: refund_return
+      from_state: requested
+      to_state: approved
+      start_time: "2026-10-06T14:20:00-04:00"
+      end_time: "2026-10-06T14:20:00-04:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20298
+      position: 3
+      action_type: CheckAction
+      action_status: completed
+      agent_id: sys_warehouse
+      instrument: assess_return_condition
+      from_state: approved
+      to_state: inspected
+      start_time: "2026-10-12T09:00:00-04:00"
+      end_time: "2026-10-12T09:00:00-04:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20298
+      position: 4
+      action_type: ReturnAction
+      action_status: completed
+      agent_id: sys_executor
+      instrument: refund_return
+      from_state: inspected
+      to_state: completed
+      start_time: "2026-10-12T11:00:00-04:00"
+      end_time: "2026-10-12T11:00:00-04:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20311
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_4431
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-10-19T12:05:00-04:00"
+      end_time: "2026-10-19T12:05:00-04:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20311
+      position: 2
+      action_type: RefundAction
+      action_status: completed
+      agent_id: sys_executor
+      instrument: refund_return
+      from_state: requested
+      to_state: approved
+      start_time: "2026-10-20T08:05:00-04:00"
+      end_time: "2026-10-20T08:05:00-04:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20311
+      position: 3
+      action_type: CheckAction
+      action_status: completed
+      agent_id: sys_warehouse
+      instrument: assess_return_condition
+      from_state: approved
+      to_state: inspected
+      start_time: "2026-10-26T13:30:00-04:00"
+      end_time: "2026-10-26T13:30:00-04:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20311
+      position: 4
+      action_type: ReturnAction
+      action_status: completed
+      agent_id: sys_executor
+      instrument: refund_return
+      from_state: inspected
+      to_state: completed
+      start_time: "2026-10-26T15:30:00-04:00"
+      end_time: "2026-10-26T15:30:00-04:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20324
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_4431
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-10-14T08:45:00-04:00"
+      end_time: "2026-10-14T08:45:00-04:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20324
+      position: 2
+      action_type: RefundAction
+      action_status: completed
+      agent_id: sys_executor
+      instrument: refund_return
+      from_state: requested
+      to_state: approved
+      start_time: "2026-10-15T04:45:00-04:00"
+      end_time: "2026-10-15T04:45:00-04:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20324
+      position: 3
+      action_type: CheckAction
+      action_status: completed
+      agent_id: sys_warehouse
+      instrument: assess_return_condition
+      from_state: approved
+      to_state: inspected
+      start_time: "2026-10-21T08:10:00-04:00"
+      end_time: "2026-10-21T08:10:00-04:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20324
+      position: 4
+      action_type: ReturnAction
+      action_status: completed
+      agent_id: sys_executor
+      instrument: refund_return
+      from_state: inspected
+      to_state: completed
+      start_time: "2026-10-21T10:10:00-04:00"
+      end_time: "2026-10-21T10:10:00-04:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20333
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_priya
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-11-04T09:12:00-05:00"
+      end_time: "2026-11-04T09:12:00-05:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20341
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_marcus
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-11-04T13:40:00-05:00"
+      end_time: "2026-11-04T13:40:00-05:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20352
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_elena
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-11-04T21:30:00-05:00"
+      end_time: "2026-11-04T21:30:00-05:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20366
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_riley
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-11-05T18:10:00-05:00"
+      end_time: "2026-11-05T18:10:00-05:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20377
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_sam
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-11-04T19:05:00-05:00"
+      end_time: "2026-11-04T19:05:00-05:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20388
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_noor
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-11-05T12:25:00-05:00"
+      end_time: "2026-11-05T12:25:00-05:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20395
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_theo
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-11-05T20:05:00-05:00"
+      end_time: "2026-11-05T20:05:00-05:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20402
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_alex
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-11-06T09:52:00-05:00"
+      end_time: "2026-11-06T09:52:00-05:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20409
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_grace
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-11-06T07:30:00-05:00"
+      end_time: "2026-11-06T07:30:00-05:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20418
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_owen
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-11-05T10:15:00-05:00"
+      end_time: "2026-11-05T10:15:00-05:00"
+    - tenant_id: store_northwind
+      claim_id: clm_20431
+      position: 1
+      action_type: ReturnAction
+      action_status: potential
+      agent_id: cus_4431
+      instrument: POST /v1/fulfillment/returns
+      to_state: requested
+      start_time: "2026-11-05T16:40:00-05:00"
+      end_time: "2026-11-05T16:40:00-05:00"
+  fulfillment.inspection:
+    - {tenant_id: store_northwind, id: ins_20298, claim_id: clm_20298, inspection_condition: as_new, description: "Tags on, no wear.", agent_id: sys_warehouse, end_time: "2026-10-12T09:00:00-04:00"}
+    - {tenant_id: store_northwind, id: ins_20311, claim_id: clm_20311, inspection_condition: as_new, description: "Tags on, no wear.", agent_id: sys_warehouse, end_time: "2026-10-26T13:30:00-04:00"}
+    - {tenant_id: store_northwind, id: ins_20324, claim_id: clm_20324, inspection_condition: as_new, description: "Tags on, no wear.", agent_id: sys_warehouse, end_time: "2026-10-21T08:10:00-04:00"}
+  fulfillment.refund:
+    - tenant_id: store_northwind
+      id: rfd_20298
+      claim_id: clm_20298
+      order_id: ord_20298
+      payment_id: pay_20298
+      amount_value: 84.00
+      amount_currency: USD
+      refund_method: original_payment
+      refund_type: full_refund
+      refund_status: completed
+      external_id: re_demo_20298
+      change_set_id: null
+      start_time: "2026-10-06T14:20:00-04:00"
+      end_time: "2026-10-12T11:00:00-04:00"
+    - tenant_id: store_northwind
+      id: rfd_20311
+      claim_id: clm_20311
+      order_id: ord_20311
+      payment_id: pay_20311
+      amount_value: 248.00
+      amount_currency: USD
+      refund_method: original_payment
+      refund_type: full_refund
+      refund_status: completed
+      external_id: re_demo_20311
+      change_set_id: null
+      start_time: "2026-10-20T08:05:00-04:00"
+      end_time: "2026-10-26T15:30:00-04:00"
+    - tenant_id: store_northwind
+      id: rfd_20324
+      claim_id: clm_20324
+      order_id: ord_20324
+      payment_id: pay_20324
+      amount_value: 58.00
+      amount_currency: USD
+      refund_method: original_payment
+      refund_type: full_refund
+      refund_status: completed
+      external_id: re_demo_20324
+      change_set_id: null
+      start_time: "2026-10-15T04:45:00-04:00"
+      end_time: "2026-10-21T10:10:00-04:00"

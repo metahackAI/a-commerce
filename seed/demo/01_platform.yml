@@ -1,0 +1,804 @@
+# Platform: the demo store (tenant), operator SJ with the merchandiser role and its scopes, store
+# policy overrides (docs/scenarios.md §5), the demo clock (Fri Nov 6 2026 11:00), the change sets
+# that exist before the scenes (#1039 Fall layers banner, #1040 below-cost fix, #1041 linen reorder
+# draft) with their previews, items, events and action log, the home tasks of scene B5, and jobs.
+# platform.online_store has no tenant_id column: its id is the tenant.
+tables:
+  platform.online_store:
+    - {id: store_northwind, name: Northwind Apparel, url: northwind.example, currency: USD, time_zone: America/New_York, in_language: en}
+  platform.admin_user:
+    - {tenant_id: store_northwind, id: adm_sj, name: Son SeongJun, alternate_name: SJ, email: "sj@northwind.example", job_title: Merchandiser, admin_status: active, last_login_at: "2026-11-06T07:50:00-05:00"}
+  platform.role:
+    - {tenant_id: store_northwind, id: rol_merchandiser, name: Merchandiser, description: "Runs promotions and the storefront, and handles returns and customer messages.", approver_roles: [merchandiser, operator], is_system: true}
+    - {tenant_id: store_northwind, id: rol_operator, name: Operator, description: "Handles orders, returns, refunds and customer messages.", approver_roles: [operator], is_system: true}
+    - {tenant_id: store_northwind, id: rol_catalog_admin, name: Catalog admin, description: Publishes products and approves structural catalog changes., approver_roles: [catalog_admin], is_system: true}
+    - {tenant_id: store_northwind, id: rol_payout_approver, name: Payout approver, description: Approves cash remedies., approver_roles: [payout_approver], is_system: true}
+    - {tenant_id: store_northwind, id: rol_platform_admin, name: Platform admin, description: "Manages roles, accounts, API keys and the demo clock.", approver_roles: [], is_system: true}
+  platform.role_scope:
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:platform"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:catalog"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:merchandising"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:search"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:promotion"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:customer"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:sales"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:fulfillment"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:messaging"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:analytics"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:write:catalog"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:write:merchandising"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:write:promotion"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:write:fulfillment"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:write:messaging"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "changeset:draft"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "human:approve"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "human:reject"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "human:undo"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "human:task"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:platform"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:catalog"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:merchandising"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:search"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:promotion"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:customer"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:sales"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:fulfillment"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:messaging"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:analytics"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:write:sales"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:write:fulfillment"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:write:messaging"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:write:customer"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "changeset:draft"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "human:approve"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "human:reject"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "human:undo"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "human:task"}
+    - {tenant_id: store_northwind, role_id: rol_catalog_admin, scope: "tools:read:catalog"}
+    - {tenant_id: store_northwind, role_id: rol_catalog_admin, scope: "tools:read:search"}
+    - {tenant_id: store_northwind, role_id: rol_catalog_admin, scope: "tools:read:merchandising"}
+    - {tenant_id: store_northwind, role_id: rol_catalog_admin, scope: "tools:write:catalog"}
+    - {tenant_id: store_northwind, role_id: rol_catalog_admin, scope: "changeset:draft"}
+    - {tenant_id: store_northwind, role_id: rol_catalog_admin, scope: "human:approve"}
+    - {tenant_id: store_northwind, role_id: rol_catalog_admin, scope: "human:reject"}
+    - {tenant_id: store_northwind, role_id: rol_catalog_admin, scope: "human:undo"}
+    - {tenant_id: store_northwind, role_id: rol_payout_approver, scope: "tools:read:customer"}
+    - {tenant_id: store_northwind, role_id: rol_payout_approver, scope: "tools:read:fulfillment"}
+    - {tenant_id: store_northwind, role_id: rol_payout_approver, scope: "human:approve"}
+    - {tenant_id: store_northwind, role_id: rol_payout_approver, scope: "human:reject"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:read:platform"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:write:platform"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "changeset:draft"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:approve"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:reject"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:undo"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "admin:demo"}
+  platform.admin_user_role:
+    - {tenant_id: store_northwind, admin_user_id: adm_sj, role_id: rol_merchandiser}
+  platform.policy_override:
+    - {tenant_id: store_northwind, file: promotion, partial: {max_discount: {by_tier: {vip: 0.30}}}, policy_version: 3}
+    - {tenant_id: store_northwind, file: platform, partial: {watchers: {price_below_cost: {run_fix: standing_approval}}}, policy_version: 1}
+  platform.demo_clock:
+    - {tenant_id: store_northwind, now: "2026-11-06T11:00:00-05:00", is_running: false}
+  platform.change_set:
+    - tenant_id: store_northwind
+      id: cs_1039
+      number: 1039
+      title: Swap the main banner to Fall layers
+      change_set_state: live
+      request_text: ["Swap the main page banner to Fall layers at 10:00."]
+      interpretation:
+        - {slot: where, text: "Main page hero, everyone", value: {slot_id: slot_home_hero, audience: everyone}}
+        - {slot: when, text: "From Fri Nov 6 10:00", value: {valid_from: "2026-11-06T10:00:00-05:00"}}
+        - {slot: other, text: "October edit ends at 09:59", value: {display_booking_id: dsp_october_edit}}
+      conversation_id: conv_fall_layers
+      created_by: adm_sj
+      agent_name: muse-glimmer-30b
+      submitted_at: "2026-11-06T09:33:00-05:00"
+      approved_by: adm_sj
+      approved_at: "2026-11-06T09:35:00-05:00"
+      verified_at: "2026-11-06T09:36:10-05:00"
+      verification: {state: live, matched: 1, total: 1}
+      undo_until: "2026-11-07T23:59:00-05:00"
+    - tenant_id: store_northwind
+      id: cs_1040
+      number: 1040
+      title: Raise 4 products to the price floor
+      change_set_state: live
+      request_text: ["4 products are priced below cost. Raise each list price to the price floor (cost + 15%)."]
+      interpretation: [{slot: products, text: "4 products under cost", value: {product_ids: [prd_breton_tee, prd_canvas_tote, prd_ribbed_beanie, prd_hiking_socks]}}, {slot: benefit, text: "List price to cost + 15%", value: {rule: price_floor}}]
+      created_by: sys_watcher
+      submitted_at: "2026-11-06T08:31:00-05:00"
+      approved_by: null
+      approved_at: "2026-11-06T08:31:00-05:00"
+      verified_at: "2026-11-06T08:31:40-05:00"
+      verification: {state: live, matched: 9, total: 9}
+      undo_until: "2026-11-07T23:59:00-05:00"
+    - tenant_id: store_northwind
+      id: cs_1041
+      number: 1041
+      title: "Reorder linen shirt: 3 sizes, 240 units"
+      change_set_state: drafting
+      request_text: [Linen shirt sells out in about 4 days. Draft a reorder for the sizes that will run out.]
+      interpretation: [{slot: products, text: "Linen shirt, White, S M L", value: {product_id: prd_linen_shirt, sizes: [S, M, L]}}, {slot: other, text: "240 units: S 70, M 90, L 80", value: {quantities: {S: 70, M: 90, L: 80}}}]
+      conversation_id: conv_linen_reorder
+      created_by: sys_watcher
+      agent_name: muse-glimmer-30b
+      approved_by: null
+      undo_until: null
+  platform.preview:
+    - tenant_id: store_northwind
+      id: pv_fall_layers
+      operation: merchandising.banner.schedule
+      instrument: schedule_banner
+      input: {slot_id: slot_home_hero, audience: everyone, valid_from: "2026-11-06T10:00:00-05:00", content: {eyebrow: NEW SEASON, headline: Fall layers, cta_label: Shop fall layers, url: "/c/fall-layers", image_source: product, image_product_id: prd_wool_overcoat, image_color: Charcoal}}
+      input_hash: "sha256:2ffbc5c8b45d714fe3d45285e771d2d2"
+      plan: {changes: [{op: update, entity: display_booking, id: dsp_october_edit, from: {valid_through: null}, to: {valid_through: "2026-11-06T09:59:00-05:00"}}, {op: schedule, entity: display_booking, id: null, from: null, to: {slot_id: slot_home_hero, audience: everyone, valid_from: "2026-11-06T10:00:00-05:00", valid_through: null, banner_id: bnr_fall_layers}}]}
+      changes:
+        - {op: update, entity: display_booking, id: dsp_october_edit, from: {valid_through: null}, to: {valid_through: "2026-11-06T09:59:00-05:00"}}
+        - {op: schedule, entity: display_booking, id: null, from: null, to: {slot_id: slot_home_hero, audience: everyone, valid_from: "2026-11-06T10:00:00-05:00", valid_through: null, banner_id: bnr_fall_layers}}
+      checks: [{rule: slot_free, passed: true, detail: "Hero slot is free for everyone from 10:00 once the October edit ends at 09:59", fix_tool: null}]
+      needs_approval: true
+      approval_reason: Shows on the main page to everyone
+      basis: [{entity: display_slot, id: slot_home_hero, version: 1}, {entity: display_booking, id: dsp_october_edit, version: 1}]
+      policy_version: a41c09e2b7f3
+      actor_kind: agent_on_behalf
+      agent_id: adm_sj
+      agent_name: muse-glimmer-30b
+      request_id: req_fall_layers_01
+      change_set_id: cs_1039
+      preview_state: committed
+      committed_at: "2026-11-06T09:35:20-05:00"
+      result: {ok: true, id: dsp_fall_layers, undo: {by: person, target: cs_1039, until: "2026-11-07T23:59:00-05:00"}}
+    - tenant_id: store_northwind
+      id: pv_floor_breton_tee_xs_navy_stripe
+      operation: catalog.offer.set_price
+      instrument: set_price
+      input: {variant_id: var_breton_tee_xs_navy_stripe, price: 23.00, price_currency: USD}
+      input_hash: "sha256:d71a36e195350aff409d6d6233a11dbe"
+      plan: {offer_id: off_breton_tee_xs_navy_stripe, price: 23.00, price_currency: USD}
+      changes: [{op: update, entity: offer, id: off_breton_tee_xs_navy_stripe, from: {price: 19.00}, to: {price: 23.00}}]
+      checks: [{rule: price_floor, passed: true, detail: "$23.00 is cost $20.00 + 15%", fix_tool: null}]
+      needs_approval: true
+      approval_reason: Changes 1 list price
+      basis: [{entity: offer, id: off_breton_tee_xs_navy_stripe, version: 1}]
+      policy_version: a41c09e2b7f3
+      actor_kind: system
+      agent_id: sys_watcher
+      request_id: req_floor_1106
+      change_set_id: cs_1040
+      preview_state: committed
+      committed_at: "2026-11-06T08:31:11-05:00"
+      result: {ok: true, id: off_breton_tee_xs_navy_stripe, undo: {by: person, target: cs_1040, until: "2026-11-07T23:59:00-05:00"}}
+    - tenant_id: store_northwind
+      id: pv_floor_breton_tee_s_navy_stripe
+      operation: catalog.offer.set_price
+      instrument: set_price
+      input: {variant_id: var_breton_tee_s_navy_stripe, price: 23.00, price_currency: USD}
+      input_hash: "sha256:9b94f12b43e2e54ffcf3d36388bae01a"
+      plan: {offer_id: off_breton_tee_s_navy_stripe, price: 23.00, price_currency: USD}
+      changes: [{op: update, entity: offer, id: off_breton_tee_s_navy_stripe, from: {price: 19.00}, to: {price: 23.00}}]
+      checks: [{rule: price_floor, passed: true, detail: "$23.00 is cost $20.00 + 15%", fix_tool: null}]
+      needs_approval: true
+      approval_reason: Changes 1 list price
+      basis: [{entity: offer, id: off_breton_tee_s_navy_stripe, version: 1}]
+      policy_version: a41c09e2b7f3
+      actor_kind: system
+      agent_id: sys_watcher
+      request_id: req_floor_1106
+      change_set_id: cs_1040
+      preview_state: committed
+      committed_at: "2026-11-06T08:31:12-05:00"
+      result: {ok: true, id: off_breton_tee_s_navy_stripe, undo: {by: person, target: cs_1040, until: "2026-11-07T23:59:00-05:00"}}
+    - tenant_id: store_northwind
+      id: pv_floor_breton_tee_m_navy_stripe
+      operation: catalog.offer.set_price
+      instrument: set_price
+      input: {variant_id: var_breton_tee_m_navy_stripe, price: 23.00, price_currency: USD}
+      input_hash: "sha256:ecd05076251e3ffdbfe4371d9f255436"
+      plan: {offer_id: off_breton_tee_m_navy_stripe, price: 23.00, price_currency: USD}
+      changes: [{op: update, entity: offer, id: off_breton_tee_m_navy_stripe, from: {price: 19.00}, to: {price: 23.00}}]
+      checks: [{rule: price_floor, passed: true, detail: "$23.00 is cost $20.00 + 15%", fix_tool: null}]
+      needs_approval: true
+      approval_reason: Changes 1 list price
+      basis: [{entity: offer, id: off_breton_tee_m_navy_stripe, version: 1}]
+      policy_version: a41c09e2b7f3
+      actor_kind: system
+      agent_id: sys_watcher
+      request_id: req_floor_1106
+      change_set_id: cs_1040
+      preview_state: committed
+      committed_at: "2026-11-06T08:31:13-05:00"
+      result: {ok: true, id: off_breton_tee_m_navy_stripe, undo: {by: person, target: cs_1040, until: "2026-11-07T23:59:00-05:00"}}
+    - tenant_id: store_northwind
+      id: pv_floor_breton_tee_l_navy_stripe
+      operation: catalog.offer.set_price
+      instrument: set_price
+      input: {variant_id: var_breton_tee_l_navy_stripe, price: 23.00, price_currency: USD}
+      input_hash: "sha256:a77a2e95ef2e9723a3072be316635a6e"
+      plan: {offer_id: off_breton_tee_l_navy_stripe, price: 23.00, price_currency: USD}
+      changes: [{op: update, entity: offer, id: off_breton_tee_l_navy_stripe, from: {price: 19.00}, to: {price: 23.00}}]
+      checks: [{rule: price_floor, passed: true, detail: "$23.00 is cost $20.00 + 15%", fix_tool: null}]
+      needs_approval: true
+      approval_reason: Changes 1 list price
+      basis: [{entity: offer, id: off_breton_tee_l_navy_stripe, version: 1}]
+      policy_version: a41c09e2b7f3
+      actor_kind: system
+      agent_id: sys_watcher
+      request_id: req_floor_1106
+      change_set_id: cs_1040
+      preview_state: committed
+      committed_at: "2026-11-06T08:31:14-05:00"
+      result: {ok: true, id: off_breton_tee_l_navy_stripe, undo: {by: person, target: cs_1040, until: "2026-11-07T23:59:00-05:00"}}
+    - tenant_id: store_northwind
+      id: pv_floor_breton_tee_xl_navy_stripe
+      operation: catalog.offer.set_price
+      instrument: set_price
+      input: {variant_id: var_breton_tee_xl_navy_stripe, price: 23.00, price_currency: USD}
+      input_hash: "sha256:2afb616f34562d759d1412872113bfce"
+      plan: {offer_id: off_breton_tee_xl_navy_stripe, price: 23.00, price_currency: USD}
+      changes: [{op: update, entity: offer, id: off_breton_tee_xl_navy_stripe, from: {price: 19.00}, to: {price: 23.00}}]
+      checks: [{rule: price_floor, passed: true, detail: "$23.00 is cost $20.00 + 15%", fix_tool: null}]
+      needs_approval: true
+      approval_reason: Changes 1 list price
+      basis: [{entity: offer, id: off_breton_tee_xl_navy_stripe, version: 1}]
+      policy_version: a41c09e2b7f3
+      actor_kind: system
+      agent_id: sys_watcher
+      request_id: req_floor_1106
+      change_set_id: cs_1040
+      preview_state: committed
+      committed_at: "2026-11-06T08:31:15-05:00"
+      result: {ok: true, id: off_breton_tee_xl_navy_stripe, undo: {by: person, target: cs_1040, until: "2026-11-07T23:59:00-05:00"}}
+    - tenant_id: store_northwind
+      id: pv_floor_canvas_tote_natural
+      operation: catalog.offer.set_price
+      instrument: set_price
+      input: {variant_id: var_canvas_tote_natural, price: 28.75, price_currency: USD}
+      input_hash: "sha256:9528f498f446727a223ae0ac47918d1d"
+      plan: {offer_id: off_canvas_tote_natural, price: 28.75, price_currency: USD}
+      changes: [{op: update, entity: offer, id: off_canvas_tote_natural, from: {price: 24.00}, to: {price: 28.75}}]
+      checks: [{rule: price_floor, passed: true, detail: "$28.75 is cost $25.00 + 15%", fix_tool: null}]
+      needs_approval: true
+      approval_reason: Changes 1 list price
+      basis: [{entity: offer, id: off_canvas_tote_natural, version: 1}]
+      policy_version: a41c09e2b7f3
+      actor_kind: system
+      agent_id: sys_watcher
+      request_id: req_floor_1106
+      change_set_id: cs_1040
+      preview_state: committed
+      committed_at: "2026-11-06T08:31:16-05:00"
+      result: {ok: true, id: off_canvas_tote_natural, undo: {by: person, target: cs_1040, until: "2026-11-07T23:59:00-05:00"}}
+    - tenant_id: store_northwind
+      id: pv_floor_ribbed_beanie_charcoal
+      operation: catalog.offer.set_price
+      instrument: set_price
+      input: {variant_id: var_ribbed_beanie_charcoal, price: 17.25, price_currency: USD}
+      input_hash: "sha256:3aaddf5bf460c1f1cd182d93271fdcd6"
+      plan: {offer_id: off_ribbed_beanie_charcoal, price: 17.25, price_currency: USD}
+      changes: [{op: update, entity: offer, id: off_ribbed_beanie_charcoal, from: {price: 14.00}, to: {price: 17.25}}]
+      checks: [{rule: price_floor, passed: true, detail: "$17.25 is cost $15.00 + 15%", fix_tool: null}]
+      needs_approval: true
+      approval_reason: Changes 1 list price
+      basis: [{entity: offer, id: off_ribbed_beanie_charcoal, version: 1}]
+      policy_version: a41c09e2b7f3
+      actor_kind: system
+      agent_id: sys_watcher
+      request_id: req_floor_1106
+      change_set_id: cs_1040
+      preview_state: committed
+      committed_at: "2026-11-06T08:31:17-05:00"
+      result: {ok: true, id: off_ribbed_beanie_charcoal, undo: {by: person, target: cs_1040, until: "2026-11-07T23:59:00-05:00"}}
+    - tenant_id: store_northwind
+      id: pv_floor_hiking_socks_m_grey
+      operation: catalog.offer.set_price
+      instrument: set_price
+      input: {variant_id: var_hiking_socks_m_grey, price: 14.95, price_currency: USD}
+      input_hash: "sha256:fb010565d095caf713f0756ac0c2791b"
+      plan: {offer_id: off_hiking_socks_m_grey, price: 14.95, price_currency: USD}
+      changes: [{op: update, entity: offer, id: off_hiking_socks_m_grey, from: {price: 12.00}, to: {price: 14.95}}]
+      checks: [{rule: price_floor, passed: true, detail: "$14.95 is cost $13.00 + 15%", fix_tool: null}]
+      needs_approval: true
+      approval_reason: Changes 1 list price
+      basis: [{entity: offer, id: off_hiking_socks_m_grey, version: 1}]
+      policy_version: a41c09e2b7f3
+      actor_kind: system
+      agent_id: sys_watcher
+      request_id: req_floor_1106
+      change_set_id: cs_1040
+      preview_state: committed
+      committed_at: "2026-11-06T08:31:18-05:00"
+      result: {ok: true, id: off_hiking_socks_m_grey, undo: {by: person, target: cs_1040, until: "2026-11-07T23:59:00-05:00"}}
+    - tenant_id: store_northwind
+      id: pv_floor_hiking_socks_l_grey
+      operation: catalog.offer.set_price
+      instrument: set_price
+      input: {variant_id: var_hiking_socks_l_grey, price: 14.95, price_currency: USD}
+      input_hash: "sha256:a7650a42dd0f6f08aa36d5b8c2d16ccd"
+      plan: {offer_id: off_hiking_socks_l_grey, price: 14.95, price_currency: USD}
+      changes: [{op: update, entity: offer, id: off_hiking_socks_l_grey, from: {price: 12.00}, to: {price: 14.95}}]
+      checks: [{rule: price_floor, passed: true, detail: "$14.95 is cost $13.00 + 15%", fix_tool: null}]
+      needs_approval: true
+      approval_reason: Changes 1 list price
+      basis: [{entity: offer, id: off_hiking_socks_l_grey, version: 1}]
+      policy_version: a41c09e2b7f3
+      actor_kind: system
+      agent_id: sys_watcher
+      request_id: req_floor_1106
+      change_set_id: cs_1040
+      preview_state: committed
+      committed_at: "2026-11-06T08:31:19-05:00"
+      result: {ok: true, id: off_hiking_socks_l_grey, undo: {by: person, target: cs_1040, until: "2026-11-07T23:59:00-05:00"}}
+  platform.change_set_item:
+    - {tenant_id: store_northwind, change_set_id: cs_1039, position: 1, preview_id: pv_fall_layers, depends_on: [], result_id: dsp_fall_layers, verification: {matched: true, checked: 1, mismatches: []}}
+    - {tenant_id: store_northwind, change_set_id: cs_1040, position: 1, preview_id: pv_floor_breton_tee_xs_navy_stripe, depends_on: [], result_id: off_breton_tee_xs_navy_stripe, verification: {matched: true, checked: 1, mismatches: []}}
+    - {tenant_id: store_northwind, change_set_id: cs_1040, position: 2, preview_id: pv_floor_breton_tee_s_navy_stripe, depends_on: [], result_id: off_breton_tee_s_navy_stripe, verification: {matched: true, checked: 1, mismatches: []}}
+    - {tenant_id: store_northwind, change_set_id: cs_1040, position: 3, preview_id: pv_floor_breton_tee_m_navy_stripe, depends_on: [], result_id: off_breton_tee_m_navy_stripe, verification: {matched: true, checked: 1, mismatches: []}}
+    - {tenant_id: store_northwind, change_set_id: cs_1040, position: 4, preview_id: pv_floor_breton_tee_l_navy_stripe, depends_on: [], result_id: off_breton_tee_l_navy_stripe, verification: {matched: true, checked: 1, mismatches: []}}
+    - {tenant_id: store_northwind, change_set_id: cs_1040, position: 5, preview_id: pv_floor_breton_tee_xl_navy_stripe, depends_on: [], result_id: off_breton_tee_xl_navy_stripe, verification: {matched: true, checked: 1, mismatches: []}}
+    - {tenant_id: store_northwind, change_set_id: cs_1040, position: 6, preview_id: pv_floor_canvas_tote_natural, depends_on: [], result_id: off_canvas_tote_natural, verification: {matched: true, checked: 1, mismatches: []}}
+    - {tenant_id: store_northwind, change_set_id: cs_1040, position: 7, preview_id: pv_floor_ribbed_beanie_charcoal, depends_on: [], result_id: off_ribbed_beanie_charcoal, verification: {matched: true, checked: 1, mismatches: []}}
+    - {tenant_id: store_northwind, change_set_id: cs_1040, position: 8, preview_id: pv_floor_hiking_socks_m_grey, depends_on: [], result_id: off_hiking_socks_m_grey, verification: {matched: true, checked: 1, mismatches: []}}
+    - {tenant_id: store_northwind, change_set_id: cs_1040, position: 9, preview_id: pv_floor_hiking_socks_l_grey, depends_on: [], result_id: off_hiking_socks_l_grey, verification: {matched: true, checked: 1, mismatches: []}}
+  platform.change_set_event:
+    - tenant_id: store_northwind
+      change_set_id: cs_1039
+      position: 1
+      action_type: CreateAction
+      action_status: completed
+      agent_id: adm_sj
+      agent_name: muse-glimmer-30b
+      instrument: POST /v1/platform/change-sets
+      to_state: drafting
+      start_time: "2026-11-06T09:31:00-05:00"
+      end_time: "2026-11-06T09:31:00-05:00"
+      change_set_version: 1
+    - tenant_id: store_northwind
+      change_set_id: cs_1039
+      position: 2
+      action_type: UpdateAction
+      action_status: completed
+      agent_id: adm_sj
+      agent_name: muse-glimmer-30b
+      instrument: "POST /v1/platform/change-sets/{id}/submit"
+      from_state: drafting
+      to_state: waiting_for_approval
+      start_time: "2026-11-06T09:33:00-05:00"
+      end_time: "2026-11-06T09:33:00-05:00"
+      change_set_version: 1
+    - tenant_id: store_northwind
+      change_set_id: cs_1039
+      position: 3
+      action_type: AuthorizeAction
+      action_status: completed
+      agent_id: adm_sj
+      instrument: "POST /v1/platform/change-sets/{id}/approve"
+      from_state: waiting_for_approval
+      to_state: running
+      start_time: "2026-11-06T09:35:00-05:00"
+      end_time: "2026-11-06T09:35:00-05:00"
+      change_set_version: 1
+    - tenant_id: store_northwind
+      change_set_id: cs_1039
+      position: 4
+      action_type: UpdateAction
+      action_status: completed
+      agent_id: sys_executor
+      instrument: executor
+      from_state: running
+      to_state: verifying
+      start_time: "2026-11-06T09:35:30-05:00"
+      end_time: "2026-11-06T09:35:30-05:00"
+      change_set_version: 1
+    - tenant_id: store_northwind
+      change_set_id: cs_1039
+      position: 5
+      action_type: AssessAction
+      action_status: completed
+      agent_id: sys_executor
+      instrument: verify_change_set
+      from_state: verifying
+      to_state: live
+      start_time: "2026-11-06T09:36:10-05:00"
+      end_time: "2026-11-06T09:36:10-05:00"
+      change_set_version: 1
+    - tenant_id: store_northwind
+      change_set_id: cs_1040
+      position: 1
+      action_type: CreateAction
+      action_status: completed
+      agent_id: sys_watcher
+      instrument: watcher.price_below_cost
+      to_state: drafting
+      start_time: "2026-11-06T07:55:00-05:00"
+      end_time: "2026-11-06T07:55:00-05:00"
+      change_set_version: 1
+    - tenant_id: store_northwind
+      change_set_id: cs_1040
+      position: 2
+      action_type: AuthorizeAction
+      action_status: completed
+      agent_id: sys_watcher
+      instrument: platform.yml watchers.price_below_cost.run_fix
+      from_state: drafting
+      to_state: running
+      start_time: "2026-11-06T08:31:00-05:00"
+      end_time: "2026-11-06T08:31:00-05:00"
+      change_set_version: 1
+    - tenant_id: store_northwind
+      change_set_id: cs_1040
+      position: 3
+      action_type: UpdateAction
+      action_status: completed
+      agent_id: sys_executor
+      instrument: executor
+      from_state: running
+      to_state: verifying
+      start_time: "2026-11-06T08:31:30-05:00"
+      end_time: "2026-11-06T08:31:30-05:00"
+      change_set_version: 1
+    - tenant_id: store_northwind
+      change_set_id: cs_1040
+      position: 4
+      action_type: AssessAction
+      action_status: completed
+      agent_id: sys_executor
+      instrument: verify_change_set
+      from_state: verifying
+      to_state: live
+      start_time: "2026-11-06T08:31:40-05:00"
+      end_time: "2026-11-06T08:31:40-05:00"
+      change_set_version: 1
+    - tenant_id: store_northwind
+      change_set_id: cs_1041
+      position: 1
+      action_type: CreateAction
+      action_status: completed
+      agent_id: sys_watcher
+      agent_name: muse-glimmer-30b
+      instrument: POST /v1/platform/change-sets
+      to_state: drafting
+      start_time: "2026-11-06T09:12:00-05:00"
+      end_time: "2026-11-06T09:12:00-05:00"
+      change_set_version: 1
+  platform.action_log:
+    - tenant_id: store_northwind
+      id: act_1040_00
+      action_type: AssessAction
+      action_status: completed
+      actor_kind: system
+      agent_id: sys_watcher
+      instrument: watcher.price_below_cost
+      object_type: ProductGroup
+      result: {products: [prd_breton_tee, prd_canvas_tote, prd_ribbed_beanie, prd_hiking_socks], count: 4}
+      start_time: "2026-11-06T07:55:00-05:00"
+      end_time: "2026-11-06T07:55:00-05:00"
+      change_set_id: cs_1040
+      policy_version: a41c09e2b7f3
+      request_id: req_floor_1106
+      latency_ms: 310
+    - tenant_id: store_northwind
+      id: act_1040_01
+      action_type: UpdateAction
+      action_status: completed
+      actor_kind: system
+      agent_id: sys_executor
+      instrument: set_price
+      object_type: Offer
+      object_id: off_breton_tee_xs_navy_stripe
+      result: {price: 23.00, price_currency: USD}
+      start_time: "2026-11-06T08:31:11-05:00"
+      end_time: "2026-11-06T08:31:11-05:00"
+      change_set_id: cs_1040
+      preview_id: pv_floor_breton_tee_xs_navy_stripe
+      policy_version: a41c09e2b7f3
+      request_id: req_floor_1106
+      latency_ms: 40
+    - tenant_id: store_northwind
+      id: act_1040_02
+      action_type: UpdateAction
+      action_status: completed
+      actor_kind: system
+      agent_id: sys_executor
+      instrument: set_price
+      object_type: Offer
+      object_id: off_breton_tee_s_navy_stripe
+      result: {price: 23.00, price_currency: USD}
+      start_time: "2026-11-06T08:31:12-05:00"
+      end_time: "2026-11-06T08:31:12-05:00"
+      change_set_id: cs_1040
+      preview_id: pv_floor_breton_tee_s_navy_stripe
+      policy_version: a41c09e2b7f3
+      request_id: req_floor_1106
+      latency_ms: 40
+    - tenant_id: store_northwind
+      id: act_1040_03
+      action_type: UpdateAction
+      action_status: completed
+      actor_kind: system
+      agent_id: sys_executor
+      instrument: set_price
+      object_type: Offer
+      object_id: off_breton_tee_m_navy_stripe
+      result: {price: 23.00, price_currency: USD}
+      start_time: "2026-11-06T08:31:13-05:00"
+      end_time: "2026-11-06T08:31:13-05:00"
+      change_set_id: cs_1040
+      preview_id: pv_floor_breton_tee_m_navy_stripe
+      policy_version: a41c09e2b7f3
+      request_id: req_floor_1106
+      latency_ms: 40
+    - tenant_id: store_northwind
+      id: act_1040_04
+      action_type: UpdateAction
+      action_status: completed
+      actor_kind: system
+      agent_id: sys_executor
+      instrument: set_price
+      object_type: Offer
+      object_id: off_breton_tee_l_navy_stripe
+      result: {price: 23.00, price_currency: USD}
+      start_time: "2026-11-06T08:31:14-05:00"
+      end_time: "2026-11-06T08:31:14-05:00"
+      change_set_id: cs_1040
+      preview_id: pv_floor_breton_tee_l_navy_stripe
+      policy_version: a41c09e2b7f3
+      request_id: req_floor_1106
+      latency_ms: 40
+    - tenant_id: store_northwind
+      id: act_1040_05
+      action_type: UpdateAction
+      action_status: completed
+      actor_kind: system
+      agent_id: sys_executor
+      instrument: set_price
+      object_type: Offer
+      object_id: off_breton_tee_xl_navy_stripe
+      result: {price: 23.00, price_currency: USD}
+      start_time: "2026-11-06T08:31:15-05:00"
+      end_time: "2026-11-06T08:31:15-05:00"
+      change_set_id: cs_1040
+      preview_id: pv_floor_breton_tee_xl_navy_stripe
+      policy_version: a41c09e2b7f3
+      request_id: req_floor_1106
+      latency_ms: 40
+    - tenant_id: store_northwind
+      id: act_1040_06
+      action_type: UpdateAction
+      action_status: completed
+      actor_kind: system
+      agent_id: sys_executor
+      instrument: set_price
+      object_type: Offer
+      object_id: off_canvas_tote_natural
+      result: {price: 28.75, price_currency: USD}
+      start_time: "2026-11-06T08:31:16-05:00"
+      end_time: "2026-11-06T08:31:16-05:00"
+      change_set_id: cs_1040
+      preview_id: pv_floor_canvas_tote_natural
+      policy_version: a41c09e2b7f3
+      request_id: req_floor_1106
+      latency_ms: 40
+    - tenant_id: store_northwind
+      id: act_1040_07
+      action_type: UpdateAction
+      action_status: completed
+      actor_kind: system
+      agent_id: sys_executor
+      instrument: set_price
+      object_type: Offer
+      object_id: off_ribbed_beanie_charcoal
+      result: {price: 17.25, price_currency: USD}
+      start_time: "2026-11-06T08:31:17-05:00"
+      end_time: "2026-11-06T08:31:17-05:00"
+      change_set_id: cs_1040
+      preview_id: pv_floor_ribbed_beanie_charcoal
+      policy_version: a41c09e2b7f3
+      request_id: req_floor_1106
+      latency_ms: 40
+    - tenant_id: store_northwind
+      id: act_1040_08
+      action_type: UpdateAction
+      action_status: completed
+      actor_kind: system
+      agent_id: sys_executor
+      instrument: set_price
+      object_type: Offer
+      object_id: off_hiking_socks_m_grey
+      result: {price: 14.95, price_currency: USD}
+      start_time: "2026-11-06T08:31:18-05:00"
+      end_time: "2026-11-06T08:31:18-05:00"
+      change_set_id: cs_1040
+      preview_id: pv_floor_hiking_socks_m_grey
+      policy_version: a41c09e2b7f3
+      request_id: req_floor_1106
+      latency_ms: 40
+    - tenant_id: store_northwind
+      id: act_1040_09
+      action_type: UpdateAction
+      action_status: completed
+      actor_kind: system
+      agent_id: sys_executor
+      instrument: set_price
+      object_type: Offer
+      object_id: off_hiking_socks_l_grey
+      result: {price: 14.95, price_currency: USD}
+      start_time: "2026-11-06T08:31:19-05:00"
+      end_time: "2026-11-06T08:31:19-05:00"
+      change_set_id: cs_1040
+      preview_id: pv_floor_hiking_socks_l_grey
+      policy_version: a41c09e2b7f3
+      request_id: req_floor_1106
+      latency_ms: 40
+    - tenant_id: store_northwind
+      id: act_1040_10
+      action_type: AssessAction
+      action_status: completed
+      actor_kind: system
+      agent_id: sys_executor
+      instrument: verify_change_set
+      object_type: ItemList
+      object_id: cs_1040
+      result: {state: live, matched: 9, total: 9}
+      start_time: "2026-11-06T08:31:30-05:00"
+      end_time: "2026-11-06T08:31:40-05:00"
+      change_set_id: cs_1040
+      policy_version: a41c09e2b7f3
+      request_id: req_floor_1106
+      latency_ms: 120
+    - tenant_id: store_northwind
+      id: act_1039_01
+      action_type: ScheduleAction
+      action_status: potential
+      actor_kind: agent_on_behalf
+      agent_id: adm_sj
+      agent_name: muse-glimmer-30b
+      instrument: schedule_banner
+      object_type: WebPageElement
+      object_id: slot_home_hero
+      start_time: "2026-11-06T09:32:00-05:00"
+      end_time: "2026-11-06T09:32:00-05:00"
+      change_set_id: cs_1039
+      preview_id: pv_fall_layers
+      policy_version: a41c09e2b7f3
+      request_id: req_fall_layers_01
+      usage: {input_tokens: 1620, output_tokens: 180}
+      latency_ms: 690
+    - tenant_id: store_northwind
+      id: act_1039_02
+      action_type: AuthorizeAction
+      action_status: completed
+      actor_kind: operator
+      agent_id: adm_sj
+      instrument: "POST /v1/platform/change-sets/{id}/approve"
+      object_type: ItemList
+      object_id: cs_1039
+      result: {state: running, version: 1}
+      start_time: "2026-11-06T09:35:00-05:00"
+      end_time: "2026-11-06T09:35:00-05:00"
+      change_set_id: cs_1039
+      policy_version: a41c09e2b7f3
+      request_id: req_fall_layers_02
+      latency_ms: 85
+    - tenant_id: store_northwind
+      id: act_1039_03
+      action_type: ScheduleAction
+      action_status: completed
+      actor_kind: system
+      agent_id: sys_executor
+      instrument: schedule_banner
+      object_type: Schedule
+      object_id: dsp_fall_layers
+      result: {id: dsp_fall_layers}
+      start_time: "2026-11-06T09:35:20-05:00"
+      end_time: "2026-11-06T09:35:21-05:00"
+      change_set_id: cs_1039
+      preview_id: pv_fall_layers
+      policy_version: a41c09e2b7f3
+      request_id: req_fall_layers_02
+      latency_ms: 60
+    - tenant_id: store_northwind
+      id: act_1039_04
+      action_type: AssessAction
+      action_status: completed
+      actor_kind: system
+      agent_id: sys_executor
+      instrument: verify_change_set
+      object_type: ItemList
+      object_id: cs_1039
+      result: {state: live, matched: 1, total: 1}
+      start_time: "2026-11-06T09:36:00-05:00"
+      end_time: "2026-11-06T09:36:10-05:00"
+      change_set_id: cs_1039
+      policy_version: a41c09e2b7f3
+      request_id: req_fall_layers_02
+      latency_ms: 95
+  platform.task:
+    - tenant_id: store_northwind
+      id: task_returns_1106
+      title: "12 return requests over $200 are waiting"
+      task_state: working
+      task_origin: agent_noticed
+      summary: Operations agent is sorting the requests by policy
+      tag: returns
+      request_text: "Review the 12 return requests over $200 and suggest what to do with each."
+      watcher: returns_over_refund_threshold
+      watcher_observation: {threshold: {policy_key: thresholds.refund, value: {value: 200.00, currency: USD}}, observed: {count: 12, oldest_requested_at: "2026-11-04T09:12:00-05:00"}}
+      related_entities:
+        - {entity: claim, id: clm_20402}
+        - {entity: claim, id: clm_20431}
+        - {entity: claim, id: clm_20418}
+        - {entity: claim, id: clm_20377}
+        - {entity: claim, id: clm_20366}
+        - {entity: claim, id: clm_20290}
+        - {entity: claim, id: clm_20333}
+        - {entity: claim, id: clm_20341}
+        - {entity: claim, id: clm_20352}
+        - {entity: claim, id: clm_20388}
+        - {entity: claim, id: clm_20395}
+        - {entity: claim, id: clm_20409}
+      change_set_id: null
+      start_time: "2026-11-06T10:40:00-05:00"
+      end_time: null
+    - tenant_id: store_northwind
+      id: task_linen_reorder
+      title: Linen shirt sells out in about 4 days
+      task_state: needs_you
+      task_origin: agent_noticed
+      summary: "Reorder draft: 3 sizes, 240 units"
+      tag: inventory
+      request_text: Linen shirt is selling fast. Draft a reorder for the sizes that will run out.
+      watcher: stock_out_forecast
+      watcher_observation: {threshold: {policy_key: watchers.stock_out_forecast.days_until_stockout_lte, value: 5}, observed: {product_id: prd_linen_shirt, inventory_level: 38, sold_last_7_days: 61, days_until_stockout: 4.4}}
+      related_entities: [{entity: product, id: prd_linen_shirt}]
+      change_set_id: cs_1041
+      conversation_id: conv_linen_reorder
+      start_time: "2026-11-06T08:40:00-05:00"
+      end_time: null
+    - tenant_id: store_northwind
+      id: task_size_charts
+      title: Check missing size charts
+      task_state: working
+      task_origin: you_asked
+      summary: "15 of 18 checked, no changes yet"
+      tag: catalog
+      request_text: Check which products are missing size charts.
+      related_entities: []
+      change_set_id: null
+      conversation_id: conv_size_charts
+      start_time: "2026-11-05T16:20:00-05:00"
+      end_time: null
+    - tenant_id: store_northwind
+      id: task_below_cost
+      title: "4 products were priced below cost"
+      task_state: done
+      task_origin: automation
+      summary: "Raised to the price floor at 08:31; undo until Nov 7"
+      tag: pricing
+      watcher: price_below_cost
+      watcher_observation: {threshold: {policy_key: watchers.price_below_cost.compare, value: list_price_below_cost}, observed: {products: [{product_id: prd_breton_tee, list_price: 19.00, cost: 20.00}, {product_id: prd_canvas_tote, list_price: 24.00, cost: 25.00}, {product_id: prd_ribbed_beanie, list_price: 14.00, cost: 15.00}, {product_id: prd_hiking_socks, list_price: 12.00, cost: 13.00}]}}
+      related_entities: [{entity: product, id: prd_breton_tee}, {entity: product, id: prd_canvas_tote}, {entity: product, id: prd_ribbed_beanie}, {entity: product, id: prd_hiking_socks}]
+      change_set_id: cs_1040
+      start_time: "2026-11-06T07:55:00-05:00"
+      end_time: "2026-11-06T08:31:40-05:00"
+    - tenant_id: store_northwind
+      id: task_fall_layers
+      title: Swap the main banner to Fall layers
+      task_state: done
+      task_origin: you_asked
+      summary: "Live since 10:00, verified"
+      tag: merchandising
+      request_text: "Swap the main page banner to Fall layers at 10:00."
+      related_entities: [{entity: display_booking, id: dsp_fall_layers}]
+      change_set_id: cs_1039
+      conversation_id: conv_fall_layers
+      start_time: "2026-11-06T09:30:00-05:00"
+      end_time: "2026-11-06T10:00:00-05:00"
+  platform.job:
+    - {tenant_id: store_northwind, id: job_watch_returns, kind: watcher.returns_over_refund_threshold, run_at: "2026-11-06T11:10:00-05:00", payload: {}, attempts: 0}
+    - {tenant_id: store_northwind, id: job_watch_stock, kind: watcher.stock_out_forecast, run_at: "2026-11-06T11:40:00-05:00", payload: {}, attempts: 0}
+    - {tenant_id: store_northwind, id: job_watch_price, kind: watcher.price_below_cost, run_at: "2026-11-06T11:55:00-05:00", payload: {}, attempts: 0}
+    - {tenant_id: store_northwind, id: job_promo_denim_bundle_start, kind: promotion.start, run_at: "2026-11-13T00:00:00-05:00", payload: {promotion_id: promo_denim_bundle}, attempts: 0}
+    - {tenant_id: store_northwind, id: job_promo_denim_bundle_end, kind: promotion.end, run_at: "2026-11-21T00:00:00-05:00", payload: {promotion_id: promo_denim_bundle}, attempts: 0}
+    - {tenant_id: store_northwind, id: job_promo_autumn_knit_end, kind: promotion.end, run_at: "2026-11-16T00:00:00-05:00", payload: {promotion_id: promo_autumn_knit}, attempts: 0}

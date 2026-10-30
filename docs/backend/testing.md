@@ -53,4 +53,8 @@ cargo fmt --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace            # Postgres 서비스 컨테이너, SQLX_OFFLINE=true
 cargo xtask check-docs
+cargo xtask check-schema   # 마이그레이션 규칙, 컬럼 사전·어휘가 최신인지
+cargo xtask check-seed     # 시드가 스키마에 맞는지
 ```
+
+DB를 띄우는 테스트(`#[ignore]`)는 통합 테스트이며 요청이 있을 때 `cargo test --workspace -- --ignored`로 돌립니다.
