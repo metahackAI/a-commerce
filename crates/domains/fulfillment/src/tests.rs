@@ -53,6 +53,7 @@ fn cx_on(db: Db, subject: &str, at: &str) -> Cx {
         request_id: "req_test".into(),
         clock: Arc::new(FixedClock::at(time.parse(at).unwrap())),
         time,
+        currency: acom_core::Currency::parse("USD").unwrap(),
         policy: Arc::new(policy()),
         db,
     }

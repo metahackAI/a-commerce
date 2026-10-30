@@ -134,6 +134,7 @@ pub(crate) mod testing {
             request_id: "req_test".into(),
             clock: Arc::new(FixedClock::at(now)),
             time,
+            currency: acom_core::Currency::parse("USD").unwrap_or_else(|e| panic!("{e}")),
             policy: Arc::new(policies()),
             db: Db::connect_lazy("postgres://nobody@127.0.0.1:1/none", 1)
                 .unwrap_or_else(|e| panic!("{e}")),

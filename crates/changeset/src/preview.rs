@@ -407,6 +407,7 @@ pub async fn commit(
         .detail(json!({"change_set_id": null, "state": p.preview_state})));
     }
     still_right(registry, cx, &mut tx, &p).await?;
+    tx.preview_id = Some(p.id.clone());
     let done = op.commit(&mut tx, &p.plan).await?;
     mark_committed(&mut tx, preview_id, &p.plan, &done).await?;
     log_action(

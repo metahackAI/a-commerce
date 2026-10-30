@@ -1159,6 +1159,8 @@ async fn run_item(
     if p.preview_state == PreviewState::Committed.as_str() {
         return Ok((p.plan.clone(), first_result(&p)?));
     }
+    tx.preview_id = Some(item.preview_id.clone());
+    tx.change_set_id = Some(cs.to_owned());
     let plan = bind::bind(&item.plan, produced)
         .map_err(|e| ToolError::new(ErrorCode::INTERNAL, format!("cannot bind the plan: {e}")))?;
     let done = o.commit(&mut tx, &plan).await?;

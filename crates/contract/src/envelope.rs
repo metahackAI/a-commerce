@@ -44,6 +44,9 @@ pub struct Change {
     pub op: ChangeOp,
     /// schema.org type in snake_case, for example `unit_price_specification`.
     pub entity: String,
+    /// The record's id; empty for a record the write will create (shown as `null`).
+    #[serde(serialize_with = "empty_as_null", deserialize_with = "null_as_empty")]
+    #[schemars(with = "Option<String>")]
     pub id: String,
     #[serde(default, skip_serializing_if = "Value::is_null")]
     pub from: Value,
@@ -52,6 +55,18 @@ pub struct Change {
     /// Short human sentence when the from/to pair is not self-explanatory.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
+}
+
+fn empty_as_null<S: serde::Serializer>(id: &str, s: S) -> Result<S::Ok, S::Error> {
+    if id.is_empty() {
+        s.serialize_none()
+    } else {
+        s.serialize_str(id)
+    }
+}
+
+fn null_as_empty<'de, D: serde::Deserializer<'de>>(d: D) -> Result<String, D::Error> {
+    Ok(Option::<String>::deserialize(d)?.unwrap_or_default())
 }
 
 /// The result of one policy check.
@@ -98,4 +113,25 @@ pub struct CommitResult {
     pub id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub undo: Option<Undo>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_change_to_a_new_record_has_a_null_id() {
+        let c = Change {
+            op: ChangeOp::Create,
+            entity: "coupon".into(),
+            id: String::new(),
+            from: Value::Null,
+            to: serde_json::json!({"code": "VIPWEEKEND20"}),
+            note: None,
+        };
+        let v = serde_json::to_value(&c).unwrap();
+        assert_eq!(v["id"], Value::Null);
+        let back: Change = serde_json::from_value(v).unwrap();
+        assert_eq!(back, c);
+    }
 }

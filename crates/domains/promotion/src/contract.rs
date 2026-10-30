@@ -51,6 +51,7 @@ fn offline_cx(subject: &str, kind: ActorKind) -> Cx {
                 .unwrap(),
         )),
         time: StoreTime::new(chrono_tz::America::New_York),
+        currency: acom_core::Currency::parse("USD").unwrap(),
         policy: Arc::new(policies(true)),
         db: Db::connect_lazy("postgres://nobody@localhost:1/none", 1).unwrap(),
     }

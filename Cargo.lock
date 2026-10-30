@@ -309,6 +309,7 @@ version = "0.1.0"
 dependencies = [
  "acom-contract",
  "acom-core",
+ "rust_decimal",
  "serde",
  "serde_json",
  "serde_norway",

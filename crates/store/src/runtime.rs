@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use acom_auth::Principal;
 use acom_contract::ToolError;
-use acom_core::{Clock, FixedClock, StoreTime, SystemClock, TenantId};
+use acom_core::{Clock, Currency, FixedClock, StoreTime, SystemClock, TenantId};
 use acom_policy::PolicySet;
 use chrono::{DateTime, Utc};
 
@@ -28,6 +28,7 @@ struct Cached {
     at: Instant,
     policy: Arc<PolicySet>,
     time: StoreTime,
+    currency: Currency,
 }
 
 impl std::fmt::Debug for Runtime {
@@ -63,6 +64,7 @@ impl Runtime {
             request_id,
             clock,
             time: store.time,
+            currency: store.currency,
             policy: store.policy,
             db: self.db.clone(),
         })
@@ -84,8 +86,8 @@ impl Runtime {
         }
         let mut tx = self.db.pool().begin().await?;
         crate::scope_to_tenant(&mut tx, tenant).await?;
-        let zone: Option<String> =
-            sqlx::query_scalar("SELECT time_zone FROM platform.online_store WHERE id = $1")
+        let store: Option<(String, String)> =
+            sqlx::query_as("SELECT time_zone, currency FROM platform.online_store WHERE id = $1")
                 .bind(tenant.as_str())
                 .fetch_optional(&mut *tx)
                 .await?;
@@ -96,7 +98,10 @@ impl Runtime {
         .fetch_all(&mut *tx)
         .await?;
         tx.commit().await?;
-        let zone = zone.ok_or_else(|| StoreError::Policy(format!("unknown store {tenant}")))?;
+        let (zone, currency) =
+            store.ok_or_else(|| StoreError::Policy(format!("unknown store {tenant}")))?;
+        let currency = Currency::parse(currency.trim())
+            .map_err(|_| StoreError::Policy(format!("store {tenant}: bad currency {currency}")))?;
         let time =
             StoreTime::new(zone.parse().map_err(|_| {
                 StoreError::Policy(format!("store {tenant}: bad time zone {zone}"))
@@ -112,6 +117,7 @@ impl Runtime {
             at: Instant::now(),
             policy: Arc::new(policy),
             time,
+            currency,
         };
         if let Ok(mut cache) = self.stores.lock() {
             cache.insert(tenant.as_str().to_owned(), c.clone());

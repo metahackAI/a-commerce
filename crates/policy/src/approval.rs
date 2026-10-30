@@ -4,6 +4,9 @@
 //! …) and asks [`PolicySet::approval_for`]. The thresholds decide; the operation never
 //! hard-codes a limit. Kind W$ operations need approval whatever this says.
 
+use std::str::FromStr;
+
+use rust_decimal::Decimal;
 use serde_json::Value;
 
 use crate::PolicySet;
@@ -20,10 +23,17 @@ pub struct Approval {
     pub threshold: Option<String>,
 }
 
-fn number(v: &Value) -> Option<f64> {
+/// A number or an amount (`{value, currency}`) as an exact decimal; money is never compared as
+/// a float.
+fn number(v: &Value) -> Option<Decimal> {
     match v {
-        Value::Number(n) => n.as_f64(),
-        Value::String(s) => s.parse().ok(),
+        Value::Number(n) => {
+            let text = n.to_string();
+            Decimal::from_str(&text)
+                .or_else(|_| Decimal::from_scientific(&text))
+                .ok()
+        }
+        Value::String(s) => Decimal::from_str(s).ok(),
         Value::Object(o) => o.get("value").and_then(number),
         _ => None,
     }
@@ -31,7 +41,7 @@ fn number(v: &Value) -> Option<f64> {
 
 fn money_text(v: &Value) -> Option<String> {
     let o = v.as_object()?;
-    let amount = number(o.get("value")?)?;
+    let amount = number(o.get("value")?)?.round_dp(2);
     Some(match o.get("currency")?.as_str()? {
         "USD" => format!("${amount:.2}"),
         "EUR" => format!("€{amount:.2}"),

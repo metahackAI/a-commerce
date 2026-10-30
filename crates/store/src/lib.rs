@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use acom_auth::Principal;
 use acom_contract::{Ctx, ErrorCode, ToolError};
-use acom_core::{Clock, StoreTime, TenantId};
+use acom_core::{Clock, Currency, StoreTime, TenantId};
 use acom_policy::PolicySet;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::{Postgres, Transaction};
@@ -117,6 +117,8 @@ pub struct Cx {
     pub clock: Arc<dyn Clock>,
     /// The store's time zone: inputs are read and outputs written in it.
     pub time: StoreTime,
+    /// The store's currency (`platform.online_store.currency`).
+    pub currency: Currency,
     pub policy: Arc<PolicySet>,
     pub db: Db,
 }
@@ -133,7 +135,10 @@ impl Cx {
             request_id: self.request_id.clone(),
             clock: self.clock.clone(),
             time: self.time,
+            currency: self.currency,
             policy: self.policy.clone(),
+            preview_id: None,
+            change_set_id: None,
         })
     }
 
@@ -164,7 +169,13 @@ pub struct TxCx {
     pub request_id: String,
     pub clock: Arc<dyn Clock>,
     pub time: StoreTime,
+    pub currency: Currency,
     pub policy: Arc<PolicySet>,
+    /// When the change-set engine runs a write: the preview being run, so the write can record
+    /// which preview made its rows.
+    pub preview_id: Option<String>,
+    /// …and the change set it belongs to (`promotion.change_set_id` and the like).
+    pub change_set_id: Option<String>,
 }
 
 impl TxCx {
