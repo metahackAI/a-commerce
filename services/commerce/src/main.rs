@@ -209,8 +209,11 @@ fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
         .ok_or("ACOM_GATEWAY_PUBLIC_KEY_FILE is not set")?;
     let verifier = Verifier::from_pem_file(key, "commerce").map_err(|e| e.to_string())?;
     let registry = acom_registry::build().map_err(|e| e.join("; "))?;
+    // The evaluation's screen-shaped facade: built always, served only in demo mode.
+    let facade = acom_facade::Facade::build().map_err(|e| e.join("; "))?;
     tracing::info!(
         operations = registry.len(),
+        facade_screens = facade.len(),
         demo_mode = cli.demo_mode,
         "registry built"
     );
@@ -218,6 +221,7 @@ fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
         runtime: Arc::new(Runtime::new(db, policy, cli.demo_mode)),
         registry: Arc::new(registry),
         verifier: Arc::new(verifier),
+        facade: Arc::new(facade),
     });
     let reset = DemoReset {
         owner_url: cli.migration_database_url.clone(),

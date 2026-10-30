@@ -5,6 +5,10 @@
 //! runtime's change-set drafting endpoints. It has no way to approve, reject, undo, place an
 //! order, or send a return request: those are person-only endpoints, and the token it carries
 //! (the gateway's on-behalf token, passed through unchanged) has no `human:*` scope anyway.
+//!
+//! For the evaluation only, a turn with `tool_set: facade` uses the screen-shaped facade the
+//! same way (`?set=facade` on the manifest and the tool endpoint); commerce serves it in demo
+//! mode only.
 
 use acom_contract::{ErrorCode, Preview, ToolError};
 use futures::future::BoxFuture;
@@ -108,6 +112,28 @@ pub trait ToolClient: Send + Sync {
             ))
         })
     }
+
+    /// `GET /v1/tools?set=facade`: the evaluation's screen-shaped facade (demo mode only).
+    fn facade_manifest(&self) -> BoxFuture<'_, Result<Vec<ToolSpec>, ToolError>> {
+        Box::pin(async { Err(no_facade()) })
+    }
+
+    /// `POST /v1/tools/{tool}?set=facade`: one facade call, read or write alike, run at once.
+    fn facade_call<'a>(
+        &'a self,
+        tool: &'a str,
+        input: &'a Value,
+    ) -> BoxFuture<'a, Result<Value, ToolError>> {
+        let _ = (tool, input);
+        Box::pin(async { Err(no_facade()) })
+    }
+}
+
+fn no_facade() -> ToolError {
+    ToolError::new(
+        ErrorCode::UPSTREAM_UNAVAILABLE,
+        "This client cannot reach the screen-shaped facade.",
+    )
 }
 
 /// The HTTP client for one turn: the commerce base URL, the caller's token, the request id.
@@ -298,6 +324,27 @@ impl ToolClient for HttpToolClient {
             )
             .await
             .map(|_| ())
+        })
+    }
+
+    fn facade_manifest(&self) -> BoxFuture<'_, Result<Vec<ToolSpec>, ToolError>> {
+        Box::pin(async move {
+            let v = self
+                .send(reqwest::Method::GET, "/v1/tools?set=facade", None)
+                .await?;
+            Ok(decode::<Manifest>(v, "facade manifest")?.items)
+        })
+    }
+
+    fn facade_call<'a>(
+        &'a self,
+        tool: &'a str,
+        input: &'a Value,
+    ) -> BoxFuture<'a, Result<Value, ToolError>> {
+        Box::pin(async move {
+            let path = format!("/v1/tools/{tool}?set=facade");
+            self.send(reqwest::Method::POST, &path, Some(json!({"input": input})))
+                .await
         })
     }
 

@@ -320,9 +320,10 @@ pub fn implied_each(
 }
 
 /// The rows of a result a step can run once per row for (`each`): its `items` (or a block's
-/// `requests`, `picks`, `lines`), or the result itself when it is one object.
+/// `requests`, `picks`, `lines`, a screen grid's `list`), or the result itself when it is one
+/// object.
 pub fn rows(output: &Value) -> Vec<Value> {
-    for key in ["items", "requests", "picks", "lines", "products"] {
+    for key in ["items", "requests", "picks", "lines", "products", "list"] {
         if let Some(Value::Array(a)) = output.get(key) {
             return a.iter().filter(|r| r.is_object()).cloned().collect();
         }

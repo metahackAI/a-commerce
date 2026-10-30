@@ -4,9 +4,9 @@
 use std::convert::Infallible;
 use std::sync::Arc;
 
-use acom_agent::{ChatSurface, Emitter, HttpToolClient, Runtime, TurnRequest, encode};
+use acom_agent::{ChatSurface, Emitter, HttpToolClient, Runtime, ToolSet, TurnRequest, encode};
 use acom_auth::{Principal, Surface, Verifier};
-use acom_contract::{ErrorCode, ToolError};
+use acom_contract::{ErrorClass, ErrorCode, ToolError};
 use acom_core::enums::ActorKind;
 use axum::body::{Body, Bytes};
 use axum::extract::{Path, Query, State};
@@ -24,6 +24,23 @@ pub struct App {
     pub verifier: Option<Arc<Verifier>>,
     pub commerce_url: String,
     pub http: reqwest::Client,
+    /// `ACOM_DEMO_MODE`: only then may a turn use the evaluation's facade (`tool_set: facade`).
+    pub demo_mode: bool,
+}
+
+/// The facade outside demo mode (the same code commerce uses for it).
+const DEMO_MODE_OFF: ErrorCode = ErrorCode::new("demo_mode_off", ErrorClass::InvalidState);
+
+/// A turn on the screen-shaped facade is for the evaluation, which runs on a demo store.
+fn check_tool_set(app: &App, request: &TurnRequest) -> Result<(), ToolError> {
+    if request.tool_set == ToolSet::Facade && !app.demo_mode {
+        return Err(ToolError::new(
+            DEMO_MODE_OFF,
+            "The screen-shaped facade exists only for the evaluation, in demo mode.",
+        )
+        .detail(json!({"field": "tool_set", "reason": "demo_mode_off"})));
+    }
+    Ok(())
 }
 
 pub fn routes(app: Arc<App>) -> Router {
@@ -141,6 +158,7 @@ async fn turns(
             .ok_or_else(|| unavailable("the agent definitions did not load (see /readyz)"))?;
         let request: TurnRequest = serde_json::from_slice(&body)
             .map_err(|e| ToolError::invalid_input(format!("The turn request is not valid: {e}")))?;
+        check_tool_set(&app, &request)?;
         let prepared = runtime
             .prepare(c.principal, c.request_id.clone(), surface, request)
             .await?;
@@ -271,6 +289,10 @@ mod tests {
     }
 
     fn fixture() -> Option<Fixture> {
+        fixture_in(false)
+    }
+
+    fn fixture_in(demo_mode: bool) -> Option<Fixture> {
         let (private, public) = keys()?;
         let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../agents");
         let profiles = acom_agent::Profiles::load(&dir).unwrap();
@@ -293,6 +315,7 @@ mod tests {
             // Never reached: without a model the turn ends before any tool call.
             commerce_url: "http://127.0.0.1:9".into(),
             http: reqwest::Client::new(),
+            demo_mode,
         });
         Some(Fixture {
             app: routes(app),
@@ -429,12 +452,61 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn the_facade_is_a_demo_mode_turn_only() {
+        let body = r#"{"message": "Show the running promotions.", "tool_set": "facade"}"#;
+        let Some(f) = fixture_in(false) else {
+            eprintln!("openssl not available; skipping");
+            return;
+        };
+        let t = token(&f, &operator().on_behalf());
+        let res = f
+            .app
+            .clone()
+            .oneshot(post("/chat/bo/turns", Some(&t), body))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::CONFLICT);
+        let text_body = text(res).await;
+        assert!(
+            text_body.contains("\"code\":\"demo_mode_off\""),
+            "{text_body}"
+        );
+        // A tool set the turn does not know is not a turn request.
+        let res = f
+            .app
+            .clone()
+            .oneshot(post(
+                "/chat/bo/turns",
+                Some(&t),
+                r#"{"message": "hi", "tool_set": "screens"}"#,
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        // In demo mode the turn starts (and, with no model here, ends saying so).
+        let Some(f) = fixture_in(true) else {
+            return;
+        };
+        let t = token(&f, &operator().on_behalf());
+        let res = f
+            .app
+            .clone()
+            .oneshot(post("/chat/bo/turns", Some(&t), body))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        assert!(text(res).await.contains("event: turn.done"));
+    }
+
+    #[tokio::test]
     async fn without_a_key_every_request_is_refused_with_the_reason() {
         let app = routes(Arc::new(App {
             runtime: None,
             verifier: None,
             commerce_url: String::new(),
             http: reqwest::Client::new(),
+            demo_mode: false,
         }));
         let res = app
             .oneshot(post("/chat/bo/turns", Some("x"), r#"{"message": "hi"}"#))

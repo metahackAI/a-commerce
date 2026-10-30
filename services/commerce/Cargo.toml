@@ -12,6 +12,7 @@ acom-auth.workspace = true
 acom-changeset.workspace = true
 acom-contract.workspace = true
 acom-core.workspace = true
+acom-facade.workspace = true
 acom-http.workspace = true
 acom-mcp.workspace = true
 acom-policy.workspace = true
