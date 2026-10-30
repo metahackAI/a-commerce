@@ -732,6 +732,7 @@ mod tests {
     use acom_contract::schema::{closed_schema_for, violations};
     use acom_core::Currency;
     use std::str::FromStr;
+    use std::sync::Arc;
 
     fn usd(s: &str) -> Money {
         Money::new(Decimal::from_str(s).unwrap(), Currency::USD)
@@ -788,6 +789,134 @@ mod tests {
             .is_err(),
             "unknown fields are refused"
         );
+    }
+
+    /// A context whose pool never connects: for inputs refused before any query.
+    fn offline() -> Cx {
+        let time = acom_core::StoreTime::new(chrono_tz::America::New_York);
+        Cx {
+            tenant: acom_core::TenantId::parse("store_northwind").unwrap(),
+            principal: Arc::new(acom_auth::Principal {
+                subject: "cus_jamie".into(),
+                kind: acom_core::enums::ActorKind::Shopper,
+                tenant: acom_core::TenantId::parse("store_northwind").unwrap(),
+                surface: acom_auth::Surface::Fo,
+                scopes: acom_auth::scopes::shopper(),
+                name: None,
+                session_id: None,
+            }),
+            request_id: "req_test".into(),
+            clock: Arc::new(acom_core::FixedClock::at(
+                time.parse("2026-11-07T10:00").unwrap(),
+            )),
+            time,
+            currency: Currency::USD,
+            policy: Arc::new(crate::rules::tests::defaults()),
+            db: acom_store::Db::connect_lazy("postgres://offline.invalid/acom", 1).unwrap(),
+        }
+    }
+
+    fn prepare(v: Value) -> PrepareGiftOrderInput {
+        serde_json::from_value(v).unwrap()
+    }
+
+    #[tokio::test]
+    async fn prepare_refuses_a_gift_it_cannot_send_before_reading_anything() {
+        let cx = offline();
+        let total = json!({"value": 76.20, "currency": "USD"});
+        let e = PrepareGiftOrder
+            .preview(
+                &cx,
+                prepare(
+                    json!({"recipient_mode": "address_known", "recipient_name": "Dad",
+                                        "client_total": total}),
+                ),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(
+            (e.code.as_ref(), e.detail.unwrap()["field"].clone()),
+            ("invalid_input", json!("delivery_address"))
+        );
+        let e = PrepareGiftOrder
+            .preview(
+                &cx,
+                prepare(
+                    json!({"recipient_mode": "recipient_accepts", "recipient_name": "Dad",
+                                        "client_total": total}),
+                ),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(e.detail.unwrap()["field"], "recipient_contact");
+        let e = PrepareGiftOrder
+            .preview(
+                &cx,
+                prepare(
+                    json!({"recipient_mode": "address_known", "recipient_name": " ",
+                                        "client_total": total}),
+                ),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(e.detail.unwrap()["field"], "recipient_name");
+        let e = PrepareGiftOrder
+            .preview(
+                &cx,
+                prepare(
+                    json!({"recipient_mode": "address_known", "recipient_name": "Dad",
+                "card_message": "x".repeat(301), "client_total": total,
+                "delivery_address": {"street_address": "48 Pine Rd", "address_locality": "Lakeview",
+                                     "address_country": "US"}}),
+                ),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(e.detail.unwrap()["reason"], "range");
+        assert_eq!(e.next_tool.as_deref(), Some("prepare_gift_order"));
+        assert!(
+            serde_json::from_value::<PrepareGiftOrderInput>(json!({"recipient_mode": "by_drone",
+                "recipient_name": "Dad", "client_total": total}))
+            .is_err(),
+            "modes are words from the policy's list"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_prepared_gift_is_only_placed_by_the_shoppers_button() {
+        let cx = offline();
+        let plan = PreparedGift {
+            order: PreparedOrder {
+                order_id: "ord_01".into(),
+                customer_id: "cus_jamie".into(),
+                lines: vec![],
+                delivery: DeliveryChoice::Later,
+                payment_method: "credit_card".into(),
+                total: usd("76.20"),
+                failed_checks: vec![],
+            },
+            mode: RecipientMode::AddressKnown,
+            recipient_name: "Dad".into(),
+            recipient_contact: None,
+            card_message: None,
+            gift_wrap: None,
+            gift_receipt: true,
+            receipt_hides_prices: true,
+            exchange_until: NaiveDate::from_ymd_opt(2026, 12, 31).unwrap(),
+            accept_days: 3,
+        };
+        let done = Committed {
+            id: "ord_01".into(),
+            produced: serde_json::Map::new(),
+        };
+        let e = PrepareGiftOrder
+            .verify(&cx, &plan, &done)
+            .await
+            .unwrap_err();
+        assert_eq!(e.detail.unwrap()["reason"], "preview_only");
+        assert_eq!(PrepareGiftOrder::META.kind, Kind::Write);
+        assert_eq!(AcceptGiftOrder::META.kind, Kind::Person);
+        assert_eq!(AcceptGiftOrder::META.person_scope, "human:order");
     }
 
     #[test]
@@ -864,6 +993,10 @@ mod tests {
         wrap: Option<Decimal>,
         accepts: Value,
         accept_url: Value,
+        placed_again: bool,
+        late: Option<String>,
+        accepted_again: bool,
+        accepted_size: Option<String>,
     }
 
     /// Integration: scene F4 on the demo store (`DATABASE_URL`). The VIP weekend price needs
@@ -992,6 +1125,12 @@ mod tests {
                     .await
                     .map_err(|e| e.message)?;
                 let id = seen.placed["id"].as_str().unwrap_or_default().to_owned();
+                // The same button pressed twice places one order.
+                let again = PlaceOrder
+                    .run(&mut tx, PlaceOrderInput { preview_id: p.preview_id.clone() })
+                    .await
+                    .map_err(|e| e.message)?;
+                seen.placed_again = again["id"].as_str() == Some(id.as_str());
                 let row: (bool, Option<Decimal>) = sqlx::query_as(
                     "SELECT is_gift, gift_wrap_value FROM sales.sales_order
                      WHERE tenant_id = $1 AND id = $2",
@@ -1024,17 +1163,42 @@ mod tests {
                 .map_err(|e| e.message)?;
             seen.accept_url = placed["accept_url"].clone();
             let gift_order_id = placed["gift_order_id"].as_str().unwrap_or_default().to_owned();
+            let accept = || -> Result<AcceptGiftOrderInput, String> {
+                serde_json::from_value(json!({"gift_order_id": gift_order_id,
+                    "delivery_address": {"street_address": "48 Pine Rd", "address_locality": "Lakeview",
+                                         "address_region": "NY", "postal_code": "12801", "address_country": "US"},
+                    "size": "XL"}))
+                .map_err(|e| e.to_string())
+            };
+            // Too late: four days after the order, past `gift.auto_cancel_if_no_address_days`.
+            let now = tx.clock.clone();
+            tx.clock = Arc::new(acom_core::FixedClock::at(now.now() + Duration::days(4)));
+            seen.late = AcceptGiftOrder
+                .run(&mut tx, accept()?)
+                .await
+                .err()
+                .map(|e| e.code.to_string());
+            tx.clock = now;
             seen.accepts = AcceptGiftOrder
-                .run(
-                    &mut tx,
-                    serde_json::from_value(json!({"gift_order_id": gift_order_id,
-                        "delivery_address": {"street_address": "48 Pine Rd", "address_locality": "Lakeview",
-                                             "address_region": "NY", "postal_code": "12801", "address_country": "US"},
-                        "size": "XL"}))
-                    .map_err(|e| e.to_string())?,
-                )
+                .run(&mut tx, accept()?)
                 .await
                 .map_err(|e| e.message)?;
+            let again = AcceptGiftOrder
+                .run(&mut tx, accept()?)
+                .await
+                .map_err(|e| e.message)?;
+            seen.accepted_again = again == seen.accepts;
+            let size: String = sqlx::query_scalar(
+                "SELECT v.size FROM sales.order_item i JOIN catalog.product v
+                   ON v.tenant_id = i.tenant_id AND v.id = i.product_id
+                 WHERE i.tenant_id = $1 AND i.order_id = $2",
+            )
+            .bind("store_northwind")
+            .bind(placed["id"].as_str().unwrap_or_default())
+            .fetch_one(&mut *tx.tx)
+            .await
+            .map_err(|e| e.to_string())?;
+            seen.accepted_size = Some(size);
             let status: String = sqlx::query_scalar(
                 "SELECT order_status FROM sales.sales_order WHERE tenant_id = $1 AND id = $2",
             )
@@ -1103,11 +1267,22 @@ mod tests {
             "{:?}",
             seen.accept_url
         );
+        assert!(seen.placed_again, "one order for one preview");
         assert_eq!(
             seen.accepts["placed_status"], "payment_due",
             "held until Dad accepts"
         );
+        assert_eq!(seen.late.as_deref(), Some("gift_expired"));
         assert_eq!(seen.accepts["ok"], true);
+        assert!(
+            seen.accepted_again,
+            "accepting twice gives the first result"
+        );
+        assert_eq!(
+            seen.accepted_size.as_deref(),
+            Some("XL"),
+            "Dad picked XL at the same price"
+        );
         assert_eq!(seen.accepts["order_status_after"], "processing");
     }
 }
