@@ -27,6 +27,7 @@ mod secret;
 #[cfg(test)]
 mod testdb;
 mod verification;
+mod watch;
 mod wishlist;
 mod wording;
 
@@ -230,6 +231,8 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .write(remedy::RequestRemedy)
         .write(remedy::ApproveRemedy)
         .write(remedy::PayRemedy);
+    // Scheduled work (platform.job): the regular tier evaluation of each program.
+    b.job(watch::EvaluateTiers);
 }
 
 #[cfg(test)]

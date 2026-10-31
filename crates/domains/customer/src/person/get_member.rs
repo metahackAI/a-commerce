@@ -71,6 +71,8 @@ impl ReadOp<Cx> for GetMember {
             .await?
             .into_iter()
             .next();
+        let account = repo::account(&mut tx, &person.id).await?;
+        let consents = crate::consent::current(&mut tx, &person.id).await?;
         tx.commit().await.map_err(ToolError::from)?;
         let name = if unmasked {
             person.name.clone()
@@ -81,10 +83,18 @@ impl ReadOp<Cx> for GetMember {
             json!({"program_id": m.member_program_id, "tier_id": m.tier_id,
                    "membership_number": m.membership_number})
         });
-        // Consent records and business verification are not stored yet.
+        // Business verification only means something for business members.
+        let business = account
+            .as_ref()
+            .filter(|a| a.member_type == "business")
+            .map(|a| a.business_verification.clone());
+        let consent: serde_json::Map<String, Value> = consents
+            .iter()
+            .map(|c| (c.consent_type.clone(), json!(c.granted)))
+            .collect();
         let member = json!({"id": person.id, "name": name, "type": person.member_type,
             "member_of": member_of, "state": person.member_state,
-            "acom:business_verification": null, "consent": null});
+            "acom:business_verification": business, "consent": consent});
         Ok(only_fields(member, &input.fields.unwrap_or_default()))
     }
 }

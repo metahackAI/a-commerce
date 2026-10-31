@@ -12,7 +12,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::send_password_reset::{SendResetPlan, save_request};
+use super::{SendResetPlan, save_request};
 use crate::access::db;
 use crate::verification;
 use crate::{INVALID_IDENTIFIER_FORMAT, repo, secret, wording};

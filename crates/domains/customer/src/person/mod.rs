@@ -272,6 +272,80 @@ pub(crate) async fn verify_planned(
     })
 }
 
+// ── password reset requests ─────────────────────────────────────────────────────────────
+
+/// A password reset to send: by an operator (`send_password_reset`) or asked for by the
+/// person (`POST /v1/customer/password-reset/requests`).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SendResetPlan {
+    pub request_id: String,
+    pub customer_id: String,
+    pub method: String,
+    /// `email` or `sms`.
+    pub channel: String,
+    /// The verified contact it goes to.
+    pub to: String,
+    pub sends_code: bool,
+    pub code_length: usize,
+    pub ttl_seconds: i64,
+    pub reason: String,
+}
+
+/// Saves a reset request; the link token or code is made here and only its hash is kept.
+/// Earlier open requests stop working (`account_recovery.invalidate_previous_requests`).
+pub(crate) async fn save_request(
+    tx: &mut TxCx,
+    p: &SendResetPlan,
+    invalidate_previous: bool,
+    fingerprint: &str,
+) -> Result<bool, ToolError> {
+    let now = tx.clock.now();
+    if invalidate_previous {
+        sqlx::query(
+            "UPDATE customer.recovery_request SET invalidated_at = $3, updated_at = now(),
+               version = version + 1
+             WHERE tenant_id = $1 AND customer_id = $2 AND recovery_kind = 'password_reset'
+               AND used_at IS NULL AND invalidated_at IS NULL AND id <> $4",
+        )
+        .bind(tx.tenant.as_str())
+        .bind(&p.customer_id)
+        .bind(now)
+        .bind(&p.request_id)
+        .execute(&mut *tx.tx)
+        .await
+        .map_err(db)?;
+    }
+    let (token, code) = if p.sends_code {
+        (None, Some(secret::code(p.code_length)))
+    } else {
+        (Some(secret::token()), None)
+    };
+    let done = sqlx::query(
+        "INSERT INTO customer.recovery_request (tenant_id, id, recovery_kind, customer_id,
+           identifier_fingerprint, session_id, method, message_channel, token_hash, code_hash,
+           agent_id, reason, requested_at, expires)
+         VALUES ($1, $2, 'password_reset', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         ON CONFLICT (tenant_id, id) DO NOTHING",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(&p.request_id)
+    .bind(&p.customer_id)
+    .bind(fingerprint)
+    .bind(tx.principal.session_id.as_deref())
+    .bind(&p.method)
+    .bind(&p.channel)
+    .bind(token.as_deref().map(secret::hash))
+    .bind(code.as_deref().map(secret::hash))
+    .bind(&tx.principal.subject)
+    .bind(&p.reason)
+    .bind(now)
+    .bind(now + Duration::seconds(p.ttl_seconds))
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(done.rows_affected() > 0)
+}
+
 // ── withdrawal eligibility (check_withdrawal_eligibility, POST /v1/customer/me/withdrawal) ──
 
 /// What stands in the way of leaving, what leaving does, and what stays.

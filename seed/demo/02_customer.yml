@@ -1,7 +1,9 @@
 # Customer: the named shoppers (Jamie vip, Alex member, and the customers behind the scene B2 return
 # requests), their home addresses, the Northwind Rewards program with tiers member, gold and vip,
 # memberships, and Jamie's remembered preferences. Tier member counts (9,816 / 2,900 / 1,284) are
-# reached by the generator (generate.yml); these 13 people count toward them.
+# reached by the generator (generate.yml); these 13 people count toward them. The business member
+# cus_biz_31 has no tier, so the counts stay. Then consent and tier history, an employee, customer
+# service inquiries with their threads, a remedy waiting for approval, FAQs and notices.
 tables:
   customer.person:
     - tenant_id: store_northwind
@@ -430,3 +432,6 @@ tables:
     - {tenant_id: store_northwind, id: ntc_holiday, headline: "Holiday shipping cutoffs", article_body: "Order by Dec 18 for standard delivery before Dec 24, and by Dec 21 for express.", category: shipping, notice_status: draft}
     - {tenant_id: store_northwind, id: ntc_fall_layers, headline: "Fall layers are here", article_body: "Overshirts, fleeces and wool coats for the cooler weeks. Free shipping on orders of 80.00 USD or more.", category: news, notice_status: published, date_published: "2026-11-02T09:00:00-05:00", is_pinned: true}
     - {tenant_id: store_northwind, id: ntc_returns_window, headline: "Returns stay open 30 days", article_body: "Every order can be returned within 30 days of delivery.", category: returns, notice_status: published, date_published: "2026-09-15T09:00:00-04:00"}
+  # The next scheduled tier evaluation (customer.evaluate_tiers books the one after it).
+  platform.job:
+    - {tenant_id: store_northwind, id: job_evaluate_rewards_20261201, kind: customer.evaluate_tiers, run_at: "2026-12-01T03:00:00-05:00", payload: {program_id: prg_rewards}, attempts: 0}
