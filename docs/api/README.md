@@ -57,7 +57,7 @@ a-commerce API
 | 툴 이름(모델이 보는 이름) | `verb_noun`, 평이한 영어 | `set_sale_prices` |
 | REST 경로 | `METHOD /v1/{domain}/{resources}/...` | `POST /v1/promotion/sale-prices` |
 
-툴 검색은 이 계층을 씁니다. 에이전트마다 쓸 수 있는 도메인(`agents/*.yml`의 `tool_scope`)과 주 도메인(`home_domains`)이 정해져 있고, 그 안에서 요청의 낱말로 툴에 점수를 매긴 뒤(BM25, 주 도메인 가산) 툴 그래프 이웃을 더해 후보 5–8개를 냅니다(`agents/runtime.yml` `tool_search`). 모델은 290개 목록이 아니라 이 후보만 봅니다([../backend/agent.md](../backend/agent.md) §3).
+툴 검색은 이 계층을 씁니다. 에이전트마다 쓸 수 있는 도메인(`agents/*.yml`의 `tool_scope`)과 주 도메인(`home_domains`)이 정해져 있고, 그 안에서 요청의 낱말로 툴에 점수를 매긴 뒤(BM25, 주 도메인 가산) 툴 그래프 이웃을 더해 후보 5–8개를 냅니다(`agents/runtime.yml` `tool_search`). 모델은 291개 목록이 아니라 이 후보만 봅니다([../backend/agent.md](../backend/agent.md) §3).
 
 ## 2. 오퍼레이션 종류
 
@@ -183,7 +183,7 @@ a-commerce API
 
 ## 4. 전체 오퍼레이션 인덱스
 
-툴 **290개**(R 131 · W 119 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 9개(§2.2: 변경셋 6개, 데모 시계 2개, 데모 스토어 다시 적재 1개). **굵게** 표시한 30개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
+툴 **291개**(R 132 · W 119 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 9개(§2.2: 변경셋 6개, 데모 시계 2개, 데모 스토어 다시 적재 1개). **굵게** 표시한 30개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
 
 ### Offer
 

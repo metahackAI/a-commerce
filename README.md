@@ -83,7 +83,7 @@ Oct 31, every model call on Glimmer; reports in [eval/results/](eval/results). S
 
 | | |
 |---|---|
-| Commerce operations | **290 tools in 13 domains** (131 reads, 119 writes, 40 writes that move money or reach customers) and **18 person-only endpoints**. Every one is specified in [docs/api/](docs/api/README.md) and built; CI fails if one is missing or outside its folder. |
+| Commerce operations | **291 tools in 13 domains** (132 reads, 119 writes, 40 writes that move money or reach customers) and **18 person-only endpoints**. Every one is specified in [docs/api/](docs/api/README.md) and built; CI fails if one is missing or outside its folder. |
 | Domains | platform · catalog · customer · promotion · merchandising · search · sales · fulfillment · messaging · analytics · community · partner · integration |
 | Agents | `promotion`, `orders`, `catalog`, `insights` (back office), `shopper` (storefront), defined in [agents/](agents) |
 | Background work | 3 watchers and 8 scheduled jobs (promotion start and end, points expiry, tier evaluation, subscription renewal, campaign sending, seller status changes, held events) |
@@ -106,7 +106,7 @@ This is a showcase of AI-native commerce, not a store that ships parcels. What r
                   v                          v                         v
         +------------------+      +----------------------+    +--------------------+
         |  web (Next.js,   |      |  agent (Rust)        |    |  commerce (Rust)    |
-        |  Meta Astryx)    |      |  router · tool search|--->|  290 operations     |
+        |  Meta Astryx)    |      |  router · tool search|--->|  291 operations     |
         |  blocks, AI      |      |  planner · executor  |    |  previews, checks   |
         |  targets, person |      |  reply checks · log  |    |  change sets        |
         |  buttons         |      +----------+-----------+    |  policies           |
@@ -255,7 +255,7 @@ Everything in this repository was created between Oct 27 and Nov 4, 2026 (dates 
 | Oct 30 | Architecture (services, trust boundaries, API hierarchy, schema.org data model) and the API specification for 13 domains. Direction: the whole server side in Rust. Data foundation: schema.org migrations with a commented term on every column, the data dictionary, the demo seed. Infrastructure: every component in a container, Compose with the production topology, Kubernetes manifests, the demo server deploying every merge |
 | Oct 30 | M2–M4: 100 commerce tools in 9 domains, the change-set engine (preview, approve, run, verify, undo), sign-in with demo personas, the agent runtime (model client, tool search, planner, executor, blocks, SSE), and the back office and storefront on Meta Astryx |
 | Oct 31 | M5: the remaining scenes (returns triage, sales explainer, supplier sheet, fit check, gifts, layout by profile, the task list), scheduled jobs and the demo clock; the evaluation task set, the screen-shaped facade, `cargo xtask eval`, and the first numbers; ids that take the order number, change set number or email |
-| Oct 31 | The rest of the back end: all 290 operations and 18 person-only endpoints in 13 domains, each in `{domain}/src/{resource}/{tool}.rs`, held by CI. Watchers' tasks picked up by the agent. Reply checks (times, weekdays, copied instructions). The **Ailism Commerce** look, name and voice |
+| Oct 31 | The rest of the back end: every specified operation (291 tools) and 18 person-only endpoints in 13 domains, each in `{domain}/src/{resource}/{tool}.rs`, held by CI. Watchers' tasks picked up by the agent. Reply checks (times, weekdays, copied instructions). The **Ailism Commerce** look, name and voice |
 
 ## References
 
