@@ -19,9 +19,12 @@ use crate::repo::ReplyRow;
 
 /// The spec's `not_found` for a reply, pointing at `list_replies`.
 pub(crate) fn reply_not_found(id: &str) -> ToolError {
-    ToolError::new(ErrorCode::NOT_FOUND, format!("There is no reply {id} you can see."))
-        .detail(json!({"entity": "reply", "id": id}))
-        .next("list_replies")
+    ToolError::new(
+        ErrorCode::NOT_FOUND,
+        format!("There is no reply {id} you can see."),
+    )
+    .detail(json!({"entity": "reply", "id": id}))
+    .next("list_replies")
 }
 
 /// Whether `viewer` may read a reply's text on a post written by `post_author`: the store reads
@@ -175,12 +178,20 @@ mod tests {
             subject: "cus_jamie".into(),
             operator: false,
         };
-        assert!(thread(&jamie, "cus_jamie", &replies).iter().any(|(r, t)| r.id == "rpl_4" && *t));
+        assert!(
+            thread(&jamie, "cus_jamie", &replies)
+                .iter()
+                .any(|(r, t)| r.id == "rpl_4" && *t)
+        );
         let theo = Viewer {
             subject: "cus_theo".into(),
             operator: false,
         };
-        assert!(thread(&theo, "cus_jamie", &replies).iter().any(|(r, t)| r.id == "rpl_5" && *t));
+        assert!(
+            thread(&theo, "cus_jamie", &replies)
+                .iter()
+                .any(|(r, t)| r.id == "rpl_5" && *t)
+        );
         let store = Viewer {
             subject: "adm_sj".into(),
             operator: true,

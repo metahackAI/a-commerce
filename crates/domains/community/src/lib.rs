@@ -39,16 +39,14 @@ pub const SECRET_POST: ErrorCode = ErrorCode::new("secret_post", ErrorClass::For
 pub const PROFANITY_BLOCKED: ErrorCode =
     ErrorCode::new("profanity_blocked", ErrorClass::PolicyViolation);
 /// The board does not let this caller write posts.
-pub const WRITE_NOT_ALLOWED: ErrorCode =
-    ErrorCode::new("write_not_allowed", ErrorClass::Forbidden);
+pub const WRITE_NOT_ALLOWED: ErrorCode = ErrorCode::new("write_not_allowed", ErrorClass::Forbidden);
 /// The board takes no attachments, or not this many.
 pub const ATTACHMENT_NOT_ALLOWED: ErrorCode =
     ErrorCode::new("attachment_not_allowed", ErrorClass::PolicyViolation);
 /// Only the writer may change or delete it.
 pub const NOT_AUTHOR: ErrorCode = ErrorCode::new("not_author", ErrorClass::Forbidden);
 /// An operator blinding or deleting must say why.
-pub const REASON_REQUIRED: ErrorCode =
-    ErrorCode::new("reason_required", ErrorClass::InvalidInput);
+pub const REASON_REQUIRED: ErrorCode = ErrorCode::new("reason_required", ErrorClass::InvalidInput);
 /// The post (or reply) is blinded or deleted: nothing more can be written on it.
 pub const POST_LOCKED: ErrorCode = ErrorCode::new("post_locked", ErrorClass::Locked);
 /// A reply deeper than `reply.max_depth`.
@@ -104,16 +102,22 @@ impl Viewer {
 
 /// `board_not_found`, pointing at `list_boards`.
 pub(crate) fn board_not_found(id: &str) -> ToolError {
-    ToolError::new(BOARD_NOT_FOUND, format!("There is no board {id} in this store."))
-        .detail(json!({"entity": "board", "id": id}))
-        .next("list_boards")
+    ToolError::new(
+        BOARD_NOT_FOUND,
+        format!("There is no board {id} in this store."),
+    )
+    .detail(json!({"entity": "board", "id": id}))
+    .next("list_boards")
 }
 
 /// `post_not_found`, pointing at `list_posts`.
 pub(crate) fn post_not_found(id: &str) -> ToolError {
-    ToolError::new(POST_NOT_FOUND, format!("There is no post {id} you can see."))
-        .detail(json!({"entity": "post", "id": id}))
-        .next("list_posts")
+    ToolError::new(
+        POST_NOT_FOUND,
+        format!("There is no post {id} you can see."),
+    )
+    .detail(json!({"entity": "post", "id": id}))
+    .next("list_posts")
 }
 
 /// `not_author`: someone other than the writer tries to change or delete it.
@@ -140,7 +144,9 @@ pub(crate) fn locked(entity: &str, id: &str, status: &str) -> ToolError {
 pub(crate) fn profanity_blocked(word: &str, next: &'static str) -> ToolError {
     ToolError::new(
         PROFANITY_BLOCKED,
-        format!("The text uses a word this store does not allow ({word}). Change it and try again."),
+        format!(
+            "The text uses a word this store does not allow ({word}). Change it and try again."
+        ),
     )
     .detail(json!({"rule": "moderation.profanity_filter", "word": word}))
     .next(next)
@@ -197,7 +203,9 @@ pub(crate) fn policy_approval(cx: &Cx, tool: &str, facts: &Value) -> ApprovalNee
 
 /// A text input with the spaces around it removed; `None` when nothing is left.
 pub(crate) fn trimmed(s: Option<&str>) -> Option<String> {
-    s.map(str::trim).filter(|s| !s.is_empty()).map(str::to_owned)
+    s.map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_owned)
 }
 
 /// A required text input, trimmed; `invalid_input` when empty.
@@ -350,7 +358,10 @@ mod tests {
     fn keeps_only_the_named_fields() {
         let v = json!({"id": "post_8812", "headline": "Runs a bit small", "comment_count": 3});
         let kept = project(v.clone(), &["id".into(), "headline".into()]);
-        assert_eq!(kept, json!({"id": "post_8812", "headline": "Runs a bit small"}));
+        assert_eq!(
+            kept,
+            json!({"id": "post_8812", "headline": "Runs a bit small"})
+        );
         assert_eq!(project(v.clone(), &[]), v);
     }
 
@@ -361,7 +372,11 @@ mod tests {
         let r = b.build().unwrap_or_else(|e| panic!("{e:#?}"));
         assert_eq!(r.len(), 12);
         for op in r.iter() {
-            assert!(op.meta().address.starts_with("community."), "{}", op.meta().tool);
+            assert!(
+                op.meta().address.starts_with("community."),
+                "{}",
+                op.meta().tool
+            );
         }
     }
 }

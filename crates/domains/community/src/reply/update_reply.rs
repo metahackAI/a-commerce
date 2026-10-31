@@ -69,7 +69,12 @@ impl Operation for UpdateReply {
         consumes: &[Slot::one("reply_id")],
         produces: &[Slot::one("reply_id")],
         checks: &["moderation.profanity_filter"],
-        errors: &[NOT_AUTHOR, PROFANITY_BLOCKED, POST_LOCKED, ErrorCode::NOT_FOUND],
+        errors: &[
+            NOT_AUTHOR,
+            PROFANITY_BLOCKED,
+            POST_LOCKED,
+            ErrorCode::NOT_FOUND,
+        ],
         audience: Audience::Both,
         action_type: ActionType::UPDATE,
         person_scope: "",
@@ -99,10 +104,10 @@ impl WriteOp<Cx> for UpdateReply {
         input: UpdateReplyInput,
     ) -> Result<Planned<UpdateReplyPlan>, ToolError> {
         if input.text.is_none() && input.is_secret.is_none() {
-            return Err(
-                ToolError::invalid_input("Say what to change: `text` or `acom:is_secret`.")
-                    .detail(json!({"field": "text", "reason": "missing"})),
-            );
+            return Err(ToolError::invalid_input(
+                "Say what to change: `text` or `acom:is_secret`.",
+            )
+            .detail(json!({"field": "text", "reason": "missing"})));
         }
         let text = input
             .text
@@ -162,7 +167,10 @@ impl WriteOp<Cx> for UpdateReply {
                     json!("held_for_review"),
                 ));
             }
-            ("held_for_review".to_owned(), Some("profanity_filter".to_owned()))
+            (
+                "held_for_review".to_owned(),
+                Some("profanity_filter".to_owned()),
+            )
         } else {
             (r.moderation_status.clone(), r.moderation_reason.clone())
         };

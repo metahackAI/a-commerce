@@ -31,7 +31,12 @@ fn word(p: &PolicySet, path: &str) -> Result<String, ToolError> {
 fn words(p: &PolicySet, path: &str) -> Result<Vec<String>, ToolError> {
     lookup(p, path)?
         .as_array()
-        .map(|l| l.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+        .map(|l| {
+            l.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
         .ok_or_else(|| missing(path))
 }
 
@@ -201,10 +206,7 @@ impl AuthorMasking {
         let path = "community.moderation.author_masking.visible_chars";
         let visible_chars = usize::try_from(count(p, path)?).map_err(|_| missing(path))?;
         let path = "community.moderation.author_masking.mask_char";
-        let mask_char = word(p, path)?
-            .chars()
-            .next()
-            .ok_or_else(|| missing(path))?;
+        let mask_char = word(p, path)?.chars().next().ok_or_else(|| missing(path))?;
         Ok(Self {
             visible_chars,
             mask_char,
@@ -257,7 +259,11 @@ mod tests {
         assert!(filter.enabled && filter.blocks && filter.blocked_words.is_empty());
         let spam = SpamRules::from_policy(&p).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(
-            (spam.duplicate_window_minutes, spam.max_links, spam.max_posts_per_hour),
+            (
+                spam.duplicate_window_minutes,
+                spam.max_links,
+                spam.max_posts_per_hour
+            ),
             (5, 2, 10)
         );
         let reports = ReportRules::from_policy(&p).unwrap_or_else(|e| panic!("{e}"));

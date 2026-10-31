@@ -55,8 +55,9 @@ pub(crate) async fn writer(cx: &Cx, tx: &mut TxCx) -> Result<Writer, ToolError> 
             member_state: None,
         });
     }
-    Err(
-        ToolError::new(ErrorCode::FORBIDDEN, "Sign in to write on the community boards.")
-            .detail(json!({"reason": "owner"})),
+    Err(ToolError::new(
+        ErrorCode::FORBIDDEN,
+        "Sign in to write on the community boards.",
     )
+    .detail(json!({"reason": "owner"})))
 }

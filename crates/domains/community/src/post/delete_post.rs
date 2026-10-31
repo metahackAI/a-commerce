@@ -206,8 +206,14 @@ impl WriteOp<Cx> for DeletePost {
 
     async fn commit(&self, tx: &mut TxCx, plan: &DeletePostPlan) -> Result<Committed, ToolError> {
         if plan.from != plan.to
-            && repo::move_post(tx, &plan.post_id, &plan.from, &plan.to, plan.reason.as_deref())
-                .await?
+            && repo::move_post(
+                tx,
+                &plan.post_id,
+                &plan.from,
+                &plan.to,
+                plan.reason.as_deref(),
+            )
+            .await?
                 == 0
         {
             let now = repo::post(tx, &plan.post_id).await?;
@@ -293,7 +299,14 @@ mod tests {
     fn writers_delete_and_the_store_blinds_with_a_reason() {
         let rules = BlindRules::from_policy(&testing::policies()).unwrap_or_else(|e| panic!("{e}"));
         let t = |op, author, action, reason: Option<&str>| {
-            target(op, author, action, reason.map(str::to_owned), &rules, "post_8812")
+            target(
+                op,
+                author,
+                action,
+                reason.map(str::to_owned),
+                &rules,
+                "post_8812",
+            )
         };
         assert_eq!(
             t(false, true, DeleteAction::Delete, None).ok(),
@@ -352,8 +365,12 @@ mod tests {
             .unwrap_or_else(|e| panic!("{e}"));
         let status = |p: Option<repo::PostRow>| p.map(|p| p.moderation_status);
         assert_eq!(
-            status(repo::post(&mut tx, "post_8811").await.unwrap_or_else(|e| panic!("{e}")))
-                .as_deref(),
+            status(
+                repo::post(&mut tx, "post_8811")
+                    .await
+                    .unwrap_or_else(|e| panic!("{e}"))
+            )
+            .as_deref(),
             Some("blinded")
         );
         // Running it again changes nothing.
@@ -366,8 +383,12 @@ mod tests {
             .await
             .unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(
-            status(repo::post(&mut tx, "post_8811").await.unwrap_or_else(|e| panic!("{e}")))
-                .as_deref(),
+            status(
+                repo::post(&mut tx, "post_8811")
+                    .await
+                    .unwrap_or_else(|e| panic!("{e}"))
+            )
+            .as_deref(),
             Some("published")
         );
         tx.tx.rollback().await.unwrap_or_else(|e| panic!("{e}"));

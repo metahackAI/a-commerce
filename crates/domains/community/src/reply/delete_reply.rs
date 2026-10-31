@@ -298,7 +298,10 @@ mod tests {
         let row = repo::reply(&mut tx, "rpl_5510")
             .await
             .unwrap_or_else(|e| panic!("{e}"));
-        assert_eq!(row.map(|r| r.moderation_status).as_deref(), Some("published"));
+        assert_eq!(
+            row.map(|r| r.moderation_status).as_deref(),
+            Some("published")
+        );
         tx.tx.rollback().await.unwrap_or_else(|e| panic!("{e}"));
     }
 }

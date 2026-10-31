@@ -5,9 +5,8 @@
 //! first report back.
 
 use acom_contract::{
-    ActionType, Audience, Basis, Change, ChangeOp, Check, Committed, ErrorCode,
-    Group, Kind, Method, OpMeta, Operation, Planned, Slot, ToolError, UndoSupport, Verification,
-    WriteOp,
+    ActionType, Audience, Basis, Change, ChangeOp, Check, Committed, ErrorCode, Group, Kind,
+    Method, OpMeta, Operation, Planned, Slot, ToolError, UndoSupport, Verification, WriteOp,
 };
 use acom_core::enums::ReportReason;
 use acom_store::{Cx, TxCx};
@@ -301,7 +300,8 @@ mod tests {
 
     #[test]
     fn reasons_are_the_ones_the_store_takes() {
-        let rules = ReportRules::from_policy(&testing::policies()).unwrap_or_else(|e| panic!("{e}"));
+        let rules =
+            ReportRules::from_policy(&testing::policies()).unwrap_or_else(|e| panic!("{e}"));
         assert!(reason_check(&rules, "advertisement").is_ok_and(|c| c.passed));
         let narrow = ReportRules {
             reasons: vec!["spam".into()],

@@ -19,8 +19,8 @@ use crate::repo::{self, NewPost};
 use crate::rules::{AttachmentRules, FilterRules, SpamRules};
 use crate::writer::writer;
 use crate::{
-    ATTACHMENT_NOT_ALLOWED, BOARD_NOT_FOUND, PROFANITY_BLOCKED, WRITE_NOT_ALLOWED,
-    board_not_found, policy_approval, profanity_blocked, required_text, spam_refused, trimmed,
+    ATTACHMENT_NOT_ALLOWED, BOARD_NOT_FOUND, PROFANITY_BLOCKED, WRITE_NOT_ALLOWED, board_not_found,
+    policy_approval, profanity_blocked, required_text, spam_refused, trimmed,
 };
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -135,8 +135,10 @@ pub(crate) fn uploads(media: Option<Vec<String>>) -> Result<Vec<String>, ToolErr
 
 /// `invalid_input` for a secret post on a board that takes none.
 pub(crate) fn no_secret_here(board: &str) -> ToolError {
-    ToolError::invalid_input(format!("Board {board} takes no secret posts; leave out `acom:is_secret`."))
-        .detail(json!({"field": "acom:is_secret", "reason": "not_allowed"}))
+    ToolError::invalid_input(format!(
+        "Board {board} takes no secret posts; leave out `acom:is_secret`."
+    ))
+    .detail(json!({"field": "acom:is_secret", "reason": "not_allowed"}))
 }
 
 /// Why a planned post cannot go up, in the order the spec names the errors.
@@ -256,8 +258,10 @@ impl WriteOp<Cx> for CreatePost {
                 )),
             }];
         }
-        let attachment_refused = (!checks[2].passed).then(|| checks[2].detail.clone().unwrap_or_default());
-        let write_refused = (!checks[3].passed).then(|| checks[3].detail.clone().unwrap_or_default());
+        let attachment_refused =
+            (!checks[2].passed).then(|| checks[2].detail.clone().unwrap_or_default());
+        let write_refused =
+            (!checks[3].passed).then(|| checks[3].detail.clone().unwrap_or_default());
         let staff = who.kind == WriterKind::Staff;
         Ok(Planned {
             changes,
@@ -354,7 +358,8 @@ impl WriteOp<Cx> for CreatePost {
         let row = repo::post(&mut tx, &done.id).await?;
         tx.commit().await.map_err(ToolError::from)?;
         let matched = row.is_some_and(|p| {
-            p.board_id == plan.board_id && p.author_id == plan.author_id
+            p.board_id == plan.board_id
+                && p.author_id == plan.author_id
                 && (plan.duplicate_of.is_some() || p.headline == plan.headline)
         });
         Ok(Verification {
@@ -481,7 +486,11 @@ mod tests {
             .preview(&cx, input("brd_style"))
             .await
             .unwrap_or_else(|e| panic!("{e}"));
-        assert!(planned.checks.iter().all(|c| c.passed), "{:?}", planned.checks);
+        assert!(
+            planned.checks.iter().all(|c| c.passed),
+            "{:?}",
+            planned.checks
+        );
         assert_eq!(planned.changes[0].to, json!("published"));
         assert_eq!(planned.plan.author_name.as_deref(), Some("Ja***"));
         let mut tx = cx.begin().await.unwrap_or_else(|e| panic!("{e}"));
@@ -492,7 +501,10 @@ mod tests {
         let row = repo::post(&mut tx, &done.id)
             .await
             .unwrap_or_else(|e| panic!("{e}"));
-        assert_eq!(row.map(|p| p.moderation_status).as_deref(), Some("published"));
+        assert_eq!(
+            row.map(|p| p.moderation_status).as_deref(),
+            Some("published")
+        );
         tx.tx.rollback().await.unwrap_or_else(|e| panic!("{e}"));
 
         let staff_only = CreatePost

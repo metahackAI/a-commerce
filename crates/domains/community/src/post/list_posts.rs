@@ -122,9 +122,9 @@ impl ReadOp<Cx> for ListPosts {
         }
         let time = |field: &str, s: Option<&str>| {
             s.map(|s| {
-                cx.time.parse(s).map_err(|e| {
-                    bad_filter(field, format!("`{field}` is not a time ({e})."))
-                })
+                cx.time
+                    .parse(s)
+                    .map_err(|e| bad_filter(field, format!("`{field}` is not a time ({e}).")))
             })
             .transpose()
         };
@@ -238,7 +238,10 @@ mod tests {
             acom_contract::schema::violations(&schema).is_empty(),
             "{schema:#}"
         );
-        assert_eq!(schema["properties"]["sort"]["enum"], json!(["newest", "popular"]));
+        assert_eq!(
+            schema["properties"]["sort"]["enum"],
+            json!(["newest", "popular"])
+        );
     }
 
     #[tokio::test]

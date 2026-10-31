@@ -108,7 +108,10 @@ pub fn spam_check(rules: &SpamRules, f: &SpamFinding, fix_tool: &str) -> Check {
     } else if f.links == 0 && f.this_hour <= 1 {
         "No links".into()
     } else {
-        format!("{links}, {} this hour", plural(f.this_hour, "post", "posts"))
+        format!(
+            "{links}, {} this hour",
+            plural(f.this_hour, "post", "posts")
+        )
     };
     Check {
         rule: "spam".into(),
@@ -132,17 +135,18 @@ pub fn attachment_check(rules: &AttachmentRules, board_allows: bool, files: usiz
     } else if files > rules.max_files {
         (
             false,
-            format!(
-                "{files} attachments; the store allows {}",
-                rules.max_files
-            ),
+            format!("{files} attachments; the store allows {}", rules.max_files),
         )
     } else {
         (
             true,
             format!(
                 "{} of up to {} ({}, up to {} MB each)",
-                plural(i64::try_from(files).unwrap_or(i64::MAX), "attachment", "attachments"),
+                plural(
+                    i64::try_from(files).unwrap_or(i64::MAX),
+                    "attachment",
+                    "attachments"
+                ),
                 rules.max_files,
                 rules.media_types.join(", "),
                 rules.max_file_mb
@@ -170,11 +174,7 @@ pub enum WriterKind {
 
 /// Whether a writer may write where `permission` (`everyone`, `member`, `staff`) applies, and
 /// why. Shoppers need an active account; the store may always write.
-pub fn may_write(
-    permission: &str,
-    kind: WriterKind,
-    member_state: Option<&str>,
-) -> (bool, String) {
+pub fn may_write(permission: &str, kind: WriterKind, member_state: Option<&str>) -> (bool, String) {
     match (permission, kind) {
         (_, WriterKind::Staff) => (true, "The store can write here".into()),
         ("staff", _) => (false, "Only the store writes here".into()),

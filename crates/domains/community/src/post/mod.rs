@@ -20,8 +20,8 @@ use crate::{SECRET_POST, Viewer, post_not_found};
 
 /// A post as a list item. The text of a blinded or deleted post is not shown, only its place.
 pub(crate) fn post_item(p: &PostRow, viewer: &Viewer, time: &StoreTime) -> Value {
-    let full = post_access(viewer, &p.author_id, &p.moderation_status, p.is_secret)
-        == PostAccess::Full;
+    let full =
+        post_access(viewer, &p.author_id, &p.moderation_status, p.is_secret) == PostAccess::Full;
     let mut item = json!({
         "id": p.id,
         "headline": if full { json!(p.headline) } else { Value::Null },
@@ -40,8 +40,8 @@ pub(crate) fn post_item(p: &PostRow, viewer: &Viewer, time: &StoreTime) -> Value
 
 /// A post as `get_post` returns it: the entity itself, no list envelope.
 pub(crate) fn post_entity(p: &PostRow, viewer: &Viewer, time: &StoreTime) -> Value {
-    let full = post_access(viewer, &p.author_id, &p.moderation_status, p.is_secret)
-        == PostAccess::Full;
+    let full =
+        post_access(viewer, &p.author_id, &p.moderation_status, p.is_secret) == PostAccess::Full;
     let mut out = json!({
         "id": p.id,
         "board_id": p.board_id,

@@ -236,11 +236,7 @@ impl WriteOp<Cx> for ConfigureBoard {
                     version: i64::from(b.version),
                 })
                 .collect(),
-            approval: policy_approval(
-                cx,
-                Self::META.tool,
-                &json!({"new_board": before.is_none()}),
-            ),
+            approval: policy_approval(cx, Self::META.tool, &json!({"new_board": before.is_none()})),
             plan: ConfigureBoardPlan {
                 before,
                 after,
@@ -396,12 +392,22 @@ mod tests {
             .commit(&mut tx, &planned.plan)
             .await
             .unwrap_or_else(|e| panic!("{e}"));
-        assert!(repo::board(&mut tx, &done.id).await.unwrap_or_else(|e| panic!("{e}")).is_some());
+        assert!(
+            repo::board(&mut tx, &done.id)
+                .await
+                .unwrap_or_else(|e| panic!("{e}"))
+                .is_some()
+        );
         ConfigureBoard
             .undo(&mut tx, &planned.plan, &done)
             .await
             .unwrap_or_else(|e| panic!("{e}"));
-        assert!(repo::board(&mut tx, &done.id).await.unwrap_or_else(|e| panic!("{e}")).is_none());
+        assert!(
+            repo::board(&mut tx, &done.id)
+                .await
+                .unwrap_or_else(|e| panic!("{e}"))
+                .is_none()
+        );
         tx.tx.rollback().await.unwrap_or_else(|e| panic!("{e}"));
 
         // Renaming a board to a name in use fails the check.

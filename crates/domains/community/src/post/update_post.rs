@@ -149,7 +149,12 @@ impl WriteOp<Cx> for UpdatePost {
 
         let mut changes = Vec::new();
         if headline != p.headline {
-            changes.push(change(&p.id, "headline", json!(p.headline), json!(headline)));
+            changes.push(change(
+                &p.id,
+                "headline",
+                json!(p.headline),
+                json!(headline),
+            ));
         }
         if body != p.article_body {
             changes.push(change(
@@ -397,10 +402,7 @@ mod tests {
             .unwrap_or_else(|e| panic!("{e}"));
         assert!(!blocked.checks[0].passed);
         let mut tx = jamie.begin().await.unwrap_or_else(|e| panic!("{e}"));
-        let e = UpdatePost
-            .commit(&mut tx, &blocked.plan)
-            .await
-            .unwrap_err();
+        let e = UpdatePost.commit(&mut tx, &blocked.plan).await.unwrap_err();
         assert_eq!(e.code, "profanity_blocked");
         tx.tx.rollback().await.unwrap_or_else(|e| panic!("{e}"));
     }

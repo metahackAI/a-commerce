@@ -103,7 +103,9 @@ impl Operation for CreateReply {
 fn too_deep(depth: i32, max: i32) -> ToolError {
     ToolError::new(
         DEPTH_EXCEEDED,
-        format!("Replies go {max} deep at most; this one would be {depth}. Reply higher up the thread."),
+        format!(
+            "Replies go {max} deep at most; this one would be {depth}. Reply higher up the thread."
+        ),
     )
     .detail(json!({"limit": max, "actual": depth, "policy_key": "reply.max_depth"}))
     .next("create_reply")
@@ -145,7 +147,9 @@ impl WriteOp<Cx> for CreateReply {
             Some(id) => {
                 let r = repo::reply(&mut tx, id)
                     .await?
-                    .filter(|r| r.post_id == post.id && super::readable(&viewer, &post.author_id, r))
+                    .filter(|r| {
+                        r.post_id == post.id && super::readable(&viewer, &post.author_id, r)
+                    })
                     .ok_or_else(|| reply_not_found(id))?;
                 Some(r)
             }
@@ -426,10 +430,7 @@ mod tests {
             .unwrap_or_else(|e| panic!("{e}"));
         assert!(!deep.checks[2].passed);
         let mut tx = owen.begin().await.unwrap_or_else(|e| panic!("{e}"));
-        let e = CreateReply
-            .commit(&mut tx, &deep.plan)
-            .await
-            .unwrap_err();
+        let e = CreateReply.commit(&mut tx, &deep.plan).await.unwrap_err();
         assert_eq!(e.code, "depth_exceeded");
         tx.tx.rollback().await.unwrap_or_else(|e| panic!("{e}"));
 

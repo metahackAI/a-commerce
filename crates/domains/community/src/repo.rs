@@ -255,10 +255,7 @@ const VISIBLE_POSTS: &str = "p.tenant_id = $1 AND p.board_id = $2
   AND ($11::timestamptz IS NULL OR p.date_published <= $11)";
 
 /// One page of a board's posts the caller may see, with the total.
-pub(crate) async fn posts(
-    tx: &mut TxCx,
-    f: &PostFilter,
-) -> Result<(Vec<PostRow>, i64), ToolError> {
+pub(crate) async fn posts(tx: &mut TxCx, f: &PostFilter) -> Result<(Vec<PostRow>, i64), ToolError> {
     let order = if f.popular {
         "p.like_count DESC, comment_count DESC, p.date_published DESC, p.id DESC"
     } else {
