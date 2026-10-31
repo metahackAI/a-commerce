@@ -266,11 +266,29 @@ fn method_word(m: Method) -> &'static str {
     }
 }
 
+/// Runs a person-only endpoint in one transaction: kept when it succeeds, rolled back when it
+/// fails, except for a failed attempt the endpoint must remember (a wrong reset code or password
+/// counts towards a lockout), which it marks with `detail.attempt_recorded: true`.
 async fn person(op: &dyn DynOp<Cx>, cx: &Cx, input: Value) -> Result<Value, ToolError> {
     let mut tx = cx.begin().await.map_err(ToolError::from)?;
-    let out = op.person(&mut tx, input).await?;
-    tx.commit().await.map_err(ToolError::from)?;
-    Ok(out)
+    match op.person(&mut tx, input).await {
+        Ok(out) => {
+            tx.commit().await.map_err(ToolError::from)?;
+            Ok(out)
+        }
+        Err(e) => {
+            let keep = e
+                .detail
+                .as_ref()
+                .and_then(|d| d.get("attempt_recorded"))
+                .and_then(Value::as_bool)
+                == Some(true);
+            if keep {
+                tx.commit().await.map_err(ToolError::from)?;
+            }
+            Err(e)
+        }
+    }
 }
 
 /// Whether a tool belongs in this caller's manifest.

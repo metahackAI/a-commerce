@@ -17,6 +17,7 @@ mod employee;
 mod faq_notice;
 mod inquiry;
 mod membership;
+mod password;
 mod person;
 mod preference;
 mod progress;
@@ -25,6 +26,7 @@ mod repo;
 mod secret;
 #[cfg(test)]
 mod testdb;
+mod verification;
 mod wishlist;
 mod wording;
 
@@ -178,6 +180,20 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .read(person::GetReturnHistory)
         .read(person::SearchMembers)
         .read(person::GetMember)
+        .write(person::RegisterMember)
+        .write(person::UpdateMember)
+        .write(person::BlockMember)
+        .write(person::UnblockMember)
+        .write(person::VerifyIdentity)
+        .read(person::CheckAvailability)
+        .write(person::VerifyBusiness)
+        .read(person::CheckWithdrawalEligibility)
+        .write(person::SendPasswordReset)
+        .person(person::WithdrawAccount)
+        .person(person::RequestPasswordReset)
+        .person(person::ConfirmPasswordReset)
+        .person(person::RecoverLoginId)
+        .person(person::ChangePassword)
         .read(membership::ListTiers)
         .read(membership::GetTier)
         .read(membership::GetMemberTier)
@@ -220,13 +236,18 @@ mod tests {
         let mut b = RegistryBuilder::default();
         super::register(&mut b);
         let registry = b.build().unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(registry.len(), 35);
+        assert_eq!(registry.len(), 49);
         for op in registry.iter() {
             let m = op.meta();
             assert_eq!(m.domain(), "customer", "{}", m.tool);
             assert!(m.path.starts_with("/v1/customer/"), "{}", m.tool);
             if m.kind == Kind::Person {
-                assert_eq!(m.person_scope, "human:undo");
+                let scope = if m.tool == "undo_memory" {
+                    "human:undo"
+                } else {
+                    "human:account"
+                };
+                assert_eq!(m.person_scope, scope, "{}", m.tool);
             } else {
                 assert!(m.person_scope.is_empty(), "{}", m.tool);
             }

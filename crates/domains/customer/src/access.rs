@@ -103,12 +103,6 @@ pub(crate) fn always(cx: &Cx, tool: &str, facts: &Value, reason: String) -> Appr
     }
 }
 
-/// Who is acting, as the action log and history rows name them (`adm_sj`, `cus_jamie`,
-/// `sys_runner`).
-pub(crate) fn actor(p: &Principal) -> String {
-    p.subject.clone()
-}
-
 /// A policy value that must be there, or an internal error naming the key.
 pub(crate) fn policy_value<'a>(cx: &'a Cx, path: &str) -> Result<&'a Value, ToolError> {
     policy(cx, path).ok_or_else(|| {
