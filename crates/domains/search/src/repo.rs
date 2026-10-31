@@ -27,7 +27,7 @@ pub async fn has_documents(tx: &mut TxCx) -> Result<bool, ToolError> {
         .map_err(unavailable)
 }
 
-/// What a text query ranks by (`ops::text_ranks`): the widened query (what matches at all), the
+/// What a text query ranks by (`product::text_ranks`): the widened query (what matches at all), the
 /// shopper's own words, and one query per word with its synonyms.
 #[derive(Debug, Clone, Copy)]
 pub struct Rank<'a> {

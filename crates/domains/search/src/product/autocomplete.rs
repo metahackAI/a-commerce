@@ -156,7 +156,7 @@ impl ReadOp<Cx> for Autocomplete {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ops::testing;
+    use crate::testing;
     use acom_core::enums::ActorKind;
 
     #[tokio::test]

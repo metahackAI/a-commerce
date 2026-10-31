@@ -1,9 +1,11 @@
 //! The `analytics` domain: read-only aggregates of sales and customers, and the explanation of
 //! a sales change (scene B3). Specified in `docs/api/analytics.md`.
 //!
-//! Layout: `period` (store days and the days they are compared with) and `decompose` (the
-//! arithmetic of an explanation) are pure; `repo` reads this domain's own read model, the
-//! `analytics` views; `sales` and `customer` hold one type per operation. Everything is a read:
+//! Layout: the folders follow the API hierarchy `analytics.{resource}.{operation}`, one folder
+//! per resource (`sales`, `customer`) and one file per operation, named after its tool
+//! (`sales/explain_sales_change.rs`). `period` (store days and the days they are compared with)
+//! and `decompose` (the arithmetic of an explanation) are pure; `repo` reads this domain's own
+//! read model, the `analytics` views. Everything is a read:
 //! no operation has side effects, and results are aggregates, never personal data.
 //!
 //! Analytics depends on no other domain's tables. Its views (migrations 0011 and 0016) are the

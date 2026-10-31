@@ -1,9 +1,10 @@
 //! The `messaging` domain: customer messages, templates, campaigns, notifications.
 //!
 //! Operations, inputs, outputs, checks, and errors are specified in `docs/api/messaging.md`.
-//! Layout: `model` (pure rules: quiet hours, reachability, subjects, template variables), one
-//! module per resource with one type per operation (`message`, `template`, `notification`),
-//! `repo` (SQL). Other domains are reached only through their `service` modules, never
+//! Layout: the folders follow the API hierarchy `messaging.{resource}.{operation}`, one folder
+//! per resource (`message`, `template`, `notification`) and one file per operation, named after
+//! its tool (`message/send_customer_message.rs`). Domain-wide: `model` (pure rules: quiet hours,
+//! reachability, subjects, template variables), `repo` (SQL). Other domains are reached only through their `service` modules, never
 //! through their tables.
 
 pub mod model;
