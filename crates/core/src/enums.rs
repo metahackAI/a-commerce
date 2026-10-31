@@ -291,6 +291,19 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:popupType, what a store popup is for.
+    PopupType = "popup_type" { Image = "image", Notice = "notice", Event = "event", Consent = "consent" }
+}
+
+word_enum! {
+    /// acom:resourceType of a display cache clear: the kind of display content that changed, or all.
+    CacheResourceType = "cache_resource_type" {
+        Category = "category", DisplaySlot = "display_slot", Banner = "banner", Popup = "popup",
+        CollectionPage = "collection_page", All = "all",
+    }
+}
+
+word_enum! {
     /// acom:memberState of a person.
     MemberState = "member_state" {
         Active = "active", Dormant = "dormant", Blocked = "blocked", PendingWithdrawal = "pending_withdrawal",
@@ -498,6 +511,8 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (DisplayStatus::LIST, DisplayStatus::WORDS),
     (SlotType::LIST, SlotType::WORDS),
     (TermSet::LIST, TermSet::WORDS),
+    (PopupType::LIST, PopupType::WORDS),
+    (CacheResourceType::LIST, CacheResourceType::WORDS),
     (MemberState::LIST, MemberState::WORDS),
     (MemberType::LIST, MemberType::WORDS),
     (MessageChannel::LIST, MessageChannel::WORDS),

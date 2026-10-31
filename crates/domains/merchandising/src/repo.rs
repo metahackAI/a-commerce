@@ -191,6 +191,58 @@ pub(crate) async fn slot(tx: &mut TxCx, id: &str) -> Result<Option<SlotRow>, Too
     .map_err(db)
 }
 
+/// Sets a slot's items; only touches the row (and its version) when they differ. Returns the
+/// rows changed.
+pub(crate) async fn set_slot_items(
+    tx: &mut TxCx,
+    slot_id: &str,
+    items: &Value,
+) -> Result<u64, ToolError> {
+    Ok(sqlx::query(
+        "UPDATE merchandising.display_slot SET item_list_element = $3, updated_at = now(),
+           version = version + 1
+         WHERE tenant_id = $1 AND id = $2 AND item_list_element IS DISTINCT FROM $3",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(slot_id)
+    .bind(items)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?
+    .rows_affected())
+}
+
+/// The ids among `ids` that are banners of this store.
+pub(crate) async fn banner_ids_known(
+    tx: &mut TxCx,
+    ids: &[String],
+) -> Result<Vec<String>, ToolError> {
+    sqlx::query_scalar(
+        "SELECT id FROM merchandising.banner WHERE tenant_id = $1 AND id = ANY($2) ORDER BY id",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(ids)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// The ids among `ids` that are curated pages of this store.
+pub(crate) async fn collection_page_ids_known(
+    tx: &mut TxCx,
+    ids: &[String],
+) -> Result<Vec<String>, ToolError> {
+    sqlx::query_scalar(
+        "SELECT id FROM merchandising.collection_page WHERE tenant_id = $1 AND id = ANY($2)
+         ORDER BY id",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(ids)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
 /// A booking with the banner it shows.
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub(crate) struct BookingRow {
@@ -212,12 +264,17 @@ pub(crate) struct BookingRow {
     pub image: Option<String>,
     pub image_product_group_id: Option<String>,
     pub image_color: Option<String>,
+    /// The slot items the booking shows (`schedule_display`); `None` for a banner booking.
+    pub item_list_element: Option<Value>,
+    /// Channels it shows on; `None` for every channel.
+    pub sales_channel: Option<Vec<String>>,
 }
 
 const BOOKING_SELECT: &str = "SELECT d.id, d.display_slot_id, d.banner_id,
         d.valid_for_member_tier, d.valid_from, d.valid_through, d.display_status, d.promotion_id,
         d.change_set_id, d.version, b.eyebrow, b.headline, b.alternative_headline, b.cta_label,
-        b.url, b.image, b.image_product_group_id, b.image_color
+        b.url, b.image, b.image_product_group_id, b.image_color, d.item_list_element,
+        d.sales_channel
      FROM merchandising.display_booking d
      LEFT JOIN merchandising.banner b ON b.tenant_id = d.tenant_id AND b.id = d.banner_id
      WHERE d.tenant_id = $1";
@@ -431,24 +488,27 @@ pub(crate) async fn delete_banner_if_unbooked(tx: &mut TxCx, id: &str) -> Result
         > 0)
 }
 
-/// A booking as `schedule_banner` creates it.
+/// A booking as `schedule_banner` (a banner) or `schedule_display` (the slot's items) creates it.
 #[derive(Debug)]
 pub(crate) struct NewBooking<'a> {
     pub id: &'a str,
     pub slot_id: &'a str,
-    pub banner_id: &'a str,
+    pub banner_id: Option<&'a str>,
     pub tier: Option<&'a str>,
     pub valid_from: DateTime<Utc>,
     pub valid_through: DateTime<Utc>,
     pub status: &'a str,
     pub promotion_id: Option<&'a str>,
+    pub item_list_element: Option<&'a Value>,
+    pub sales_channel: Option<&'a [String]>,
 }
 
 pub(crate) async fn insert_booking(tx: &mut TxCx, b: &NewBooking<'_>) -> Result<(), ToolError> {
     sqlx::query(
         "INSERT INTO merchandising.display_booking (tenant_id, id, display_slot_id, banner_id,
-           valid_for_member_tier, valid_from, valid_through, display_status, promotion_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           valid_for_member_tier, valid_from, valid_through, display_status, promotion_id,
+           item_list_element, sales_channel)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          ON CONFLICT (tenant_id, id) DO NOTHING",
     )
     .bind(tx.tenant.as_str())
@@ -460,6 +520,8 @@ pub(crate) async fn insert_booking(tx: &mut TxCx, b: &NewBooking<'_>) -> Result<
     .bind(b.valid_through)
     .bind(b.status)
     .bind(b.promotion_id)
+    .bind(b.item_list_element)
+    .bind(b.sales_channel)
     .execute(&mut *tx.tx)
     .await
     .map_err(db)?;

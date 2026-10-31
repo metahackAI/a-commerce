@@ -9,7 +9,9 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::parse_time;
+use super::{page_summary, pages};
+use crate::display_slot::{View, operators_only, view};
+use crate::{TIER_NOT_FOUND, audience, known_tier, parse_time};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -17,10 +19,11 @@ pub struct ListCurationsInput {
     /// Only pages in this state: draft, scheduled, active or ended.
     #[schemars(example = &"active")]
     pub status: Option<DisplayStatus>,
-    /// Only pages for this audience: a tier id (`list_tiers`) or `everyone`.
+    /// Only pages for this audience: a tier id (`list_tiers`) or `everyone`. Operators only.
     #[schemars(regex(pattern = r"^[a-z][a-z0-9_]*$"), example = &"everyone")]
     pub audience: Option<String>,
-    /// Judge the state at this moment (store time without an offset). Default: now.
+    /// Judge the state at this moment (store time without an offset). Default: now. Operators
+    /// only.
     #[schemars(example = &"2026-11-07T10:00")]
     pub as_of: Option<String>,
     /// Page size, 1–100. Default 20.
@@ -41,11 +44,11 @@ impl Operation for ListCurations {
         kind: Kind::Read,
         method: Method::Get,
         path: "/v1/merchandising/collection-pages",
-        summary: "Curated pages (collections of products in sections) with their state, period and audience.",
+        summary: "Curated pages (collections of products in sections) with their state, period and audience. A shopper gets only the pages showing to them now.",
         consumes: &[],
         produces: &[Slot::many("collection_page_id")],
         checks: &[],
-        errors: &[],
+        errors: &[TIER_NOT_FOUND],
         audience: Audience::Both,
         action_type: ActionType::SEARCH,
         person_scope: "",
@@ -56,12 +59,55 @@ impl Operation for ListCurations {
 
 impl ReadOp<Cx> for ListCurations {
     async fn read(&self, cx: &Cx, input: ListCurationsInput) -> Result<Value, ToolError> {
-        Page::new(input.limit, input.cursor.as_deref())?;
-        if let Some(s) = &input.as_of {
-            parse_time(&cx.time, "as_of", s)?;
+        let page = Page::new(input.limit, input.cursor.as_deref())?;
+        let mut tx = cx.read().await.map_err(ToolError::from)?;
+        let view = view(cx, &mut tx).await?;
+        let at = match (&view, &input.as_of) {
+            (View::Shopper(_), Some(_)) => return Err(operators_only("as_of")),
+            (View::Operator, Some(s)) => parse_time(&cx.time, "as_of", s)?,
+            (_, None) => cx.clock.now(),
+        };
+        let wanted_audience = match (&view, &input.audience) {
+            (View::Shopper(_), Some(_)) => return Err(operators_only("audience")),
+            (View::Operator, Some(a)) => {
+                known_tier(&mut tx, a).await?;
+                Some(a.clone())
+            }
+            (_, None) => None,
+        };
+        let all = pages(&mut tx).await?;
+        tx.commit().await.map_err(ToolError::from)?;
+
+        let matching: Vec<_> = all
+            .iter()
+            .filter(|p| {
+                let status = p.status(at);
+                let to = audience(p.valid_for_member_tier.as_deref());
+                let visible = match &view {
+                    View::Operator => true,
+                    // A shopper sees the pages showing now, for everyone or for their tier.
+                    View::Shopper(tier) => {
+                        status == DisplayStatus::Active && (to == "everyone" || to == tier)
+                    }
+                };
+                visible
+                    && input.status.is_none_or(|s| s == status)
+                    && wanted_audience.as_deref().is_none_or(|a| a == to)
+            })
+            .collect();
+        let total = i64::try_from(matching.len()).unwrap_or(i64::MAX);
+        let start = usize::try_from(page.offset).unwrap_or(0);
+        let size = usize::try_from(page.limit).unwrap_or(0);
+        let items: Vec<Value> = matching
+            .iter()
+            .skip(start)
+            .take(size)
+            .map(|p| page_summary(cx, p, at))
+            .collect();
+        let mut out = json!({"items": items, "total": total});
+        if let Some(c) = page.next_cursor(items.len(), total) {
+            out["next_cursor"] = json!(c);
         }
-        // No curated page is stored yet, whatever the filters.
-        let _filters = (input.status, input.audience);
-        Ok(json!({"items": [], "total": 0}))
+        Ok(out)
     }
 }

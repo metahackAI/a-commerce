@@ -93,6 +93,14 @@ impl ReadOp<Cx> for GetDisplaySlot {
                 .iter()
                 .filter_map(|b| b.image_product_group_id.clone()),
         );
+        // Bookings of the slot's items (`schedule_display`) show their own copy of the items.
+        let booked_products = |b: &BookingRow| -> Vec<String> {
+            b.item_list_element
+                .as_ref()
+                .map(|v| product_ids(&slot_items(v)))
+                .unwrap_or_default()
+        };
+        wanted.extend(bookings.iter().flat_map(booked_products));
         let cards: BTreeMap<String, ProductCard> = product_cards(&mut tx, &wanted)
             .await?
             .into_iter()
@@ -133,6 +141,15 @@ impl ReadOp<Cx> for GetDisplaySlot {
             .map(|b| {
                 let mut v = booking_summary(cx, b, at);
                 v["banner"] = banner_json(b, &cards);
+                if b.item_list_element.is_some() {
+                    v["hidden_items"] = json!(
+                        booked_products(b)
+                            .iter()
+                            .filter_map(|p| hidden_reason(&rules, cards.get(p))
+                                .map(|r| json!({"product_id": p, "reason": r})))
+                            .collect::<Vec<_>>()
+                    );
+                }
                 v
             })
             .collect();

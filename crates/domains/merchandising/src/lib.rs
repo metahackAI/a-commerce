@@ -2,7 +2,8 @@
 //!
 //! Operations, inputs, outputs, checks, and errors are specified in `docs/api/merchandising.md`.
 //! Layout: the folders follow the API hierarchy `merchandising.{resource}.{operation}`: one
-//! folder per resource (`category`, `display_slot`, `banner`, `collection_page`) and one file
+//! folder per resource (`category`, `display_slot`, `banner`, `popup`, `collection_page`,
+//! `cache`) and one file
 //! per operation, named after its tool (`banner/schedule_banner.rs`); what a resource's
 //! operations share is in its `mod.rs`. Domain-wide code: `model` (rules as pure functions and
 //! the policy values they use) and `repo` (SQL). Other domains are reached only through the
@@ -14,9 +15,11 @@ mod model;
 mod repo;
 
 mod banner;
+mod cache;
 mod category;
 mod collection_page;
 mod display_slot;
+mod popup;
 
 #[cfg(test)]
 mod b1;
@@ -24,6 +27,8 @@ mod b1;
 mod contract;
 #[cfg(test)]
 mod integration;
+#[cfg(test)]
+mod integration_writes;
 #[cfg(test)]
 mod testing;
 
@@ -49,14 +54,24 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .write(category::unmap_category::UnmapCategory);
     // display_slot
     b.read(display_slot::list_display_slots::ListDisplaySlots)
-        .read(display_slot::get_display_slot::GetDisplaySlot);
+        .read(display_slot::get_display_slot::GetDisplaySlot)
+        .write(display_slot::arrange_display_slot::ArrangeDisplaySlot)
+        .write(display_slot::schedule_display::ScheduleDisplay);
     // banner
     b.write(banner::schedule_banner::ScheduleBanner)
         .read(banner::list_banners::ListBanners)
         .write(banner::set_banner::SetBanner);
+    // popup
+    b.read(popup::list_popups::ListPopups)
+        .write(popup::set_popup::SetPopup);
     // collection_page
     b.read(collection_page::list_curations::ListCurations)
-        .read(collection_page::get_curation::GetCuration);
+        .read(collection_page::get_curation::GetCuration)
+        .write(collection_page::create_curation::CreateCuration)
+        .write(collection_page::update_curation::UpdateCuration)
+        .write(collection_page::publish_curation::PublishCuration);
+    // cache
+    b.write(cache::invalidate_display_cache::InvalidateDisplayCache);
 }
 
 pub const TIER_NOT_FOUND: ErrorCode = ErrorCode::new("tier_not_found", ErrorClass::NotFound);

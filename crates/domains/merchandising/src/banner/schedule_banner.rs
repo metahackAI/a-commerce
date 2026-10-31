@@ -448,12 +448,14 @@ impl WriteOp<Cx> for ScheduleBanner {
             &repo::NewBooking {
                 id: &run.booking_id,
                 slot_id: &run.slot_id,
-                banner_id: &b.id,
+                banner_id: Some(&b.id),
                 tier: run.valid_for_member_tier.as_deref(),
                 valid_from: run.valid_from,
                 valid_through: run.valid_through,
                 status: status.as_str(),
                 promotion_id: run.promotion_id.as_deref(),
+                item_list_element: None,
+                sales_channel: None,
             },
         )
         .await?;

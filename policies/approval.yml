@@ -43,7 +43,7 @@ thresholds:
     requires: human_approval
     approver_role: merchandiser
   display_schedule:
-    applies_to: [schedule_banner, schedule_display, publish_curation, set_banner, set_popup]
+    applies_to: [schedule_banner, schedule_display, publish_curation, set_banner, set_popup, update_curation]
     when: reaches_customers              # merchandising.yml reaches_customers
     requires: human_approval
     approver_role: merchandiser

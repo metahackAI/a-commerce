@@ -16,6 +16,7 @@ use acom_store::TxCx;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
+use crate::model::slug;
 use crate::repo::{CategoryRow, db};
 
 pub const CATEGORY_NOT_FOUND: ErrorCode =
@@ -88,21 +89,6 @@ impl CategoryRules {
                 .unwrap_or_default(),
         })
     }
-}
-
-fn slug(text: &str) -> String {
-    let mut out = String::new();
-    for ch in text.trim().chars() {
-        if ch.is_ascii_alphanumeric() {
-            out.push(ch.to_ascii_lowercase());
-        } else if !out.ends_with('_') && !out.is_empty() {
-            out.push('_');
-        }
-    }
-    while out.ends_with('_') {
-        out.pop();
-    }
-    out
 }
 
 fn not_found(id: &str) -> ToolError {

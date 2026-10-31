@@ -2,7 +2,8 @@
 //! seeded, demo clock Fri Nov 6 11:00), and scene B1 end to end through the change-set engine
 //! (preview v1 → v2, coupon and banner with placeholders, approve, verify, undo). Run on
 //! request: `cargo test -p acom-merchandising -- --ignored`. The B1 test writes and then undoes
-//! its change set, so run it on a scratch copy of the demo store.
+//! its change set, so run it on a scratch copy of the demo store. The slot, popup, curated page
+//! and cache writes are tested in `integration_writes`.
 
 use acom_changeset::NewChangeSet;
 use acom_contract::{ApprovalNeed, ReadOp, Registry, RegistryBuilder, WriteOp};
@@ -114,10 +115,16 @@ async fn banners_and_curations() {
         .unwrap();
     assert_eq!(set.approval, ApprovalNeed::NotNeeded);
     assert!(set.checks.iter().all(|c| c.passed));
+    // Curated pages are stored now (migration 0027): the seed has three.
     let curations = ListCurations.read(&cx, input(json!({}))).await.unwrap();
-    assert_eq!(curations["total"], 0);
-    let e = GetCuration
+    assert_eq!(curations["total"], 3);
+    let winter = GetCuration
         .read(&cx, input(json!({"collection_page_id": "col_winter_edit"})))
+        .await
+        .unwrap();
+    assert_eq!(winter["status"], "draft");
+    let e = GetCuration
+        .read(&cx, input(json!({"collection_page_id": "col_nothing"})))
         .await
         .unwrap_err();
     assert_eq!(e.code, "collection_page_not_found");

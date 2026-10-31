@@ -57,6 +57,14 @@ fn registers_every_operation_with_closed_schemas() {
         "set_banner",
         "list_curations",
         "get_curation",
+        "arrange_display_slot",
+        "schedule_display",
+        "list_popups",
+        "set_popup",
+        "create_curation",
+        "update_curation",
+        "publish_curation",
+        "invalidate_display_cache",
     ] {
         assert!(registry.get(t).is_some(), "{t} is not registered");
     }

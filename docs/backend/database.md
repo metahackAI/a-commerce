@@ -201,7 +201,10 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `merchandising.category_mapping` | schema:Intangible/acom:CategoryMapping | `map` | 표준 → 전시 카테고리 |
 | `merchandising.display_slot` | schema:WebPageElement | `slot` | `slot_type`, 페이지 |
 | `merchandising.banner` | schema:CreativeWork/acom:Banner | `bnr` | `headline`, `alternative_headline`, `image`, `url` |
-| `merchandising.display_booking` | schema:Schedule/acom:DisplayBooking | `dsp` | 슬롯 × 대상 × 기간 |
+| `merchandising.display_booking` | schema:Schedule/acom:DisplayBooking | `dsp` | 슬롯 × 대상 × 기간. 슬롯 구성 예약은 `item_list_element` 사본과 `sales_channel` |
+| `merchandising.collection_page` | schema:CollectionPage | `col` | 기획전. 섹션은 `has_part`(jsonb), 상태 `display_status` |
+| `merchandising.popup` | schema:WebPageElement/acom:Popup | `pop` | `popup_type`, 페이지, 순위, "그만 보기" 일수, 기간 |
+| `merchandising.cache_invalidation` | schema:Action/acom:CacheInvalidation | `cin` | 전시 캐시 비우기 요청 기록(캐시가 아직 없어 기록만) |
 | `search.search_document` | - | — | §10 |
 | `promotion.promotion` | schema:OfferCatalog/acom:Promotion | `promo` | 상태, 기간, 대상 등급 |
 | `promotion.unit_price_specification` | schema:UnitPriceSpecification | `ups` | 회원가·기간가 |

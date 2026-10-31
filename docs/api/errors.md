@@ -68,7 +68,7 @@
 | customer | `identity_not_verified`, `reverify_required`, `code_mismatch`, `verification_expired`, `mandatory_consent_missing`, `cannot_revoke_mandatory`, `rejoin_blocked`, `id_reuse_blocked`, `withdrawal_blocked`, `password_policy`, `password_reused`, `gift_recipient_data`, `sensitive_data`, `migration_required`, `entry_tier_missing`, `tier_rank_conflict`, `payout_not_approved`, `no_verified_contact` |
 | messaging | `no_consented_recipients`, `template_channel_mismatch`, `campaign_not_ready` |
 | search | `circular_synonym`, `reindex_pending` |
-| merchandising | `slot_taken`(policy_violation), `cross_set_violation`, `primary_needs_reassign`, `cycle_detected` |
+| merchandising | `slot_taken`·`item_discontinued`·`product_discontinued`·`empty_curation`·`priority_conflict`(policy_violation), `too_many_popups`(limit_exceeded), `cross_set_violation`, `primary_needs_reassign`, `cycle_detected`, `slot_type_mismatch`, `empty_slot` |
 | integration | `status_unmapped`, `category_unmapped` |
 | platform | `change_set_not_found`, `preview_not_found`, `irreversible_change`(되돌릴 수 없는 항목이 있는 변경셋 되돌리기), `demo_mode_off`(invalid_state, 데모 모드가 아닌 스토어에서 데모 시계 옮기기, 또는 평가용 화면형 파사드 쓰기: `GET /v1/tools?set=facade`, 턴의 `tool_set: facade`), `demo_reset_unavailable`(invalid_state, 데모 스택이 아닌 곳에서 데모 스토어 다시 적재) |
 | analytics | `no_data_for_period`(비교할 날에 매출이 없음), `invalid_period`·`invalid_granularity`·`dimension_not_supported`(invalid_input) |

@@ -87,6 +87,29 @@ pub enum BannerChannel {
     App,
 }
 
+impl BannerChannel {
+    /// The `sales_channel` word.
+    pub fn word(self) -> &'static str {
+        match self {
+            BannerChannel::Web => "web",
+            BannerChannel::MobileWeb => "mobile_web",
+            BannerChannel::App => "app",
+        }
+    }
+}
+
+/// The channel words of an input, each once in the order given; `None` (every channel) when the
+/// input names none.
+pub(crate) fn channel_input(channels: Option<&[BannerChannel]>) -> Option<Vec<String>> {
+    let mut out: Vec<String> = Vec::new();
+    for c in channels.unwrap_or_default() {
+        if !out.iter().any(|w| w == c.word()) {
+            out.push(c.word().to_owned());
+        }
+    }
+    (!out.is_empty()).then_some(out)
+}
+
 /// The channels a banner shows on. Banners have no channel limit stored, so all of them.
 fn every_channel() -> Vec<&'static str> {
     SalesChannel::ALL
