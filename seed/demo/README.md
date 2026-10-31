@@ -18,6 +18,7 @@ members and sales history) under fixed counts and a fixed random seed.
 | `08_messaging.yml` | Refund notices for cus_4431's completed returns; the weekly email template `tpl_weekly_email` and its sends: four sent Thursdays (Oct 8–29) and `cmp_weekly_1105`, failed Thu Nov 5 08:00 (list import failed) |
 | `09_supplier_sheet.yml` | Scene B4's supplier sheet `upl_fw26_supplier` (`fw26_supplier.xlsx`, 30 rows); the scene imports it |
 | `generate.yml` | Spec for the generator (not data) |
+| `flow.yml` | What shoppers do after the scene clock, for `cargo xtask sim` (not data; see below) |
 
 Load the files in name order, and the tables inside each file in the order written; foreign keys are
 satisfied in that order. Run everything in one transaction with
@@ -74,6 +75,27 @@ event rows (the scene setup in `acom-testkit`).
 - `clm_20402` is the result of F5 (Alex sends the request at 09:50; it is stored at 09:52). It is seeded because B2 at 10:40 needs it; a replay of F5 itself starts by removing `clm_20402` and its item and event.
 - `task_returns_1106` is seeded as `working` with no change set; the B2 run attaches `cs_1043` and moves it to `needs_you`.
 
+## Store activity after the scene clock
+
+The seed stops at Fri Nov 6, 11:00. `cargo xtask sim` plays the store forward from there: generated
+members place orders and send return requests through the same REST API a browser uses, and the clock
+moves past the scheduled jobs on the way, so stock falls, sizes sell out, and the watchers open tasks
+that no file seeds.
+
+```
+cargo xtask sim --base http://127.0.0.1:18280 (--until 2026-11-06T18:00 | --hours 7) [--seed 1] [--dry-run]
+```
+
+- Orders per hour of day, who orders, lines per basket, and variants and quantities are measured from
+  the store's own orders of the last full days when the run starts. [flow.yml](flow.yml) holds only what
+  history cannot give (the return rate and reasons), with its source.
+- Forward only. The stock in the files and the generator is the stock at 11:00, so orders placed before
+  11:00 belong in the generator, not here.
+- The same store state and seed draw the same events. A stopped clock is moved to each event and left at
+  the end; a running clock is followed in real time.
+- Not played yet: shipping and delivery of the new orders (no carrier operation), replacements, pickup,
+  cancellations, restocking.
+
 ## Values chosen here (not in scenarios.md)
 
 Family names, addresses and cards of the shoppers other than those in §2; colors and per-variant stock
@@ -88,5 +110,8 @@ split of its 5,200.00 over the four Thursdays (1,240 / 1,410 / 1,180 / 1,370).
 - Order numbers: §7 wants numbers to increase with order date across all orders, but B2's #20402 (Oct 27)
   and #20431 (Oct 29) leave no room for the several hundred daily orders B3 needs in between.
   `generate.yml` keeps named numbers and numbers only generated orders in date order.
+- After #1040 raised the four below-cost products to the price floor, a 10% discount takes them under it,
+  so checkout refuses them (`price_floor_respected`) for the shoppers who get that discount. Seen with
+  `cargo xtask sim`: 4 of 91 checkouts on Fri 11:00–18:00.
 - #1041 has no items: the docs define no reorder (purchase order) operation yet, so the draft holds the
   request and its interpretation only.
