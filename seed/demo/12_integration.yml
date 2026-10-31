@@ -1,0 +1,59 @@
+# Integration: the demo store's outside channels and what they last sent. No outside system is
+# connected in the demo (docs/scenarios.md): these rows are the store's own records of UPS, a
+# marketplace and the card processor. Secrets are hashes only, as platform keeps its API keys;
+# nobody holds the secrets behind these demo hashes (a signing secret's hash is the key events are
+# checked with, so tests sign with the stored hash).
+# - The marketplace's last copy: two orders and a return request that are not in the store yet
+#   (order_id and claim_id empty), and one order it delivered.
+# - The carrier and payment events behind Alex's #20402 (sales' order events name
+#   receive_carrier_event): the card authorisation on Oct 27, the pickup on Oct 28 and the delivery
+#   on Oct 31, all applied.
+# - imp_1107, the store's own feed on Thu Nov 5: the merino tee's codes taken (prices unchanged),
+#   one row rejected because "Trail tops" maps to no category. get_import_status reads it.
+tables:
+  integration.channel:
+    - {tenant_id: store_northwind, id: chn_carrier_ups, name: UPS, channel_type: carrier, url: "https://api.ups.example/v1", connection_status: connected, last_synced_at: "2026-11-06T10:55:00-05:00", credential_hash: "8f50fad544717fccc0b5fd9a1f60d8ef5290db9c00754199234d42d9955f2062", signing_secret_hash: "948544c8152def949ff64a2fb7a0157fbaf3ea4b1f946ba47093e329cc5c8731", status_mapping: {}}
+    - tenant_id: store_northwind
+      id: chn_marketplace_a
+      name: Marketplace A
+      channel_type: marketplace
+      url: "https://api.marketplace-a.example/v2"
+      connection_status: connected
+      last_synced_at: "2026-11-06T10:50:00-05:00"
+      credential_hash: "3a98ceda0847bf67076e15f489a956daaddb0809dd8b73b79a71c02369a10a42"
+      signing_secret_hash: "4cc671ae666fda64c4a39da62179d69aa3976133a99484abb6c587bfb44bd4f6"
+      status_mapping:
+        order: {awaiting_payment: payment_due, paid_waiting_shipment: processing, shipped: in_transit, delivered: delivered, cancelled: cancelled, returned: returned}
+        claim: {cancel_requested: requested, return_requested: requested, exchange_requested: requested, return_approved: approved, return_rejected: declined, return_collected: picked_up, return_inspected: inspected, return_completed: completed, cancel_completed: completed, request_withdrawn: withdrawn}
+    - {tenant_id: store_northwind, id: chn_payment_cards, name: Card payments, channel_type: payment, url: "https://api.card-payments.example/v1", connection_status: connected, last_synced_at: "2026-11-06T10:58:00-05:00", credential_hash: "054abb3aa7bc03163d61a3e23ae0ce7d5b3d761a7fc07a3bf3436331baf8c7fa", signing_secret_hash: "95982981b189312f169267365350907029e82ce85366070113d6fb3afac2220e", status_mapping: {}}
+
+  integration.external_order:
+    - {tenant_id: store_northwind, channel_id: chn_marketplace_a, external_order_ref: MK-55102, external_status: paid_waiting_shipment, ordered_item: [{external_id: MT-CHARCOAL-M, order_quantity: 1}], order_date: "2026-11-06T09:41:00-05:00", last_synced_at: "2026-11-06T10:50:00-05:00"}
+    - {tenant_id: store_northwind, channel_id: chn_marketplace_a, external_order_ref: MK-55098, external_status: awaiting_payment, ordered_item: [{external_id: WB-SLATE-M, order_quantity: 1}, {external_id: MT-CHARCOAL-L, order_quantity: 2}], order_date: "2026-11-06T08:05:00-05:00", last_synced_at: "2026-11-06T10:50:00-05:00"}
+    - {tenant_id: store_northwind, channel_id: chn_marketplace_a, external_order_ref: MK-54980, external_status: delivered, ordered_item: [{external_id: WB-SLATE-S, order_quantity: 1}], order_date: "2026-11-01T14:20:00-05:00", last_synced_at: "2026-11-05T17:10:00-05:00"}
+
+  integration.external_claim:
+    - {tenant_id: store_northwind, channel_id: chn_marketplace_a, external_claim_ref: MK-R-2210, external_order_ref: MK-54980, claim_type: return, external_status: return_requested, ordered_item: [{external_id: WB-SLATE-S, order_quantity: 1}], start_time: "2026-11-05T16:20:00-05:00", last_synced_at: "2026-11-05T17:10:00-05:00"}
+
+  integration.webhook_event:
+    - {tenant_id: store_northwind, id: whk_p_20402, channel_id: chn_payment_cards, payment_event_type: authorized, event_key: "chn_payment_cards|authorized|ch_demo_20402|2026-10-27T23:13:00+00:00", external_order_ref: "20402", order_id: ord_20402, payment_ref: ch_demo_20402, amount_value: 312.00, amount_currency: USD, start_time: "2026-10-27T19:13:00-04:00", received_at: "2026-10-27T19:13:00-04:00", action_status: completed, payment_id: pay_20402, result: {entity: payment, id: pay_20402, note: "already so; nothing changed"}, end_time: "2026-10-27T19:13:00-04:00"}
+    - {tenant_id: store_northwind, id: whk_c_20402_1, channel_id: chn_carrier_ups, carrier_event_type: picked_up, event_key: "chn_carrier_ups|picked_up|1ZNW204020001|2026-10-28T20:30:00+00:00", external_order_ref: "20402", order_id: ord_20402, tracking_number: "1ZNW204020001", start_time: "2026-10-28T16:30:00-04:00", received_at: "2026-10-28T16:31:00-04:00", action_status: completed, delivery_id: dlv_20402, result: {entity: parcel_delivery, id: dlv_20402, from: label_created, to: picked_up}, end_time: "2026-10-28T16:31:00-04:00"}
+    - {tenant_id: store_northwind, id: whk_c_20402_2, channel_id: chn_carrier_ups, carrier_event_type: delivered, event_key: "chn_carrier_ups|delivered|1ZNW204020001|2026-10-31T18:02:00+00:00", external_order_ref: "20402", order_id: ord_20402, tracking_number: "1ZNW204020001", start_time: "2026-10-31T14:02:00-04:00", received_at: "2026-10-31T14:03:00-04:00", action_status: completed, delivery_id: dlv_20402, result: {entity: parcel_delivery, id: dlv_20402, from: picked_up, to: delivered}, end_time: "2026-10-31T14:03:00-04:00"}
+
+  integration.product_import:
+    - {tenant_id: store_northwind, id: imp_1107, import_mode: upsert, action_status: completed, category_mapping: {tees: cat_tees}, agent_id: adm_sj, start_time: "2026-11-05T16:40:00-05:00", end_time: "2026-11-05T16:40:00-05:00"}
+
+  integration.product_import_item:
+    - tenant_id: store_northwind
+      product_import_id: imp_1107
+      position: 1
+      external_id: MT-CHARCOAL
+      product_group_id: prd_merino_tee
+      item_status: accepted
+      variant_mapping: [{external_id: MT-CHARCOAL-XS, variant_id: var_merino_tee_xs_charcoal}, {external_id: MT-CHARCOAL-S, variant_id: var_merino_tee_s_charcoal}, {external_id: MT-CHARCOAL-M, variant_id: var_merino_tee_m_charcoal}, {external_id: MT-CHARCOAL-L, variant_id: var_merino_tee_l_charcoal}, {external_id: MT-CHARCOAL-XL, variant_id: var_merino_tee_xl_charcoal}]
+    - tenant_id: store_northwind
+      product_import_id: imp_1107
+      position: 2
+      external_id: TT-SAGE
+      item_status: rejected
+      error: {code: category_unmapped, message: "No category matches 'Trail tops'", next_tool: list_categories}

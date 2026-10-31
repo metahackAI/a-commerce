@@ -30,6 +30,7 @@ pub const SCHEMAS: &[&str] = &[
     "partner",
     "search",
     "analytics",
+    "integration",
     "agent",
 ];
 
