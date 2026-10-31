@@ -432,16 +432,37 @@ products:
         }
     }
 
-    /// Every photo the content file names is in `web/public` (the web serves it), the product's
-    /// photo is one of its color photos, and no photo file is left that nothing names.
+    /// Every photo the seed names (the content file, and the named products of `03_catalog.yml`)
+    /// is in `web/public` (the web serves it), a product's photo is one of its color photos, and
+    /// no photo file is left that nothing names.
     #[test]
-    fn photos_in_the_content_file_are_served_by_the_web() {
+    fn photos_the_seed_names_are_served_by_the_web() {
         let Ok(text) = std::fs::read_to_string(repo().join("seed/demo/catalog_content.yml")) else {
             return;
         };
         let doc: Value = serde_norway::from_str(&text).unwrap();
         let public = repo().join("web/public");
         let mut named = BTreeSet::new();
+        let catalog: Value = serde_norway::from_str(
+            &std::fs::read_to_string(repo().join("seed/demo/03_catalog.yml")).unwrap(),
+        )
+        .unwrap();
+        for table in ["catalog.product_group", "catalog.product"] {
+            for row in catalog["tables"][table].as_array().unwrap() {
+                let url = row["image"].as_str().unwrap_or_default();
+                if let Some(path) = url
+                    .strip_prefix('/')
+                    .filter(|u| u.starts_with("media/products/"))
+                {
+                    assert!(
+                        public.join(path).is_file(),
+                        "{}: {url} is not in web/public",
+                        row["id"]
+                    );
+                    named.insert(path.to_owned());
+                }
+            }
+        }
         for p in doc["products"].as_array().unwrap() {
             let by_color: Vec<&Value> = p["images"]
                 .as_object()
