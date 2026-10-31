@@ -178,10 +178,32 @@ fn is_empty(v: Option<&Value>) -> bool {
 }
 
 /// A step's input after binding, and what binding did.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Bound {
     pub input: Value,
     pub notes: Vec<String>,
+    /// A required field taken from a used step's result that came back empty (`lines` of a
+    /// reorder suggestion with nothing to order): the step has nothing to act on.
+    pub empty: Option<String>,
+}
+
+/// A value the plan wrote as a reference to a step it uses (`uses.suggest.lines`,
+/// `suggest.lines`, or just `uses.suggest` for the same-named field): that result's value.
+fn referenced(v: &Value, field: &str, used: &[&StepRecord]) -> Option<(String, Value)> {
+    let s = v.as_str()?.trim();
+    let s = s
+        .strip_prefix("uses.")
+        .or_else(|| s.strip_prefix("uses:"))
+        .unwrap_or(s);
+    let mut path = s.split('.');
+    let head = path.next()?;
+    let r = used.iter().find(|r| r.step == head)?;
+    let mut at = r.output.as_ref()?;
+    let rest: Vec<&str> = path.collect();
+    for key in if rest.is_empty() { vec![field] } else { rest } {
+        at = at.get(key)?;
+    }
+    Some((r.step.clone(), at.clone()))
 }
 
 /// Fills a step's consumed slots and missing required fields from earlier steps.
@@ -191,7 +213,9 @@ pub struct Bound {
 /// sources gets nothing from elsewhere, so a missing id is asked for instead of guessed. A list
 /// field takes every value; a single field takes the first (search results come best first). A
 /// required field that is still missing takes a same-named field of a used step's result
-/// (`client_total` from a cart's `total`).
+/// (`client_total` from a cart's `total`). A field the plan wrote as a reference to a used step
+/// (`uses.suggest.lines`) takes that value. A required list taken from a result that came back
+/// empty is reported in [`Bound::empty`] rather than left for a model to fill.
 pub fn bind(
     step: &PlanStep,
     tool: &ToolSpec,
@@ -205,6 +229,22 @@ pub fn bind(
     };
     let mut notes = Vec::new();
     let used: Vec<&StepRecord> = step.uses.iter().filter_map(|u| done.get(u)).collect();
+    let mut empty = None;
+    let required = tool.required();
+    let mut taken = |field: &str, source: &str, v: &Value, notes: &mut Vec<String>| {
+        notes.push(format!("{field}: from {source}'s result"));
+        if required.contains(&field) && matches!(v, Value::Array(a) if a.is_empty()) {
+            empty.get_or_insert_with(|| format!("{field} from {source} is empty"));
+        }
+    };
+
+    let fields: Vec<String> = input.keys().cloned().collect();
+    for field in fields {
+        if let Some((source, v)) = referenced(&input[&field], &field, &used) {
+            taken(&field, &source, &v, &mut notes);
+            input.insert(field, v);
+        }
+    }
 
     for slot in &tool.consumes {
         let Some((field, is_list)) = tool.field_for_slot(&slot.name) else {
@@ -290,13 +330,14 @@ pub fn bind(
                 .map(|v| (r.step.clone(), v.clone()))
         });
         if let Some((source, v)) = found {
-            notes.push(format!("{field}: from {source}'s result"));
+            taken(field, &source, &v, &mut notes);
             input.insert(field.to_owned(), v);
         }
     }
     Bound {
         input: Value::Object(input),
         notes,
+        empty,
     }
 }
 
@@ -422,6 +463,7 @@ pub fn bind_row(step: &PlanStep, tool: &ToolSpec, row: &Value) -> Bound {
     Bound {
         input: Value::Object(input),
         notes,
+        empty: None,
     }
 }
 
@@ -870,5 +912,100 @@ mod tests {
         assert_eq!(id, "mem_12");
         assert!(text.starts_with("Remembered: weight"));
         assert!(memory_of(&json!({"ok": true}), None).is_none());
+    }
+
+    fn reorder_tools() -> Vec<ToolSpec> {
+        let spec = |tool: &str, kind: &str, properties: Value, required: Value| {
+            json!({"tool": tool, "address": format!("catalog.reorder.{tool}"), "kind": kind,
+                "summary": "", "consumes": [{"name": "product_id", "many": false}], "produces": [],
+                "checks": [], "group": "offer", "method": "GET", "path": "/v1/x", "errors": [],
+                "audience": "operator", "action_type": "SearchAction", "person_scope": "",
+                "input_schema": {"type": "object", "additionalProperties": false,
+                                 "properties": properties, "required": required}})
+        };
+        let id = json!({"type": "string", "pattern": "^prd_[a-z0-9_]+$"});
+        let lines = json!({"type": "array", "minItems": 1, "items": {"type": "object"}});
+        serde_json::from_value::<crate::tools::Manifest>(json!({"items": [
+            spec("suggest_reorder", "read", json!({"product_id": id}), json!(["product_id"])),
+            spec("create_reorder", "write",
+                 json!({"product_id": id, "lines": lines, "description": {"type": "string"}}),
+                 json!(["product_id", "lines"])),
+        ]}))
+        .unwrap()
+        .items
+    }
+
+    fn suggestion(lines: Value) -> StepRecord {
+        let m = reorder_tools();
+        record(
+            "suggest",
+            get(&m, "suggest_reorder"),
+            json!({"product_id": "prd_rash_guard", "lines": lines, "total_units": 0}),
+        )
+    }
+
+    #[test]
+    fn a_reference_to_a_used_steps_result_takes_its_value() {
+        let m = reorder_tools();
+        let lines = json!([{"variant_id": "var_rash_guard_s_black", "order_quantity": 4}]);
+        let done = BTreeMap::from([("suggest".to_owned(), suggestion(lines.clone()))]);
+        let order = vec!["suggest".to_owned()];
+        for written in ["uses.suggest.lines", "suggest.lines", "uses:suggest"] {
+            let b = bind(
+                &step(
+                    "draft",
+                    "create_reorder",
+                    json!({"product_id": "uses.suggest.product_id", "lines": written}),
+                    &["suggest"],
+                ),
+                get(&m, "create_reorder"),
+                &done,
+                &order,
+                &BTreeMap::new(),
+            );
+            assert_eq!(b.input["lines"], lines, "{written}");
+            assert_eq!(b.input["product_id"], "prd_rash_guard");
+            assert_eq!(b.empty, None);
+        }
+        // A step it does not use is not a source.
+        let b = bind(
+            &step(
+                "draft",
+                "create_reorder",
+                json!({"lines": "suggest.lines"}),
+                &[],
+            ),
+            get(&m, "create_reorder"),
+            &done,
+            &order,
+            &BTreeMap::new(),
+        );
+        assert_eq!(b.input["lines"], "suggest.lines");
+    }
+
+    #[test]
+    fn a_required_list_that_came_back_empty_leaves_nothing_to_do() {
+        let m = reorder_tools();
+        let done = BTreeMap::from([("suggest".to_owned(), suggestion(json!([])))]);
+        let order = vec!["suggest".to_owned()];
+        // Written as a reference, or left out for the runtime to fill: either way the
+        // suggestion's empty `lines` is not handed to a model to make up.
+        for args in [
+            json!({"lines": "uses.suggest.lines"}),
+            json!({"description": "Selling fast"}),
+        ] {
+            let b = bind(
+                &step("draft", "create_reorder", args.clone(), &["suggest"]),
+                get(&m, "create_reorder"),
+                &done,
+                &order,
+                &BTreeMap::new(),
+            );
+            assert_eq!(
+                b.empty.as_deref(),
+                Some("lines from suggest is empty"),
+                "{args}"
+            );
+        }
     }
 }

@@ -286,6 +286,8 @@ impl StockRules {
 pub struct ReorderRules {
     /// Calendar days from the order date to the expected arrival.
     pub lead_time_days: u32,
+    /// Days of sales a reorder should last after it arrives (`suggest_reorder`).
+    pub cover_days: u32,
     /// The most units of one variant in one reorder.
     pub max_units_per_line: i64,
     /// Availability words a variant can be reordered in (a discontinued one cannot).
@@ -300,6 +302,8 @@ impl ReorderRules {
         Ok(Self {
             lead_time_days: u32::try_from(count("catalog.reorder.lead_time_days")?)
                 .map_err(|_| missing("catalog.reorder.lead_time_days"))?,
+            cover_days: u32::try_from(count("catalog.reorder.cover_days")?)
+                .map_err(|_| missing("catalog.reorder.cover_days"))?,
             max_units_per_line: i64::try_from(count("catalog.reorder.max_units_per_line")?)
                 .map_err(|_| missing("catalog.reorder.max_units_per_line"))?,
             orderable_availability: words_at(p, "catalog.reorder.orderable_availability")?,

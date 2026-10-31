@@ -371,6 +371,21 @@
 
 공급처에 재고를 더 주문하는 것(재주문). 스토어가 사는 쪽인 schema.org `Order`(`ro_`)이고, 줄은 변형별 수량과 단가(그 변형의 원가)입니다. 주문한 재고는 받을 때 팔 수 있는 재고가 되므로, 그 전까지는 `get_inventory`의 `on_order`로만 보입니다. 상태는 주문 상태 단어([enums.md](enums.md) §1.1)를 씁니다: `processing`(주문함) → `in_transit`(공급처가 보냄) → `delivered`(받음), 받기 전 취소는 `cancelled`.
 
+### `suggest_reorder` — Kind: R
+- 논리주소/REST: `catalog.reorder.suggest` · `GET /v1/catalog/products/{product_id}/reorder-suggestion`
+- 요약: 상품의 변형마다 최근 판매량, 품절까지 남은 일수, 권장 재주문 수량을 돌려줍니다. "품절될 사이즈를 재주문해"에 답하는 읽기이며, `lines`는 그대로 `create_reorder`의 `lines`가 됩니다.
+- consumes → produces: `product_id` → `variant_id[]`
+- 입력: `product_id`(Text, `^prd_`, ✓)
+- 출력: `{product_id, name, sales_window: {valid_from: "2026-10-30", valid_through: "2026-11-05", days: 7}, lead_time_days: 7, cover_days: 14, variants: [{variant_id, size, color, inventory_level: 4, acom:safety_stock: 2, on_order: 0, units_sold: 10, days_until_stockout: 2.8, order_quantity: 28}], lines: [{variant_id, order_quantity: 28}], total_units: 28}` (단건 읽기라 목록 봉투 없음)
+  - `units_sold`: 판매 창(`sales_window`, 오늘을 뺀 최근 스토어 날짜들) 동안 주문된 그 변형의 수량(취소 줄 제외). 창 길이는 품절 예측 감시와 같은 [platform.yml](../../policies/platform.yml) `watchers.stock_out_forecast.lookback_days`라서, 그 감시가 연 할 일의 "about N days"와 숫자가 맞습니다. sales가 연결되지 않은 스택에서는 `sales_window: null`, `units_sold: 0`.
+  - `days_until_stockout`: 가용 재고 ÷ 하루 판매량(소수 한 자리). 팔린 게 없으면 `null`.
+  - `order_quantity`: 리드타임과 커버 일수 동안 팔릴 수량(`units_sold × (lead_time_days + cover_days) ÷ days`, 올림) + 안전재고 − 가용 재고 − `on_order`. 0 아래는 0, `reorder.max_units_per_line`에서 자릅니다. 재고를 추적하지 않거나(`acom:managed: false`) `reorder.orderable_availability`에 없는 변형(단종)은 0. 판매 창에 팔린 게 없는 변형은 안전재고까지만 채웁니다.
+  - `lines`: `order_quantity`가 1 이상인 변형만. 비어 있으면 지금 재주문할 변형이 없습니다.
+- 프리뷰: 해당 없음(읽기)
+- 정책: [catalog.yml](../../policies/catalog.yml) `reorder.lead_time_days`, `reorder.cover_days`, `reorder.max_units_per_line`, `reorder.orderable_availability`, [platform.yml](../../policies/platform.yml) `watchers.stock_out_forecast.lookback_days`
+- 에러: `product_not_found` → `search_products`
+- 멱등성: 읽기(부작용 없음)
+
 ### `create_reorder` — Kind: W
 - 논리주소/REST: `catalog.reorder.create` · `POST /v1/catalog/reorders`
 - 요약: 한 상품의 변형별 수량을 공급처에 재주문합니다. 단가는 각 변형의 원가, 도착 예정은 오늘(스토어 날짜) + 정책의 리드타임입니다. 실행하면 재주문이 `processing`으로 남고, 재고는 받을 때 늘어납니다.

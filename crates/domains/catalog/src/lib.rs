@@ -150,7 +150,8 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .write(inventory::set_variant_stock::SetVariantStock)
         .write(inventory::set_safety_stock::SetSafetyStock);
     // reorder
-    b.write(reorder::create_reorder::CreateReorder)
+    b.read(reorder::suggest_reorder::SuggestReorder)
+        .write(reorder::create_reorder::CreateReorder)
         .write(reorder::receive_reorder::ReceiveReorder);
     // approval
     b.write(approval::submit_for_review::SubmitForReview)

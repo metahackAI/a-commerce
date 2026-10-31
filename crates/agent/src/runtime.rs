@@ -63,6 +63,10 @@ fn reply_schema() -> Value {
 /// What a turn says when no model answers at all: the pages still work without the assistant.
 const MODEL_DOWN: &str = "The assistant's model is not answering right now, so I can't do this yet. Everything on the pages still works; please try again in a few minutes.";
 
+/// What the reply model is told when its reply repeated the request.
+const REPEATED_REQUEST: &str = "That repeats the request and describes the results instead of \
+answering. Write only the answer to the person, in two or three sentences.";
+
 /// What the planner is told when its plan has no steps.
 const EMPTY_PLAN: &str = "The plan has no steps, so the answer would come from nothing. \
 The person asked about the store: plan at least one read from the tools listed (search, list or get) \
@@ -533,6 +537,8 @@ struct Turn<'r> {
     view: Option<ChangeSetView>,
     blocks: Vec<Block>,
     problems: Vec<String>,
+    /// Steps not called because what they build on came back empty.
+    skipped: Vec<String>,
 }
 
 impl<'r> Turn<'r> {
@@ -584,6 +590,7 @@ impl<'r> Turn<'r> {
             view: None,
             blocks: Vec::new(),
             problems: Vec::new(),
+            skipped: Vec::new(),
         }
     }
 
@@ -1443,6 +1450,13 @@ impl<'r> Turn<'r> {
                 Some(source) => self.run_each(plan, step, &tool, source, &view).await,
                 None => {
                     let bound = executor::bind(step, &tool, &view, &order, &self.pointed);
+                    // The result it builds on says there is nothing to do: not called, not
+                    // made up by a model either. The reply says so.
+                    if let Some(why) = bound.empty {
+                        self.skipped
+                            .push(format!("{} was not called: {why}.", tool.tool));
+                        continue;
+                    }
                     let mut input = bound.input;
                     if tool.is_write()
                         && self.surface == ChatSurface::Bo
@@ -2831,7 +2845,7 @@ impl<'r> Turn<'r> {
             })
             .collect();
         json!({"request": self.text, "change_set": cs, "reads": reads, "saved": saved, "blocks_shown": blocks,
-               "problems": self.problems,
+               "problems": self.problems, "not_called": self.skipped,
                "interpretation": self.plan.as_ref().map(|p| p.interpretation.iter().map(|u| u.text.clone()).collect::<Vec<_>>())})
     }
 
@@ -2979,6 +2993,34 @@ impl<'r> Turn<'r> {
         else {
             return fallback;
         };
+        // A reply that repeats the request is the model thinking aloud: ask once for the answer
+        // itself, else fall back to the plain reply.
+        if checker::repeats_request(&text, &self.text) {
+            if let Some(last) = self.usage.last_mut() {
+                last.succeeded = false;
+                last.error = Some("the reply repeated the request".into());
+            }
+            self.log_rejected_reply(
+                "Checking the reply answers instead of repeating the request",
+                "The reply repeated the request".into(),
+                json!({"reply": text}),
+            )
+            .await;
+            if self.usage.len() >= self.limits.model_calls as usize {
+                return fallback;
+            }
+            let mut again = req.clone();
+            again.messages.push(Message::assistant(text.clone()));
+            again.messages.push(Message::user(REPEATED_REQUEST));
+            match self
+                .reply_text(&worker, again)
+                .await
+                .and_then(|t| without_echo(t, &prompt))
+            {
+                Some(t) if !checker::repeats_request(&t, &self.text) => text = t,
+                _ => return fallback,
+            }
+        }
         // Owned copies: the retry below calls the model, which needs `self` mutably.
         let mut owned: Vec<Value> = self
             .history
@@ -3005,7 +3047,7 @@ impl<'r> Turn<'r> {
                     unsupported.join(", ")
                 ));
             }
-            self.log_rejected_reply(&text, &unsupported).await;
+            self.log_unsupported_numbers(&text, &unsupported).await;
             let mut again = req;
             again.messages.push(Message::assistant(text.clone()));
             again.messages.push(Message::user(format!(
@@ -3030,7 +3072,7 @@ impl<'r> Turn<'r> {
             checker::fix_weekdays(&text, today)
         } else {
             tracing::info!(numbers = ?unsupported, "reply used numbers not in the results; using the plain reply");
-            self.log_rejected_reply(&text, &unsupported).await;
+            self.log_unsupported_numbers(&text, &unsupported).await;
             if let Some(last) = self.usage.last_mut() {
                 last.succeeded = false;
                 last.error = Some(format!(
@@ -3042,24 +3084,27 @@ impl<'r> Turn<'r> {
         }
     }
 
-    /// A reply the number check turned down, kept in the turn's log with the numbers no result
-    /// holds (the model call itself is already recorded as answered).
-    async fn log_rejected_reply(&mut self, text: &str, unsupported: &[String]) {
-        let h = self
-            .begin_step(
-                StepKind::Check,
-                "Checking the reply's numbers against the results".into(),
-                None,
-            )
-            .await;
+    /// A reply a check turned down, kept in the turn's log with why (the model call itself is
+    /// already recorded as answered).
+    async fn log_rejected_reply(&mut self, check: &str, why: String, output: Value) {
+        let h = self.begin_step(StepKind::Check, check.into(), None).await;
         self.end_step(
             &h,
             StepStatus::Failed,
             StepEnd {
-                summary: format!("Numbers not in the results: {}", unsupported.join(", ")),
-                output: Some(json!({"reply": text, "unsupported": unsupported})),
+                summary: why,
+                output: Some(output),
                 ..StepEnd::default()
             },
+        )
+        .await;
+    }
+
+    async fn log_unsupported_numbers(&mut self, text: &str, unsupported: &[String]) {
+        self.log_rejected_reply(
+            "Checking the reply's numbers against the results",
+            format!("Numbers not in the results: {}", unsupported.join(", ")),
+            json!({"reply": text, "unsupported": unsupported}),
         )
         .await;
     }

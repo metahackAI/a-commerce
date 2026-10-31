@@ -93,6 +93,7 @@ inventory:
 
 reorder:                                 # 공급처 재주문 (create_reorder). 주문한 재고는 받을 때 팔 수 있는 재고가 됨
   lead_time_days: 7                      # 주문한 날(스토어 날짜)부터 도착 예정일까지 달력 일수
+  cover_days: 14                         # 도착한 뒤 버틸 판매 일수. suggest_reorder 가 최근 판매 속도 × (리드타임 + 이 일수) + 안전재고까지 채우는 수량을 권함
   max_units_per_line: 500                # check: reorder.max_units_per_line. 한 변형을 한 번에 이만큼까지
   orderable_availability: [in_stock, out_of_stock, pre_order, back_order]   # check: reorder.variant_orderable. 단종(discontinued) 변형은 재주문하지 않음
 
