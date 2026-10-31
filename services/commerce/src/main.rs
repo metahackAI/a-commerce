@@ -222,6 +222,7 @@ fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
         registry: Arc::new(registry),
         verifier: Arc::new(verifier),
         facade: Arc::new(facade),
+        events: Default::default(),
     });
     let reset = DemoReset {
         owner_url: cli.migration_database_url.clone(),

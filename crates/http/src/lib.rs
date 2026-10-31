@@ -20,6 +20,8 @@ mod idempotency;
 mod ops;
 mod store;
 
+pub use events::EventHub;
+
 use std::sync::Arc;
 
 use acom_auth::{Principal, Verifier};
@@ -39,6 +41,8 @@ pub struct Api {
     pub verifier: Arc<Verifier>,
     /// The evaluation's screen-shaped tool set, served only in demo mode with `?set=facade`.
     pub facade: Arc<acom_facade::Facade>,
+    /// The one listener behind every `GET /v1/platform/events`.
+    pub events: EventHub,
 }
 
 impl std::fmt::Debug for Api {

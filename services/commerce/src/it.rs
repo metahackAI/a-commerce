@@ -560,6 +560,7 @@ async fn http(demo_mode: bool) -> Http {
         registry: Arc::new(acom_registry::build().unwrap()),
         verifier: Arc::new(Verifier::from_pem(&public, "commerce").unwrap()),
         facade: Arc::new(acom_facade::Facade::build().unwrap()),
+        events: Default::default(),
     };
     Http {
         router: acom_http::router(Arc::new(api)),
