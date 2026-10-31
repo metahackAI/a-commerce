@@ -70,13 +70,15 @@ image-web: ## Build the web image
 
 check: check-rust check-web check-infra ## Everything CI runs
 
-check-rust: ## fmt, clippy, tests, docs/schema/seed checks
+check-rust: ## fmt, clippy, tests, docs/schema/seed/layout/coverage checks (as CI)
 	cargo fmt --check
 	cargo clippy --workspace --all-targets -- -D warnings
 	cargo test --workspace
 	cargo xtask check-docs
 	cargo xtask check-schema
 	cargo xtask check-seed
+	cargo xtask check-layout
+	cargo xtask check-coverage
 
 check-web: ## Type check and build the web app
 	cd web && npm ci --no-audit --no-fund && npm run typecheck && npm run build
@@ -91,7 +93,7 @@ check-infra: ## Validate Compose files and render + validate Kubernetes manifest
 k8s-render: ## Print the local overlay (OVERLAY=production for the other)
 	kubectl kustomize infra/k8s/overlays/$(or $(OVERLAY),local)
 
-kind-up: keys ## Local Kubernetes: kind cluster, ingress, images, the local overlay → http://a-commerce.localhost
+kind-up: keys ## Local Kubernetes: kind cluster, images, the local overlay (then port-forward svc/gateway → http://localhost:8080)
 	infra/scripts/kind-up.sh
 
 kind-down: ## Delete the local kind cluster

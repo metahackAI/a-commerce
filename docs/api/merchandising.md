@@ -2,7 +2,7 @@
 
 > 계층: `merchandising.{resource}.{operation}`. 공통 형식(읽기 봉투, 쓰기의 프리뷰 → `preview_id` 실행, 시간·금액·id)은 [conventions.md](conventions.md), 에러 코드는 [errors.md](errors.md), 상태 값은 [enums.md](enums.md), 데이터 타입은 [data-model.md](data-model.md), 정책은 [merchandising.yml](../../policies/merchandising.yml)·[approval.yml](../../policies/approval.yml). 예시 값은 데모 스토어([../scenarios.md](../scenarios.md))입니다.
 >
-> **설계 축**: ① 표준 카테고리(내부 분류)와 전시 카테고리(쇼퍼에게 보이는 트리)를 나누고 `acom:CategoryMapping`으로 N:M 연결. ② 노출 여부는 배치로 켜고 끄지 않고 `valid_from`·`valid_through`로 그때그때 계산. 시각 비교는 툴 안에서만 하고 에이전트가 직접 하지 않음. ③ 노출 = 기간 ∧ 재고 ∧ 판매 가능 상태. ④ 쇼퍼에게 닿는 공개(배너 예약, 슬롯 예약, 기획전 공개, 노출 중인 배너·팝업 수정)는 변경셋 승인. ⑤ 전시 변경은 캐시를 명시적으로 무효화해야 쇼퍼 화면에 반영.
+> **설계 축**: ① 표준 카테고리(내부 분류)와 전시 카테고리(쇼퍼에게 보이는 트리)를 나누고 `acom:CategoryMapping`으로 N:M 연결. ② 노출 여부는 배치로 켜고 끄지 않고 `valid_from`·`valid_through`로 그때그때 계산. 시각 비교는 툴 안에서만 하고 에이전트가 직접 하지 않음. ③ 노출 = 기간 ∧ 재고 ∧ 판매 가능 상태. ④ 쇼퍼에게 닿는 공개(배너 예약, 슬롯 예약, 기획전 공개, 노출 중인 배너·팝업 수정)는 변경셋 승인. ⑤ 지금 스토어에는 전시 캐시가 없어(페이지가 물을 때마다 읽음) 전시 변경은 바로 반영됨. `invalidate_display_cache`는 비울 키를 계산해 기록하는 결정적 대역([cache](#cache)).
 >
 > **대상(audience)**: 예약마다 대상이 하나입니다. 등급 id(`list_tiers`, 예 `vip`) 또는 예약어 `everyone`이고, 저장할 때는 `valid_for_member_tier`(everyone = NULL)로 남습니다([enums.md](enums.md) §5). 등급 대상 예약은 그 등급에게만 보이고 나머지 고객은 기존 예약을 계속 봅니다([merchandising.yml](../../policies/merchandising.yml) `slot_free`).
 
@@ -91,7 +91,7 @@
 
 > 진열 슬롯은 schema.org `WebPageElement`(`slot_`)입니다. `item_list_element`에 상품·배너·기획전을 순서대로 담고, 예약(`display_booking`, `dsp_`)마다 대상(`audience`)·`valid_from`·`valid_through`를 가집니다. 노출 = 기간 ∧ 재고 ∧ 판매 가능 상태로 그때그때 계산합니다(`display.visible_when`). 슬롯 종류 `slot_type`은 `hero` | `banner_board` | `product_grid` | `brand_strip` | `collection_feed`, 예약 상태는 `draft` | `scheduled` | `active` | `ended`입니다([enums.md](enums.md) §1.12).
 
-### `list_display_slots` — Kind: R  (MVP)
+### `list_display_slots` — Kind: R  (데모 장면)
 - 논리주소/REST: `merchandising.display_slot.list` · `GET /v1/merchandising/display-slots?page=main&valid_from=…&valid_through=…`
 - 요약: 한 페이지의 슬롯마다 기간 안의 예약과 **대상별 빈 시간**을 돌려줍니다. `schedule_banner`·`schedule_display` 앞에서 "이 슬롯을 VIP에게 이 주말에 쓸 수 있나"를 확인할 때 씁니다. 빈 시간은 `slot_free` 체크와 같은 규칙으로 계산합니다.
 - 쇼퍼(비회원 포함)가 부르면 그 페이지의 슬롯 목록(`id`, `page`, `name`, `slot_type`, `position`)만 순서대로 돌려주고, 예약·빈 시간은 주지 않습니다. 슬롯마다 지금 무엇이 보이는지는 `get_display_slot`이 정합니다. `audience`는 운영자만 씁니다(쇼퍼가 보내면 `forbidden`).
@@ -174,7 +174,7 @@
 
 ## banner
 
-### `schedule_banner` — Kind: W$  (MVP)
+### `schedule_banner` — Kind: W$  (데모 장면)
 - 논리주소/REST: `merchandising.banner.schedule` · `POST /v1/merchandising/banners` (프리뷰 `?preview=true`, 실행 `{"preview_id": …}`, [conventions.md](conventions.md) §7)
 - 요약: 슬롯에 배너(작은 머리글·제목·버튼·링크·이미지)를 대상과 기간으로 예약합니다. 결과는 진열 예약(`display_booking`, `dsp_`) 하나입니다. 프로모션을 연결하면 배너 기간이 프로모션 기간 안에 있어야 합니다. 쇼퍼에게 닿으므로 항상 변경셋 승인을 거치고, 승인 후 실행기가 `preview_id`로 실행합니다. schema.org `ScheduleAction`.
 - consumes → produces: `slot_id`, `tier_id`?, `promotion_id`? → `display_booking_id`

@@ -1,5 +1,5 @@
-// Response types the back office reads, hand-written from the specs in docs/api/*.md. They stay
-// here (not in a shared folder) until the generated contract (web/src/contract/) covers them.
+// Response types the back office reads, hand-written from the specs in docs/api/*.md. Nothing
+// generates them; keep them equal to the specs when a response changes.
 // Fields the spec marks optional or that a tool may leave out are optional, so a page renders
 // whatever the API returns without guessing.
 

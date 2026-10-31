@@ -1,12 +1,12 @@
 # API 명세 — `messaging` (고객 메시지·템플릿·캠페인·알림)
 
 > 계층: `messaging.{resource}.{operation}`. 공통 규약(응답 형식·프리뷰/실행·멱등·헤더)은 [conventions.md](conventions.md)와 [README.md](README.md) §3, 값 목록은 [enums.md](enums.md), 데이터 타입은 [data-model.md](data-model.md), 정책은 [approval.yml](../../policies/approval.yml) · [customer.yml](../../policies/customer.yml)(동의 게이트). 예시 값은 데모 시나리오([../scenarios.md](../scenarios.md) B2)와 같습니다.
-> **설계 축**: ① 고객에게 닿는 발송은 모두 사람 승인 — 프리뷰가 고객이 읽을 그대로의 메시지를 보여주고 사람이 승인(정책 `customer_messages: always_ask`), ② 마케팅 발송은 동의(opt-in) 게이트 — 동의 없는 대상은 서버가 발송 집합에서 뺌, ③ 채널(`email`·`sms`·`push`·`in_app`, [enums.md](enums.md) §3)은 한 계약, ④ 템플릿 변수는 의미 있는 이름, ⑤ 같은 메시지·캠페인은 두 번 나가지 않음(멱등), ⑥ 보낸 메시지는 되돌릴 수 없음(`change_set.irreversible`).
+> **설계 축**: ① 고객에게 닿는 발송은 모두 사람 승인 — 프리뷰가 고객이 읽을 그대로의 메시지를 보여주고 사람이 승인(정책 `customer_messages: always_ask`), ② 마케팅 발송은 동의(opt-in) 게이트 — 동의 없는 대상은 서버가 발송 집합에서 뺌, ③ 채널(`email`·`sms`·`push`·`in_app`, [enums.md](enums.md) §3)은 한 계약이고, 바깥 발송(이메일·SMS·푸시)은 설계상 결정적 스텁이라 보낸 것으로 기록만 하고 제공자에게 넘기지 않음, ④ 템플릿 변수는 의미 있는 이름, ⑤ 같은 메시지·캠페인은 두 번 나가지 않음(멱등), ⑥ 보낸 메시지는 되돌릴 수 없음(`change_set.irreversible`).
 
 리소스: [message](#message) · [template](#template) · [campaign](#campaign) · [notification](#notification)
 
 - schema.org: 메시지 `Message`(`recipient`, `text`, `about`), 발송은 `SendAction`. 캠페인은 `acom:Campaign`.
-- id 예: 메시지 `msg_5512`, 템플릿 `tpl_back_in_stock`, 캠페인 `cmp_77`, 알림 `ntf_901`.
+- id 예: 메시지 `msg_5512`, 템플릿 `tpl_back_in_stock`, 캠페인 `cmp_77`. 알림(`list_notifications`)은 회원이 받은 메시지 기록이라 따로 접두가 없고 메시지 id(`msg_…`)를 씁니다.
 
 ---
 
@@ -14,7 +14,7 @@
 
 ### `send_customer_message` — Kind: W$
 - 논리주소/REST: `messaging.message.send` · `POST /v1/messaging/messages`
-- 요약: 고객 한 명에게 주문·클레임에 관한 거래 메시지(사진 요청, 반품 거절 안내, 환불 완료 안내, 그 밖의 안내)를 보냅니다. 프리뷰는 **고객이 읽을 그대로**의 메시지를 `changes[].to`에 담고, 정책 `customer_messages: always_ask`에 따라 **항상** 변경셋에서 사람이 승인한 뒤 실행기가 보냅니다. 반품 검토에서는 `refund_return` 프리뷰와 한 변경셋으로 묶입니다(B2 `cs_1043`: "Approve 9 refunds and send 3 messages"). 판촉 문구는 이 툴이 아니라 `create_campaign`으로 보냅니다. MVP 툴.
+- 요약: 고객 한 명에게 주문·클레임에 관한 거래 메시지(사진 요청, 반품 거절 안내, 환불 완료 안내, 그 밖의 안내)를 보냅니다. 프리뷰는 **고객이 읽을 그대로**의 메시지를 `changes[].to`에 담고, 정책 `customer_messages: always_ask`에 따라 **항상** 변경셋에서 사람이 승인한 뒤 실행기가 보냅니다. 반품 검토에서는 `refund_return` 프리뷰와 한 변경셋으로 묶입니다(B2 `cs_1043`: "Approve 9 refunds and send 3 messages"). 판촉 문구는 이 툴이 아니라 `create_campaign`으로 보냅니다. 데모 장면에서 씁니다.
 - consumes → produces: `customer_id`?, `order_id`? → `message_id`
 - 입력:
   | 필드 | 타입 | 필수 | 설명 | 예 |
@@ -151,7 +151,7 @@
 - 요약: 한 회원이 받은 알림(앱 안 알림·푸시·이메일 발송 기록). 쇼퍼 본인은 `customer_id=me`.
 - consumes → produces: `customer_id` → `notification_id[]`
 - 입력: `customer_id`(✓), `channel?`, `read?`(Boolean), `sent_from`, `sent_through`, `limit`(기본 20), `cursor`
-- 출력: `{"items": [{"id": "ntf_901", "channel": "email", "headline": "Your refund is on its way", "text": "$312.00 back to card ending 0937.", "about": "ord_20402", "date_sent": "2026-11-06T11:25:00-05:00", "read": false}], "total": 7}`
+- 출력: `{"items": [{"id": "msg_901", "channel": "email", "headline": "Your refund is on its way", "text": "$312.00 back to card ending 0937.", "about": "ord_20402", "date_sent": "2026-11-06T11:25:00-05:00", "read": false}], "total": 7}`
 - 정책: 없음(읽기).
 - 에러: `customer_not_found` → `search_members`
 - 멱등성: 읽기.

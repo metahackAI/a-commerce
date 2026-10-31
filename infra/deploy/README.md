@@ -41,6 +41,8 @@ main 머지 / Run workflow
 
 실패하면 Environments 의 demo 상태에 마지막 로그 한 줄이 나옵니다. 전체 로그는 서버의 `~/deploy/state/logs/<deployment id>.log`.
 
+**빌드를 시작하고 1초쯤 뒤에 실패하기를 되풀이할 때.** demo 상태가 `building <sha>` 바로 뒤에 실패로 바뀌고, 마지막 로그 한 줄이 비어 있고(설명이 `(server log …)`뿐), 같은 커밋의 CI는 통과했다면 코드가 아니라 서버 문제입니다. 서버의 디스크나 상태 폴더(`~/deploy/state`)가 가득 차서 배포기가 로그 파일을 만들지 못하고 빌드 전에 멈춘 것이고, 그 배포를 처리했다고 적지도 못해 확인할 때마다 같은 실패를 냅니다. 서버 담당자가 `df -h ~/deploy`와 `docker system df`로 확인하고 자리를 만듭니다: 오래된 `~/deploy/state/logs/*.log`, 쓰지 않는 이미지(`docker image prune`), 그래도 모자라면 빌드 캐시(`docker builder prune`, 다음 배포가 처음부터 빌드). 자리가 나면 배포기가 다음 확인 때 가장 최근 배포(보통 main의 최신 커밋)를 다시 가져가므로 따로 누를 것은 없습니다. 가져가지 않으면 Actions → deploy → Run workflow.
+
 ## 3. 서버 구성 (한 번만, 서버 담당자)
 
 ```bash

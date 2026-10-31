@@ -1,6 +1,6 @@
 # A-Commerce design
 
-Status: draft (Oct 27; principles set Oct 31). This document is the brief for everyone building A-Commerce, people and coding agents alike.
+Status: written Oct 27; principles set Oct 31; §4–§9 checked against the code on Oct 31. This document is the brief for everyone building A-Commerce, people and coding agents alike.
 
 ## Principles
 
@@ -49,7 +49,7 @@ From building enterprise commerce platforms, we see the same patterns again and 
 
 Every capability in A-Commerce is exposed as a tool that follows these rules. Code review checks them.
 
-1. **One business verb per tool.** `create_promotion`, `issue_coupon`, `cancel_order`. No screens, popups, or grids.
+1. **One business verb per tool.** `create_promotion`, `issue_coupon`, `cancel_order_lines`. No screens, popups, or grids.
 2. **Plain names.** `verb_noun`, full English words. The name and a one-line description must be enough to pick the tool.
 3. **Typed inputs with meaning, not codes.** Enums are words (`"percent_off"`, `"vip"`). Every field has a description and an example.
 4. **Safe reads.** Reads never change state. A list returns items and the total together. A `fields` argument keeps responses small.
@@ -61,47 +61,63 @@ Every capability in A-Commerce is exposed as a tool that follows these rules. Co
 
 ## 4. Domain scope
 
-Written from scratch; the names and shapes are ours. The tools below are first examples; the full hierarchy with the final names (for example `set_sale_prices`, `create_coupon`, and `schedule_banner` from the mockups) is in [api/](api/README.md).
+Written from scratch; the names and shapes are ours. The store has 13 domains with 290 tools (131 reads, 119 writes, 40 writes that always need a person) and 18 person-only endpoints, all built. The full hierarchy is in [api/](api/README.md) §4, and the code follows it: `domain.resource.operation` is `crates/domains/{domain}/src/{resource}/{tool}.rs` (`cargo xtask check-layout`, `cargo xtask check-coverage`).
 
 | Domain | Entities | Example tools |
 |---|---|---|
-| Catalog | product, variant, brand, category | `search_products`, `get_product`, `create_product`, `update_product`, `set_variant_stock` |
-| Pricing | price, price schedule | `set_price`, `schedule_price_change` |
-| Display | category page, slot, banner | `list_display_slots`, `schedule_display` |
-| Promotion | promotion, coupon, benefit rule | `create_promotion`, `issue_coupon`, `list_active_promotions` |
-| Member | member, tier, preference | `search_members`, `get_member`, `list_tiers` |
-| Order | order, order line, payment | `search_orders`, `get_order`, `place_order` |
-| Claim | cancel, return, exchange, refund | `request_cancel`, `approve_return`, `refund_order` |
-| Shopper | cart, wishlist, profile | `add_to_cart`, `get_cart`, `checkout`, `remember_preference` |
+| catalog | product, variant, offer, stock, reorder, brand, review, question | `get_product`, `set_price`, `set_variant_stock`, `create_reorder`, `batch_import` |
+| merchandising | category, display slot, banner, popup, curated page | `list_display_slots`, `schedule_banner`, `publish_curation` |
+| search | product search, lexicon, index | `search_products`, `compare_products`, `reindex` |
+| sales | cart, order, payment, receipt, subscription, gift order | `add_to_cart`, `prepare_order`, `get_order`, `prepare_gift_order` |
+| fulfillment | cancel, return, exchange, inspection, refund, delivery, shipping zone | `evaluate_return_request`, `refund_return`, `get_delivery_dates` |
+| promotion | promotion, member price, coupon, benefit, store points, event, segment | `set_sale_prices`, `create_coupon`, `calculate_benefits` |
+| customer | member, tier program, address, consent, preference, inquiry, remedy | `search_members`, `list_tiers`, `update_my_preferences` |
+| messaging | customer message, template, campaign | `send_customer_message`, `create_campaign` |
+| community | board, post, reply | `list_posts`, `report_post` |
+| platform | policy, change set, task, action log, role, operator, API key | `get_policy`, `verify_change_set`, `list_tasks` |
+| analytics | sales, customer, and service figures (read only) | `explain_sales_change`, `get_sales_trend` |
+| partner | seller, contract, seller grade | `onboard_seller`, `set_contract` |
+| integration | outside channel, product import, carrier and payment events | `import_products`, `sync_order_status` |
 
-Out of scope for the hackathon: settlement, partner management, real payment gateways, real shipping carriers. They are stubbed.
+Everything outside the store is a deterministic stub that says so in its output: payment providers, bank deposits, tax receipts, carriers, outside sales channels, email/SMS/push delivery, business-registry checks, payouts, and image and copy generation. That is by design for a showcase. The store's own data, rules, change sets, and jobs are real.
 
 ## 5. Harness
 
 ```
-request ─► tool search ─► plan ─► execute ─► check ─► answer as UI
-              │             │        │          │
-          tool graph     Spark    Glimmer    read back
-                       (if needed)  + preview/approve
+request ─► route ─► tool search ─► plan ─► execute ─► check ─► answer as UI blocks
+                         │            │         │          │
+                  words + tool     Glimmer   preview →   preview vs request,
+                      graph       (Spark if  change set  reply vs tool results
+                                 configured)
 ```
 
-- **Tool search**: the model never sees all tools. The harness retrieves a few candidates by description match plus graph neighbors (what usually comes before or after).
-- **Plan**: a short ordered list of tool calls. Glimmer plans simple tasks; Muse Spark plans multi-step ones or takes over after a failed check.
-- **Execute**: tool calls with preview first; writes that need approval pause and show an approval card.
-- **Check**: after a write, the harness reads the state back and compares it with the request (for example, the promotion exists, covers the right products, and has the right discount and period).
-- **Action log**: every call, preview, approval, and check is recorded and visible.
+- **Route**: five agents (`agents/*.yml`): `promotion`, `orders`, `catalog`, and `insights` in the back office, `shopper` on the storefront. A request that contains a phrase an agent names goes to it without a model call; otherwise the router model picks.
+- **Tool search**: the model never sees all tools. The harness scores the agent's tools by word match (BM25 over name, description, and fields, plus a share for the agent's home domains) and adds graph neighbors (tools that produce what a hit consumes, or consume what it produces), 5 to 8 candidates. No model call. Embedding search is not built.
+- **Plan**: a short ordered list of tool calls. Glimmer (the worker) plans first; a plan of more than three steps or across domains, or one that failed, goes to Muse Spark (the planner) when Spark is configured. Every agent names worker `glimmer` and planner `spark` (`agents/models.yml`). On the live demo Spark is not configured, so every model call runs on Glimmer.
+- **Execute**: reads run directly. Writes are previewed first. A write that needs a person goes into a change set, which the agent submits and a person approves with a button; the agent can never approve or run it. Writes that need no approval (cart, a remembered preference) run once their preview passes.
+- **Check**: rule checks are the back-end's (the preview's `checks`, and `verify_change_set`, which reads the store back after an approved change set runs). The agent compares, deterministically, what was asked with what the preview will do, and the numbers in its reply with the turn's tool results.
+- **Limits**: each turn stops at 12 model calls, 20 tool calls, 2 plan revisions, or 60 seconds (`agents/runtime.yml`) and says why.
+- **Action log**: every call, preview, approval, and check is recorded and visible (`action_log` block, `/bo/activity`).
+- **Work the system brings**: watchers (`watcher.price_below_cost`, `watcher.stock_out_forecast`, `watcher.returns_over_refund_threshold`) open tasks from the policy's thresholds. When a store turns on `task_pickup` (the demo store does), the gateway starts an agent turn on a new task in the name of the policy's operator, so a draft is waiting before anyone asks.
 
 ## 6. UI protocol
 
-The agent never writes HTML. It returns UI blocks that name a component from a fixed library and fill it with data:
+The agent never writes HTML. It returns UI blocks that name a component from a fixed library and fill it with data from the tool results; the model chooses the block and writes only the short words (`title`, `why`):
 
 ```json
-{"ui": "promotion_preview", "data": {"promotion_id": "...", "products": 42, "discount": "20%", "period": "..."}}
+{"block_id": "blk_12", "ui": "change_set", "schema": 1, "title": "VIP weekend sale", "data": {"change_set_id": "cs_1042", "version": 2, "checks": []}, "actions": [{"kind": "person", "label": "Approve"}]}
 ```
 
-Initial components: `product_table`, `product_gallery`, `product_compare`, `promotion_preview`, `approval_card`, `order_detail`, `cart`, `checkout_card`, `action_log`. The mockups refined these into the library in [api/chat.md](api/chat.md) §3 (for example `compare_table`, `look_gallery`, and `change_set`, which joins the promotion preview and the approval card).
+The library ([api/chat.md](api/chat.md) §3) has one React component per block in `web/src/components/blocks/{bo,fo}`:
 
-Storefront personalization: what the shopper says is stored as preferences (`remember_preference`). Preferences change both the content (ranking, filters) and the form (for example, a comparison table for a shopper who compares specs, a gallery for one who browses by look).
+- back office: `change_set`, `refund_review`, `product_drafts`, `sales_explainer`, `task_list`, `product_table`, `action_log`;
+- storefront: `looking_for`, `compare_table`, `look_gallery`, `product_list`, `fit_check`, `gift_picker`, `cart`, `checkout_card`, `return_options`, `order_detail`, `memory_note`, `profile_card`.
+
+The first list in this document (`product_table`, `product_gallery`, `product_compare`, `promotion_preview`, `approval_card`, `order_detail`, `cart`, `checkout_card`, `action_log`) was refined by the mockups into this library (for example `compare_table`, `look_gallery`, and `change_set`, which joins the promotion preview and the approval card); api/chat.md §3.3 maps the old names to the new ones.
+
+The blocks and back-office pages cover the scenes in [scenarios.md](scenarios.md). Most of the 160+ tools added on Oct 31 have REST endpoints and entries in the tool manifest but no dedicated block or back-office page yet: a back-office agent shows what such a tool reads in the generic `product_table` and drafts its writes that need a person into a `change_set`. The community, partner, and integration tools are in no agent's `tool_scope` yet, so only the REST API reaches them.
+
+Storefront personalization: what the shopper says is stored as preferences (`update_my_preferences`). Preferences change both the content (ranking, filters) and the form (for example, a comparison table for a shopper who compares specs, a gallery for one who browses by look; the rules are data in `agents/shopper.yml`).
 
 ## 7. Proof: AI-friendly vs. screen-shaped
 
@@ -120,15 +136,15 @@ Metrics: task completion, tool selection accuracy, calls per task, cost per task
 
 Decided Oct 30 (details in [architecture.md](architecture.md) and [backend/](backend/README.md)):
 
-- Back-end: Rust (Axum on Tokio), PostgreSQL with pgvector, seed data generated by us from the scenes in [scenarios.md](scenarios.md)
-- Tools: defined once in Rust; MCP, REST/OpenAPI, and the agent's tool manifest are generated from the same definitions
-- Harness: the Rust agent service; Glimmer through a self-hosted vLLM endpoint, Spark and the other models through the Meta Model API
-- Gateway: Rust; the only entry point for browsers and outside agents
-- Front-end: Next.js (TypeScript); one chat shell for the back office and one for the storefront, both rendering the UI blocks ([api/chat.md](api/chat.md)); components from Meta Astryx ([frontend-ui.md](frontend-ui.md))
+- Back-end: Rust (Axum on Tokio), PostgreSQL with pgvector, seed data generated by us from the scenes in [scenarios.md](scenarios.md). The search index has an embedding column, but no embedding model is connected, so search ranks by text.
+- Tools: defined once in Rust (`acom-contract`); the REST routes and the agent's tool manifest come from the same definitions (`acom-registry`). The MCP endpoint for outside agents is not built yet (the gateway already routes `/mcp`), and no OpenAPI document is generated.
+- Harness: the Rust agent service. Glimmer through a self-hosted, OpenAI-compatible (vLLM) endpoint; Spark through the Meta Model API. No other model is called: image and copy generation are placeholder stubs.
+- Gateway: Rust; the only entry point for browsers.
+- Front-end: Next.js (TypeScript), titled "Ailism Commerce" with the Ailism theme (`web/src/theme/ailism.ts`). The storefront (`/`) and the back office (`/bo`) are pages with the agent beside them (a full conversation and canvas at `/ask` and on the back-office home, a drawer or dock elsewhere), all rendering the UI blocks ([api/chat.md](api/chat.md)); components from Meta Astryx ([frontend-ui.md](frontend-ui.md)).
 
 ## 9. Demo scenarios
 
-- **Back office**: "Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page." → search products → preview promotion (rule check: maximum discount) → approval card → create → issue coupon → schedule display → check → promotion preview and action log.
-- **Storefront**: a shopper looks for a light jacket in conversation → gallery → shopper asks about material and weight → the view switches to a comparison table → add to cart → checkout card, with the VIP coupon from the back-office scenario applied.
+- **Back office**: "Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page." → search products → preview the VIP sale prices (rule checks: maximum discount, price floor, minimum stock) → preview the coupon and the main-page banner → change set for approval → approve (a person) → run → `verify_change_set` reads it back → change set and action log.
+- **Storefront**: a shopper looks for a light jacket in conversation → gallery → shopper asks about material and weight → the view switches to a comparison table → add to cart → checkout card, with the VIP price from the back-office scenario applied.
 
-The two scenarios connect: what the operator sets up is what the shopper sees.
+The two scenarios connect: what the operator sets up is what the shopper sees. Every number in them is in [scenarios.md](scenarios.md) §6 (scenes B1 and F2).

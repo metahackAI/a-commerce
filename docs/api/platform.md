@@ -10,7 +10,7 @@
 
 ## policy
 
-### `get_policy` — Kind: R  (MVP)
+### `get_policy` — Kind: R  (데모 장면)
 - 논리 주소 · REST: `platform.policy.get` · `GET /v1/platform/policies?key=max_discount`
 - 요약: 이 스토어에 적용되는 정책 값을 돌려줍니다(기본값 위에 스토어 덮어쓰기를 병합한 값). 키를 정확히 주면 그 값 하나, 앞부분을 주면 그 아래 값 전부(`max_discount` → `max_discount.*`). 에이전트는 프리뷰 전에 이 값으로 계획을 세우고, 프리뷰의 `checks[].rule`은 같은 키를 씁니다. 장면 B1의 첫 호출입니다.
 - consumes → produces: `policy_key` → `policy_key[]`
@@ -199,7 +199,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 - 에러: `invalid_filter` → `search_change_sets`
 - 멱등성: 읽기(부작용 없음)
 
-### `verify_change_set` — Kind: R  (MVP)
+### `verify_change_set` — Kind: R  (데모 장면)
 - 논리 주소 · REST: `platform.change_set.verify` · `GET /v1/platform/change-sets/{change_set_id}/verification`
 - 요약: 실행기가 기록한 검증 결과를 돌려줍니다. 실행기는 `running` 뒤 항목마다 저장소를 다시 읽어 프리뷰의 `changes[].to`와 비교하고, 그 결과로 셋을 `live` 또는 `failed`로 옮깁니다. 이 툴은 그 기록을 읽을 뿐 **상태를 바꾸지 않으므로** 언제든 다시 불러도 됩니다. 장면 B1의 4단계에서 에이전트가 "모두 일치, live"라고 말하는 근거입니다. Action 종류는 `AssessAction`.
 - consumes → produces: `change_set_id` → verification
@@ -776,6 +776,11 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 | `subscription.renew` | sales | `payload {subscription_id, charge_date}`. 결제일 0시(스토어 시간대)에 정기 주문의 회차 주문을 만들고 저장된 카드로 결제한 뒤 다음 결제일(`order.yml` `subscription.cycle_length`)의 작업을 예약합니다. 멈춘·해지된 구독, 날짜가 바뀐 구독은 건너뜁니다([sales.md](sales.md#예약-작업-subscriptionrenew)) |
 | `watcher.stock_out_forecast` | sales(재고는 catalog) | 오늘을 뺀 최근 `lookback_days`일(스토어 날짜)의 판매량(취소 줄 제외)으로 `재고 × 일수 ≤ days_until_stockout_lte × 판매량`인 상품 |
 | `watcher.price_below_cost` | catalog | 정가 < 원가인 변형. 고침은 `price_floor`까지 `set_price` |
+| `loyalty.expire` | promotion | 마지막 날이 지난 적립금을 소멸(`promotion.yml` `loyalty.expiry`). 매일 스토어 자정, 실행마다 다음 날 것을 예약 |
+| `customer.evaluate_tiers` | customer | `payload {program_id}`. 등급 프로그램의 일정에 회원 등급을 평가하고 다음 실행을 예약. 정책이 `each_run`이면 결과만 알리고 옮기는 것은 사람(`run_tier_evaluation`) |
+| `partner.change_seller_status` | partner | `payload {seller_id, position}`. `set_seller_status`가 나중 시각(`valid_from`)으로 예약한 상태 변경을 그때 적용(그 사이 되돌렸거나 상태가 바뀌었으면 그대로 둠) |
+| `messaging.send_campaign` | messaging | `create_campaign`이 시각을 정한 캠페인을 그때 보냄. 승인은 캠페인 때 받았고, 동의 게이트와 하루 상한은 보내는 순간 다시 적용 |
+| `integration.apply_event` | integration | 받았지만 대상(배송·결제·환불)이 아직 없던 택배·결제 이벤트를 다시 반영 시도([integration.md](integration.md#event)) |
 
 **실행기**(`acom-changeset::jobs`, `commerce`의 워커와 데모 시계가 같이 씀):
 
@@ -825,4 +830,4 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 |---|---|---|
 | `GET /v1/platform/store` | 토큰만 | 요청 문맥의 스토어: `{store_id, currency, time_zone, now}`. `now`는 데모 모드면 데모 시계. agent 서비스가 턴마다 스토어 시각·통화를 여기서 받습니다(commerce 테이블을 직접 읽지 않음) |
 | `GET /v1/platform/previews/{preview_id}` | `changeset:draft` 또는 `tools:read:platform` | 저장된 프리뷰 하나: `{preview_id, operation, input, changes[], checks[], needs_approval, approval_reason, expires_at, state, change_set_id, policy_version, created_at}`. `state`는 [enums.md](enums.md) §1.9. 런타임이 실행 전 확인하거나 화면이 프리뷰를 다시 그릴 때 |
-| `GET /v1/platform/events` (SSE) | `tools:read:platform` | 스토어의 진행 이벤트: `change_set.updated {change_set_id, version, state}`, `task.updated {task_id, state, change_set_id?, created?, origin?}`(`created: true`와 `origin`은 감시 작업이 할 일을 새로 만들 때만), `job.updated {job_id, kind, state, run_at}`([예약 작업](#예약-작업)). 각 이벤트는 `id:`(스토어 안 순번)를 가지며 `Last-Event-ID`로 이어 받음. agent 서비스가 구독해 대화의 `change_set.updated`([chat.md](chat.md) §2)로 흘림 |
+| `GET /v1/platform/events` (SSE) | `tools:read:platform` | 스토어의 진행 이벤트: `change_set.updated {change_set_id, version, state}`, `task.updated {task_id, state, change_set_id?, created?, origin?}`(`created: true`와 `origin`은 감시 작업이 할 일을 새로 만들 때만), `job.updated {job_id, kind, state, run_at}`([예약 작업](#예약-작업)). 각 이벤트는 `id:`(스토어 안 순번)를 가지며 `Last-Event-ID`로 이어 받음. 백오피스 화면이 구독해 읽기를 다시 하고, 게이트웨이가 구독해 감시 작업이 연 할 일을 에이전트에게 넘김([task](#task)). 채팅 스트림([chat.md](chat.md) §2)으로는 흘리지 않음 |

@@ -12,7 +12,7 @@
 
 장바구니는 호출한 사람(로그인 쇼퍼 또는 비회원 세션)의 것 하나입니다. 장바구니 쓰기는 [approval.yml](../../policies/approval.yml) `no_approval`이라 프리뷰 뒤 바로 실행되고 변경셋에 들어가지 않으며, `undo`는 `null`입니다(되돌리기는 `update_cart_item`·`remove_cart_item`).
 
-### `get_cart` — Kind: R  (MVP)
+### `get_cart` — Kind: R  (데모 장면)
 - 논리주소/REST: `sales.cart.get` · `GET /v1/sales/carts/mine`
 - 요약: 호출한 쇼퍼 **본인의** 장바구니. 줄, 소계, 할인(여러 줄 가능), 배송비, 합계, 배송 예정, 결제 수단, 주문에 기록될 쿠폰을 한 번에 돌려줍니다. 할인·배송비는 서버가 `calculate_benefits`로 계산하며, 필드 이름은 [chat.md](chat.md)의 `cart` 블록과 같습니다. 장바구니가 없으면 빈 장바구니(`lines: []`)를 돌려줍니다.
 - consumes → produces: → `cart_id`, `cart_line_id[]`
@@ -44,7 +44,7 @@
 - 에러: 없음(공통 에러만). 장바구니가 없으면 빈 장바구니.
 - 멱등성: 읽기(부작용 없음).
 
-### `add_to_cart` — Kind: W (승인 없음)  (MVP)
+### `add_to_cart` — Kind: W (승인 없음)  (데모 장면)
 - 논리주소/REST: `sales.cart.add` · `POST /v1/sales/carts/mine/lines`
 - 요약: 상품을 사이즈·색과 함께(또는 변형 id로) 쇼퍼 본인 장바구니에 담습니다. 장바구니가 없으면 만듭니다. 상품 + 옵션을 받으면 변형을 찾아 결과에 `variant_id`를 돌려줍니다(conventions.md §9). 정책상 승인이 필요 없어(`no_approval`) 우리 에이전트의 런타임이 프리뷰 뒤 바로 실행합니다. schema.org `AddAction`.
 - consumes → produces: `product_id` 또는 `variant_id` → `cart_id`, `cart_line_id`
@@ -144,7 +144,7 @@
 
 ## order
 
-### `prepare_order` — Kind: W (프리뷰만)  (MVP)
+### `prepare_order` — Kind: W (프리뷰만)  (데모 장면)
 - 논리주소/REST: `sales.order.prepare` · `POST /v1/sales/orders/prepare`
 - 요약: 호출한 쇼퍼의 장바구니로 **주문할 수 있는 상태의 주문을 준비**합니다. 이 툴은 프리뷰만 만들고 실행 단계가 없으므로(전선 위에서는 `?preview=true`로만 부르고, 같은 경로에 `preview_id`를 보내면 `invalid_input`) `needs_approval`은 항상 `false`입니다([approval.yml](../../policies/approval.yml) `preview_only`). 주문하기는 쇼퍼가 확인 카드(`checkout_card`)에서 누르는 사람 전용 `POST /v1/sales/orders {preview_id}`뿐입니다. schema.org로는 `potential` 상태의 `OrderAction`이고 쇼퍼의 탭이 이를 완료합니다. 같은 장바구니로 다시 부르면 새 프리뷰를 만들고 이전 프리뷰는 `superseded`가 됩니다.
 - consumes → produces: `cart_id` → `preview_id`
@@ -193,7 +193,7 @@
 - 에러(사람 전용이라 `next_tool`은 모두 `null`, 화면이 다시 준비를 안내): `preview_expired`(프리뷰가 없거나 만료·대체됨) → null · `estimate_changed`(다시 계산한 합계가 프리뷰와 다름, `detail.new_preview`) → null · `out_of_stock` → null · `payment_declined` → null
 - 멱등성: 같은 `preview_id`(또는 같은 `Idempotency-Key`)로 다시 보내면 첫 주문을 그대로 돌려줍니다. 주문은 하나만 생깁니다.
 
-### `get_my_orders` — Kind: R  (MVP)
+### `get_my_orders` — Kind: R  (데모 장면)
 - 논리주소/REST: `sales.order.list_mine` · `GET /v1/sales/orders/mine`
 - 요약: 호출한 쇼퍼 본인의 주문 목록(줄 요약과 배송 완료 시각 포함), 최근 주문부터. 반품·교환 흐름의 시작점(`get_return_options`)입니다.
 - consumes → produces: → `order_id[]`, `order_item_id[]`
@@ -220,7 +220,7 @@
 - 에러: 없음(주문이 없으면 `items: []`, `total: 0`).
 - 멱등성: 읽기.
 
-### `get_order` — Kind: R  (MVP)
+### `get_order` — Kind: R  (데모 장면)
 - 논리주소/REST: `sales.order.get` · `GET /v1/sales/orders/{order_id}`
 - 요약: 주문 한 건 — 줄, 배송, 결제, 합계, 기록된 쿠폰. 운영자는 모든 주문, 쇼퍼는 본인 주문만. 쇼퍼 화면 블록 `order_detail`과 반품 검토(`evaluate_return_request`의 근거)에 씁니다.
 - consumes → produces: `order_id` → `order_item_id[]`, `delivery_id`

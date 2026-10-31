@@ -47,7 +47,8 @@
 | [order.yml](order.yml) | sales | **무료 배송 $80.00**(혜택 전 소계), 장바구니, 체크아웃 검증 키, 결제, 재고 예약, 주문 상태 |
 | [fulfillment.yml](fulfillment.yml) | fulfillment | **반품 30일**, 불량·변심·파손 규칙, 반품 제안 규칙, 원 결제 수단 환불·쿠폰 차감, 취소·교환, 귀책별 배송비, 배송 상태 |
 | [approval.yml](approval.yml) | platform | **승인 임계**(환불 $200.00 초과, 적립금 $50.00 초과 등), 고객 메시지 항상 승인, 프리뷰 유효 시간, 변경셋 되돌리기 기한, 승인 없는 쓰기, 프리뷰만 쓰기, 사람 전용 엔드포인트 |
-| [customer.yml](customer.yml) | customer | 회원 상태, 등급 프로그램 스키마, 동의 게이트, 개인정보 마스킹, 쇼퍼 기억, 탈퇴, 상담·보상, 메시지 발송 시간·상한 |
+| [customer.yml](customer.yml) | customer | 회원 상태, 비밀번호·본인 확인·계정 찾기, 등급 프로그램 스키마, 동의 게이트, 사업자 확인, 개인정보 마스킹, 쇼퍼 기억, 탈퇴, 상담·직원·보상 |
+| [messaging.yml](messaging.yml) | messaging | 마케팅 메시지 발송 금지 시간, 회원별 하루 발송 상한, 템플릿 변수·채널 |
 | [merchandising.yml](merchandising.yml) | merchandising | **슬롯 중복 예약 금지**, 카테고리 묶음·매핑, 진열 기간 계산·대상, 기획전 공개 |
 | [search.yml](search.yml) | search | 검색 모드와 확장, 스토어 격리, 등급 필터를 쿼리 안에서, 랭킹 신호, 색인 교체, 비교 속성 |
 | [community.yml](community.yml) | community | 게시판 쓰기 권한, 금칙어·스팸·첨부, 신고·블라인드 |
@@ -55,7 +56,7 @@
 | [integration.yml](integration.yml) | integration | 가져오기 배치 한도·필수 필드, 외부 상태 매핑, 자격 증명 보관, 이벤트 서명·재생 창, 대상이 없는 이벤트의 재시도 간격·포기 시간 |
 | [platform.yml](platform.yml) | platform | **할 일 감시 작업(`watchers`)**, 역할·관리자·조직·API 키 규칙 |
 
-`acom-policy::FILES`는 현재 앞의 8개 파일을 읽습니다. `community`·`partner`·`integration`·`platform`은 그 도메인의 오퍼레이션을 구현할 때 로더 목록에 더합니다.
+`acom-policy::FILES`는 이 13개 파일을 모두 읽고, 하나라도 없으면 서비스가 뜨지 않습니다.
 
 ## 4. 백엔드가 쓰는 방식
 
@@ -99,7 +100,7 @@ check `rule`은 정책 키 그 자체(파일 이름을 뺀 키 경로)입니다.
 | `checkout_validation.*` | order.yml | `prepare_order`, `prepare_subscription`, `prepare_gift_order` | `get_payment_methods`, `get_product`, `get_cart` |
 | `preference.about_shopper_only`, `preference.no_sensitive_data` | customer.yml | `update_my_preferences` | — |
 | `consent.marketing_gate` | customer.yml | `send_bulk`, `create_campaign` | `get_consent` |
-| `change_set.irreversible` | approval.yml | `refund_return`, `send_customer_message`, `send_bulk` | — |
+| `change_set.irreversible` | approval.yml | `refund_return`, `retry_refund`, `send_customer_message`, `send_bulk`, `respond_inquiry`, `pay_remedy` 등(목록은 파일에) | — |
 | `thresholds.*`, `customer_messages` | approval.yml | 모든 W·W$의 승인 판정(체크가 아님) | (사람 승인) |
 
 ## 6. 검증과 관리

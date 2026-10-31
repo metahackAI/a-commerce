@@ -12,7 +12,7 @@
 
 프로모션 상태는 `draft` · `scheduled` · `running` · `paused` · `ended`([enums.md](enums.md) §1.11)이고, 기간(`valid_from` ~ `valid_through`, 둘 다 포함)과 데모 시계로 `scheduled → running → ended`가 계산됩니다. 상시 프로모션은 `valid_through: null`입니다. 할인 층 `discount_layer`는 `item_price`(회원가·기간가) · `order_discount`(주문 할인) · `add_on`(적립금·배송비)입니다.
 
-### `list_active_promotions` — Kind: R  (MVP)
+### `list_active_promotions` — Kind: R  (데모 장면)
 - 논리주소/REST: `promotion.promotion.list_active` · `GET /v1/promotion/promotions/active`
 - 요약: 주어진 기간과 **겹치는** 진행 중·예정 프로모션과 각 프로모션의 적용 범위. `set_sale_prices`·`create_promotion`의 `promotion_overlap` 검사가 읽는 것과 같은 데이터라, 에이전트가 겹침을 미리 설명할 수 있습니다.
 - 쇼퍼(비회원 포함)가 부르면 기간과 상관없이 **지금 진행 중인** 프로모션 중 모두 대상이거나 자기 등급 대상인 것만 돌려줍니다. 세일 페이지(`/sale/{slug}`)가 이것으로 세일을 찾습니다. `valid_for_member_tier`·`status`는 운영자만 씁니다(쇼퍼가 보내면 `forbidden`).
@@ -145,7 +145,7 @@
 
 ## offer
 
-### `set_sale_prices` — Kind: W$  (MVP)
+### `set_sale_prices` — Kind: W$  (데모 장면)
 - 논리주소/REST: `promotion.offer.set_sale_prices` · `POST /v1/promotion/sale-prices`
 - 요약: 회원 등급·기간 한정 판매가를 상품별로 정하고 하나의 프로모션으로 묶습니다. **정가(list price)는 바꾸지 않습니다.** 상품의 변형 `Offer`마다 schema.org `UnitPriceSpecification`(`price_type: "sale_price"`, `valid_for_member_tier`, `valid_from`, `valid_through`, `acom:percent_off`)을 붙입니다. 판매가 = 정가 × (1 − percent_off / 100), 센트 단위 반올림(0.5 올림). 재고가 `promo_min_stock`보다 적은 상품은 기본으로 빼고 그 사실을 `exclude` 줄로 남깁니다. schema.org로는 `Offer` 가격에 대한 `UpdateAction`.
 - consumes → produces: `category_id` 또는 `product_id[]`, `tier_id` → `promotion_id`
@@ -214,7 +214,7 @@
 
 쿠폰 적용 방식 `application`은 `automatic_at_checkout`(대상 회원의 결제에 자동, 발급 단계 없음) · `code_entry`(코드 입력) · `download`(쇼퍼가 받아 둠)입니다([enums.md](enums.md) §1.11, `coupon.applications`). 회원에게 발급된 쿠폰은 `mcp_…`(member coupon)입니다.
 
-### `create_coupon` — Kind: W$  (MVP)
+### `create_coupon` — Kind: W$  (데모 장면)
 - 논리주소/REST: `promotion.coupon.create` · `POST /v1/promotion/coupons`
 - 요약: 프로모션에 연결된 쿠폰을 만듭니다. 쿠폰은 체크아웃에서 **그 프로모션 혜택을 주문에 기록하는 수단이며, 두 번째 할인을 더하지 않습니다**(`coupon.records_benefit_only`). 장바구니에는 할인 한 줄("VIP weekend −$17.80")만 보입니다. 기간은 연결된 프로모션을 따르고(`coupon.validity`), `automatic_at_checkout` 쿠폰은 따로 발급하지 않아도 대상 등급 회원 모두의 결제에 적용됩니다. schema.org `CreateAction`.
 - consumes → produces: `promotion_id`, `tier_id` → `coupon_id`

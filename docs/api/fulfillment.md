@@ -86,7 +86,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 
 ### `search_return_requests` — Kind: R
 - 논리주소/REST: `fulfillment.claim.search_return_requests` · `GET /v1/fulfillment/return-requests` (필터는 쿼리 파라미터, 금액은 `min_amount.value`·`min_amount.currency`)
-- 요약: 처리를 기다리는 반품 요청(`claim_type: return`) 목록. 운영 에이전트가 "$200 넘는 반품 12건"처럼 큐를 묶어 검토할 때 첫 호출입니다. MVP 툴.
+- 요약: 처리를 기다리는 반품 요청(`claim_type: return`) 목록. 운영 에이전트가 "$200 넘는 반품 12건"처럼 큐를 묶어 검토할 때 첫 호출입니다. 데모 장면에서 씁니다.
 - consumes → produces: → `claim_id[]`
 - 입력:
   | 필드 | 타입 | 필수 | 설명 | 예 |
@@ -121,7 +121,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 
 ### `evaluate_return_request` — Kind: R
 - 논리주소/REST: `fulfillment.claim.evaluate_return_request` · `GET /v1/fulfillment/return-requests/{claim_id}/evaluation`
-- 요약: 반품 요청 한 건에 정책을 적용해 처리안을 제안합니다. [fulfillment.yml](../../policies/fulfillment.yml) `return_suggestions`의 순서(`decline` → `ask_for_photos` → `refund`)로 처음 맞는 규칙을 고르고, 근거 정책 키를 `rule`로 돌려줍니다. 제안일 뿐 아무것도 바꾸지 않으며, 실행은 `refund_return` 또는 `send_customer_message`로 합니다. schema.org `AssessAction`. MVP 툴.
+- 요약: 반품 요청 한 건에 정책을 적용해 처리안을 제안합니다. [fulfillment.yml](../../policies/fulfillment.yml) `return_suggestions`의 순서(`decline` → `ask_for_photos` → `refund`)로 처음 맞는 규칙을 고르고, 근거 정책 키를 `rule`로 돌려줍니다. 제안일 뿐 아무것도 바꾸지 않으며, 실행은 `refund_return` 또는 `send_customer_message`로 합니다. schema.org `AssessAction`. 데모 장면에서 씁니다.
 - consumes → produces: `claim_id` → suggestion
 - 입력:
   | 필드 | 타입 | 필수 | 설명 | 예 |
@@ -153,7 +153,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 
 ### `get_return_options` — Kind: R
 - 논리주소/REST: `fulfillment.claim.get_return_options` · `GET /v1/fulfillment/orders/{order_id}/items/{order_item_id}/return-options?reason=defect`
-- 요약: 쇼퍼 에이전트가 쇼퍼 본인의 주문 품목에 대해 고를 수 있는 선택지를 보여줍니다. 선택지마다 시점, 쇼퍼가 내는 비용, 누가 확정하는지, 보내는 방법을 함께 돌려주고, 웹은 이것을 [chat.md](chat.md) `return_options` 블록으로 그립니다. 요청을 **보내는 것은** 쇼퍼의 버튼(`POST /v1/fulfillment/returns`)뿐입니다. MVP 툴.
+- 요약: 쇼퍼 에이전트가 쇼퍼 본인의 주문 품목에 대해 고를 수 있는 선택지를 보여줍니다. 선택지마다 시점, 쇼퍼가 내는 비용, 누가 확정하는지, 보내는 방법을 함께 돌려주고, 웹은 이것을 [chat.md](chat.md) `return_options` 블록으로 그립니다. 요청을 **보내는 것은** 쇼퍼의 버튼(`POST /v1/fulfillment/returns`)뿐입니다. 데모 장면에서 씁니다.
 - consumes → produces: `order_id`, `order_item_id` → options
 - 입력:
   | 필드 | 타입 | 필수 | 설명 | 예 |
@@ -406,7 +406,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 
 ### `refund_return` — Kind: W
 - 논리주소/REST: `fulfillment.refund.create` · `POST /v1/fulfillment/refunds`
-- 요약: 반품 클레임 한 건을 환불합니다. 환불액은 입력이 아니라 서버가 클레임에서 계산합니다(`evaluate_return_request`의 `refund_amount`와 같은 계산, 쿠폰 차감 포함). 사람 승인 여부는 [approval.yml](../../policies/approval.yml) `thresholds.refund`가 정합니다: **환불액이 $200.00를 넘으면 `needs_approval: true`**(변경셋에서 사람이 승인한 뒤 실행기가 `preview_id`로 실행), **$200.00 이하면 `needs_approval: false`**(사람 없이 실행). 환불은 원결제수단으로만 가고, 돈이 나간 뒤에는 되돌릴 수 없습니다. schema.org `PayAction`(결과는 `MoneyTransfer` + `additionalType: acom:Refund`), 결과는 `acom:Refund`. MVP 툴.
+- 요약: 반품 클레임 한 건을 환불합니다. 환불액은 입력이 아니라 서버가 클레임에서 계산합니다(`evaluate_return_request`의 `refund_amount`와 같은 계산, 쿠폰 차감 포함). 사람 승인 여부는 [approval.yml](../../policies/approval.yml) `thresholds.refund`가 정합니다: **환불액이 $200.00를 넘으면 `needs_approval: true`**(변경셋에서 사람이 승인한 뒤 실행기가 `preview_id`로 실행), **$200.00 이하면 `needs_approval: false`**(사람 없이 실행). 환불은 원결제수단으로만 가고, 돈이 나간 뒤에는 되돌릴 수 없습니다. schema.org `PayAction`(결과는 `MoneyTransfer` + `additionalType: acom:Refund`), 결과는 `acom:Refund`. 데모 장면에서 씁니다.
 - consumes → produces: `claim_id` → `refund_id`
 - 입력:
   | 필드 | 타입 | 필수 | 설명 | 예 |
@@ -463,7 +463,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 
 ### `get_delivery_dates` — Kind: R
 - 논리주소/REST: `fulfillment.parcel_delivery.get_delivery_dates` · `GET /v1/fulfillment/delivery-dates?product_id=prd_windbreaker&address_mode=saved&address_id=adr_home&by=2026-11-14`
-- 요약: 상품을 이 주소로 받을 수 있는 가장 이른 날짜. `by`를 주면 그날까지 도착 가능한지도 답합니다. 쇼퍼 툴, MVP. 출고일은 `delivery.estimate`(출고 마감 시각·출고 요일), 운송 일수는 배송 지역 데이터에서 계산합니다. schema.org `ParcelDelivery.expected_arrival_until`.
+- 요약: 상품을 이 주소로 받을 수 있는 가장 이른 날짜. `by`를 주면 그날까지 도착 가능한지도 답합니다. 쇼퍼 툴, 데모 장면에서 씁니다. 출고일은 `delivery.estimate`(출고 마감 시각·출고 요일), 운송 일수는 배송 지역 데이터에서 계산합니다. schema.org `ParcelDelivery.expected_arrival_until`.
 - consumes → produces: `product_id` → delivery estimate
 - 입력:
   | 필드 | 타입 | 필수 | 설명 | 예 |
