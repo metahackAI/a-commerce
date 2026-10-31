@@ -1,9 +1,12 @@
-//! Catalog content (`seed/demo/catalog_content.yml`): product facts, size charts, descriptions
-//! and tags for the generated products, laid over the generator's rows.
+//! Catalog content (`seed/demo/catalog_content.yml`): product facts, size charts, descriptions,
+//! tags and photos for the generated products, laid over the generator's rows.
 //!
 //! The content never changes an id, a name, a price, stock or anything else the random stream
 //! decides, so every number in `docs/scenarios.md` and `eval/` stays the same. Named products
 //! are written by hand in `03_catalog.yml` and are not touched here.
+//!
+//! A photo replaces the drawn picture (`crate::media`): `image` for the product, and `images`
+//! for the variants of each color it shows. Variants of other colors keep their drawing.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -26,9 +29,9 @@ const MEASUREMENTS: [&str; 10] = [
     "foot_length",
 ];
 
-/// The keys a product entry may have. `summary` waits for a column; `status` and `provenance`
-/// record how the entry was made.
-const KEYS: [&str; 12] = [
+/// The keys a product entry may have. `summary` waits for a column; `status`, `provenance` and
+/// `image_provenance` record how the entry and its photo were made.
+const KEYS: [&str; 15] = [
     "id",
     "name_check",
     "description",
@@ -39,9 +42,20 @@ const KEYS: [&str; 12] = [
     "weight_by_size",
     "measurements",
     "measurement_technique",
+    "image",
+    "images",
+    "image_provenance",
     "status",
     "provenance",
 ];
+
+/// A picture URL the storefront can load: a path the web serves, or an https address.
+fn picture_url<'a>(v: &'a Value, at: &str) -> Result<&'a str, String> {
+    v.as_str()
+        .filter(|u| u.starts_with('/') || u.starts_with("https://"))
+        .filter(|u| !u.contains(char::is_whitespace))
+        .ok_or_else(|| format!("{at}: not a picture URL (a /path or an https:// address)"))
+}
 
 /// A generated product id: `prd_<category term>_<nn>`.
 fn generated_id(id: &str) -> bool {
@@ -125,17 +139,42 @@ pub fn overlay(rows: &mut SeedRows, yaml: &str) -> Result<usize, String> {
                 row[key] = v.clone();
             }
         }
+        if let Some(v) = present(p.get("image")) {
+            row["image"] = json!(picture_url(v, &format!("{at} image"))?);
+        }
+        let mut photos = BTreeMap::new();
+        if let Some(v) = present(p.get("images")) {
+            let by_color = v
+                .as_object()
+                .ok_or_else(|| format!("{at} images: not a map of color to picture"))?;
+            for (color, url) in by_color {
+                photos.insert(
+                    color.clone(),
+                    picture_url(url, &format!("{at} images {color}"))?.to_owned(),
+                );
+            }
+        }
+        if present(p.get("image_provenance")).is_some_and(|v| !v.is_object()) {
+            return Err(format!("{at} image_provenance: not a map"));
+        }
 
         let weight = present(p.get("weight_g"))
             .map(|w| tenths(w, &format!("{at} weight_g")))
             .transpose()?;
         let by_size = p.get("weight_by_size").and_then(Value::as_object);
         let mut sizes = BTreeSet::new();
+        let mut colors = BTreeSet::new();
         for (t, v) in rows.iter_mut() {
             if t != "catalog.product"
                 || v.get("product_group_id").and_then(Value::as_str) != Some(id)
             {
                 continue;
+            }
+            if let Some(color) = v.get("color").and_then(Value::as_str).map(str::to_owned) {
+                if let Some(url) = photos.get(&color) {
+                    v["image"] = json!(url);
+                }
+                colors.insert(color);
             }
             let size = v.get("size").and_then(Value::as_str).map(str::to_owned);
             let w = match (&size, by_size) {
@@ -151,6 +190,11 @@ pub fn overlay(rows: &mut SeedRows, yaml: &str) -> Result<usize, String> {
             if let Some(s) = size {
                 sizes.insert(s);
             }
+        }
+        if let Some(color) = photos.keys().find(|c| !colors.contains(*c)) {
+            return Err(format!(
+                "{at}: a photo for color `{color}`, which no variant has"
+            ));
         }
 
         let Some(chart) = present(p.get("measurements")).and_then(Value::as_object) else {
@@ -322,6 +366,121 @@ products:
         assert_eq!(overlay(&mut rows, bra).unwrap(), 1);
         let problems = schema_check::check(&schema_check::parse(&repo().join("migrations")), &rows);
         assert!(problems.is_empty(), "{problems:#?}");
+    }
+
+    const CARDIGAN: &str = r#"
+products:
+  - id: prd_knitwear_11
+    name_check: Wool cardigan
+    image: /media/products/prd_knitwear_11-a40cad40.webp
+    images: {White: /media/products/prd_knitwear_11-a40cad40.webp}
+    image_provenance: {model: muse-image-1.0, run: 20261031-213410-full, response_id: resp_0}
+"#;
+
+    #[test]
+    fn a_photo_replaces_the_drawing_of_its_color_only() {
+        let before = demo();
+        let mut after = before.clone();
+        assert_eq!(overlay(&mut after, CARDIGAN).unwrap(), 1);
+        let photo = "/media/products/prd_knitwear_11-a40cad40.webp";
+        assert_eq!(group(&after, "prd_knitwear_11")["image"], photo);
+        let variants: Vec<&Value> = after
+            .iter()
+            .filter(|(t, r)| t == "catalog.product" && r["product_group_id"] == "prd_knitwear_11")
+            .map(|(_, r)| r)
+            .collect();
+        assert!(variants.iter().any(|v| v["color"] == "Olive"));
+        for v in variants {
+            if v["color"] == "White" {
+                assert_eq!(v["image"], photo);
+            } else {
+                assert_eq!(v["image"], "/media/garment/knit-olive.svg");
+            }
+        }
+        // Only image fields change: same rows, same order, same names, prices and stock.
+        assert_eq!(before.len(), after.len());
+        for ((table, was), (_, now)) in before.iter().zip(&after) {
+            for (k, v) in now.as_object().unwrap() {
+                if was.get(k) != Some(v) {
+                    assert_eq!(k, "image", "{table}.{k} changed: {now}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn photos_that_do_not_fit_are_refused() {
+        let photo = "/media/products/prd_knitwear_11-a40cad40.webp";
+        let cases = [
+            (CARDIGAN.replace("{White: ", "{Red: "), "no variant has"),
+            (
+                CARDIGAN.replace("image: /media", "image: media"),
+                "not a picture URL",
+            ),
+            (
+                CARDIGAN.replace(&format!("{{White: {photo}}}"), &format!("[{photo}]")),
+                "not a map of color",
+            ),
+            (
+                CARDIGAN.replace("{model: muse-image-1.0", "muse #{model: muse-image-1.0"),
+                "image_provenance: not a map",
+            ),
+        ];
+        for (yaml, want) in cases {
+            let e = overlay(&mut demo(), &yaml).unwrap_err();
+            assert!(e.contains(want), "{yaml}: {e}");
+        }
+    }
+
+    /// Every photo the content file names is in `web/public` (the web serves it), the product's
+    /// photo is one of its color photos, and no photo file is left that nothing names.
+    #[test]
+    fn photos_in_the_content_file_are_served_by_the_web() {
+        let Ok(text) = std::fs::read_to_string(repo().join("seed/demo/catalog_content.yml")) else {
+            return;
+        };
+        let doc: Value = serde_norway::from_str(&text).unwrap();
+        let public = repo().join("web/public");
+        let mut named = BTreeSet::new();
+        for p in doc["products"].as_array().unwrap() {
+            let by_color: Vec<&Value> = p["images"]
+                .as_object()
+                .map(|m| m.values().collect())
+                .unwrap_or_default();
+            if let (Some(image), false) = (p["image"].as_str(), by_color.is_empty()) {
+                assert!(
+                    by_color.iter().any(|u| u.as_str() == Some(image)),
+                    "{}: image is not one of its color photos",
+                    p["id"]
+                );
+            }
+            for url in by_color
+                .into_iter()
+                .chain(p.get("image"))
+                .filter_map(Value::as_str)
+            {
+                if let Some(path) = url
+                    .strip_prefix('/')
+                    .filter(|u| u.starts_with("media/products/"))
+                {
+                    assert!(
+                        public.join(path).is_file(),
+                        "{}: {url} is not in web/public",
+                        p["id"]
+                    );
+                    named.insert(path.to_owned());
+                }
+            }
+        }
+        if let Ok(files) = std::fs::read_dir(public.join("media/products")) {
+            for f in files.flatten() {
+                let path = format!("media/products/{}", f.file_name().to_string_lossy());
+                assert!(
+                    named.contains(&path),
+                    "{path} is in web/public but no product names it"
+                );
+            }
+        }
     }
 
     #[test]
