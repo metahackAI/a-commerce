@@ -15,7 +15,16 @@
 
 - 형식: `{접두}_{접미}`. 접두는 엔티티 종류, 접미는 소문자·숫자·`_`.
 - 시드 데이터는 읽을 수 있는 접미(`prd_windbreaker`, `cs_1042`), 실행 중 생성은 소문자 ULID(`pv_01jc8x...`).
-- 사람에게 보이는 번호(주문 번호 #20402, 변경셋 #1042)는 별도 필드(`order_number`, `change_set_number`)이고 id 접미와 같게 시드합니다.
+- 사람에게 보이는 번호(주문 번호 #20402, 변경셋 #1042)는 별도 필드(`order_number`, `change_set_number`)이고 id 접미와 같게 시드합니다. 실행 중에 생긴 레코드는 id 접미가 ULID라 번호와 다릅니다. 번호에 접두를 붙여 id를 만들지 않습니다.
+- **id 자리에 사람이 쓰는 값도 받습니다**([../design.md](../design.md) 원칙 1). 아래 엔티티를 가리키는 id 필드는 그 값을 그대로 받고, 서버가 툴을 실행하기 전에 레코드를 찾아 id로 바꿉니다. 툴(오퍼레이션)은 항상 id만 봅니다. 표의 원본은 `acom_core::handle::HANDLES`입니다.
+
+  | 엔티티 | 받는 값 | 예 | 못 찾으면 |
+  |---|---|---|---|
+  | 주문 `ord` | 주문 번호(`#` 생략 가능) | `27184`, `#27184` | `not_found`, 다음 툴 `search_orders` |
+  | 변경셋 `cs` | 변경셋 번호 | `1042` | `not_found`, 다음 툴 `search_change_sets` |
+  | 고객 `cus` | 이메일(대소문자 무시) | `jamie.rivera@example.com` | `not_found`, 다음 툴 `search_members` |
+
+  레코드 하나만 가리키는 값만 받습니다. 상품 이름처럼 여러 레코드에 맞을 수 있는 값은 검색 툴(`search_products`)로 찾습니다. 같은 값이 둘 이상에 맞으면 `invalid_input`(`reason: "ambiguous"`)입니다.
 - 접두 표는 §9.
 
 ## 3. 금액
@@ -80,7 +89,7 @@ schema.org `MonetaryAmount` 형태입니다.
 3. **선택형 입력은 판별 필드로:** "A 또는 B"가 필요하면 `mode` enum 필드 + 각 모드의 선택 필드로 쓰고, 어떤 모드에 어떤 필드가 필요한지 설명에 적습니다(서버가 검증, 위반은 `invalid_input`).
 4. **enum은 `enum` 목록:** 값마다 뜻은 필드 설명에 "값: 뜻; 값: 뜻"으로. 사람이 쓰는 다른 표현은 `x-aliases`로 선언해 에이전트의 인자 보정이 씁니다(`"VIP members"` → `vip`).
 5. **모든 필드에 `description`과 `examples`.**
-6. **id는 패턴으로:** `"pattern": "^prd_[a-z0-9_]+$"`.
+6. **id는 패턴으로:** `"pattern": "^prd_[a-z0-9_]+$"`. 사람이 쓰는 값을 받는 id 필드(§2)는 매니페스트에서 패턴을 넓히고 `x-handle`로 표시합니다: `"pattern": "^(?:ord_[a-z0-9_]+|#?[0-9]+)$", "x-handle": {"field": "order_number", "shape": "number"}`, 설명 끝에 "Also takes the order number people see (27184)."를 붙이고 예시를 하나 더합니다. 오퍼레이션의 스키마(`op.input_schema()`)는 id 패턴 그대로입니다.
 7. **모델 보기에는 `preview`/`preview_id`가 없습니다.** 우리 에이전트의 런타임이 프리뷰·실행을 처리하고, 외부 에이전트(MCP)와 REST 호출자만 전선 위 형태를 봅니다.
 
 ## 9. 식별자 접두
@@ -99,7 +108,7 @@ schema.org `MonetaryAmount` 형태입니다.
 | 팝업 | `pop` | 기획전 `CollectionPage` | `col` |
 | 캐시 무효화 | `cin` | 리뷰 / 상품 문의 / 답변 | `rev` / `qst` / `ans` |
 | 재입고 알림 | `rsa` | 생성 이미지 | `img` |
-| 재주문(공급처에 하는 주문) | `ro` | | |
+| 재주문(공급처에 하는 주문) | `ro` | 생성 문구 초안 | `cpd` |
 | 가져오기 작업 | `imp` | 색인 재구성 작업 | `rij` |
 | 장바구니 / 장바구니 줄 | `cart` / `cln` | 주문 / 주문 품목 | `ord` / `oln` |
 | 프리뷰(주문 준비·구독 준비 포함) | `pv` | 선물 주문 | `gift` |

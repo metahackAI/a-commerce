@@ -1,6 +1,7 @@
 # Catalog: brands, return policies, the 18 named products (docs/scenarios.md §3.1-3.2) with every
 # variant, offer (list price, cost, stock), the garment measurements used by the fit check (F3) and
-# the 41 wool overcoat reviews behind get_review_summary. List prices of the four below-cost
+# the 41 wool overcoat reviews behind get_review_summary, product questions and answers, and restock
+# alerts on the sizes sold out Wed 15:00. List prices of the four below-cost
 # products are the prices after the 08:31 automation (cost x 1.15); the earlier prices are in the
 # #1040 previews in 01_platform.yml.
 tables:
@@ -1391,3 +1392,24 @@ tables:
       keywords: [size up for a hoodie]
       creative_work_status: visible
       date_published: "2026-10-12"
+  # Product questions (ask_question, answer_question). Askers' names are stored masked as
+  # catalog.yml author_masking says (two letters, then *). qst_312 is private: only Theo and the
+  # store read it. qst_313 waits for the store's answer.
+  catalog.question:
+    - {tenant_id: store_northwind, id: qst_311, product_group_id: prd_wool_overcoat, author_id: cus_priya, author_name: "Pr***", text: "Is it warm enough for a city winter, around -5 °C?", is_private: false, creative_work_status: visible, date_created: "2026-10-28T19:40:00-04:00"}
+    - {tenant_id: store_northwind, id: qst_312, product_group_id: prd_wool_overcoat, author_id: cus_theo, author_name: "Th**", text: "Can you hold an L for me until Friday?", is_private: true, creative_work_status: visible, date_created: "2026-11-03T08:15:00-05:00"}
+    - {tenant_id: store_northwind, id: qst_313, product_group_id: prd_windbreaker, author_id: cus_dana, author_name: "Da**", text: "Does the hood roll into the collar, or only pack into the pocket?", is_private: false, creative_work_status: visible, date_created: "2026-11-04T21:05:00-05:00"}
+    - {tenant_id: store_northwind, id: qst_314, product_group_id: prd_chore_coat, author_id: cus_grace, author_name: "Gr***", text: "Will the M be back before Thanksgiving?", is_private: false, creative_work_status: visible, date_created: "2026-11-05T10:30:00-05:00"}
+    - {tenant_id: store_northwind, id: qst_315, product_group_id: prd_merino_tee, author_id: cus_owen, author_name: "Ow**", text: "Does it shrink in a warm wash?", is_private: false, creative_work_status: visible, date_created: "2026-10-20T12:00:00-04:00"}
+  catalog.answer:
+    - {tenant_id: store_northwind, id: ans_311, question_id: qst_311, author_id: adm_sj, text: "Yes, with a sweater under it. The 70% wool body keeps the wind out.", date_created: "2026-10-29T10:05:00-04:00"}
+    - {tenant_id: store_northwind, id: ans_314, question_id: qst_314, author_id: adm_sj, text: "Yes. M and L are due back on Thu Nov 12; ask for a restock alert and we will tell you the day they land.", date_created: "2026-11-05T11:02:00-05:00"}
+    - {tenant_id: store_northwind, id: ans_315, question_id: qst_315, author_id: adm_sj, text: "Wash it cool and dry it flat; a warm wash can take it down half a size.", date_created: "2026-10-20T15:20:00-04:00"}
+  # Restock alerts (subscribe_restock) on the sizes that sold out Wed Nov 4 15:00 (chore coat M,
+  # denim jacket M and L). Each lapses 90 days after it was asked for
+  # (restock_alert.expires_after_days) and goes out when its size is back in stock.
+  catalog.restock_alert:
+    - {tenant_id: store_northwind, id: rsa_204, customer_id: cus_jamie, product_id: var_chore_coat_m_olive, message_channel: email, start_time: "2026-11-05T09:12:00-05:00", expires: "2027-02-03T09:12:00-05:00"}
+    - {tenant_id: store_northwind, id: rsa_205, customer_id: cus_grace, product_id: var_chore_coat_m_olive, message_channel: push, start_time: "2026-11-05T10:31:00-05:00", expires: "2027-02-03T10:31:00-05:00"}
+    - {tenant_id: store_northwind, id: rsa_206, customer_id: cus_marcus, product_id: var_denim_jacket_l_indigo, message_channel: email, start_time: "2026-11-04T18:20:00-05:00", expires: "2027-02-02T18:20:00-05:00"}
+    - {tenant_id: store_northwind, id: rsa_207, customer_id: cus_elena, product_id: var_denim_jacket_m_indigo, message_channel: sms, start_time: "2026-11-05T07:45:00-05:00", expires: "2027-02-03T07:45:00-05:00"}
