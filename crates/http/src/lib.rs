@@ -15,6 +15,7 @@ mod change_sets;
 pub mod coerce;
 pub mod demo_clock;
 mod events;
+mod handles;
 mod idempotency;
 mod ops;
 mod store;
