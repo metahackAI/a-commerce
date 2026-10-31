@@ -669,3 +669,23 @@ async fn store_operators_are_store_viewers() {
         viewer::Viewer::Store
     );
 }
+
+#[tokio::test]
+#[ignore = "integration: needs a PostgreSQL database"]
+async fn integration_reads_a_sellers_status() {
+    let cx = store_cx().await;
+    let mut tx = cx.read().await.unwrap();
+    let status = crate::service::for_integration::seller_status;
+    assert_eq!(
+        status(&mut tx, "slr_fieldstone").await.unwrap().as_deref(),
+        Some("active")
+    );
+    assert_eq!(
+        status(&mut tx, "slr_harbor_goods")
+            .await
+            .unwrap()
+            .as_deref(),
+        Some("under_review")
+    );
+    assert_eq!(status(&mut tx, "slr_nobody").await.unwrap(), None);
+}

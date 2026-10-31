@@ -506,14 +506,20 @@ pub(crate) async fn plan(
         check_id("seller_id", "slr", s)?;
         match seller_status(tx, s).await? {
             None => notes.push(format!(
-                "Seller {s}'s status is not checked: the partner domain does not report it to integration yet"
+                "Seller {s}'s status is not checked: no seller reader is installed"
             )),
             Some(Some(status)) if status == "active" => {}
             Some(found) => {
-                let what = found.map_or_else(|| "not a seller of this store".to_owned(), |st| st.replace('_', " "));
-                return Err(ToolError::new(SELLER_NOT_ACTIVE, format!("{s} is {what}; its feed cannot be imported."))
-                    .detail(json!({"entity": "seller", "id": s}))
-                    .next("set_seller_status"));
+                let what = found.map_or_else(
+                    || "not a seller of this store".to_owned(),
+                    |st| st.replace('_', " "),
+                );
+                return Err(ToolError::new(
+                    SELLER_NOT_ACTIVE,
+                    format!("{s} is {what}; its feed cannot be imported."),
+                )
+                .detail(json!({"entity": "seller", "id": s}))
+                .next("set_seller_status"));
             }
         }
     }

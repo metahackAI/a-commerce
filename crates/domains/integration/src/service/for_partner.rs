@@ -1,8 +1,9 @@
 //! The slot where `partner` hands integration a seller's status. Partner and integration are
 //! peers in the domain graph (docs/backend/README.md §2.1: both sit on catalog, sales and
 //! fulfillment), so integration cannot call partner; `acom-registry` installs partner's reader
-//! here once partner exports one. Until then a seller feed is taken without that check, and the
-//! import's preview says so.
+//! (`acom_partner::service::for_integration::seller_status`) here. Without it (a registry built
+//! without partner, as in this crate's own tests) a seller feed is taken without that check, and
+//! the import's preview says so.
 
 use std::future::Future;
 use std::pin::Pin;
