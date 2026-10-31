@@ -1427,7 +1427,9 @@ impl<'r> Turn<'r> {
                     order.push(step.id.clone());
                 }
                 Ok(None) => {}
-                // A memory that cannot be kept (a guest has none) does not stop the answer.
+                // Memories a guest does not have do not stop the answer: reading them (the profile)
+                // goes on without them, and keeping one says it could not.
+                Err(Flow::Stop(_)) if tool.remembers() && !tool.is_write() => {}
                 Err(Flow::Stop(why)) if tool.remembers() => {
                     self.problems
                         .push(format!("I could not remember that: {why}"));
