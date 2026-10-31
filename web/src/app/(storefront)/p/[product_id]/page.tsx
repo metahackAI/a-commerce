@@ -16,6 +16,7 @@ import {imageUrl, words} from '../../_lib/format';
 import {jsonLdScript, productJsonLd} from '../../_lib/jsonld';
 import {load, shopper} from '../../_lib/server';
 import type {
+  Brand,
   CategoryDetail,
   DeliveryDate,
   Measurements,
@@ -66,19 +67,22 @@ export default async function ProductPage({params}: {params: Params}) {
 
   const p = product.data;
   const g = group.ok ? group.data : null;
+  // Shoppers cannot read get_product_group; get_product carries the same description.
+  const description = g?.description ?? p.description;
   const addresses = profile?.ok ? (profile.data.addresses ?? []) : [];
   const address = addresses.find(a => a.is_primary) ?? addresses[0] ?? null;
-  const [delivery, category] = await Promise.all([
+  const [delivery, category, brand] = await Promise.all([
     address
       ? load<Page<DeliveryDate>>('/v1/fulfillment/delivery-dates', {product_id: id, address_mode: 'saved', address_id: address.id})
       : null,
     p.category_id ? load<CategoryDetail>(`/v1/merchandising/categories/${encodeURIComponent(p.category_id)}`, {fields: ['id', 'name']}) : null,
+    p.brand_id ? load<Brand>(`/v1/catalog/brands/${encodeURIComponent(p.brand_id)}`) : null,
   ]);
 
   const rp = policy.ok ? policy.data : null;
   const nonReturnable = rp ? (rp['acom:non_returnable_when'] ?? rp.non_returnable_when ?? []) : [];
   const sizeExchangeDays = rp ? (rp['acom:size_exchange_days'] ?? rp.size_exchange_days ?? null) : null;
-  const ld = productJsonLd(p, g, summary.ok ? summary.data : null, path);
+  const ld = productJsonLd(p, g, summary.ok ? summary.data : null, path, brand?.ok ? brand.data.name : null);
 
   return (
     <Layout
@@ -97,7 +101,7 @@ export default async function ProductPage({params}: {params: Params}) {
               <ProductImage src={imageUrl(g?.image ?? p.image)} alt={p.name} />
               <VStack gap={4}>
                 <Heading level={1}>{p.name}</Heading>
-                {g?.description ? <Text color="secondary">{g.description}</Text> : null}
+                {description ? <Text color="secondary">{description}</Text> : null}
                 <ProductPurchase
                   product={p}
                   addressId={address?.id ?? null}

@@ -69,6 +69,7 @@ export interface Product extends ProductSummary {
   '@type'?: string;
   approval_status?: string;
   varies_by?: string[];
+  keywords?: string[];
   additional_property?: AdditionalProperty[];
 }
 

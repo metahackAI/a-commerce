@@ -1,6 +1,8 @@
 // schema.org JSON-LD for product pages (docs/frontend/README.md §1.6), built only from the API
-// response: get_product (prices, variants, availability), get_product_group (description, image)
-// and get_review_summary (rating). External agents read the page the same way people see it.
+// response: get_product (prices, variants, availability, description, keywords, the Google product
+// category in additional_property), get_brand (brand name), get_product_group (image, and the
+// description for operators; shoppers cannot read it) and get_review_summary (rating). External
+// agents read the page the same way people see it.
 
 import {imageUrl} from './format';
 import type {Availability, Product, ProductGroup, ReviewSummary} from './types';
@@ -13,8 +15,16 @@ const AVAILABILITY: Record<Availability, string> = {
   discontinued: 'https://schema.org/Discontinued',
 };
 
-export function productJsonLd(product: Product, group: ProductGroup | null, reviews: ReviewSummary | null, path: string) {
+export function productJsonLd(
+  product: Product,
+  group: ProductGroup | null,
+  reviews: ReviewSummary | null,
+  path: string,
+  brand: string | null = null,
+) {
   const image = imageUrl(group?.image ?? product.image);
+  // The Google product category as its taxonomy path (catalog content stores it as text).
+  const googleCategory = product.additional_property?.find(p => p.name === 'google_product_category')?.value;
   const offer = (sku: string | undefined, availability: Availability | undefined, extra: Record<string, unknown> = {}) => ({
     '@type': 'Offer',
     ...(sku ? {sku} : {}),
@@ -42,12 +52,16 @@ export function productJsonLd(product: Product, group: ProductGroup | null, revi
   });
 
   const variants = product.has_variant ?? [];
+  const description = group?.description ?? product.description;
   return {
     '@context': 'https://schema.org',
     '@type': variants.length > 0 ? 'ProductGroup' : 'Product',
     productGroupID: product.id,
     name: product.name,
-    ...(group?.description ? {description: group.description} : {}),
+    ...(description ? {description} : {}),
+    ...(brand ? {brand: {'@type': 'Brand', name: brand}} : {}),
+    ...(typeof googleCategory === 'string' ? {category: googleCategory} : {}),
+    ...(product.keywords?.length ? {keywords: product.keywords.join(', ')} : {}),
     ...(image ? {image} : {}),
     ...(product.varies_by ? {variesBy: product.varies_by.map(v => `https://schema.org/${v}`)} : {}),
     ...(product.additional_property
@@ -56,7 +70,9 @@ export function productJsonLd(product: Product, group: ProductGroup | null, revi
             '@type': 'PropertyValue',
             name: p.name,
             value: p.value,
-            ...(p.unit_code ? {unitCode: p.unit_code} : {}),
+            // The API's unit is the word the catalog stores ("g", "cm"); schema.org keeps unitCode for
+            // UN/CEFACT codes, so it goes in unitText.
+            ...(p.unit_code ? {unitText: p.unit_code} : {}),
           })),
         }
       : {}),

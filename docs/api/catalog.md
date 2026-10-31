@@ -89,6 +89,7 @@
 {"id": "prd_windbreaker", "@type": "ProductGroup", "name": "Packable windbreaker",
  "brand_id": "brn_northwind", "category_id": "cat_summer_outerwear", "approval_status": "active",
  "varies_by": ["color", "size"],
+ "keywords": ["packable", "travel"],
  "price": 89.00, "price_currency": "USD",
  "member_price": null,
  "cost": 36.00,
@@ -113,6 +114,7 @@
                   "valid_through": "2026-11-08T23:59:00-05:00"},
  "inventory_level": 214, "availability": "in_stock", "has_variant": [/* … */]}
 ```
+  - `keywords`는 상품 태그(`catalog.product_group.keywords`)입니다. 검색 필터(`search_products`의 `tags`)와 같은 단어이고, 상품 페이지의 JSON-LD `keywords`가 됩니다.
   - `price`는 정가(`list_price`), `member_price`는 그 시각 적용되는 회원·기간 한정 판매가(`UnitPriceSpecification`, `price_type: sale_price`)이고 없으면 `null`입니다. 가격 계산은 `search_products`와 같습니다.
   - `cost`는 운영자 주체에게만 있는 필드입니다. 쇼퍼·외부 에이전트 응답에는 키 자체가 없습니다.
   - `additional_property`는 상품의 사실입니다. 이름은 `compare_products`의 속성(`weight`, `packed_size`, `packing`, `warmth`, `rain`, `material`)과 상품 사실 속성(`fiber_content`, `materials`(신발·가방 등 부위별 소재), `fit`, `care`, `fabric`, `fabric_weight`, `knit_gauge`, `finish`, `insulation`, `closure`, `sleeve_length`, `neckline`, `hood`, `support`, `features`, `dimensions`, `capacity`, `width`, `fits_shoe_size`, `fits_waist`, `product_type`, `google_product_category`)입니다. 단위가 있으면 `unit_code`(예: `g`, `cm`, `g/m2`), 사이즈마다 다르면 `size`(예: `weight`는 M 기준)를 함께 둡니다.
