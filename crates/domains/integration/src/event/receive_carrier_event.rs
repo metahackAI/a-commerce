@@ -116,7 +116,9 @@ pub(crate) async fn plan(
     let order_id = order_for(tx, &reference).await?;
     let target = parcel(tx, &tracking).await?;
     if let Target::Parcel {
-        id, order_id: other, ..
+        id,
+        order_id: other,
+        ..
     } = &target
         && *other != order_id
         && duplicate_of.is_none()
