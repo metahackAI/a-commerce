@@ -151,13 +151,19 @@ dependencies = [
 name = "acom-community"
 version = "0.1.0"
 dependencies = [
+ "acom-auth",
  "acom-contract",
  "acom-core",
+ "acom-customer",
+ "acom-policy",
  "acom-store",
+ "chrono",
+ "chrono-tz",
  "schemars",
  "serde",
  "serde_json",
  "sqlx",
+ "tokio",
 ]
 
 [[package]]
