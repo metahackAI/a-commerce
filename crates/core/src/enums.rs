@@ -555,6 +555,53 @@ word_enum! {
     ImageStyle = "image_style" { Studio = "studio", Lifestyle = "lifestyle", FlatLay = "flat_lay" }
 }
 
+// ── partner (docs/api/enums.md §1.16) ───────────────────────────────────────────────────
+
+word_enum! {
+    /// acom:sellerStatus of a marketplace seller, from application to termination.
+    SellerStatus = "seller_status" {
+        Applied = "applied", UnderReview = "under_review", Approved = "approved", Active = "active",
+        Suspended = "suspended", Terminated = "terminated",
+    }
+}
+
+word_enum! {
+    /// acom:sellerType, how a seller sells in the store.
+    SellerType = "seller_type" {
+        Marketplace = "marketplace", Consignment = "consignment", DirectSupply = "direct_supply",
+    }
+}
+
+word_enum! {
+    /// acom:gradeLevel of a seller, best first; `watch` is below every graded level.
+    GradeLevel = "grade_level" {
+        Platinum = "platinum", Gold = "gold", Silver = "silver", Bronze = "bronze", Watch = "watch",
+    }
+}
+
+word_enum! {
+    /// acom:settlementCycle, how often a seller is paid out.
+    SettlementCycle = "settlement_cycle" { Weekly = "weekly", Biweekly = "biweekly", Monthly = "monthly" }
+}
+
+word_enum! {
+    /// acom:settlementMethod, when a sale becomes payable to the seller.
+    SettlementMethod = "settlement_method" { OnDelivery = "on_delivery", OnConfirmation = "on_confirmation" }
+}
+
+word_enum! {
+    /// acom:contractStatus of a contract version, from its period and the store clock.
+    ContractStatus = "contract_status" { Scheduled = "scheduled", Active = "active", Ended = "ended" }
+}
+
+word_enum! {
+    /// acom:sellerDocumentType, which paper a seller attaches to an application.
+    SellerDocumentType = "seller_document_type" {
+        BusinessRegistration = "business_registration", PayoutAccountProof = "payout_account_proof",
+        Other = "other",
+    }
+}
+
 // ── customer (docs/api/enums.md §1.13, §2.4) ────────────────────────────────────────────
 
 word_enum! {
@@ -706,6 +753,13 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (ReportReason::LIST, ReportReason::WORDS),
     (CopyType::LIST, CopyType::WORDS),
     (ImageStyle::LIST, ImageStyle::WORDS),
+    (SellerStatus::LIST, SellerStatus::WORDS),
+    (SellerType::LIST, SellerType::WORDS),
+    (GradeLevel::LIST, GradeLevel::WORDS),
+    (SettlementCycle::LIST, SettlementCycle::WORDS),
+    (SettlementMethod::LIST, SettlementMethod::WORDS),
+    (ContractStatus::LIST, ContractStatus::WORDS),
+    (SellerDocumentType::LIST, SellerDocumentType::WORDS),
     (BusinessVerification::LIST, BusinessVerification::WORDS),
     (ConsentType::LIST, ConsentType::WORDS),
     (InquiryType::LIST, InquiryType::WORDS),

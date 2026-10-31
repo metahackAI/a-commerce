@@ -46,6 +46,12 @@ planner:
 context:
   # Earlier turns of the conversation shown to the planner.
   recent_turns: 4
+  # Characters of JSON one tool result may take in the planner's and the reply's prompts
+  # (about 1,500 tokens). A result that fits is shown whole; in a larger one the biggest list or
+  # string is halved until it fits, and says what it left out. Sized so a product's
+  # inventory (15 variants, 3.4k), a dozen return requests (5.4k) and a promotion preview's
+  # check details (3.9k) fit whole; a 20-product search with variants (28k) is still cut.
+  result_chars: 6000
 
 prompts:
   router: prompts/router.md

@@ -132,7 +132,7 @@ llm ◀── agent ◀── services/agent
    | messaging | customer, sales·fulfillment(주문의 고객과 번호, 반품 요청·환불 확인, 사진 요청 상태. 각 `service::for_messaging`으로만). promotion의 세그먼트 회원은 `acom-registry`가 넘겨주는 reader로 |
    | community | catalog, customer, sales |
    | analytics | sales(회원 수 세기). 나머지는 자기 읽기 모델(`analytics` 뷰)만 |
-   | partner, integration | catalog, sales, fulfillment |
+   | partner, integration | catalog, sales, fulfillment. partner는 platform도(운영자가 속한 조직으로 판매사 직원을 그 판매자로 알아봄) |
 3. **`agent`는 도메인 크레이트에 의존하지 않습니다.** 툴 정보는 `commerce`가 내놓는 매니페스트(`GET /v1/tools`, 빌드 때 생성되는 `tools.json`)로만 압니다. 에이전트와 커머스는 HTTP로만 만납니다(테스트에서는 같은 프로세스 안의 `ToolClient` 구현으로 대체).
 4. **비즈니스 상수는 코드에 두지 않습니다.** 한도·하한·기간·승인 기준은 `acom-policy` 타입을 통해 `policies/*.yml`에서 옵니다. 리뷰에서 숫자 리터럴을 찾습니다.
 5. **`unsafe` 금지, `unwrap`/`expect`는 테스트와 시작 단계에서만.** 워크스페이스 lints로 강제합니다.

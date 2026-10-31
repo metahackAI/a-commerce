@@ -1487,6 +1487,123 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+## `partner`
+
+### `partner.seller`
+
+`schema:Organization/acom:Seller` — a business that sells in the store under a contract, from application to termination; products and orders name it by the same id. id prefix slr_. API: seller. · id `slr_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | seller id (slr_), API seller_id. |
+| `legal_name` | text |  | `schema:legalName` | the registered name of the business, for example Harbor Goods LLC. |
+| `tax_id` | text |  | `schema:taxID` | business registration (tax) number as the seller gave it; sensitive, so operators see it masked (partner.yml privacy). |
+| `seller_status` | text |  | `acom:sellerStatus` | where the seller is between application and termination; transitions follow partner.yml lifecycle.allowed_transitions. values: seller_status Values: `applied` · `under_review` · `approved` · `active` · `suspended` · `terminated`. |
+| `seller_type` | text |  | `acom:sellerType` | how the seller sells in the store. values: seller_type Values: `marketplace` · `consignment` · `direct_supply`. |
+| `address` | jsonb |  | `schema:address` | business address: {street_address, address_locality, address_region, postal_code, address_country}. |
+| `contact_point` | jsonb |  | `schema:contactPoint` | people to reach: [{contact_type (settlement, customer_service, product), name, email, telephone}]. |
+| `business_category` | text[] |  | `acom:businessCategory` | standard categories (cat_ ids) the seller sells in; checked against partner.yml onboarding.prohibited_categories. |
+| `documents` | jsonb |  | `acom:documents` | papers attached to the application: [{document_type, upload_id, name}]; document_type is a seller_document_type word. |
+| `organization_id` | text | ✓ | `acom:vendorOrganization` | the vendor organization (org_ id) whose operator accounts act for this seller; NULL when the seller has no back-office accounts. → `platform.organization` |
+| `applied_at` | timestamptz |  | `acom:appliedAt` | when the seller applied to sell in the store. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `partner.seller_contract`
+
+`schema:Intangible/acom:SellerContract` — the agreement between the store and one seller; its terms are numbered versions in seller_contract_version, which are only added. id prefix ctr_. API: contract. · id `ctr_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | contract id (ctr_), API contract_id; it stays the same across versions. |
+| `seller_id` | text |  | `acom:sellerId` | the seller (slr_ id) the contract is with; one contract per seller. → `partner.seller` |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change (each new contract version); previews record it in basis and execution compares it. |
+
+### `partner.seller_contract_version`
+
+`schema:Intangible/acom:SellerContractTerms` — one numbered version of a seller contract: commission, settlement and payout terms for a period; versions of one contract never overlap (contract.no_period_overlap).
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `seller_contract_id` | text |  | `acom:sellerContractId` | the contract (ctr_ id) this version belongs to. → `partner.seller_contract` |
+| `version_number` | integer |  | `schema:version` | 1-based number of this version within its contract (API version). |
+| `default_commission_rate` | numeric(5,4) |  | `acom:defaultCommissionRate` | the store's commission on a sale in a category without its own rate, 0-1 within partner.yml commission. |
+| `commission_rate` | jsonb |  | `acom:commissionRate` | commission rates by category: [{category_id, rate}], rate 0-1; categories not listed use the default rate. |
+| `settlement_cycle` | text |  | `acom:settlementCycle` | how often the seller is paid out. values: settlement_cycle Values: `weekly` · `biweekly` · `monthly`. |
+| `settlement_method` | text |  | `acom:settlementMethod` | when a sale becomes payable to the seller. values: settlement_method Values: `on_delivery` · `on_confirmation`. |
+| `payout_account_ref` | text |  | `acom:payoutAccountRef` | the payout provider's reference for the seller's verified bank account, never the account number; operators see it masked. |
+| `valid_from` | timestamptz |  | `schema:validFrom` | first moment the terms apply. |
+| `valid_through` | timestamptz |  | `schema:validThrough` | last moment the terms apply. |
+| `agent_id` | text | ✓ | `schema:agent` | person or system that set the version (adm_ or sys_ id); NULL for seed rows. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `partner.seller_event`
+
+`schema:Action` — one state change of a seller, with the reason in result; a change booked for later waits as potential until its time. Rows are only added.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `seller_id` | text |  | `acom:sellerId` | the seller that changed (slr_ id), the object of the event. → `partner.seller` |
+| `position` | integer |  | `schema:position` | 1-based order of this event within its seller. |
+| `action_type` | text |  | `acom:actionType` | the schema.org Action subtype (@type), for example CreateAction or UpdateAction. |
+| `action_status` | text |  | `schema:actionStatus` | lifecycle of the action; potential while a booked change waits for its time. values: action_status Values: `potential` · `active` · `completed` · `failed`. |
+| `agent_id` | text | ✓ | `schema:agent` | person or system that acted (adm_ or sys_ id); NULL when only a model acted. |
+| `agent_name` | text | ✓ | `schema:agent` | name of the software agent (model) that acted; NULL for people. |
+| `instrument` | text | ✓ | `schema:instrument` | tool name or scheduled job that caused the event. |
+| `from_state` | text | ✓ | `acom:fromState` | status before the event; NULL for the creating event. values: seller_status Values: `applied` · `under_review` · `approved` · `active` · `suspended` · `terminated`. |
+| `to_state` | text | ✓ | `acom:toState` | status after the event. values: seller_status Values: `applied` · `under_review` · `approved` · `active` · `suspended` · `terminated`. |
+| `result` | jsonb | ✓ | `schema:result` | what the action recorded, as JSON: {reason, products_hidden[], products_restored[]}. |
+| `error` | jsonb | ✓ | `schema:error` | why a booked change did not happen, as {code, class, message}; NULL otherwise. |
+| `start_time` | timestamptz |  | `schema:startTime` | when the change takes (or took) effect. |
+| `end_time` | timestamptz | ✓ | `schema:endTime` | when the change was applied; NULL while it waits. |
+| `request_id` | text | ✓ | `-` | request trace id (req_) from the gateway; joins agent turns and the action log. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `partner.seller_grade`
+
+`schema:Intangible/acom:SellerGrade` — a seller grade a person confirmed or adjusted for a period, with the computed metrics it was based on; the latest one covering a moment is the grade then.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `seller_id` | text |  | `acom:sellerId` | the graded seller (slr_ id). → `partner.seller` |
+| `position` | integer |  | `schema:position` | 1-based order of this grade within its seller. |
+| `grade_level` | text |  | `acom:gradeLevel` | the grade that applies in the period. values: grade_level Values: `platinum` · `gold` · `silver` · `bronze` · `watch`. |
+| `computed_grade_level` | text | ✓ | `acom:computedGradeLevel` | the grade the metrics gave at the time; NULL when the review period had no orders. values: grade_level Values: `platinum` · `gold` · `silver` · `bronze` · `watch`. |
+| `adjustment_reason` | text | ✓ | `acom:adjustmentReason` | why the grade differs from the computed one (grade.override_requires_reason); NULL when it was confirmed as computed. |
+| `metrics` | jsonb |  | `acom:gradeMetrics` | the computed rates behind the grade: {shipping_compliance_rate, order_fulfillment_rate, claim_rate, service_score, review_period}, rates 0-1. |
+| `valid_from` | timestamptz |  | `schema:validFrom` | first moment the grade applies. |
+| `valid_through` | timestamptz |  | `schema:validThrough` | last moment the grade applies. |
+| `agent_id` | text | ✓ | `schema:agent` | person or system that set the grade (adm_ or sys_ id); NULL for seed rows. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `partner.seller_product_group`
+
+`acom:SellerProduct` — a product (ProductGroup) that a seller sells in the store (schema:offeredBy); one seller per product.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `product_group_id` | text |  | `acom:productGroupId` | the product (prd_ id; API product_id). → `catalog.product_group` |
+| `seller_id` | text |  | `schema:offeredBy` | the seller (slr_ id) that sells the product. → `partner.seller` |
+| `hidden_at` | timestamptz | ✓ | `acom:hiddenAt` | when the seller's suspension took the product off sale; NULL while it is not hidden for the seller. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ## `platform`
 
 ### `platform.action_log`

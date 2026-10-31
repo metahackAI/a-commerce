@@ -33,9 +33,10 @@ A-Commerce의 DB는 **AI가 읽는 DB**입니다. 에이전트(인사이트 에�
 | `fulfillment` | 배송(ParcelDelivery), 클레임, 검수, 환불 |
 | `messaging` | 메시지 |
 | `analytics` | 읽기 전용 뷰(일별 매출 등) |
+| `partner` | 입점 판매자(Organization), 판매자가 파는 상품, 상태 이력, 계약과 계약 버전, 등급 |
 | `agent` | 대화, 턴, 단계, 모델 호출 (agent 서비스 소유) |
 
-나머지 도메인(community, partner, integration)의 스키마는 착수할 때 같은 규칙으로 추가합니다.
+나머지 도메인(community, integration)의 스키마는 착수할 때 같은 규칙으로 추가합니다.
 
 ## 3. 이름 규칙
 
@@ -245,6 +246,11 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `analytics.variant_stock_out`, `analytics.campaign_send` | - (뷰) | — | 지금 품절인 변형과 품절 시각, 캠페인 발송 여부·실패 이유 |
 | `analytics.member_tier_count`, `analytics.daily_new_members` | - (뷰) | — | 등급별 회원 수, 일별 신규 가입 수 |
 | `analytics.inquiry_summary` | - (뷰) | — | 고객 문의 하나에 한 행: 들어온 날, 종류, 상태, 첫 답 시각, 해결 시각. 누가 무엇을 물었는지는 없음 |
+| `partner.seller` | schema:Organization/acom:Seller | `slr` | `legal_name`, `tax_id`(운영자에게 가림), `seller_status`, `seller_type`, 판매사 조직 `organization_id` |
+| `partner.seller_event` | schema:Action | — | 상태 전이와 사유. 나중으로 예약한 전이는 `potential`로 기다림 |
+| `partner.seller_product_group` | acom:SellerProduct | — | 판매자 ↔ 상품, 정지로 숨긴 시각 `hidden_at` |
+| `partner.seller_contract`, `partner.seller_contract_version` | schema:Intangible/acom:SellerContract, acom:SellerContractTerms | `ctr` | 계약 id는 그대로, 버전은 추가만. 수수료율·정산 주기·방식·정산 계좌 참조·기간 |
+| `partner.seller_grade` | schema:Intangible/acom:SellerGrade | — | 확정·조정한 등급, 계산값과 근거 지표, 적용 기간 |
 | `agent.conversation`, `agent.turn`, `agent.step`, `agent.model_call` | schema:Conversation, schema:Message, schema:Action | `conv`, `turn` | agent 서비스 |
 
 ## 13. 마이그레이션 규칙과 검사

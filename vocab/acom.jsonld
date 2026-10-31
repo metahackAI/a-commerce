@@ -441,6 +441,51 @@
       "rdfs:comment": "A group of customers defined by conditions. Used as additionalType on an Audience."
     },
     {
+      "@id": "acom:Seller",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Seller",
+      "rdfs:subClassOf": {
+        "@id": "schema:Organization"
+      },
+      "rdfs:comment": "a business that sells in the store under a contract, from application to termination; products and orders name it by the same id. id prefix slr_. API: seller."
+    },
+    {
+      "@id": "acom:SellerContract",
+      "@type": "rdfs:Class",
+      "rdfs:label": "SellerContract",
+      "rdfs:subClassOf": {
+        "@id": "schema:Intangible"
+      },
+      "rdfs:comment": "the agreement between the store and one seller; its terms are numbered versions in seller_contract_version, which are only added. id prefix ctr_. API: contract."
+    },
+    {
+      "@id": "acom:SellerContractTerms",
+      "@type": "rdfs:Class",
+      "rdfs:label": "SellerContractTerms",
+      "rdfs:subClassOf": {
+        "@id": "schema:Intangible"
+      },
+      "rdfs:comment": "one numbered version of a seller contract: commission, settlement and payout terms for a period; versions of one contract never overlap (contract.no_period_overlap)."
+    },
+    {
+      "@id": "acom:SellerGrade",
+      "@type": "rdfs:Class",
+      "rdfs:label": "SellerGrade",
+      "rdfs:subClassOf": {
+        "@id": "schema:Intangible"
+      },
+      "rdfs:comment": "a seller grade a person confirmed or adjusted for a period, with the computed metrics it was based on; the latest one covering a moment is the grade then."
+    },
+    {
+      "@id": "acom:SellerProduct",
+      "@type": "rdfs:Class",
+      "rdfs:label": "SellerProduct",
+      "rdfs:subClassOf": {
+        "@id": "schema:Thing"
+      },
+      "rdfs:comment": "a product (ProductGroup) that a seller sells in the store (schema:offeredBy); one seller per product."
+    },
+    {
       "@id": "acom:ShippingZone",
       "@type": "rdfs:Class",
       "rdfs:label": "ShippingZone",
@@ -577,6 +622,22 @@
         }
       ],
       "rdfs:comment": "kind of principal that acted. values: actor_kind"
+    },
+    {
+      "@id": "acom:adjustmentReason",
+      "@type": "rdf:Property",
+      "rdfs:label": "adjustmentReason",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:SellerGrade"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "why the grade differs from the computed one (grade.override_requires_reason); NULL when it was confirmed as computed."
     },
     {
       "@id": "acom:adminId",
@@ -730,6 +791,22 @@
         }
       ],
       "rdfs:comment": "whether the key can still sign in. values: api_key_status"
+    },
+    {
+      "@id": "acom:appliedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "appliedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Seller"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the seller applied to sell in the store."
     },
     {
       "@id": "acom:appliesTo",
@@ -1065,6 +1142,22 @@
         }
       ],
       "rdfs:comment": "parent category (cat_ id); NULL for a top-level category."
+    },
+    {
+      "@id": "acom:businessCategory",
+      "@type": "rdf:Property",
+      "rdfs:label": "businessCategory",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Seller"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "standard categories (cat_ ids) the seller sells in; checked against partner.yml onboarding.prohibited_categories."
     },
     {
       "@id": "acom:businessVerification",
@@ -1545,6 +1638,22 @@
       "rdfs:comment": "Cancel, return, or exchange."
     },
     {
+      "@id": "acom:commissionRate",
+      "@type": "rdf:Property",
+      "rdfs:label": "commissionRate",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:SellerContractTerms"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "commission rates by category: [{category_id, rate}], rate 0-1; categories not listed use the default rate."
+    },
+    {
       "@id": "acom:committedAt",
       "@type": "rdf:Property",
       "rdfs:label": "committedAt",
@@ -1591,6 +1700,22 @@
         }
       ],
       "rdfs:comment": "what the winner still has to provide (legal_name, address, tax_id); empty when nothing."
+    },
+    {
+      "@id": "acom:computedGradeLevel",
+      "@type": "rdf:Property",
+      "rdfs:label": "computedGradeLevel",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:SellerGrade"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:GradeLevel"
+        }
+      ],
+      "rdfs:comment": "the grade the metrics gave at the time; NULL when the review period had no orders. values: grade_level"
     },
     {
       "@id": "acom:conditions",
@@ -1849,6 +1974,22 @@
         }
       ],
       "rdfs:comment": "why it was rejected; NULL otherwise."
+    },
+    {
+      "@id": "acom:defaultCommissionRate",
+      "@type": "rdf:Property",
+      "rdfs:label": "defaultCommissionRate",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:SellerContractTerms"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Number"
+        }
+      ],
+      "rdfs:comment": "the store's commission on a sale in a category without its own rate, 0-1 within partner.yml commission."
     },
     {
       "@id": "acom:definedAt",
@@ -2133,6 +2274,22 @@
         }
       ],
       "rdfs:comment": "search documents written."
+    },
+    {
+      "@id": "acom:documents",
+      "@type": "rdf:Property",
+      "rdfs:label": "documents",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Seller"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "papers attached to the application: [{document_type, upload_id, name}]; document_type is a seller_document_type word."
     },
     {
       "@id": "acom:draftNote",
@@ -2793,6 +2950,9 @@
           "@id": "acom:RefundStatus"
         },
         {
+          "@id": "acom:SellerStatus"
+        },
+        {
           "@id": "schema:OrderStatus"
         }
       ],
@@ -2914,6 +3074,38 @@
       "rdfs:comment": "ISO 4217 code of gift_wrap_value."
     },
     {
+      "@id": "acom:gradeLevel",
+      "@type": "rdf:Property",
+      "rdfs:label": "gradeLevel",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:SellerGrade"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:GradeLevel"
+        }
+      ],
+      "rdfs:comment": "the grade that applies in the period. values: grade_level"
+    },
+    {
+      "@id": "acom:gradeMetrics",
+      "@type": "rdf:Property",
+      "rdfs:label": "gradeMetrics",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:SellerGrade"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "the computed rates behind the grade: {shipping_compliance_rate, order_fulfillment_rate, claim_rate, service_score, review_period}, rates 0-1."
+    },
+    {
       "@id": "acom:granted",
       "@type": "rdf:Property",
       "rdfs:label": "granted",
@@ -2944,6 +3136,22 @@
         }
       ],
       "rdfs:comment": "true when a return was asked for on the order and not declined or withdrawn."
+    },
+    {
+      "@id": "acom:hiddenAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "hiddenAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:SellerProduct"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the seller's suspension took the product off sale; NULL while it is not hidden for the seller."
     },
     {
       "@id": "acom:identifierReusableAfter",
@@ -4140,6 +4348,22 @@
       "rdfs:comment": "how it was paid: {method, to, reference, delivered}; NULL until paid. Payments to outside accounts are a stub here."
     },
     {
+      "@id": "acom:payoutAccountRef",
+      "@type": "rdf:Property",
+      "rdfs:label": "payoutAccountRef",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:SellerContractTerms"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the payout provider's reference for the seller's verified bank account, never the account number; operators see it masked."
+    },
+    {
       "@id": "acom:percentOff",
       "@type": "rdf:Property",
       "rdfs:label": "percentOff",
@@ -4333,6 +4557,9 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:CategoryPlacement"
+        },
+        {
+          "@id": "acom:SellerProduct"
         },
         {
           "@id": "schema:QuantitativeValue"
@@ -5367,6 +5594,76 @@
       "rdfs:comment": "how winners are chosen, an id of the store registry promotion.yml event.selection_methods, for example random_draw."
     },
     {
+      "@id": "acom:sellerContractId",
+      "@type": "rdf:Property",
+      "rdfs:label": "sellerContractId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:SellerContractTerms"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:SellerContract"
+        }
+      ],
+      "rdfs:comment": "the contract (ctr_ id) this version belongs to."
+    },
+    {
+      "@id": "acom:sellerId",
+      "@type": "rdf:Property",
+      "rdfs:label": "sellerId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:SellerContract"
+        },
+        {
+          "@id": "acom:SellerGrade"
+        },
+        {
+          "@id": "schema:Action"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:Seller"
+        }
+      ],
+      "rdfs:comment": "the graded seller (slr_ id)."
+    },
+    {
+      "@id": "acom:sellerStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "sellerStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Seller"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:SellerStatus"
+        }
+      ],
+      "rdfs:comment": "where the seller is between application and termination; transitions follow partner.yml lifecycle.allowed_transitions. values: seller_status"
+    },
+    {
+      "@id": "acom:sellerType",
+      "@type": "rdf:Property",
+      "rdfs:label": "sellerType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Seller"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:SellerType"
+        }
+      ],
+      "rdfs:comment": "how the seller sells in the store. values: seller_type"
+    },
+    {
       "@id": "acom:sendBackMethod",
       "@type": "rdf:Property",
       "rdfs:label": "sendBackMethod",
@@ -5416,6 +5713,38 @@
         }
       ],
       "rdfs:comment": "what was settled: [{type, action, amount?, count?}]."
+    },
+    {
+      "@id": "acom:settlementCycle",
+      "@type": "rdf:Property",
+      "rdfs:label": "settlementCycle",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:SellerContractTerms"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:SettlementCycle"
+        }
+      ],
+      "rdfs:comment": "how often the seller is paid out. values: settlement_cycle"
+    },
+    {
+      "@id": "acom:settlementMethod",
+      "@type": "rdf:Property",
+      "rdfs:label": "settlementMethod",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:SellerContractTerms"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:SettlementMethod"
+        }
+      ],
+      "rdfs:comment": "when a sale becomes payable to the seller. values: settlement_method"
     },
     {
       "@id": "acom:shippedAt",
@@ -6112,6 +6441,9 @@
           "@id": "acom:RefundStatus"
         },
         {
+          "@id": "acom:SellerStatus"
+        },
+        {
           "@id": "schema:OrderStatus"
         }
       ],
@@ -6320,6 +6652,22 @@
         }
       ],
       "rdfs:comment": "variant the reviewer bought (var_ id); gives the size bought."
+    },
+    {
+      "@id": "acom:vendorOrganization",
+      "@type": "rdf:Property",
+      "rdfs:label": "vendorOrganization",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Seller"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Organization"
+        }
+      ],
+      "rdfs:comment": "the vendor organization (org_ id) whose operator accounts act for this seller; NULL when the seller has no back-office accounts."
     },
     {
       "@id": "acom:verification",
@@ -6652,6 +7000,16 @@
       "acom:wireList": "consent_type"
     },
     {
+      "@id": "acom:ContractStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ContractStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the contract_status list (docs/api/enums.md).",
+      "acom:wireList": "contract_status"
+    },
+    {
       "@id": "acom:CopyType",
       "@type": "rdfs:Class",
       "rdfs:label": "CopyType",
@@ -6780,6 +7138,16 @@
       },
       "rdfs:comment": "Values of the fulfillment_stage list (docs/api/enums.md).",
       "acom:wireList": "fulfillment_stage"
+    },
+    {
+      "@id": "acom:GradeLevel",
+      "@type": "rdfs:Class",
+      "rdfs:label": "GradeLevel",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the grade_level list (docs/api/enums.md).",
+      "acom:wireList": "grade_level"
     },
     {
       "@id": "acom:ImageStyle",
@@ -7110,6 +7478,56 @@
       },
       "rdfs:comment": "Values of the sales_channel list (docs/api/enums.md).",
       "acom:wireList": "sales_channel"
+    },
+    {
+      "@id": "acom:SellerDocumentType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "SellerDocumentType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the seller_document_type list (docs/api/enums.md).",
+      "acom:wireList": "seller_document_type"
+    },
+    {
+      "@id": "acom:SellerStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "SellerStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the seller_status list (docs/api/enums.md).",
+      "acom:wireList": "seller_status"
+    },
+    {
+      "@id": "acom:SellerType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "SellerType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the seller_type list (docs/api/enums.md).",
+      "acom:wireList": "seller_type"
+    },
+    {
+      "@id": "acom:SettlementCycle",
+      "@type": "rdfs:Class",
+      "rdfs:label": "SettlementCycle",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the settlement_cycle list (docs/api/enums.md).",
+      "acom:wireList": "settlement_cycle"
+    },
+    {
+      "@id": "acom:SettlementMethod",
+      "@type": "rdfs:Class",
+      "rdfs:label": "SettlementMethod",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the settlement_method list (docs/api/enums.md).",
+      "acom:wireList": "settlement_method"
     },
     {
       "@id": "acom:ShippingFeeType",
@@ -7894,6 +8312,27 @@
       "schema:position": 8
     },
     {
+      "@id": "acom:ContractStatusScheduled",
+      "@type": "acom:ContractStatus",
+      "rdfs:label": "Scheduled",
+      "acom:wireWord": "scheduled",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:ContractStatusActive",
+      "@type": "acom:ContractStatus",
+      "rdfs:label": "Active",
+      "acom:wireWord": "active",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:ContractStatusEnded",
+      "@type": "acom:ContractStatus",
+      "rdfs:label": "Ended",
+      "acom:wireWord": "ended",
+      "schema:position": 3
+    },
+    {
       "@id": "acom:CopyTypeTitle",
       "@type": "acom:CopyType",
       "rdfs:label": "Title",
@@ -8312,6 +8751,41 @@
       "rdfs:label": "Shipped",
       "acom:wireWord": "shipped",
       "schema:position": 4
+    },
+    {
+      "@id": "acom:GradeLevelPlatinum",
+      "@type": "acom:GradeLevel",
+      "rdfs:label": "Platinum",
+      "acom:wireWord": "platinum",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:GradeLevelGold",
+      "@type": "acom:GradeLevel",
+      "rdfs:label": "Gold",
+      "acom:wireWord": "gold",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:GradeLevelSilver",
+      "@type": "acom:GradeLevel",
+      "rdfs:label": "Silver",
+      "acom:wireWord": "silver",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:GradeLevelBronze",
+      "@type": "acom:GradeLevel",
+      "rdfs:label": "Bronze",
+      "acom:wireWord": "bronze",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:GradeLevelWatch",
+      "@type": "acom:GradeLevel",
+      "rdfs:label": "Watch",
+      "acom:wireWord": "watch",
+      "schema:position": 5
     },
     {
       "@id": "acom:ImageStyleStudio",
@@ -9271,6 +9745,125 @@
       "rdfs:label": "Agent",
       "acom:wireWord": "agent",
       "schema:position": 4
+    },
+    {
+      "@id": "acom:SellerDocumentTypeBusinessRegistration",
+      "@type": "acom:SellerDocumentType",
+      "rdfs:label": "BusinessRegistration",
+      "acom:wireWord": "business_registration",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:SellerDocumentTypePayoutAccountProof",
+      "@type": "acom:SellerDocumentType",
+      "rdfs:label": "PayoutAccountProof",
+      "acom:wireWord": "payout_account_proof",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:SellerDocumentTypeOther",
+      "@type": "acom:SellerDocumentType",
+      "rdfs:label": "Other",
+      "acom:wireWord": "other",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:SellerStatusApplied",
+      "@type": "acom:SellerStatus",
+      "rdfs:label": "Applied",
+      "acom:wireWord": "applied",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:SellerStatusUnderReview",
+      "@type": "acom:SellerStatus",
+      "rdfs:label": "UnderReview",
+      "acom:wireWord": "under_review",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:SellerStatusApproved",
+      "@type": "acom:SellerStatus",
+      "rdfs:label": "Approved",
+      "acom:wireWord": "approved",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:SellerStatusActive",
+      "@type": "acom:SellerStatus",
+      "rdfs:label": "Active",
+      "acom:wireWord": "active",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:SellerStatusSuspended",
+      "@type": "acom:SellerStatus",
+      "rdfs:label": "Suspended",
+      "acom:wireWord": "suspended",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:SellerStatusTerminated",
+      "@type": "acom:SellerStatus",
+      "rdfs:label": "Terminated",
+      "acom:wireWord": "terminated",
+      "schema:position": 6
+    },
+    {
+      "@id": "acom:SellerTypeMarketplace",
+      "@type": "acom:SellerType",
+      "rdfs:label": "Marketplace",
+      "acom:wireWord": "marketplace",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:SellerTypeConsignment",
+      "@type": "acom:SellerType",
+      "rdfs:label": "Consignment",
+      "acom:wireWord": "consignment",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:SellerTypeDirectSupply",
+      "@type": "acom:SellerType",
+      "rdfs:label": "DirectSupply",
+      "acom:wireWord": "direct_supply",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:SettlementCycleWeekly",
+      "@type": "acom:SettlementCycle",
+      "rdfs:label": "Weekly",
+      "acom:wireWord": "weekly",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:SettlementCycleBiweekly",
+      "@type": "acom:SettlementCycle",
+      "rdfs:label": "Biweekly",
+      "acom:wireWord": "biweekly",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:SettlementCycleMonthly",
+      "@type": "acom:SettlementCycle",
+      "rdfs:label": "Monthly",
+      "acom:wireWord": "monthly",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:SettlementMethodOnDelivery",
+      "@type": "acom:SettlementMethod",
+      "rdfs:label": "OnDelivery",
+      "acom:wireWord": "on_delivery",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:SettlementMethodOnConfirmation",
+      "@type": "acom:SettlementMethod",
+      "rdfs:label": "OnConfirmation",
+      "acom:wireWord": "on_confirmation",
+      "schema:position": 2
     },
     {
       "@id": "acom:ShippingFeeTypePaid",

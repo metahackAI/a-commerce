@@ -392,13 +392,24 @@ dependencies = [
 name = "acom-partner"
 version = "0.1.0"
 dependencies = [
+ "acom-auth",
+ "acom-catalog",
+ "acom-changeset",
  "acom-contract",
  "acom-core",
+ "acom-fulfillment",
+ "acom-platform",
+ "acom-policy",
+ "acom-sales",
  "acom-store",
+ "chrono",
+ "chrono-tz",
+ "rust_decimal",
  "schemars",
  "serde",
  "serde_json",
  "sqlx",
+ "tokio",
 ]
 
 [[package]]

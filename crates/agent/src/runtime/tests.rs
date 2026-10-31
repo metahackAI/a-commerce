@@ -1727,3 +1727,52 @@ fn a_task_id_must_look_like_one() {
     };
     assert!(ok.validate().is_ok());
 }
+
+#[test]
+fn a_result_that_fits_the_budget_is_shown_whole() {
+    // A rash guard's inventory: 3 colors x 5 sizes. The fixed 5-item cut showed one color only.
+    let variants: Vec<Value> = ["Black", "Navy", "Coral"]
+        .iter()
+        .flat_map(|c| {
+            ["XS", "S", "M", "L", "XL"].iter().map(move |s| {
+                json!({"variant_id": format!("var_{c}_{s}"), "color": c, "size": s,
+                       "inventory_level": 1, "acom:safety_stock": 2, "on_order": 0})
+            })
+        })
+        .collect();
+    let inventory = json!({"product_id": "prd_swimwear_08", "variants": variants});
+    assert_eq!(compact(&inventory, 6000), inventory);
+}
+
+#[test]
+fn a_larger_result_loses_its_biggest_list_first() {
+    // A 20-product search where each product lists its 15 variants: products go before sizes.
+    let products: Vec<Value> = (0..20)
+        .map(|p| {
+            let variants: Vec<Value> = (0..15)
+                .map(|v| json!({"variant_id": format!("var_{p}_{v}"), "inventory_level": v}))
+                .collect();
+            json!({"id": format!("prd_{p}"), "name": "Fleece hoodie", "has_variant": variants})
+        })
+        .collect();
+    let search = json!({"items": products, "total": 20});
+    let out = compact(&search, 6000);
+    assert!(out.to_string().chars().count() <= 6000);
+    let kept = out["items"].as_array().unwrap_or_else(|| panic!("items"));
+    assert_eq!(kept.last(), Some(&json!("… 15 more")));
+    assert_eq!(kept.len(), 6, "5 products and the count of the rest");
+    assert_eq!(kept[0]["has_variant"].as_array().map(Vec::len), Some(15));
+    // Long text is halved the same way once it is the biggest part.
+    let note = json!({"id": "chk_1", "detail": "x".repeat(9000)});
+    let cut = compact(&note, 6000);
+    let detail = cut["detail"].as_str().unwrap_or_default();
+    assert!(
+        detail.ends_with('…') && detail.chars().count() == 4501,
+        "{}",
+        detail.len()
+    );
+    // Nothing more to halve: what is left, still saying what it left out.
+    let tight = compact(&search, 10);
+    assert_eq!(tight["items"].as_array().map(Vec::len), Some(2));
+    assert_eq!(tight["items"][1], json!("… 19 more"));
+}
