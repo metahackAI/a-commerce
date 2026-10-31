@@ -97,6 +97,9 @@
   | exclude_product_ids | Text[] | | 빼는 상품 | `[]` |
   | cost_share | object | | `{store, seller}` 비율(0–1), 합 = 1 | `{"store": 1.0, "seller": 0.0}` |
   | channels | enum[] | | `web` \| `mobile_web` \| `app` \| `agent`. 기본 전부 | `["web", "app"]` |
+  | percent_off | Number | | 받지 않는 필드. 등급·기간 퍼센트 할인을 여기로 요청하면 `percent_off_for_tier`로 `set_sale_prices`를 안내하기 위해서만 있음 | — |
+- 저장: 기준 금액은 `eligible_transaction_volume`, 정액은 `amount_off`로 저장해 `calculate_benefits`가 `threshold`·`amount_off`의 주문 할인과 무료 배송(`add_on`)을 계산합니다. `bogo`·`bundle`은 조건(`promotion_terms`)을 기록하며 혜택 계산기는 아직 이를 가격에 반영하지 않습니다. `bundle`은 `scope_mode: products`의 상품 둘 이상(각 1개)입니다.
+- `max_discount`가 실패하면 `detail`에 그 할인율을 허용하는 등급을 `max_discount.by_tier`에서 읽어 적습니다(예: "25% is over the 20% limit for everyone; vip allows up to 30%"). 허용하는 등급이 없으면 앞 문장만 씁니다. `set_sale_prices`도 같습니다.
 - 출력(프리뷰): `{"preview_id": "pv_p51a", "expires_at": "2026-11-06T12:10:00-05:00", "change_set_id": "cs_1051", "changes": [{"op": "create", "entity": "promotion", "id": null, "from": null, "to": {"name": "$10 off $120", "promotion_type": "threshold", "valid_from": "2026-11-20T00:00:00-05:00", "valid_through": "2026-11-30T23:59:00-05:00"}}], "checks": [{"rule": "max_discount", "passed": true, "detail": "At most 8.3% on a $120.00 order; limit 20%", "fix_tool": null}, {"rule": "price_floor", "passed": true, "detail": "No line goes under cost + 15%", "fix_tool": null}, {"rule": "promotion_overlap", "passed": true, "detail": "No order discount runs Nov 20–30", "fix_tool": null}, {"rule": "discount_layers.max_total_discount_rate", "passed": true, "detail": "Combined discount stays under 50%", "fix_tool": null}, {"rule": "cost_share.sum_must_equal", "passed": true, "detail": "Store 100%", "fix_tool": null}], "needs_approval": true, "approval_reason": "New order discount for everyone, Nov 20–30"}`
 - 출력(실행): `{"ok": true, "id": "promo_1051", "undo": {"by": "person", "target": "cs_1051", "until": "2026-12-01T23:59:00-05:00"}}`
 - 프리뷰: checks `max_discount`, `price_floor`, `promotion_overlap`, `discount_layers.max_total_discount_rate`, `cost_share.sum_must_equal`. 항상 `needs_approval: true`.
@@ -109,6 +112,7 @@
 - 요약: 프로모션의 이름·기간·범위를 고칩니다. `running`인 프로모션은 대상을 좁히거나 기간을 앞당기는 변경만 막지 않고, 혜택을 줄이는 변경은 `pause_promotion` 후에 합니다.
 - consumes → produces: `promotion_id` → `promotion_id`
 - 입력: `promotion_id`(`^promo_`, ✓), `name`, `valid_from`, `valid_through`, `product_ids`, `category_ids`, `exclude_product_ids` — 바꿀 것 하나 이상
+- 해석: 입력에 할인액이 없으므로 진행 중인 프로모션도 이름·끝·범위를 고칠 수 있습니다. 다만 시작은 이미 지났으므로 옮기지 않습니다(혜택을 멈추려면 `pause_promotion`·`end_promotion`, `invalid_state`). 회원 판매가(`set_sale_prices`)를 가진 프로모션은 기간만 바뀌고(판매가 기간이 따라감) 상품 범위는 바꾸지 않습니다(`invalid_state` → `set_sale_prices`).
 - 출력(프리뷰): `changes: [{"op": "update", "entity": "promotion", "id": "promo_1051", "from": {"valid_through": "2026-11-30T23:59:00-05:00"}, "to": {"valid_through": "2026-12-02T23:59:00-05:00"}}]`, checks `promotion_overlap`, `needs_approval: false` · 출력(실행): `{"ok": true, "id": "promo_1051", "undo": {"by": "person", "target": "cs_1052", "until": "2026-12-03T23:59:00-05:00"}}`
 - 프리뷰: `update promotion`.
 - 정책: `promotion_overlap`, `max_discount`
@@ -256,7 +260,7 @@
 - 논리주소/REST: `promotion.coupon.redeem` · `POST /v1/promotion/coupons/{coupon_id}/redeem`
 - 요약: 주문하기(`POST /v1/sales/orders`) 처리 안에서 commerce가 부르는 **내부 쓰기**입니다. 회원 쿠폰 상태 `available → used`, 혜택 금액을 주문에 기록합니다. 등급 일치·최소 주문·한도를 다시 검증합니다. 에이전트 매니페스트에는 나오지 않습니다.
 - consumes → produces: `coupon_id`, `order_id` → `member_coupon_id`
-- 입력: `coupon_id`(`^cpn_`, ✓), `order_id`(`^ord_`, ✓)
+- 입력: `coupon_id`(`^cpn_`, ✓), `order_id`(`^ord_`, ✓) — 주문한 회원, 소계, 주문에 기록된 할인은 sales가 넘겨 준 주문 읽기(`service::for_sales::provide_order_history`)로 읽습니다.
 - 출력: `{"ok": true, "id": "mcp_jamie_vipweekend20", "benefit_recorded": {"value": 17.80, "currency": "USD"}, "undo": null}` — 주문 취소·반품 때는 `restore_coupon`.
 - 프리뷰: 주문하기의 재검증 안에서 계산(따로 프리뷰하지 않음).
 - 정책: `coupon.tier_match`, `member_benefits_per_order`
@@ -403,7 +407,7 @@
 - 논리주소/REST: `promotion.loyalty.list_transactions` · `GET /v1/promotion/customers/{customer_id}/loyalty/transactions`
 - 요약: 적립금 원장 거래 목록(적립·사용·만료·지급·복원).
 - consumes → produces: `customer_id` → `loyalty_transaction_id[]`
-- 입력: `customer_id`(`^cus_` 또는 `me`, ✓), `type`(enum[] `accrual` \| `spend` \| `expire` \| `grant` \| `restore`), `limit`(기본 20), `cursor`
+- 입력: `customer_id`(`^cus_` 또는 `me`, ✓), `type`(enum[] `accrual` \| `spend` \| `expire` \| `grant` \| `restore` \| `reversal`), `limit`(기본 20), `cursor` — `reversal`은 `grant_loyalty`를 되돌린 차감 거래
 - 출력: `{"items": [{"id": "lyt_88", "type": "accrual", "amount": {"value": 0.89, "currency": "USD"}, "order_id": "ord_20311", "at": "2026-09-18T12:00:00-04:00", "expires": "2027-09-18"}], "total": 14}`
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음
@@ -417,7 +421,7 @@
 - 입력: `customer_id`(`^cus_`, ✓), `amount`(MonetaryAmount, ✓, 예 `{"value": 5.00, "currency": "USD"}`), `reason`(Text, ✓), `expires`(Date, 생략 시 `loyalty.expiry.window_days`)
 - 출력(프리뷰): `changes: [{"op": "grant", "entity": "loyalty_transaction", "id": null, "from": null, "to": {"customer_id": "cus_alex", "amount": {"value": 5.00, "currency": "USD"}}}]`, `needs_approval: true`, `approval_reason: "Grants $5.00 store points"` · 출력(실행): `{"ok": true, "id": "lyt_91", "undo": {"by": "person", "target": "cs_1055", "until": "2026-11-07T23:59:00-05:00"}}` — 되돌리면 같은 금액의 차감 거래를 원장에 추가.
 - 프리뷰: `grant loyalty_transaction`.
-- 정책: `loyalty.expiry`, `thresholds.loyalty_grant`([approval.yml](../../policies/approval.yml))
+- 정책: `loyalty.expiry`, `loyalty.grant.max_amount`(한 번에 지급할 수 있는 상한, 넘으면 `over_limit`), `thresholds.loyalty_grant`([approval.yml](../../policies/approval.yml))
 - 에러: `over_limit`(정책 상한 초과, 상한 변경은 정책 덮어쓰기) → null · `not_found`(`detail.entity: customer`) → `search_members`
 - 멱등성: `Idempotency-Key`.
 
@@ -437,6 +441,7 @@
 - 요약: 기한이 지난 적립금을 만료시키는 **배치 쓰기**입니다(원장에 `expire` 거래 추가). 작업 큐가 매일 부르며 에이전트 매니페스트에는 나오지 않습니다.
 - consumes → produces: → `loyalty_transaction_id[]`
 - 입력: `as_of`(Date, 생략 시 오늘)
+- 예약 작업: `loyalty.expire`가 매일 스토어 자정에 같은 만료를 실행하고 다음 날 실행을 예약합니다. 기한(`expires`)이 지난 날짜의 적립금은 작업이 기록하기 전에도 잔액에 들어가지 않습니다.
 - 출력: `{"ok": true, "id": "job_expire_20261107", "expired": 213, "undo": null}`
 - 프리뷰: 없음(시스템 작업)
 - 정책: `loyalty.expiry`
@@ -525,6 +530,7 @@
 - 출력(프리뷰): `{"preview_id": "pv_e311", "expires_at": "2026-11-06T12:30:00-05:00", "changes": [{"op": "create", "entity": "event", "id": null, "from": null, "to": {"name": "Fall check-in week", "status": "draft"}}], "checks": [{"rule": "event.entry_mechanics", "passed": true, "detail": "check_in is enabled", "fix_tool": null}, {"rule": "event.selection_methods.allowed_combinations", "passed": true, "detail": "check_in + random_draw allowed", "fix_tool": null}, {"rule": "event.reward_types", "passed": true, "detail": "product and loyalty_points are enabled", "fix_tool": null}, {"rule": "event.schedule", "passed": true, "detail": "Draw is after the end date", "fix_tool": null}, {"rule": "event.compliance.rules", "passed": true, "detail": "Rank 1 reward triggers 1 store rule: collect winner info", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
 - 출력(실행): `{"ok": true, "id": "evt_0311", "undo": {"by": "person", "target": "cs_1056", "until": "2026-11-07T23:59:00-05:00"}}`
 - 프리뷰: `create event`. `instant_win`이면 check `event.selection_methods.instant_win.odds_must_sum_at_most`도.
+- 시드: 만들 때 추첨 시드를 만들고 그 해시(`seed_commitment`)만 공개합니다. 시드는 추첨 기록에서 공개됩니다. `eligibility.purchase_condition.scope.brand_ids`는 아직 받지 않습니다(`invalid_input`).
 - 정책: `event.entry_mechanics`, `event.selection_methods`, `event.reward_types`, `event.schedule`, `event.compliance`. 보상이 쿠폰·적립금이면 `coupon`, `loyalty`도 확인
 - 에러: `type_disabled` → `list_event_types` · `combination_not_allowed` → `list_event_types` · `reward_type_disabled` → `list_reward_types` · `odds_exceed_one` → `create_event` · `tier_not_found` → `list_tiers` · `invalid_schedule` → `create_event`
 - 멱등성: `Idempotency-Key`.
@@ -585,6 +591,7 @@
 - 출력(프리뷰): `{"preview_id": "pv_d311", "expires_at": "2026-11-16T10:30:00-05:00", "changes": [{"op": "update", "entity": "event_entry", "id": "ent_5521", "from": "entered", "to": "won"}], "checks": [{"rule": "event.draw.requires_entries_closed", "passed": true, "detail": "Entries closed Nov 15 23:59", "fix_tool": null}, {"rule": "event.draw.exclude_previous_winners", "passed": true, "detail": "No previous winners", "fix_tool": null}, {"rule": "event.draw.fairness.seed_commit_before_close", "passed": true, "detail": "Seed hash published before close", "fix_tool": null}, {"rule": "event.compliance.rules", "passed": true, "detail": "2 winners need winner info", "fix_tool": null}], "needs_approval": true, "approval_reason": "Picks 101 winners"}`
 - 출력(실행): `{"ok": true, "id": "drw_0311_01", "undo": null}` — 발표 후에는 되돌리지 않고 `cancel_winner` · `promote_waitlist`로 고친다.
 - 프리뷰: 당첨자마다 `update event_entry`. 항상 `needs_approval: true`.
+- 추첨(`seeded_shuffle`): 응모를 `sha256(seed:추첨 순번:entry_id)` 순으로 늘어놓고 등수 순서대로 당첨자, 예비를 채웁니다. `draw`는 남은 응모를 `lost`로, `redraw`는 그 등수의 당첨·예비를 `lost`로 돌리고 새로 뽑습니다. `ranked` 이벤트는 심사이므로 `manual_select`·`cancel_winner`·`promote_waitlist`만 받습니다. 추첨·재추첨·직접 선정 뒤 이벤트는 `announced`(당첨 안내는 스텁).
 - 정책: `event.draw`, `event.draw.fairness`, `event.draw.announcement`, `event.compliance`
 - 에러: `entries_open` → `get_event` · `not_draw_event` → `get_event` · `reason_required` → `run_draw` · `waitlist_empty` → `run_draw`
 - 멱등성: `Idempotency-Key`. 같은 시드·같은 응모자 스냅샷이면 같은 결과(재현 가능).
@@ -613,7 +620,7 @@
 - 요약: 당첨 보상을 보상 종류의 지급 방식대로 처리한다 — `ship`(배송 요청, 기본 배송지), `issue`(쿠폰 발급, `issue_coupon`과 같은 경로), `grant`(적립금·스토어 크레딧, 원장에 추가), `email`(디지털 코드·안내 발송), `manual`(운영자 처리 기록). 컴플라이언스 규칙이 걸린 당첨자는 요구(정보 제출, 원천징수, 당첨자 납부 등)가 채워질 때까지 `compliance_pending`으로 보류한다. 즉시형 이벤트의 `issue` · `grant` 보상은 정책(`event.reward_types.auto_dispatch`)상 자동 지급된다.
 - consumes → produces: `event_id`, `entry_id[]`? → `reward_id[]`
 - 입력: `event_id`(`^evt_`, ✓), `entry_ids`(Text[], 없으면 지급 대기 당첨자 전체), `rank`(Integer), `notify`(Boolean, 기본 true)
-- 출력(프리뷰): `{"preview_id": "pv_w311", "expires_at": "2026-11-17T10:30:00-05:00", "changes": [{"op": "create", "entity": "event_reward", "id": null, "from": null, "to": {"entry_id": "ent_5521", "reward_type": "product", "fulfillment": "ship"}}], "checks": [{"rule": "event.compliance.on_unsatisfied", "passed": false, "detail": "1 winner has not submitted required info; held", "fix_tool": null}, {"rule": "event.reward_types.ship_to", "passed": true, "detail": "Shipping address on file for 1 product winner", "fix_tool": null}], "needs_approval": true, "approval_reason": "Sends rewards to 100 winners"}`
+- 출력(프리뷰): `{"preview_id": "pv_w311", "expires_at": "2026-11-17T10:30:00-05:00", "changes": [{"op": "create", "entity": "event_reward", "id": null, "from": null, "to": {"entry_id": "ent_5521", "reward_type": "product", "fulfillment": "ship"}}], "checks": [{"rule": "event.compliance.on_unsatisfied", "passed": true, "detail": "1 winner has not sent the required info (legal_name, address); held", "fix_tool": null}, {"rule": "event.reward_types.ship_to", "passed": true, "detail": "Shipping address on file for 1 product winner", "fix_tool": null}], "needs_approval": true, "approval_reason": "Sends rewards to 100 winners"}`
 - 출력(실행): `{"ok": true, "id": "rwb_0311", "undo": null}` — 보낸 보상은 되돌리지 않음.
 - 프리뷰: 당첨자마다 `create event_reward`. 항상 `needs_approval: true`.
 - 정책: `event.reward_types`, `event.compliance`, `thresholds.promotion_publish`([approval.yml](../../policies/approval.yml))

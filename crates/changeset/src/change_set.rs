@@ -36,6 +36,10 @@ pub struct NewChangeSet {
     pub interpretation: Vec<Value>,
     #[serde(default)]
     pub conversation_id: Option<String>,
+    /// The open task this set answers (`task_…`): the task links to the set while it has none,
+    /// and asks for a person once the set is submitted (docs/api/platform.md §task).
+    #[serde(default)]
+    pub task_id: Option<String>,
 }
 
 /// One item in `POST …/items` and `PUT …/items`.
@@ -268,8 +272,45 @@ pub async fn create(cx: &Cx, new: NewChangeSet) -> Result<Value, ToolError> {
         None,
     )
     .await?;
+    let task = match new.task_id.as_deref() {
+        Some(task) => link_task(&mut tx, task, &id, number, new.conversation_id.as_deref()).await?,
+        None => None,
+    };
     tx.commit().await.map_err(ToolError::from)?;
-    Ok(json!({"id": id, "number": number, "version": 1, "state": "drafting"}))
+    Ok(json!({"id": id, "number": number, "version": 1, "state": "drafting", "task_id": task}))
+}
+
+/// Links an open task without a change set to the new set (and to the conversation drafting it).
+/// A task that is closed or already has a set keeps what it has; the set stands on its own.
+async fn link_task(
+    tx: &mut TxCx,
+    task: &str,
+    cs: &str,
+    number: i32,
+    conversation: Option<&str>,
+) -> Result<Option<String>, ToolError> {
+    let state: Option<String> = sqlx::query_scalar(
+        "UPDATE platform.task SET change_set_id = $3, summary = $4,
+           conversation_id = coalesce($5, conversation_id), task_state = 'working',
+           updated_at = $6, version = version + 1
+         WHERE tenant_id = $1 AND id = $2 AND change_set_id IS NULL
+           AND task_state IN ('needs_you', 'working')
+         RETURNING task_state",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(task)
+    .bind(cs)
+    .bind(format!("Drafting change set #{number}"))
+    .bind(conversation)
+    .bind(tx.clock.now())
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db_err)?;
+    let Some(state) = state else {
+        return Ok(None);
+    };
+    crate::jobs::task_event(tx, task, &state, Some(cs)).await?;
+    Ok(Some(task.to_owned()))
 }
 
 /// Puts a stored preview at the end of the set. A set that was submitted before goes back to
@@ -692,6 +733,31 @@ pub async fn submit(cx: &Cx, cs: &str, version: i32) -> Result<Value, ToolError>
         None,
     )
     .await?;
+    // The task this set answers now waits for a person.
+    let number: i32 = sqlx::query_scalar(
+        "SELECT number FROM platform.change_set WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(cx.tenant.as_str())
+    .bind(cs)
+    .fetch_one(&mut *tx.tx)
+    .await
+    .map_err(db_err)?;
+    let waiting: Vec<String> = sqlx::query_scalar(
+        "UPDATE platform.task SET task_state = 'needs_you', summary = $3, updated_at = $4,
+           version = version + 1
+         WHERE tenant_id = $1 AND change_set_id = $2 AND task_state IN ('needs_you', 'working')
+         RETURNING id",
+    )
+    .bind(cx.tenant.as_str())
+    .bind(cs)
+    .bind(format!("Change set #{number} is waiting for your approval"))
+    .bind(cx.clock.now())
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db_err)?;
+    for id in waiting {
+        crate::jobs::task_event(&mut tx, &id, "needs_you", Some(cs)).await?;
+    }
     tx.commit().await.map_err(ToolError::from)?;
     Ok(json!({"id": cs, "version": version, "state": "waiting_for_approval"}))
 }
@@ -1204,10 +1270,20 @@ async fn run(
 ) -> Result<Value, ToolError> {
     let mut produced: BTreeMap<i32, Map<String, Value>> = BTreeMap::new();
     let mut done: Vec<(&Item, Value, Committed)> = Vec::new();
+    // What items show once (a new API key's secret): answered to the approver, never stored.
+    let mut shown_once: Vec<Value> = Vec::new();
     for item in list {
         match run_item(registry, runner, cs, item, &produced).await {
-            Ok((plan, c)) => {
+            Ok((plan, c, once)) => {
                 produced.insert(item.position, c.produced.clone());
+                if let Some(once) = once {
+                    let mut entry = Map::new();
+                    entry.insert("preview_id".into(), json!(item.preview_id));
+                    entry.insert("tool".into(), json!(item.instrument));
+                    entry.insert("result_id".into(), json!(c.id));
+                    entry.extend(once);
+                    shown_once.push(Value::Object(entry));
+                }
                 done.push((item, plan, c));
             }
             Err(e) => {
@@ -1324,7 +1400,11 @@ async fn run(
     )
     .await?;
     tx.commit().await.map_err(ToolError::from)?;
-    Ok(json!({"state": end.as_str(), "verification": verification}))
+    let mut out = json!({"state": end.as_str(), "verification": verification});
+    if !shown_once.is_empty() {
+        out[crate::SHOWN_ONCE] = Value::Array(shown_once);
+    }
+    Ok(out)
 }
 
 /// Commits one item in its own transaction. Running it again returns the first result.
@@ -1334,18 +1414,19 @@ async fn run_item(
     cs: &str,
     item: &Item,
     produced: &BTreeMap<i32, Map<String, Value>>,
-) -> Result<(Value, Committed), ToolError> {
+) -> Result<(Value, Committed, Option<Map<String, Value>>), ToolError> {
     let o = op(registry, &item.instrument)?;
     let mut tx = runner.begin().await.map_err(ToolError::from)?;
     let p = preview::load(&mut tx, &item.preview_id).await?;
     if p.preview_state == PreviewState::Committed.as_str() {
-        return Ok((p.plan.clone(), first_result(&p)?));
+        return Ok((p.plan.clone(), first_result(&p)?, None));
     }
     tx.preview_id = Some(item.preview_id.clone());
     tx.change_set_id = Some(cs.to_owned());
     let plan = bind::bind(&item.plan, produced)
         .map_err(|e| ToolError::new(ErrorCode::INTERNAL, format!("cannot bind the plan: {e}")))?;
-    let done = o.commit(&mut tx, &plan).await?;
+    let mut done = o.commit(&mut tx, &plan).await?;
+    let once = crate::take_shown_once(&mut done);
     mark_committed(&mut tx, &item.preview_id, &plan, &done).await?;
     sqlx::query(
         "UPDATE platform.change_set_item SET result_id = $4, updated_at = now()
@@ -1374,7 +1455,7 @@ async fn run_item(
     )
     .await?;
     tx.commit().await.map_err(ToolError::from)?;
-    Ok((plan, done))
+    Ok((plan, done, once))
 }
 
 /// `POST /v1/platform/change-sets/{id}/undo`: every item, in reverse order, before the deadline.

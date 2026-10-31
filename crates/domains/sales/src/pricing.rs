@@ -271,7 +271,7 @@ pub(crate) struct CartView {
     pub card_last4: Option<String>,
 }
 
-fn address_of(a: &SavedAddress) -> Address {
+pub(crate) fn address_of(a: &SavedAddress) -> Address {
     Address {
         name: a.name.clone(),
         street_address: a.street_address.clone(),
@@ -492,15 +492,4 @@ pub(crate) fn order_json(v: &CartView) -> Value {
             "code": c.code,
         })).collect::<Vec<_>>(),
     })
-}
-
-/// Keeps only the top-level `fields` asked for (all when empty).
-pub(crate) fn pick(mut v: Value, fields: &[String]) -> Value {
-    if fields.is_empty() {
-        return v;
-    }
-    if let Some(o) = v.as_object_mut() {
-        o.retain(|k, _| fields.iter().any(|f| f == k));
-    }
-    v
 }

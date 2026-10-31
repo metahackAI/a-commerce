@@ -57,7 +57,7 @@ a-commerce API
 | 툴 이름(모델이 보는 이름) | `verb_noun`, 평이한 영어 | `set_sale_prices` |
 | REST 경로 | `METHOD /v1/{domain}/{resources}/...` | `POST /v1/promotion/sale-prices` |
 
-툴 검색은 이 계층을 씁니다. 요청 → 해당 도메인 → 리소스 → 후보 툴 몇 개 + 툴 그래프 이웃. 모델은 289개 목록이 아니라 소수 후보만 봅니다([../backend/agent.md](../backend/agent.md) §3).
+툴 검색은 이 계층을 씁니다. 요청 → 해당 도메인 → 리소스 → 후보 툴 몇 개 + 툴 그래프 이웃. 모델은 290개 목록이 아니라 소수 후보만 봅니다([../backend/agent.md](../backend/agent.md) §3).
 
 ## 2. 오퍼레이션 종류
 
@@ -137,6 +137,8 @@ a-commerce API
 ```
 `limit`(기본 20, 최대 100), `cursor`, `fields`, `sort`. 하나를 가져오는 `get_*`는 목록 봉투 없이 엔티티를 돌려주고, 없으면 `not_found`.
 
+`fields`의 규칙(없는 이름은 `invalid_input`)은 [conventions.md](conventions.md) §6.
+
 ### 3.3 쓰기 (전선 위의 형식)
 
 모든 쓰기는 두 단계입니다. 도메인 파일의 입력 표에는 이 단계를 위한 필드(`preview`, `preview_id`)가 없습니다. 모델이 보는 툴 스키마에도 없고, 우리 에이전트의 런타임이 처리합니다([conventions.md](conventions.md) §7–§8).
@@ -179,7 +181,7 @@ a-commerce API
 
 ## 4. 전체 오퍼레이션 인덱스
 
-툴 **289개**(R 131 · W 118 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 9개(§2.2: 변경셋 6개, 데모 시계 2개, 데모 스토어 다시 적재 1개). **굵게** 표시한 30개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
+툴 **290개**(R 131 · W 119 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 9개(§2.2: 변경셋 6개, 데모 시계 2개, 데모 스토어 다시 적재 1개). **굵게** 표시한 30개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
 
 ### Offer
 
@@ -190,7 +192,7 @@ a-commerce API
 | product | **`get_product`** R · **`get_product_measurements`** R · `create_product` W · `update_product` W · `set_variants` W · `discontinue_product` W · `get_return_policy` R · `get_delivery_policy` R · `batch_import` W$ · `generate_image` W$ · `generate_copy` W |
 | offer | `get_price_breakdown` R · `set_price` W · `schedule_price_change` W |
 | inventory | `get_inventory` R · `set_variant_stock` W · `set_safety_stock` W |
-| reorder | `create_reorder` W |
+| reorder | `create_reorder` W · `receive_reorder` W |
 | approval | `submit_for_review` W · `approve_product` W$ · `reject_product` W · `get_change_history` R |
 | brand | `list_brands` R · `get_brand` R · `create_brand` W · `update_brand` W |
 | review | **`get_review_summary`** R · `list_reviews` R · `moderate_review` W · `create_review` W · `update_review` W · `delete_review` W · `vote_review_helpful` W · `report_review` W |

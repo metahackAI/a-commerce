@@ -229,7 +229,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 
 | 엔드포인트 | 본문 | 응답 | 에러 |
 |---|---|---|---|
-| `POST /v1/platform/change-sets` | `{title, request_text, interpretation[], conversation_id}` | `{id, number, version: 1, state: "drafting"}` | `invalid_input` |
+| `POST /v1/platform/change-sets` | `{title, request_text, interpretation[], conversation_id, task_id?}` — `task_id`: 이 변경셋이 답하는 할 일. 열려 있고 변경셋이 없을 때만 묶임 | `{id, number, version: 1, state: "drafting", task_id}` (`task_id`: 묶인 할 일, 없으면 `null`) | `invalid_input` |
 | `PATCH /v1/platform/change-sets/{id}` | `{title?, append_request_text?, interpretation?[]}` — 대화로 고친 요청: 문장을 `request_text`에 덧붙이고 해석을 바꿈. 항목은 아래 교체로 | `{id, version, state, item_count}` | `change_set_not_found`, `invalid_state`(끝 상태·실행 중) |
 | `POST /v1/platform/change-sets/{id}/items` | `{preview_id, depends_on?: [preview_id]}` | `{id, version, state, item_count}` | `change_set_not_found`, `preview_not_found`, `preview_expired`, `invalid_state`(끝 상태·실행 중), `already_exists`(같은 프리뷰) |
 | `PUT /v1/platform/change-sets/{id}/items` | `{items: [{preview_id, depends_on?}]}` — 대화로 고친 항목 전체로 교체 | `{id, version, state: "drafting", superseded: [preview_id]}` | `change_set_not_found`, `preview_not_found`, `preview_expired`, `invalid_state` |
@@ -272,7 +272,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 
 ## task
 
-할 일(`acom:Task`)은 운영자 홈(`task_list` 블록, [chat.md](chat.md) §3.3)에 보이는 일 단위입니다. 상태는 `acom:task_state`(`needs_you` \| `working` \| `done` \| `dismissed`, [enums.md](enums.md) §1.14), 출처 `origin`은 셋 중 하나입니다. 묶인 변경셋이 `live`나 `rejected`가 되면 할 일은 `done`이 되고 `summary`는 그 끝을 말합니다(`"#1041 ran: Reorder linen shirt: 3 sizes, 240 units"`, `"#1041 was rejected: …"`).
+할 일(`acom:Task`)은 운영자 홈(`task_list` 블록, [chat.md](chat.md) §3.3)에 보이는 일 단위입니다. 상태는 `acom:task_state`(`needs_you` \| `working` \| `done` \| `dismissed`, [enums.md](enums.md) §1.14), 출처 `origin`은 셋 중 하나입니다. 에이전트가 할 일을 맡아 변경셋을 만들면(턴의 `task_id`, [chat.md](chat.md) §1) 할 일은 그 변경셋과 대화에 묶여 `working`("Drafting change set #N")이 되고, 변경셋이 제출되면 `needs_you`("Change set #N is waiting for your approval")가 됩니다. 묶인 변경셋이 `live`나 `rejected`가 되면 할 일은 `done`이 되고 `summary`는 그 끝을 말합니다(`"#1041 ran: Reorder linen shirt: 3 sizes, 240 units"`, `"#1041 was rejected: …"`).
 
 | `origin` | 어떻게 생기나 | 예(장면 B2·B5) |
 |---|---|---|
@@ -280,7 +280,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 | `agent_noticed` | 감시 작업이 기준을 넘는 것을 찾고 운영 에이전트가 맡음 | "$200 넘는 반품 요청 12건 대기"(10:40), "Linen shirt 약 4일 뒤 품절"(08:40) |
 | `automation` | 감시 작업이 찾은 것을 미리 승인된 자동 조치로 처리 | "원가 이하 상품 4개를 하한으로"(07:55 → 08:31, Nov 7까지 되돌리기) |
 
-**감시 작업(watcher).** `commerce`의 예약 작업(`platform.job`)이 정해진 주기마다 정책 기준을 읽어 데이터를 확인하고, 기준을 넘으면 할 일을 만들거나 갱신합니다. 기준과 주기는 코드가 아니라 [platform.yml](../../policies/platform.yml) `watchers`에 있습니다: 환불 임계(`approval.yml` `thresholds.refund`)를 넘는 반품 요청이 기다리는지(`returns_over_refund_threshold`), 최근 판매 속도로 며칠 안에 품절될 변형이 있는지(`stock_out_forecast`), 정가가 원가보다 낮은 상품이 있는지(`price_below_cost`). 같은 원인으로 열린 할 일이 있으면 새로 만들지 않고 그 할 일을 갱신합니다. 감지는 결정적이고 처리는 대화입니다: 할 일마다 요청 문장(`request`)이 있고, 운영자가 항목을 열면(`agent_noticed`는 감시 작업이 바로) 에이전트가 그 문장으로 새 턴을 시작합니다([../backend/agent.md](../backend/agent.md) §10). 할 일이 만든 쓰기는 모두 변경셋으로 가고(`change_set_id`), 할 일은 변경셋이 `live`·`rejected`가 되면 `done`이 됩니다(엔진이 옮기고 `task.updated`를 보냄). 운영자는 필요 없는 할 일을 사람 전용 `dismiss`로 치웁니다.
+**감시 작업(watcher).** `commerce`의 예약 작업(`platform.job`)이 정해진 주기마다 정책 기준을 읽어 데이터를 확인하고, 기준을 넘으면 할 일을 만들거나 갱신합니다. 기준과 주기는 코드가 아니라 [platform.yml](../../policies/platform.yml) `watchers`에 있습니다: 환불 임계(`approval.yml` `thresholds.refund`)를 넘는 반품 요청이 기다리는지(`returns_over_refund_threshold`), 최근 판매 속도로 며칠 안에 품절될 변형이 있는지(`stock_out_forecast`), 정가가 원가보다 낮은 상품이 있는지(`price_below_cost`). 같은 원인으로 열린 할 일이 있으면 새로 만들지 않고 그 할 일을 갱신합니다. 감지는 결정적이고 처리는 대화입니다: 할 일마다 요청 문장(`request`)이 있고, 운영자가 항목을 열면 에이전트가 그 문장으로 새 턴을 시작합니다([../backend/agent.md](../backend/agent.md) §10). 스토어가 `platform.yml` `task_pickup`을 켜면 감시 작업이 새로 연 `agent_noticed` 할 일은 사람이 열기 전에 게이트웨이가 `acts_as` 운영자의 위임 토큰으로 바로 넘깁니다([../backend/gateway.md](../backend/gateway.md) §5). 초안은 승인 대기에서 멈춥니다. 할 일이 만든 쓰기는 모두 변경셋으로 가고(`change_set_id`), 할 일은 변경셋이 `live`·`rejected`가 되면 `done`이 됩니다(엔진이 옮기고 `task.updated`를 보냄). 운영자는 필요 없는 할 일을 사람 전용 `dismiss`로 치웁니다.
 
 **감시 작업이 할 일을 쓰는 방식.** 감지기는 데이터를 가진 도메인에 있습니다: 반품 요청은 `fulfillment`, 품절 예측은 `sales`(판매량, 재고는 `catalog`가 내놓는 `product_stock`), 원가 아래 정가는 `catalog`. 감지기는 할 일 초안만 돌려주고 `platform.task`는 작업 실행기(`acom-changeset::jobs`, [예약 작업](#예약-작업))가 씁니다. 원인은 `stock_out_forecast`가 상품 하나, 나머지 둘은 감시 작업 전체입니다. 같은 감시 작업·같은 원인의 열린 할 일(`needs_you`·`working`)이 있으면 그 할 일의 `title`·관찰값(`watcher.observed`)·관련 엔티티만 새로 쓰고(상태·요약·요청 문장·변경셋은 그대로, 버전 +1), 없을 때만 새로 만듭니다(`needs_you`로 시작). 기준을 넘는 것이 없으면 아무것도 바꾸지 않습니다. 데모 시계 Fri Nov 6 11:00에 세 감시 작업을 돌리면 시드의 할 일 둘이 같은 관찰값으로 갱신됩니다: 반품 요청 12건(가장 오래된 것 2026-11-04T09:12-05:00), Linen shirt 재고 38·최근 7일 61개 판매·4.4일. 원가 아래 상품은 없습니다(#1040이 08:31에 고침).
 
@@ -498,15 +498,20 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 ## auth
 
 > 사람(운영자·쇼퍼)의 로그인·로그아웃·세션은 게이트웨이의 `/api/auth/*`가 합니다([../backend/gateway.md](../backend/gateway.md) §4–§5). 아래 툴은 **외부 에이전트와 연동 클라이언트**의 토큰을 위한 것이며 비밀번호를 받지 않습니다(비밀번호는 사람 전용 엔드포인트만, [README.md](README.md) §2).
+>
+> - **클라이언트 = API 키.** `client_id`는 [api_key](#api_key)의 id(`key_…`)이고 비밀 값은 `issue_api_key`가 한 번 보여 준 값입니다. 클라이언트 세션은 `platform.session`의 한 행(`actor_kind: external_agent`, 주체 = 키)이라 게이트웨이의 쿠키 세션 조회는 이 행을 사람으로 받지 않고, 이 툴들은 사람의 브라우저 세션을 건드리지 않습니다. 대상 `audience`는 `shopper`(외부 에이전트가 들어오는 MCP 면)입니다.
+> - **비밀은 저장하지 않음.** `client_secret_ref`·`code`·`refresh_token` 입력은 툴 스키마에서 `writeOnly`이고 프리뷰 저장소에는 `"(not stored)"`로 남습니다. 토큰은 SHA-256 해시로만 저장하고, 실행 응답에 한 번만 나옵니다(같은 `preview_id` 재실행은 토큰 없이 첫 결과). 상한·수명·잠금은 [platform.yml](../../policies/platform.yml) `client_sessions`.
+> - **프리뷰 → 실행.** 다른 쓰기와 같이 프리뷰가 자격을 확인하고 만들 세션(`changes`: `create session`, 상한을 넘으면 가장 오래된 세션의 `revoke`)을 보여 주며, 실행이 토큰을 냅니다. 승인은 필요 없습니다. 예외 둘은 방어용 기록이라 프리뷰에서도 남습니다: 틀린 비밀 값의 횟수(잠금), 재사용된 리프레시 토큰(그 클라이언트의 모든 세션 종료).
+> - 게이트웨이가 아직 세션 없는 외부 클라이언트를 이 경로로 보내지 않으므로, 지금은 `tools:write:platform`을 가진 호출자만 부를 수 있습니다(게이트웨이 연결은 후속 작업).
 
 ### `login` — Kind: W
 - 논리 주소 · REST: `platform.auth.login` · `POST /v1/platform/auth/login`
 - 요약: 외부 에이전트의 OAuth 코드 또는 연동 클라이언트의 자격으로 액세스·리프레시 토큰을 받습니다. 토큰의 스코프는 요청과 허용의 교집합이고, 외부 에이전트는 `external:*`(읽기·장바구니·주문 준비)만 받습니다.
 - consumes → produces: → access token
 - 입력: `grant_type`(✓, `oauth_code` \| `client_credentials`), `client_id`(✓), `code`(`oauth_code`일 때 ✓), `client_secret_ref`(`client_credentials`일 때 ✓, 발급된 API 키), `requested_scopes?[]`
-- 출력: `{"ok": true, "id": "ses_7q2", "access_token": "…", "refresh_token": "…", "token_type": "Bearer", "expires_in": 900, "claims": {"sub": "key_31", "tenant": "store_northwind", "kind": "external_agent", "scopes": ["external:read", "external:cart"]}, "undo": null}`
-- 프리뷰: 없음. 토큰 발급은 바로 실행
-- 정책: [customer.yml](../../policies/customer.yml) `password.lockout`의 실패 잠금 규칙을 클라이언트 자격에도 적용
+- 출력: `{"ok": true, "id": "ses_7q2", "access_token": "…", "refresh_token": "…", "token_type": "Bearer", "expires_in": 900, "claims": {"sub": "key_31", "tenant": "store_northwind", "kind": "external_agent", "scopes": ["external:read", "external:cart"]}, "undo": null}` — `access_token`·`refresh_token`은 이 응답에 한 번만
+- 프리뷰: `changes` = `create` `session`(`to`: 클라이언트·스코프·`expires_in`), 클라이언트 세션 수가 `client_sessions.max_sessions_per_client`를 넘으면 가장 오래된 세션의 `revoke`. `needs_approval: false`. 이 스토어는 아직 OAuth 승인 화면이 없어 `oauth_code`는 언제나 `invalid_credentials`(`detail.hint`)
+- 정책: [customer.yml](../../policies/customer.yml) `password.lockout`의 실패 잠금 규칙을 클라이언트 자격에도 적용(`client_sessions.lockout_from`). 틀린 비밀 값은 키의 `failed_attempt_count`에 세고, 기준에 닿으면 `locked_until`까지 `account_locked`
 - 에러: `invalid_credentials`(class `unauthenticated`) → `login` · `account_locked` → `null` · `scope_not_granted`(class `forbidden`) → `list_permissions`
 - 멱등성: 발급은 상태가 없어 필요 없음. 리프레시 토큰은 한 번만 쓰고 교체
 
@@ -516,8 +521,8 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 - consumes → produces: refresh token → access token
 - 입력: `refresh_token`(✓). 스토어·스코프는 원래 토큰에서 이어받고 넓힐 수 없음
 - 출력: `login`과 같은 형식
-- 프리뷰: 없음
-- 정책: 리프레시 토큰 교체, 세션 수 상한
+- 프리뷰: `changes` = `create` `session`(같은 클라이언트·스코프) + `revoke` 이전 세션. `needs_approval: false`
+- 정책: 리프레시 토큰 교체(이전 세션은 `replaced_by_id`로 새 세션을 가리킴), 세션 수 상한, 수명은 [platform.yml](../../policies/platform.yml) `client_sessions`
 - 에러: `refresh_expired` → `login` · `refresh_reused` → `login` · `revoked` → `login`
 - 멱등성: 한 번만 쓸 수 있음
 
@@ -525,9 +530,9 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 - 논리 주소 · REST: `platform.auth.logout` · `POST /v1/platform/auth/logout`
 - 요약: 현재 세션(또는 그 클라이언트의 모든 세션)의 리프레시 토큰을 폐기합니다. 액세스 토큰은 짧은 만료까지 유효합니다.
 - consumes → produces: →
-- 입력: `scope?`(`current` \| `all_sessions`, 기본 `current`)
-- 출력: `{"ok": true, "id": "ses_7q2", "undo": null}`
-- 프리뷰: 없음
+- 입력: `scope?`(`current` \| `all_sessions`, 기본 `current`). 현재 세션은 요청 토큰의 세션이고, API 클라이언트(`external_agent`)의 요청만 받습니다(사람은 `forbidden`, 게이트웨이의 `/api/auth/logout`)
+- 출력: `{"ok": true, "id": "ses_7q2", "sessions_ended": 1, "undo": null}`
+- 프리뷰: `changes` = 끝낼 세션마다 `revoke` `session`. `needs_approval: false`
 - 정책: 없음
 - 에러: `already_revoked`(class `invalid_state`) → `login`
 - 멱등성: 다시 불러도 같은 결과
@@ -543,13 +548,13 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 - 입력: `tenant_id`(✓, 토큰의 `tenant`와 같아야 함, `^store_[a-z0-9_]+$`), `fields?[]`
 - 출력: `{"id": "store_northwind", "name": "Northwind Apparel", "url": "northwind.example", "in_language": "en", "currency": "USD", "acom:time_zone": "America/New_York", "acom:feature_flags": {}, "acom:policy_overrides": 9, "acom:status": "active"}`
 - 프리뷰: 해당 없음(읽기)
-- 정책: 다른 스토어 조회는 플랫폼 관리자만
+- 정책: 다른 스토어 조회는 플랫폼 관리자만. 서비스 접속은 행 수준 보안으로 요청의 스토어만 보므로, 지금은 토큰의 `tenant`가 아닌 스토어는 누구에게나 `forbidden`
 - 에러: `forbidden`(`detail.reason: tenant`) → `null` · `tenant_not_found` → `list_tenants`
 - 멱등성: 읽기(부작용 없음)
 
 ### `list_tenants` — Kind: R
 - 논리 주소 · REST: `platform.tenant.list` · `GET /v1/platform/tenants`
-- 요약: 전체 스토어 목록. 플랫폼 관리자 전용입니다.
+- 요약: 전체 스토어 목록. 플랫폼 관리자 전용입니다. 행 수준 보안 아래에서는 요청의 스토어 하나가 보입니다.
 - consumes → produces: → `tenant_id[]`
 - 입력: `status?`(`active` \| `suspended`), `limit`(기본 20), `cursor?`
 - 출력: `{"items": [{"id": "store_northwind", "name": "Northwind Apparel", "acom:status": "active"}], "total": 1}`
@@ -563,6 +568,8 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 ## role
 
 > 스코프 목록은 [../backend/gateway.md](../backend/gateway.md) §2(`tools:read:{domain}`, `tools:write:{domain}`, `changeset:draft`, `human:*`, `external:*`, `admin:demo`). 역할은 스코프 묶음이고, 게이트웨이가 역할 → 스코프를 읽어 토큰을 만듭니다.
+>
+> 이 절과 `menu`·`admin_user`·`org`·`api_key`·`list_tenants`의 "관리자 역할만"은 `tools:write:platform` 스코프(플랫폼 관리자 역할만 가짐)를 가진 호출자 또는 그 사람을 대신하는 에이전트입니다. 권한이 바뀌는 W$(`assign_role`, `create_admin_user`, `set_admin_status`, `issue_api_key`, `revoke_api_key`)는 [approval.yml](../../policies/approval.yml) `thresholds.access_change`로 `approver_role: platform_admin`이 승인합니다.
 
 ### `list_roles` — Kind: R
 - 논리 주소 · REST: `platform.role.list` · `GET /v1/platform/roles`
@@ -605,7 +612,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 - 출력: 프리뷰 → 실행 `{"ok": true, "id": "rol_returns_desk", "undo": {"by": "person", "target": "cs_1047", "until": "2026-11-07T23:59:00-05:00"}}`
 - 프리뷰: `changes` = `grant`/`revoke` `role`(`id`: 역할, `to`: 관리자 id). checks `roles.least_privilege`. 항상 `needs_approval: true`, 예 `approval_reason: "Gives refund rights to 1 person"`.
 - 정책: [platform.yml](../../policies/platform.yml) `roles.least_privilege`, [approval.yml](../../policies/approval.yml)
-- 에러: `already_assigned` → `get_role` · `role_not_found` → `list_roles` · `admin_user_not_found` → `search_admin_users`
+- 에러: `already_assigned` → `get_role` · `not_assigned`(class `invalid_state`, 가지지 않은 역할을 빼려 함) → `get_role` · `role_not_found` → `list_roles` · `admin_user_not_found` → `search_admin_users`
 - 멱등성: `(role_id, admin_user_id)`로 한 건
 
 ### `list_permissions` — Kind: R
@@ -676,8 +683,8 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 - 요약: 관리자 계정을 만들고 역할·조직을 줍니다. 권한을 가진 사람이 새로 생기므로 항상 변경셋 승인. 첫 로그인 때 비밀번호를 정하게 하는 링크를 보냅니다(비밀번호는 툴이 다루지 않음).
 - consumes → produces: `role_id[]`, `org_id?` → `admin_user_id`
 - 입력: `name`(✓), `email`(✓), `role_ids[]`(✓), `org_id?`
-- 출력: 프리뷰 → 실행 `{"ok": true, "id": "adm_kim", "undo": {"by": "person", "target": "cs_1047", "until": "2026-11-07T23:59:00-05:00"}}`
-- 프리뷰: `changes` = `create` `admin_user`(`id: null`). checks `roles.known_roles`, `admin_users.email_unique`. 항상 `needs_approval: true`.
+- 출력: 프리뷰 → 실행 `{"ok": true, "id": "adm_kim", "invitation": {"channel": "email", "to": "…", "sent": false, "note": "…"}, "undo": {"by": "person", "target": "cs_1047", "until": "2026-11-07T23:59:00-05:00"}}` — 메일 발송은 이 빌드에서 스텁이라 `sent: false`와 그 사실을 적습니다. 되돌리기는 한 번도 로그인하지 않은 계정만 지웁니다
+- 프리뷰: `changes` = `create` `admin_user`(`id: null`). checks `roles.known_roles`(모든 `role_ids`가 스토어의 역할), `admin_users.email_unique`. 항상 `needs_approval: true`.
 - 정책: [platform.yml](../../policies/platform.yml) `roles.known_roles`, `admin_users.email_unique`, [approval.yml](../../policies/approval.yml)
 - 에러: `duplicate_email` → `search_admin_users` · `invalid_role` → `list_roles`
 - 멱등성: 같은 `preview_id` 재실행은 첫 결과. 같은 이메일이면 `duplicate_email`.
@@ -716,7 +723,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 - 출력: 프리뷰 → 실행 `{"ok": true, "id": "org_merch", "undo": {"by": "person", "target": "cs_1047", "until": "2026-11-07T23:59:00-05:00"}}`
 - 프리뷰: checks `orgs.no_cycle`(자기 자신·하위를 상위로 둘 수 없음). `needs_approval: false`.
 - 정책: [platform.yml](../../policies/platform.yml) `orgs.no_cycle`
-- 에러: `cycle_detected` → `list_orgs` · `org_not_found` → `list_orgs`
+- 에러: `cycle_detected` → `list_orgs` · `org_not_found`(`parent_org_id`가 없음) → `list_orgs` · `invalid_input`(`detail.reason: taken`, 다른 조직의 이름) → `list_orgs`. `org_id` 없이 같은 이름의 조직이 있으면 그 조직을 고칩니다
 - 멱등성: 같은 `preview_id` 재실행은 첫 결과.
 
 ---
@@ -739,8 +746,8 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 - 요약: 외부 에이전트·연동용 API 키를 발급합니다. 스코프는 발급자 역할과의 교집합으로 줄어듭니다. 비밀 값은 실행 응답에 한 번만 나옵니다. 항상 변경셋 승인.
 - consumes → produces: → `api_key_id`
 - 입력: `name`(✓), `scopes[]`(✓), `expires?`(DateTime)
-- 출력: 프리뷰 → 실행 `{"ok": true, "id": "key_31", "secret": "(한 번만 표시)", "undo": {"by": "person", "target": "cs_1047", "until": "2026-11-07T23:59:00-05:00"}}` — 되돌리면 키가 폐기됨
-- 프리뷰: `changes` = `create` `api_key`(`id: null`). checks `api_keys.scope_within_issuer`, `api_keys.external_agent_scopes`. 항상 `needs_approval: true`.
+- 출력: 프리뷰 → 실행 `{"ok": true, "id": "key_31", "secret": "(한 번만 표시)", "undo": {"by": "person", "target": "cs_1047", "until": "2026-11-07T23:59:00-05:00"}}` — 되돌리면 키가 폐기됨. W$라 실행은 승인된 변경셋 안에서 일어나므로 비밀 값은 승인한 사람의 `approve` 응답 `shown_once[]`(`{preview_id, tool, result_id, secret}`)에 한 번만 나오고, 프리뷰·변경셋·액션 로그·멱등 키 기록 어디에도 남지 않습니다
+- 프리뷰: `changes` = `create` `api_key`(`id: null`). checks `api_keys.scope_within_issuer`(발급자 = 요청한 운영자, 또는 에이전트가 대신하는 운영자. 그 사람의 역할 스코프를 넘으면 `scope_not_granted`), `api_keys.external_agent_scopes`(`external:*`를 가진 키는 목록의 스코프만, 실패 시 `fix_tool: issue_api_key`). `human:*`·`admin:*`·`changeset:*`는 사람과 우리 에이전트의 것이라 키에 주지 않음(`scope_not_granted`). 항상 `needs_approval: true`.
 - 정책: [platform.yml](../../policies/platform.yml) `api_keys.scope_within_issuer`, `api_keys.external_agent_scopes`, [approval.yml](../../policies/approval.yml). 비밀 값은 해시로만 저장
 - 에러: `scope_not_granted` → `list_permissions` · `duplicate_key_name` → `list_api_keys`
 - 멱등성: 같은 `preview_id` 재실행은 첫 결과(비밀 값은 다시 보여 주지 않음).
@@ -751,7 +758,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 - consumes → produces: `api_key_id` → `api_key_id`
 - 입력: `api_key_id`(✓), `reason`(✓)
 - 출력: 프리뷰 → 실행 `{"ok": true, "id": "key_31", "undo": null}` — 폐기는 되돌릴 수 없음(새로 발급)
-- 프리뷰: `changes` = `update` `api_key` `active` → `revoked`. `detail`에 마지막 사용 시각. 항상 `needs_approval: true`.
+- 프리뷰: `changes` = `update` `api_key` `active` → `revoked`(`note`: 사유). 마지막 사용 시각과 끝날 세션 수는 `approval_reason`에(승인 때 다시 계산해도 `changes`가 바뀌지 않게). 항상 `needs_approval: true`.
 - 정책: [approval.yml](../../policies/approval.yml)
 - 에러: `already_revoked` → `list_api_keys` · `api_key_not_found` → `list_api_keys`
 - 멱등성: 이미 폐기된 키는 같은 결과
@@ -766,6 +773,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 |---|---|---|
 | `promotion.start`, `promotion.end` | promotion | `payload {promotion_id}`. 상태는 읽을 때마다 기간과 스토어 시계로 계산되므로 동작은 바뀌지 않습니다. 그 시각에 읽기가 보여 주는 상태(`running`, `ended`)를 `promotion_status`에 기록하고, 바뀌었으면 outbox에 `promotion.started`·`promotion.ended`(`{promotion_id, status, at}`)를 남깁니다. 멈춘·초안·끝난 프로모션은 그대로 둡니다 |
 | `watcher.returns_over_refund_threshold` | fulfillment | [task](#task)의 감시 작업. `claim_status`가 `requested`이고 금액이 `approval.thresholds.refund`를 넘는 반품 요청 |
+| `subscription.renew` | sales | `payload {subscription_id, charge_date}`. 결제일 0시(스토어 시간대)에 정기 주문의 회차 주문을 만들고 저장된 카드로 결제한 뒤 다음 결제일(`order.yml` `subscription.cycle_length`)의 작업을 예약합니다. 멈춘·해지된 구독, 날짜가 바뀐 구독은 건너뜁니다([sales.md](sales.md#예약-작업-subscriptionrenew)) |
 | `watcher.stock_out_forecast` | sales(재고는 catalog) | 오늘을 뺀 최근 `lookback_days`일(스토어 날짜)의 판매량(취소 줄 제외)으로 `재고 × 일수 ≤ days_until_stockout_lte × 판매량`인 상품 |
 | `watcher.price_below_cost` | catalog | 정가 < 원가인 변형. 고침은 `price_floor`까지 `set_price` |
 
@@ -817,4 +825,4 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 |---|---|---|
 | `GET /v1/platform/store` | 토큰만 | 요청 문맥의 스토어: `{store_id, currency, time_zone, now}`. `now`는 데모 모드면 데모 시계. agent 서비스가 턴마다 스토어 시각·통화를 여기서 받습니다(commerce 테이블을 직접 읽지 않음) |
 | `GET /v1/platform/previews/{preview_id}` | `changeset:draft` 또는 `tools:read:platform` | 저장된 프리뷰 하나: `{preview_id, operation, input, changes[], checks[], needs_approval, approval_reason, expires_at, state, change_set_id, policy_version, created_at}`. `state`는 [enums.md](enums.md) §1.9. 런타임이 실행 전 확인하거나 화면이 프리뷰를 다시 그릴 때 |
-| `GET /v1/platform/events` (SSE) | `tools:read:platform` | 스토어의 진행 이벤트: `change_set.updated {change_set_id, version, state}`, `task.updated {task_id, state, change_set_id?}`, `job.updated {job_id, kind, state, run_at}`([예약 작업](#예약-작업)). 각 이벤트는 `id:`(스토어 안 순번)를 가지며 `Last-Event-ID`로 이어 받음. agent 서비스가 구독해 대화의 `change_set.updated`([chat.md](chat.md) §2)로 흘림 |
+| `GET /v1/platform/events` (SSE) | `tools:read:platform` | 스토어의 진행 이벤트: `change_set.updated {change_set_id, version, state}`, `task.updated {task_id, state, change_set_id?, created?, origin?}`(`created: true`와 `origin`은 감시 작업이 할 일을 새로 만들 때만), `job.updated {job_id, kind, state, run_at}`([예약 작업](#예약-작업)). 각 이벤트는 `id:`(스토어 안 순번)를 가지며 `Last-Event-ID`로 이어 받음. agent 서비스가 구독해 대화의 `change_set.updated`([chat.md](chat.md) §2)로 흘림 |

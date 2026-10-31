@@ -72,6 +72,7 @@
 - **테넌트 결정:** 호스트 이름 → 스토어. 데모는 스토어 하나. 토큰의 `tenant`가 유일한 근거이고 클라이언트가 보낸 테넌트 헤더는 무시합니다.
 - **레이트 리밋:** governor로 주체·테넌트별. 채팅 턴, 쓰기, 읽기를 따로 셉니다. 한도는 설정 파일.
 - **관측성:** 요청 id를 만들어(`X-Request-Id`가 오면 이어받음) 내부 토큰과 로그에 싣습니다. 이 id가 에이전트 턴과 커머스 액션 로그를 잇습니다.
+- **할 일 맡기기:** 스토어가 `platform.yml` `task_pickup.enabled`를 켜면, 게이트웨이가 커머스 이벤트(`GET /v1/platform/events`)를 구독하다가 감시 작업이 **새로 만든** `agent_noticed` 할 일(`task.updated`의 `created: true`)의 요청 문장을 `POST /chat/bo/turns {message, task_id}`로 보냅니다. 토큰은 `task_pickup.acts_as` 운영자의 위임 토큰(§3, `human:*` 없음)이라 초안은 승인 대기에서 멈춥니다. 갱신된 할 일과 시드의 할 일은 맡지 않고, 턴은 하나씩 순서대로 돌립니다. 정책과 할 일을 읽는 요청은 `sys_task_pickup` 시스템 주체로 서명합니다. 코드: `services/gateway/src/pickup.rs`.
 - **타임아웃:** 일반 요청 30초, 채팅 SSE는 턴 상한(60초) + 여유. 업스트림 오류는 `{"error": {"code": "upstream_unavailable", ...}}`로 통일.
 
 ## 6. 로그인과 세션 API (`/api/auth/*`)
@@ -90,3 +91,4 @@
 - **세션 없는 요청:** 읽기는 익명(읽기 스코프만)으로 통과합니다. 상태를 바꾸는 첫 요청(게스트의 장바구니 담기)은 그 자리에서 게스트 세션을 만들고 쿠키를 붙여 돌려줍니다.
 - **내부 토큰:** `/api/v1/*`는 사람의 스코프 그대로(수명 5분), `/api/chat/*`는 `on_behalf()`(`human:*`·`admin:*` 제거, 운영자는 `changeset:draft` 추가, 한 턴 15분). 브라우저가 보낸 `Authorization`은 버리고, commerce·agent로 쿠키를 넘기지 않습니다.
 - **운영자 스코프:** 역할(`platform.admin_user_role` → `platform.role_scope`)의 합 + `changeset:draft`. 데모 모드의 플랫폼 관리자는 `admin:demo`도 받습니다. 데모 계정은 `admin` / `admin123`(모든 역할과 승인 역할).
+- **API 클라이언트 세션:** 외부 에이전트·연동 클라이언트는 API 키로 `login` 툴([../api/platform.md](../api/platform.md#auth))을 불러 토큰을 받습니다. 그 세션도 `platform.session`의 행이지만 `actor_kind: external_agent`이고 주체가 키(`key_…`)라 쿠키 조회는 이 행을 사람 세션으로 받지 않습니다. 이 토큰을 `/mcp`에서 받아 `external_agent` 주체로 바꾸는 일은 게이트웨이의 후속 작업입니다.

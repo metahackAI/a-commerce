@@ -18,6 +18,7 @@ import {List, ListItem} from '@astryxdesign/core/List';
 import {Spinner} from '@astryxdesign/core/Spinner';
 import {Avatar} from '@astryxdesign/core/Avatar';
 
+import {AILISM, AilismAvatar, AilismMark} from '@/components/brand/Ailism';
 import {ApiError} from '@/lib/api';
 import {demoSignIn, listPersonas, signIn, type Persona, type Session} from '@/lib/session';
 
@@ -89,12 +90,11 @@ export function LoginForm({demoMode, signedInAs}: {demoMode: boolean; signedInAs
   return (
     <Center axis="both" padding={6} minHeight="100dvh">
       <VStack gap={4} hAlign="center" width="100%" maxWidth={420}>
-        <VStack gap={1} hAlign="center">
-          <Text type="body" weight="bold" size="lg">
-            Northwind Apparel
-          </Text>
+        <VStack gap={2} hAlign="center">
+          <AilismAvatar size="xl" />
+          <AilismMark size="lg" />
           <Text type="supporting" color="secondary">
-            Back office
+            {`Back office · ${AILISM.promise}`}
           </Text>
         </VStack>
 

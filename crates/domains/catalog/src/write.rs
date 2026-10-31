@@ -629,7 +629,7 @@ pub async fn scheduled_prices(
             continue;
         }
         let none = Decimal::MIN;
-        let p = crate::ops::schedule::price_at(none, &mine, at);
+        let p = crate::offer::price_at(none, &mine, at);
         if p != none {
             out.insert(offer.clone(), p);
         }

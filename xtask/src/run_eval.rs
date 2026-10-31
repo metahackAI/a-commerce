@@ -103,7 +103,14 @@ struct Run {
     ms: u128,
     precision: Option<f64>,
     recall: Option<f64>,
+    /// The agent said its model is not answering: the run measures the outage, not the agent.
+    model_down: bool,
 }
+
+/// How the agent runtime words a turn on which no model answered (crates/agent MODEL_DOWN).
+const MODEL_DOWN: &str = "The assistant's model is not answering right now";
+/// Runs in a row with the model down before the evaluation stops.
+const STOP_AFTER_DOWN: usize = 2;
 
 struct Client {
     http: reqwest::Client,
@@ -333,6 +340,7 @@ async fn run_task(c: &mut Client, task: &Task, tool_set: &str, reset: bool) -> R
             reply = r;
             blocks = b;
         }
+        run.model_down = reply.starts_with(MODEL_DOWN);
         let conv = conv.ok_or("no conversation")?;
         let log = c
             .json(
@@ -699,10 +707,12 @@ pub fn eval(root: &Path) -> ExitCode {
             }
         };
         let mut runs = Vec::new();
-        for ts in &sets {
+        let mut down = 0;
+        'all: for ts in &sets {
             for task in &chosen {
                 for n in 0..repeat {
                     let r = run_task(&mut c, task, ts, reset).await;
+                    down = if r.model_down { down + 1 } else { 0 };
                     eprintln!(
                         "{} [{ts}] run {}: {} — {} tool call(s), {} model call(s), {:.1}s{}",
                         task.id,
@@ -718,16 +728,38 @@ pub fn eval(root: &Path) -> ExitCode {
                         }
                     );
                     runs.push(r);
+                    if down >= STOP_AFTER_DOWN {
+                        break 'all;
+                    }
                 }
             }
         }
         runs
     });
+    if runs
+        .iter()
+        .rev()
+        .take(STOP_AFTER_DOWN)
+        .filter(|r| r.model_down)
+        .count()
+        == STOP_AFTER_DOWN
+    {
+        eprintln!(
+            "The model is not answering ({STOP_AFTER_DOWN} runs in a row); stopped after {} run(s). No report written: these runs measure the outage, not the agent.",
+            runs.len()
+        );
+        return ExitCode::FAILURE;
+    }
     let md = report(&set, &base, &runs, repeat);
     match arg("--out") {
         Some(path) => {
+            if let Some(dir) = Path::new(&path).parent() {
+                let _ = std::fs::create_dir_all(dir);
+            }
             if let Err(e) = std::fs::write(&path, &md) {
                 eprintln!("{path}: {e}");
+                // A run against the stack takes minutes; print the report rather than lose it.
+                println!("{md}");
                 return ExitCode::FAILURE;
             }
             println!("wrote {path}");

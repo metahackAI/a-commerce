@@ -13,6 +13,7 @@ import {ChatBubbleLeftEllipsisIcon} from '@heroicons/react/24/outline';
 import {useRouter} from 'next/navigation';
 import {useState} from 'react';
 
+import {AILISM} from '@/components/brand/Ailism';
 import {useAi} from '@/ai/AiProvider';
 import {useAiTarget} from '@/ai/useAiTarget';
 
@@ -22,7 +23,7 @@ export function AskEntry({name}: {name?: string | null}) {
   const ai = useAi();
   const router = useRouter();
   const [text, setText] = useState('');
-  const target = useAiTarget({kind: 'natural_input', label: 'Ask Northwind', ids: {input: 'home_ask'}});
+  const target = useAiTarget({kind: 'natural_input', label: 'Ask Ailism', ids: {input: 'home_ask'}});
 
   function send(message: string) {
     const m = message.trim();
@@ -38,13 +39,13 @@ export function AskEntry({name}: {name?: string | null}) {
         <VStack gap={1}>
           <Heading level={2}>{name ? `What are you looking for today, ${name}?` : 'What are you looking for today?'}</Heading>
           <Text type="body" color="secondary">
-            Ask in your own words. Northwind finds, compares and prepares; only you place the order.
+            {`${AILISM.tagline} Ask in your own words: Ailism finds, compares and prepares; only you place the order.`}
           </Text>
         </VStack>
         <HStack gap={2} vAlign="end" ref={target.ref} {...target.props}>
           <StackItem size="fill">
             <TextInput
-              label="Ask Northwind"
+              label="Ask Ailism"
               isLabelHidden
               placeholder="Ask about fit, fabric, delivery, returns…"
               startIcon={ChatBubbleLeftEllipsisIcon}

@@ -2,17 +2,23 @@
 //! seeded, demo clock Fri Nov 6 11:00), and scene B1 end to end through the change-set engine
 //! (preview v1 → v2, coupon and banner with placeholders, approve, verify, undo). Run on
 //! request: `cargo test -p acom-merchandising -- --ignored`. The B1 test writes and then undoes
-//! its change set, so run it on a scratch copy of the demo store.
+//! its change set, so run it on a scratch copy of the demo store. The slot, popup, curated page
+//! and cache writes are tested in `integration_writes`.
 
 use acom_changeset::NewChangeSet;
 use acom_contract::{ApprovalNeed, ReadOp, Registry, RegistryBuilder, WriteOp};
 use acom_store::Cx;
 use serde_json::{Value, json};
 
-use crate::banner::{ListBanners, ScheduleBanner, SetBanner};
-use crate::category::{GetCategory, ListCategories};
-use crate::curation::{GetCuration, ListCurations};
-use crate::display_slot::{GetDisplaySlot, ListDisplaySlots};
+use crate::banner::list_banners::ListBanners;
+use crate::banner::schedule_banner::ScheduleBanner;
+use crate::banner::set_banner::SetBanner;
+use crate::category::get_category::GetCategory;
+use crate::category::list_categories::ListCategories;
+use crate::collection_page::get_curation::GetCuration;
+use crate::collection_page::list_curations::ListCurations;
+use crate::display_slot::get_display_slot::GetDisplaySlot;
+use crate::display_slot::list_display_slots::ListDisplaySlots;
 use crate::testing::{operator_cx, shopper_cx};
 
 fn input<T: serde::de::DeserializeOwned>(v: Value) -> T {
@@ -109,10 +115,16 @@ async fn banners_and_curations() {
         .unwrap();
     assert_eq!(set.approval, ApprovalNeed::NotNeeded);
     assert!(set.checks.iter().all(|c| c.passed));
+    // Curated pages are stored now (migration 0027): the seed has three.
     let curations = ListCurations.read(&cx, input(json!({}))).await.unwrap();
-    assert_eq!(curations["total"], 0);
-    let e = GetCuration
+    assert_eq!(curations["total"], 3);
+    let winter = GetCuration
         .read(&cx, input(json!({"collection_page_id": "col_winter_edit"})))
+        .await
+        .unwrap();
+    assert_eq!(winter["status"], "draft");
+    let e = GetCuration
+        .read(&cx, input(json!({"collection_page_id": "col_nothing"})))
         .await
         .unwrap_err();
     assert_eq!(e.code, "collection_page_not_found");
@@ -182,6 +194,7 @@ async fn b1_vip_weekend_sale_end_to_end() {
             request_text: vec!["Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.".into()],
             interpretation: vec![],
             conversation_id: None,
+            task_id: None,
         },
     )
     .await

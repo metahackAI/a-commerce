@@ -148,6 +148,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "acom-community"
+version = "0.1.0"
+dependencies = [
+ "acom-contract",
+ "acom-core",
+ "acom-store",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sqlx",
+]
+
+[[package]]
 name = "acom-contract"
 version = "0.1.0"
 dependencies = [
@@ -182,14 +195,17 @@ dependencies = [
  "acom-changeset",
  "acom-contract",
  "acom-core",
+ "acom-platform",
  "acom-policy",
  "acom-store",
  "chrono",
  "chrono-tz",
+ "rand 0.9.5",
  "rust_decimal",
  "schemars",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "sqlx",
  "tokio",
  "tracing",
@@ -252,6 +268,7 @@ dependencies = [
  "clap",
  "hyper-util",
  "rand 0.9.5",
+ "reqwest",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -281,6 +298,19 @@ dependencies = [
  "tokio",
  "tower",
  "tracing",
+]
+
+[[package]]
+name = "acom-integration"
+version = "0.1.0"
+dependencies = [
+ "acom-contract",
+ "acom-core",
+ "acom-store",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sqlx",
 ]
 
 [[package]]
@@ -359,18 +389,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "acom-partner"
+version = "0.1.0"
+dependencies = [
+ "acom-contract",
+ "acom-core",
+ "acom-store",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sqlx",
+]
+
+[[package]]
 name = "acom-platform"
 version = "0.1.0"
 dependencies = [
+ "acom-auth",
  "acom-changeset",
  "acom-contract",
  "acom-core",
  "acom-policy",
  "acom-store",
  "chrono",
+ "chrono-tz",
+ "rand 0.9.5",
  "schemars",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "sqlx",
  "tokio",
 ]
@@ -408,6 +455,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "sqlx",
  "tokio",
  "tracing",
@@ -419,11 +467,14 @@ version = "0.1.0"
 dependencies = [
  "acom-analytics",
  "acom-catalog",
+ "acom-community",
  "acom-contract",
  "acom-customer",
  "acom-fulfillment",
+ "acom-integration",
  "acom-merchandising",
  "acom-messaging",
+ "acom-partner",
  "acom-platform",
  "acom-promotion",
  "acom-sales",
@@ -446,10 +497,12 @@ dependencies = [
  "acom-store",
  "chrono",
  "chrono-tz",
+ "rand 0.9.5",
  "rust_decimal",
  "schemars",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "sqlx",
  "tokio",
  "tracing",
@@ -3934,6 +3987,9 @@ dependencies = [
  "acom-contract",
  "acom-core",
  "acom-registry",
+ "chrono",
+ "rand 0.9.5",
+ "rand_chacha 0.9.0",
  "reqwest",
  "serde",
  "serde_json",

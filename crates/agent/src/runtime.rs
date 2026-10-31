@@ -41,6 +41,18 @@ use crate::stream::{Command, Emitter, Event, StepKind, StepStatus, TurnUsage};
 use crate::tools::{ToolKind, ToolSet, ToolSpec};
 use crate::toolsearch;
 
+/// The reply up to where it starts copying its instructions; nothing when that is all it was.
+fn without_echo(text: String, prompt: &str) -> Option<String> {
+    match checker::echo_start(&text, prompt) {
+        None => Some(text),
+        Some(at) => {
+            tracing::info!("reply copied its instructions; cut there");
+            let kept = text[..at].trim();
+            (!kept.is_empty()).then(|| kept.to_owned())
+        }
+    }
+}
+
 /// The reply's shape: two or three sentences in one field.
 fn reply_schema() -> Value {
     json!({"type": "object", "additionalProperties": false, "required": ["text"],
@@ -99,6 +111,10 @@ pub struct TurnRequest {
     /// screen-shaped facade. The agent service accepts `facade` only in demo mode.
     #[serde(default, skip_serializing_if = "ToolSet::is_commerce")]
     pub tool_set: ToolSet,
+    /// The task this turn works on (`task_…`, from "Ask the agent to work on it" or a watcher):
+    /// a change set the turn drafts is linked to it (docs/api/chat.md §1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task_id: Option<String>,
 }
 
 /// The longest message a turn takes.
@@ -124,6 +140,20 @@ impl TurnRequest {
                 ToolError::invalid_input(format!("conversation_id: {e}"))
                     .detail(json!({"field": "conversation_id", "reason": "format"}))
             })?;
+        }
+        if let Some(id) = &self.task_id {
+            let ok = id.strip_prefix("task_").is_some_and(|rest| {
+                !rest.is_empty()
+                    && rest
+                        .chars()
+                        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+            });
+            if !ok {
+                return Err(
+                    ToolError::invalid_input("task_id: not a task id (`task_…`).")
+                        .detail(json!({"field": "task_id", "reason": "format"})),
+                );
+            }
         }
         Ok(())
     }
@@ -1427,7 +1457,9 @@ impl<'r> Turn<'r> {
                     order.push(step.id.clone());
                 }
                 Ok(None) => {}
-                // A memory that cannot be kept (a guest has none) does not stop the answer.
+                // Memories a guest does not have do not stop the answer: reading them (the profile)
+                // goes on without them, and keeping one says it could not.
+                Err(Flow::Stop(_)) if tool.remembers() && !tool.is_write() => {}
                 Err(Flow::Stop(why)) if tool.remembers() => {
                     self.problems
                         .push(format!("I could not remember that: {why}"));
@@ -1845,6 +1877,10 @@ impl<'r> Turn<'r> {
             request_text: vec![self.text.clone()],
             interpretation: plan.interpretation_values(),
             conversation_id: Some(self.ctx.conversation_id.clone()),
+            // Tasks are the back office's; a storefront turn links nothing.
+            task_id: (self.surface == ChatSurface::Bo)
+                .then(|| self.request.task_id.clone())
+                .flatten(),
         };
         match self.tools.create_change_set(&new).await {
             Ok(head) => {
@@ -2925,14 +2961,18 @@ impl<'r> Turn<'r> {
         let req = ChatRequest::new(
             "reply",
             vec![
-                Message::system(prompt),
+                Message::system(prompt.clone()),
                 Message::user(format!("Results of this turn: {facts}")),
             ],
         )
         .json("reply", reply_schema())
         .max_tokens(500);
         let worker = self.worker().to_owned();
-        let Some(mut text) = self.reply_text(&worker, req.clone()).await else {
+        let Some(mut text) = self
+            .reply_text(&worker, req.clone())
+            .await
+            .and_then(|t| without_echo(t, &prompt))
+        else {
             return fallback;
         };
         // Owned copies: the retry below calls the model, which needs `self` mutably.
@@ -2961,21 +3001,32 @@ impl<'r> Turn<'r> {
                     unsupported.join(", ")
                 ));
             }
+            self.log_rejected_reply(&text, &unsupported).await;
             let mut again = req;
             again.messages.push(Message::assistant(text.clone()));
             again.messages.push(Message::user(format!(
                 "These numbers are not in the results: {}. Write the reply again using only numbers that appear in the results, or none.",
                 unsupported.join(", ")
             )));
-            if let Some(t) = self.reply_text(&worker, again).await {
+            if let Some(t) = self
+                .reply_text(&worker, again)
+                .await
+                .and_then(|t| without_echo(t, &prompt))
+            {
                 unsupported = checker::unsupported_numbers(&t, &sources, &[&asked]);
                 text = t;
             }
         }
         if unsupported.is_empty() {
-            text
+            let today = self
+                .clock
+                .now()
+                .with_timezone(&self.settings.time.zone)
+                .date_naive();
+            checker::fix_weekdays(&text, today)
         } else {
             tracing::info!(numbers = ?unsupported, "reply used numbers not in the results; using the plain reply");
+            self.log_rejected_reply(&text, &unsupported).await;
             if let Some(last) = self.usage.last_mut() {
                 last.succeeded = false;
                 last.error = Some(format!(
@@ -2985,6 +3036,28 @@ impl<'r> Turn<'r> {
             }
             fallback
         }
+    }
+
+    /// A reply the number check turned down, kept in the turn's log with the numbers no result
+    /// holds (the model call itself is already recorded as answered).
+    async fn log_rejected_reply(&mut self, text: &str, unsupported: &[String]) {
+        let h = self
+            .begin_step(
+                StepKind::Check,
+                "Checking the reply's numbers against the results".into(),
+                None,
+            )
+            .await;
+        self.end_step(
+            &h,
+            StepStatus::Failed,
+            StepEnd {
+                summary: format!("Numbers not in the results: {}", unsupported.join(", ")),
+                output: Some(json!({"reply": text, "unsupported": unsupported})),
+                ..StepEnd::default()
+            },
+        )
+        .await;
     }
 
     // ---- 7. end --------------------------------------------------------------------------

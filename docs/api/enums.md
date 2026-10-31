@@ -89,6 +89,8 @@
 | 판매 방식 `acom:sale_type` | `always`, `pre_order`, `subscription`, `gift_card` |
 | 초안 진행 `acom:draft_status` (공급사 시트에서 만든 초안) | `ready`(시트의 필수 필드가 다 있음), `needs_you`(필수 필드가 없거나 불분명해 사람이 채워야 함), `working`(가져오기가 아직 채우는 중) |
 | 가져오기 방식 `acom:import_mode` (`batch_import`) | `create`(새 초안만), `upsert`(앞선 가져오기가 만든 초안도 시트 값으로 고침) |
+| 생성 문구 종류 `acom:copy_type` (`generate_copy`) | `title`(상품명), `summary`(한 줄 요약), `description`(상세 설명: 스토어 어조의 본문 + 관리 한 줄), `seo`(검색 결과에 보일 설명) |
+| 생성 이미지 연출 `acom:image_style` (`generate_image`) | `studio`(무지 배경), `lifestyle`(입은 모습·장면), `flat_lay`(바닥에 펼쳐 놓음) |
 
 ### 1.11 프로모션·쿠폰·이벤트
 
@@ -99,6 +101,8 @@
 | 쿠폰 적용 `acom:coupon_application` | `automatic_at_checkout`, `code_entry`, `download` |
 | 쿠폰 중복 `acom:coupon_stacking` | `no_tier_coupons`, `with_tier_coupons`, `no_other_coupons` |
 | 할인 층 `acom:discount_layer` (예전 정수 `stacking_tier` 1·2·3) | `item_price`, `order_discount`, `add_on` |
+| 프로모션 종류 `acom:promotion_type` (`create_promotion`, 회원가·기간가 프로모션은 없음) | `bogo`, `bundle`, `threshold`, `amount_off` |
+| 적립금 거래 `acom:loyalty_transaction_type` | `accrual`(적립), `spend`(사용), `expire`(만료), `grant`(지급), `restore`(취소·반품 복원), `reversal`(지급 되돌리기의 차감) |
 | 이벤트 `acom:event_status` | `draft`, `scheduled`, `running`, `paused`, `closed`, `drawing`, `announced`, `fulfilling`, `completed`, `cancelled` |
 | 응모 `acom:entry_status` | `entered`, `invalid`, `won`, `lost`, `waitlist`, `cancelled` |
 | 보상 `acom:reward_status` | `pending`, `compliance_pending`, `ready`, `dispatched`, `delivered`, `failed`, `forfeited` |
@@ -111,7 +115,8 @@
 | 예약·기획전 `acom:display_status` | `draft`, `scheduled`, `active`, `ended` |
 | 슬롯 종류 `acom:slot_type` | `hero`, `banner_board`, `product_grid`, `brand_strip`, `collection_feed` |
 | 카테고리 묶음 `acom:term_set` | `standard`, `display` |
-| 팝업 종류 | `image`, `notice`, `event`, `consent` |
+| 팝업 종류 `acom:popup_type` | `image`, `notice`, `event`, `consent` |
+| 캐시 무효화 범위 `acom:cache_resource_type` | `category`, `display_slot`, `banner`, `popup`, `collection_page`, `all` |
 
 ### 1.13 회원·고객 서비스
 
@@ -123,30 +128,37 @@
 | 등급 혜택 종류 | `member_price`, `points_multiplier`, `free_shipping`, `free_returns`, `coupon_on_entry`, `recurring_coupon`, `custom` |
 | 등급 조건 지표 | `spend`, `order_count`, `points_earned`, `manual`, `invite`, `custom` |
 | 문의 `acom:inquiry_status` | `received`, `in_progress`, `resolved` |
-| 문의 종류 | `order_status`, `return`, `product_question`, `account`, `callback`, `other` |
+| 문의 종류 `acom:inquiry_type` | `order_status`, `return`, `product_question`, `account`, `callback`, `other` |
 | 보상 처리 `acom:remedy_status` | `requested`, `approved`, `rejected`, `payout_pending`, `paid`, `failed` |
-| 보상 종류 | `loyalty_points`, `coupon`, `cash` |
-| 동의 종류 | `terms`, `privacy`, `marketing_email`, `marketing_sms`, `marketing_push`, `marketing_in_app`, `entry_terms`, `winner_contact` |
+| 보상 종류 `acom:remedy_type` | `loyalty_points`, `coupon`, `cash` |
+| 동의 종류 `acom:consent_type` | `terms`, `privacy`, `marketing_email`, `marketing_sms`, `marketing_push`, `marketing_in_app`, `entry_terms`, `winner_contact` |
 | 주소 용도 | `shipping`, `billing`, `return` |
+| 등급 변경 원인 `acom:tier_change_cause` (`list_tier_history`의 `cause`) | `entry`, `evaluation`, `event`, `manual_override`, `override_expired`, `grace_started`, `grace_ended`, `program_change`, `withdrawal` |
+| 문의 답글 작성자 `acom:author_type` (`get_inquiry`의 `thread[].author_type`) | `customer`, `staff`, `agent` |
+| 임직원 할인 한도 기간 `acom:discount_limit_period` | `month`, `year` |
+| 계정 복구 요청 `acom:recovery_kind` | `password_reset`(비밀번호 재설정), `login_id`(로그인 id 찾기) |
 
 ### 1.14 그 밖의 상태
 
 | 목록 | 값 |
 |---|---|
-| 구독 | `active`, `paused`, `cancelled` |
+| 구독 `acom:subscription_status` | `active`, `paused`, `cancelled` |
 | 캠페인 `acom:campaign_status` | `draft`, `scheduled`, `sending`, `sent`, `failed`(발송이 메시지 하나 나가기 전에 멈춤, 예: 수신자 목록 가져오기 실패), `cancelled` |
-| 공지 | `draft`, `published` |
+| 공지 `acom:notice_status` | `draft`, `published` |
 | 게시글 | `published`, `held_for_review`, `blinded`, `deleted` |
 | 리뷰 노출 `review_status` (schema:creativeWorkStatus) | `visible`, `hidden`, `reported` |
+| 상품 문의 노출 `question_status` (schema:creativeWorkStatus) | `visible`, `hidden`(운영자가 숨김, 또는 `question.profanity_filter: hold_for_review`로 보류. 문의와 답이 함께 숨음) |
 | 리뷰의 사이즈 평가 `acom:fit_vote` | `true_to_size`, `runs_small`, `runs_large` |
 | 실측 항목 `acom:measurement_name` | `chest`, `shoulder`, `sleeve`, `length`, `waist`, `hip`, `inseam`, `rise`, `foot_length` |
 | 판매자 | `applied`, `under_review`, `approved`, `active`, `suspended`, `terminated` |
-| API 키 | `active`, `revoked` |
+| API 키 `acom:api_key_status` | `active`, `revoked` |
 | 채널 연결 | `connected`, `degraded`, `disconnected` |
 | 할 일 `acom:task_state` | `needs_you`, `working`, `done`, `dismissed` |
 | 할 일 출처 `acom:task_origin` | `you_asked`, `agent_noticed`, `automation` |
 | 예약 작업 `acom:job_state` (`job.updated` 이벤트, 열에서 계산) | `scheduled`, `retrying`, `done` |
 | 운영자 계정 `acom:admin_status` | `active`, `suspended`, `locked` |
+| 스토어 `acom:store_status` (API `acom:status`) | `active`, `suspended` |
+| 조직 종류 `acom:organization_type` (API `acom:org_type`) | `department`, `vendor`, `branch` |
 
 ### 1.15 에이전트
 
@@ -192,8 +204,9 @@
 | 클레임 거절 | `outside_return_window`, `not_returnable`, `inspection_failed`, `already_handed_over`, `outside_exchange_window` |
 | 교환 → 반품 전환 | `replacement_out_of_stock`, `replacement_discontinued`, `customer_declines` |
 | 신고(리뷰·게시글 공통) `acom:report_reason` | `spam`, `abuse`, `obscene`, `advertisement`, `fake`, `irrelevant`, `other` |
-| 탈퇴 | `not_using`, `too_many_messages`, `privacy_concern`, `poor_service`, `found_alternative`, `other` |
+| 탈퇴 `acom:withdrawal_reason` | `not_using`, `too_many_messages`, `privacy_concern`, `poor_service`, `found_alternative`, `other` |
 | 반품·교환 불가 | `used`, `final_sale`, `gift_card`, `digital`, `product_not_exchangeable` |
+| 증빙 종류 `acom:evidence_type` (`upload_evidence`) | `damage_photo`, `delivery_photo`, `product_defect`, `receipt`, `other` |
 
 ### 2.5 검수 결과 `acom:inspection_condition`
 
@@ -208,8 +221,12 @@
 | 메시지 채널 `acom:message_channel` | `email`, `sms`, `push`, `in_app` | 예전 표기 `on_site` → `in_app` |
 | 판매 채널 `acom:sales_channel` | `web`, `mobile_web`, `app`, `agent` | `agent` = 외부 에이전트·대리 주문 |
 | 결제 수단 `acom:payment_method` | `credit_card`, `bank_transfer`, `virtual_account`, `loyalty_points`, `store_credit` | |
+| 정기 주문 주기 `acom:billing_cycle` | `every_week`, `every_2_weeks`, `every_month` | 회차 사이 간격은 `order.yml` `subscription.cycle_length` |
+| 영수증 종류 `acom:receipt_type` | `deduction`, `proof`, `tax_invoice` | `tax_invoice`는 사업자 번호(`tax_id`)가 필요 |
 | 반품 배송비 (schema.org `ReturnFeesEnumeration`) | `free_return`, `return_fees_customer_responsibility`, `return_shipping_fees` | |
 | 배송비 종류 | `paid`, `free`, `free_over_min_subtotal` | 예전 표기 `conditional_free` |
+| 배송비 종류 목록 이름 | `shipping_fee_type` (`acom:feeType`, `fulfillment.shipping_zone.fee_type`) | 위 줄의 값 |
+| 배송 지역 종류 `acom:zone_type` | `standard`, `remote` | `remote`는 보통 지역 추가 배송비가 있음 |
 | 배송 방법 | `standard` (schema.org `ParcelService`) | |
 
 ---

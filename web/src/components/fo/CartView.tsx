@@ -113,7 +113,7 @@ export function CartView({initial}: {initial: Cart}) {
     return (
       <EmptyState
         title="Your cart is empty"
-        description="Find something you like, or ask Northwind to help you look."
+        description="Find something you like, or ask Ailism to help you look."
         actions={<Button label="Start shopping" variant="primary" href="/search" />}
       />
     );

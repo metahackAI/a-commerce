@@ -263,8 +263,9 @@
 - 요약: 상품 연출 이미지를 생성합니다. 생성물은 초안으로 두고, 상세 화면 노출은 승인 후에 합니다.
 - consumes → produces: `product_id` → `image_id[]`
 - 입력: `product_id`, `acom:prompt`, `acom:style?`(`studio` | `lifestyle` | `flat_lay`), `acom:count?`(≤ `content.max_images_per_request`)
-- 출력: 프리뷰 형식(`changes`=`create` `image`, 초안 URL 포함) → 실행 `{ok: true, id: "img_wb_01", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`
-- 프리뷰: checks `content.brand_guideline`, `content.ai_content_disclosure`(`acom:ai_generated: true` 표기). 고객에게 닿으므로 항상 `needs_approval: true`.
+- 출력: 프리뷰 형식(`changes`=이미지마다 `create` `image` `{image_id, content_url, caption, style, acom:ai_generated: true, generator}`) → 실행 `{ok: true, id: "img_windbreaker_01", image_id: ["img_windbreaker_01"], undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`. id는 상품에서 `img_<상품>_<순번>`, 같은 요청은 같은 프리뷰(승인 때 다시 프리뷰해도 같음)
+- **생성기(정함)**: 연결된 이미지 생성 모델이 없습니다(`content.generator: placeholder`). `content_url`은 상품 이름·연출·id를 적고 "Placeholder · No image generator is connected"라고 말하는 자리표시 SVG(`data:` URL)이고, 같은 입력이면 같은 그림입니다. 승인 후 실행하면 `catalog.image_object`에 초안으로 저장하고 상세 화면에는 올리지 않습니다(쓰려면 `update_product_group`의 `image`). 되돌리기는 저장한 초안을 지웁니다.
+- 프리뷰: checks `content.brand_guideline`(프롬프트에 `content.prompt_blocked_words`의 단어가 있으면 실패), `content.ai_content_disclosure`(`acom:ai_generated: true` 표기). 고객에게 닿으므로 항상 `needs_approval: true`. `acom:count`가 `content.max_images_per_request`를 넘으면 `invalid_input`.
 - 정책: [catalog.yml](../../policies/catalog.yml) `content`, `product.approval`
 - 에러: `generation_failed` → `generate_image` · `brand_guideline_violation` → `generate_image`
 - 멱등성: `Idempotency-Key = hash(product_id + prompt + style)`
@@ -272,10 +273,11 @@
 ### `generate_copy` — Kind: W
 - 논리주소/REST: `catalog.product.generate_copy` · `POST /v1/catalog/products/{product_id}/generate-copy`
 - 요약: 상품명·요약·상세 설명 초안을 생성합니다. 콘텐츠 변경이라 승인 없이 초안으로 저장하고, 반영은 `update_product_group`으로 합니다.
-- consumes → produces: `product_id` → copy draft
+- consumes → produces: `product_id` → `copy_draft_id`
 - 입력: `product_id`, `acom:copy_type`(`title` | `summary` | `description` | `seo`), `acom:tone?`, `acom:keywords?[]`
-- 출력: 프리뷰 형식(`changes`=`create` `copy_draft`, `to`가 생성 문구) → 실행 `{ok, id, undo}`
-- 프리뷰: checks `content.ai_content_disclosure`. `needs_approval: false`.
+- 출력: 프리뷰 형식(`changes`=`create` `copy_draft`, `to`가 생성 문구 `{product_id, copy_type, text, keywords, tone, acom:ai_generated: true, generator}`) → 실행 `{ok, id: "cpd_…", copy_draft_id, text, undo}`. 되돌리기는 초안을 지움
+- **생성기(정함)**: 연결된 글쓰기 모델이 없습니다(`content.generator: placeholder`). 초안은 상품 자신의 자료(이름·브랜드·소재·색·사이즈·접는 방식·보온·비)를 스토어 어조 규칙(`content.copy`: 문장 수, 관리 한 줄)의 모양으로 엮어 만들고, 같은 입력이면 같은 글입니다. `title`은 `content.copy.title_max_chars`, `seo`는 `content.copy.seo_max_chars` 안에서 단어 경계로 자릅니다. `acom:tone`은 초안에 기록만 합니다. 초안은 `catalog.copy_draft`에 남고 상세 화면에는 `update_product_group`으로 올립니다.
+- 프리뷰: checks `content.ai_content_disclosure`, `product.approval`(문구는 콘텐츠라 승인 없음). `needs_approval: false`.
 - 정책: [catalog.yml](../../policies/catalog.yml) `content.ai_content_disclosure`, `product.approval.content_changes`
 - 에러: `generation_failed` → `generate_copy`
 - 멱등성: `Idempotency-Key`
@@ -345,7 +347,7 @@
 - consumes → produces: `variant_id` → `variant_id`
 - 입력: `variant_id`, `inventory_level`(Integer), `acom:managed?`, `reason?`
 - 출력: 프리뷰 형식 → 실행 `{ok, id, undo}`
-- 프리뷰: `changes`=`update` `inventory_level` `from`/`to`, 바뀌는 `availability`. `needs_approval: false`.
+- 프리뷰: `changes`=`update` `inventory_level` `from`/`to`, 바뀌는 `availability`. 품절이던 변형이 판매 중으로 돌아오고 재입고 알림을 기다리는 쇼퍼가 있으면(`inventory.auto_restore.notify_restock_alerts`) `send` `restock_alert` `{variant_id, shoppers, by_channel, message_kind}`가 붙습니다: 실행하면 그 알림들을 보낸 것으로 표시하고 아웃박스(`restock_alert.notify`)로 messaging에 넘기며, 이 발송은 되돌리지 않습니다. `needs_approval: false`.
 - 정책: [catalog.yml](../../policies/catalog.yml) `inventory.managed_at`, `inventory.auto_out_of_stock`, `inventory.auto_restore`
 - 에러: `negative_stock` → `set_variant_stock` · `invalid_state` → `get_product`
 - 멱등성: 절대값 설정이므로 `Idempotency-Key`로 같은 결과
@@ -383,6 +385,18 @@
 - 정책: [catalog.yml](../../policies/catalog.yml) `reorder.lead_time_days`, `reorder.max_units_per_line`, `reorder.orderable_availability`, [approval.yml](../../policies/approval.yml) `thresholds.reorder_spend`
 - 에러: `product_not_found`(상품이나 변형이 없음) → `search_products` · `invalid_input`(그 상품의 변형이 아님 `detail.reason: other_product`, 같은 변형 두 번 `duplicate`) → `get_inventory` · `invalid_state`(원가 없는 변형) → `set_price`
 - 되돌리기: 받기 전(`processing`)이면 재주문을 `cancelled`로 바꿉니다. 공급처가 보냈거나 받은 재주문은 되돌리지 않습니다(`invalid_state`).
+- 멱등성: 프리뷰 → 실행(`preview_id`)
+
+### `receive_reorder` — Kind: W
+- 논리주소/REST: `catalog.reorder.receive` · `POST /v1/catalog/reorders/{reorder_id}/receive`
+- 요약: 공급처에서 온 재주문을 받습니다. 주문한 수량이 각 변형의 팔 수 있는 재고에 더해지고(품절로 자동 전환됐던 변형은 판매 중으로 돌아옴), 재주문은 `delivered`가 됩니다. 실제로 온 수량이 다르면 받은 뒤 `set_variant_stock`으로 고칩니다.
+- consumes → produces: `reorder_id` → `variant_id[]`
+- 입력: `reorder_id`(Text, `^ro_`, ✓)
+- 출력: 프리뷰 형식 → 실행 `{ok: true, id: "ro_01jd2k8", undo: {by: "person", target: "cs_…", until: "…"}}`
+- 프리뷰: `changes`=`update` `reorder` `order_status` `processing` → `delivered`, 그리고 줄마다 `update` `inventory_level`(`from`/`to`, 바뀌면 `availability`), 판매 중으로 돌아오는 변형에 재입고 알림 신청자가 있으면 `send` `restock_alert`(`set_variant_stock`과 같음). checks는 판매 상태가 바뀌는 변형마다 `inventory.auto_restore`. `needs_approval: false`.
+- 정책: [catalog.yml](../../policies/catalog.yml) `inventory.auto_restore`
+- 에러: `not_found`(`detail.entity: reorder`) → `get_inventory` · `invalid_state`(이미 받았거나 취소된 재주문) → `get_inventory`
+- 되돌리기: 그 뒤로 재고가 바뀌지 않았으면 재고를 받기 전으로, 재주문을 받기 전 상태로 돌립니다. 그새 팔렸거나 고쳐졌으면 `invalid_state`(→ `set_variant_stock`).
 - 멱등성: 프리뷰 → 실행(`preview_id`)
 
 ---
@@ -548,8 +562,8 @@
 - consumes → produces: `product_id`, `order_id` → `review_id`
 - 입력: `product_id`, `order_id`, `review_rating`(1–5), `review_body`, `image?[]`, `fit?`(`true_to_size` | `runs_small` | `runs_large`), `height_cm?`. 작성자는 로그인한 쇼퍼
 - 출력: 프리뷰 형식 → 실행 `{ok, id: "rev_8812", undo: null}` — 쇼퍼의 쓰기라 변경셋 밖이고, 지우기는 `delete_review`
-- 프리뷰: `changes`=`create` `review`(`id: null`). checks `review.verified_purchase_only`, `review.one_per_order_item`, `review.profanity_filter`. `needs_approval: false`.
-- 정책: [catalog.yml](../../policies/catalog.yml) `review`
+- 프리뷰: `changes`=`create` `review`(`id: null`). checks `review.verified_purchase_only`, `review.one_per_order_item`, `review.profanity_filter`. `needs_approval: false`. 리뷰에 남는 작성자 이름은 `author_masking`대로 가려 저장합니다(`Jamie` → `Ja***`, `to.author`).
+- 정책: [catalog.yml](../../policies/catalog.yml) `review`, `author_masking`
 - 에러: `not_purchased` → `get_my_orders` · `already_reviewed` → `update_review` · `profanity_blocked` → `create_review`
 - 멱등성: `(order_id, product_id, 작성자)`로 한 건
 
@@ -559,9 +573,9 @@
 - consumes → produces: `review_id` → `review_id`
 - 입력: `review_id`, `review_rating?`, `review_body?`, `image?[]`
 - 출력: 프리뷰 형식 → 실행 `{ok, id, undo: null}`
-- 프리뷰: `changes`=`update` `review`. checks `review.profanity_filter`. `needs_approval: false`
-- 정책: 작성자 본인만. [catalog.yml](../../policies/catalog.yml) `review.profanity_filter`
-- 에러: `not_author` → `list_reviews` · `review_not_found` → `list_reviews`
+- 프리뷰: `changes`=`update` `review`(바뀌는 필드만 `from`/`to`; 주지 않은 필드는 그대로, `image: []`은 사진을 모두 뺌). checks `review.profanity_filter`(`hold_for_review`면 보이던 리뷰가 `reported`로). `needs_approval: false`
+- 정책: 작성자 본인만(가져온 리뷰처럼 작성자가 없는 리뷰는 아무도 못 고침). [catalog.yml](../../policies/catalog.yml) `review.profanity_filter`
+- 에러: `not_author` → `list_reviews` · `review_not_found` → `list_reviews` · `profanity_blocked` → `update_review`
 - 멱등성: `Idempotency-Key`
 
 ### `delete_review` — Kind: W
@@ -570,10 +584,10 @@
 - consumes → produces: `review_id` →
 - 입력: `review_id`
 - 출력: 프리뷰 형식 → 실행 `{ok, id, undo: null}`
-- 프리뷰: `changes`=`delete` `review`. `needs_approval: false`.
+- 프리뷰: `changes`=`delete` `review`(`from`에 지울 리뷰). 리뷰의 "도움이 됐어요" 투표와 신고도 함께 지워지고, 리뷰 요약에서 빠집니다. `needs_approval: false`.
 - 정책: 작성자 본인만
-- 에러: `not_author` → `list_reviews`
-- 멱등성: 이미 지운 리뷰는 같은 결과
+- 에러: `not_author` → `list_reviews` · `review_not_found` → `list_reviews`
+- 멱등성: 같은 프리뷰를 다시 실행하면 같은 결과(이미 지운 리뷰를 지우는 것은 아무것도 바꾸지 않음). 지운 뒤의 새 프리뷰는 `review_not_found`
 
 ### `vote_review_helpful` — Kind: W
 - 논리주소/REST: `catalog.review.vote_helpful` · `POST /v1/catalog/reviews/{review_id}/helpful`
@@ -592,8 +606,8 @@
 - consumes → produces: `review_id` → `review_id`
 - 입력: `review_id`, `reason`(`acom:report_reason`: `spam` | `abuse` | `obscene` | `advertisement` | `fake` | `irrelevant` | `other`), `note?`
 - 출력: 프리뷰 형식 → 실행 `{ok, id, undo: null}`
-- 프리뷰: `changes`=`create` `report`(`id: null`). `needs_approval: false`
-- 정책: [catalog.yml](../../policies/catalog.yml) `review.report_reasons`
+- 프리뷰: `changes`=`create` `report`(`id: null`, `rpt_`)와, 보이던 리뷰면 `update` `review` `status` `visible` → `reported`(`review.report_holds_review`: 심사 대기열. 쇼퍼에게는 계속 보이고 `moderate_review`가 숨기거나 되살림). checks `review.report_reasons`. 숨긴 리뷰는 신고할 수 없음(`review_not_found`). `needs_approval: false`
+- 정책: [catalog.yml](../../policies/catalog.yml) `review.report_reasons`, `review.report_holds_review`
 - 에러: `review_not_found` → `list_reviews` · `already_reported` → `list_reviews`
 - 멱등성: `(review_id, 신고자)`로 한 건
 
@@ -606,10 +620,11 @@
 - 요약: 상품 문의 목록(`text`, `accepted_answer`).
 - consumes → produces: `product_id?` → `question_id[]`
 - 입력: `product_id?`, `answered?`(Boolean), `status?`(`visible` | `hidden`), `limit?`(기본 20), `cursor?`
-- 출력: `{items: Question[], total, next_cursor?}`
+- 출력: `{items: Question[], total, next_cursor?}`, 최신 순. 항목 `{id: "qst_311", @type: "Question", product_id, product_name, text, author: {name: "Pr***"}, acom:private, status, date_created, answer_count, accepted_answer: {id: "ans_311", @type: "Answer", text, author: {@type: "Organization", name: "The store"}, date_created} | null}`
+  - 쇼퍼는 보이는(`visible`) 문의만, 비공개 문의는 자기가 남긴 것만 봅니다. 스토어(운영자·운영 에이전트)는 숨긴 문의와 모든 비공개 문의도 봅니다.
 - 프리뷰: 해당 없음(읽기)
-- 정책: 없음
-- 에러: `invalid_filter` → `list_questions`
+- 정책: [catalog.yml](../../policies/catalog.yml) `question.private_allowed`
+- 에러: `invalid_filter`(쇼퍼가 `status: hidden`) → `list_questions`
 - 멱등성: 읽기(부작용 없음)
 
 ### `answer_question` — Kind: W
@@ -617,10 +632,11 @@
 - 요약: 문의에 답(`Answer`, `ans_`)을 답니다.
 - consumes → produces: `question_id` → `answer_id`
 - 입력: `question_id`, `text`
-- 출력: 프리뷰 형식 → 실행 `{ok, id: "ans_311", undo: null}` — 쇼퍼가 읽은 답은 되돌리지 않고 고쳐서 다시 답함
-- 프리뷰: `changes`=`create` `answer`(`id: null`, `to`에 쇼퍼가 읽을 문장 그대로). checks `question.profanity_filter`. [approval.yml](../../policies/approval.yml)에 이 툴의 임계가 없으므로 기본 `needs_approval: false`.
+- 출력: 프리뷰 형식 → 실행 `{ok, id: "ans_311", answer_id, question_id, undo: null}` — 쇼퍼가 읽은 답은 되돌리지 않습니다. 문의 하나에 답 하나이므로, 잘못된 답은 `moderate_question`으로 문의째 숨깁니다
+- 누가 답하나(정함): `question.answered_by`. 기본값 `[operator]`는 스토어(운영자·운영 에이전트·시스템)만이고, 스토어가 `shopper`를 더하면 문의한 사람이 아닌 로그인 쇼퍼가 보이는 공개 문의에 답할 수 있습니다. 스토어의 답은 작성자가 스토어로, 쇼퍼의 답은 `author_masking`대로 가린 이름으로 보입니다.
+- 프리뷰: `changes`=`create` `answer`(`id: null`, `to`에 쇼퍼가 읽을 문장 그대로와 문의 원문). checks `question.answered_by`, `question.profanity_filter`(답은 보류할 곳이 없어 막는 단어가 있으면 `hold_for_review`여도 실패). [approval.yml](../../policies/approval.yml)에 이 툴의 임계가 없으므로 기본 `needs_approval: false`.
 - 정책: [catalog.yml](../../policies/catalog.yml) `question`; [approval.yml](../../policies/approval.yml)
-- 에러: `already_answered` → `list_questions`
+- 에러: `already_answered` → `list_questions` · `forbidden`(`question.answered_by`가 허락하지 않음) → null · `not_found`(`detail.entity: question`) → `list_questions` · `profanity_blocked` → `answer_question`
 - 멱등성: `Idempotency-Key`
 
 ### `moderate_question` — Kind: W
@@ -629,9 +645,9 @@
 - consumes → produces: `question_id` → `question_id`
 - 입력: `question_id`, `action`(`hide` | `restore`), `reason?`
 - 출력: 프리뷰 형식 → 실행 `{ok, id, undo}`
-- 프리뷰: `changes`=`update` `question` `status`. `needs_approval: false`
+- 프리뷰: `changes`=`update` `question` `status`(`visible` ↔ `hidden`; 답이 있으면 함께 숨거나 보임). 스토어만 부를 수 있습니다(쇼퍼는 `forbidden`). `needs_approval: false`. 되돌리기는 이전 상태로.
 - 정책: 없음
-- 에러: `invalid_state` → `list_questions`
+- 에러: `invalid_state` → `list_questions` · `not_found`(`detail.entity: question`) → `list_questions`
 - 멱등성: `Idempotency-Key`
 
 ### `ask_question` — Kind: W
@@ -639,10 +655,10 @@
 - 요약: 쇼퍼가 상품 문의를 남깁니다. 비공개로 지정할 수 있습니다.
 - consumes → produces: `product_id` → `question_id`
 - 입력: `product_id`, `text`, `acom:private?`(Boolean)
-- 출력: 프리뷰 형식 → 실행 `{ok, id: "qst_311", undo: null}`
-- 프리뷰: `changes`=`create` `question`(`id: null`). checks `question.profanity_filter`. `needs_approval: false`.
-- 정책: [catalog.yml](../../policies/catalog.yml) `question`
-- 에러: `profanity_blocked` → `ask_question`
+- 출력: 프리뷰 형식 → 실행 `{ok, id: "qst_311", question_id, undo: null}`
+- 프리뷰: `changes`=`create` `question`(`id: null`, `to.author`는 `author_masking`대로 가린 이름). checks `question.profanity_filter`(`block`이면 실패, `hold_for_review`면 통과하되 `hidden`으로 저장해 스토어가 `moderate_question`으로 공개), `question.private_allowed`(비공개를 받지 않는 스토어면 실패). `needs_approval: false`.
+- 정책: [catalog.yml](../../policies/catalog.yml) `question`, `author_masking`
+- 에러: `profanity_blocked` → `ask_question` · `product_not_found` → `search_products`
 - 멱등성: `Idempotency-Key`
 
 ### `update_question` — Kind: W
@@ -651,9 +667,9 @@
 - consumes → produces: `question_id` → `question_id`
 - 입력: `question_id`, `text?`, `acom:private?`
 - 출력: 프리뷰 형식 → 실행 `{ok, id, undo: null}`
-- 프리뷰: `changes`=`update` `question`. `needs_approval: false`
+- 프리뷰: `changes`=`update` `question`(바뀌는 필드만). checks `question.edit_until`, `question.profanity_filter`, `question.private_allowed`. `needs_approval: false`
 - 정책: 작성자 본인만. [catalog.yml](../../policies/catalog.yml) `question.edit_until`
-- 에러: `not_author` → `list_questions` · `already_answered` → `list_questions`
+- 에러: `not_author` → `list_questions` · `already_answered` → `list_questions` · `profanity_blocked` → `update_question` · `not_found`(`detail.entity: question`) → `list_questions`
 - 멱등성: `Idempotency-Key`
 
 ### `delete_question` — Kind: W
@@ -662,10 +678,10 @@
 - consumes → produces: `question_id` →
 - 입력: `question_id`
 - 출력: 프리뷰 형식 → 실행 `{ok, id, undo: null}`
-- 프리뷰: `changes`=`delete` `question`. `needs_approval: false`
+- 프리뷰: `changes`=`delete` `question`, 답이 있으면 `delete` `answer`(답도 함께 지워짐). `needs_approval: false`
 - 정책: 작성자 본인만
-- 에러: `not_author` → `list_questions`
-- 멱등성: 이미 지운 문의는 같은 결과
+- 에러: `not_author` → `list_questions` · `not_found`(`detail.entity: question`) → `list_questions`
+- 멱등성: 같은 프리뷰를 다시 실행하면 같은 결과(이미 지운 문의를 지우는 것은 아무것도 바꾸지 않음)
 
 ---
 
@@ -681,11 +697,12 @@
   | name | Text | ✓ | "Denim bundle" |
   | is_related_to | Product[] | ✓ | 구성품 `{variant_id, order_quantity}` |
   | category_id | Text | ✓ | 표준 카테고리 |
-  | acom:bundle_discount | UnitPriceSpecification | | 묶음 할인 |
-- 출력: 프리뷰 형식 → 실행 `{ok: true, id: "prd_denim_bundle", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`
-- 프리뷰: `changes`=`create` `product`(`id: null`, 파생 가격·재고 포함). checks `bundle.same_seller`, `bundle.same_age_restriction`, `price_floor`(파생 가격), `bundle.components_must_be_active`. 가격이 정해지므로 `needs_approval: true`([approval.yml](../../policies/approval.yml) `thresholds.product_approve`).
+  | acom:bundle_discount | UnitPriceSpecification | | 묶음 할인 `{percent_off}`(0–100, 구성품 정가 합에서 뺌, 상한 `bundle.max_discount`) |
+- 출력: 프리뷰 형식 → 실행 `{ok: true, id: "prd_denim_bundle", product_id, variant_id: "var_denim_bundle", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`
+- 파생(정함): 정가 = 구성품 정가 × 수량의 합 − 묶음 할인(센트 반올림), 원가 = 구성품 원가 × 수량의 합(원가 없는 구성품이 있으면 없음), 재고 = 재고를 관리하는 구성품마다 `재고 ÷ 수량`(버림)의 최솟값. 묶음은 상품(`prd_`, 이름에서 id) 하나와 변형(`var_`, SKU는 상품 id에서) 하나, 그 오퍼로 만들고, 구성품은 `catalog.type_and_quantity_node`에 남깁니다. 재고는 묶음을 만들 때의 값으로 정하고, 묶음이 팔려도 구성품 재고는 아직 줄이지 않습니다.
+- 프리뷰: `changes`=`create` `product`(`id: null`, 구성품·정가 합·할인·가격·원가·하한·재고 포함). checks `bundle.same_seller`(판매자는 모두 스토어), `bundle.same_age_restriction`(`acom:min_age`는 아직 저장하지 않아 모두 같음), `price_floor`(파생 가격 ≥ 파생 원가 × 1.15), `bundle.components_must_be_active`(구성품 상품이 `active`이고 오퍼가 단종이 아님). 구성품이 `bundle.min_components`보다 적거나 같은 변형이 두 번이면 `invalid_input`. 가격이 정해지므로 `needs_approval: true`([approval.yml](../../policies/approval.yml) `thresholds.product_approve`, `new_product: true`)이고, 승인되어 실행되면 바로 판매 중(`active`, 공개일 오늘)입니다. 되돌리기는 지우지 않고 판매를 멈춥니다(상품 `discontinued`, 오퍼 단종): 그새 팔렸을 수 있기 때문입니다.
 - 정책: [catalog.yml](../../policies/catalog.yml) `bundle`, `price_floor`
-- 에러: `mixed_seller` → `create_bundle` · `mixed_age_restriction` → `create_bundle` · `below_price_floor` → `set_price` · `component_inactive` → `get_product`
+- 에러: `mixed_seller` → `create_bundle` · `mixed_age_restriction` → `create_bundle` · `below_price_floor` → `set_price` · `component_inactive` → `get_product` · `product_not_found`(구성품 변형이 없음) → `get_product` · `invalid_category` → `list_categories`
 - 멱등성: `Idempotency-Key = hash(components + name)`
 
 ---
@@ -698,9 +715,10 @@
 - consumes → produces: `product_id` → `restock_alert_id`
 - 입력: `product_id`, `mode`(`product_options`: `size`·`color`로 변형을 찾음 | `variant`: `variant_id`를 그대로), `size?`, `color?`, `variant_id?`, `channel`(`email` | `sms` | `push` | `in_app`). 신청자는 로그인한 쇼퍼
 - 출력: 프리뷰 형식 → 실행 `{ok, id: "rsa_204", variant_id: "var_chore_coat_m_olive", undo: null}`
-- 프리뷰: `changes`=`create` `restock_alert`(`id: null`). `needs_approval: false`
+- 프리뷰: `changes`=`create` `restock_alert`(`id: null`, `to: {product_id, variant_id, size, color, channel, availability, expires}`). checks `restock_alert.channels`(스토어가 그 채널로 보내는지), `inventory.auto_restore`(`notify_restock_alerts`: 스토어가 재입고 때 알리는지). 신청은 `restock_alert.subscribable_availability`(기본 `out_of_stock`, `back_order`)의 변형만이고, `restock_alert.expires_after_days` 뒤 만료됩니다. `needs_approval: false`
+- 보내는 때(정함): 재고 변경(`set_variant_stock`, `receive_reorder`, 반품 재입고)으로 변형이 판매 중으로 돌아오면 그 트랜잭션에서 기다리던 알림을 보낸 것으로 표시하고(`notified_at`) 아웃박스 `restock_alert.notify`(`{restock_alert_id, customer_id, product_id, variant_id, size, color, channel, message_kind}`)로 messaging에 넘깁니다. 실제 발송은 messaging의 일입니다.
 - 정책: [catalog.yml](../../policies/catalog.yml) `restock_alert`, `inventory.auto_restore`
-- 에러: `already_in_stock` → `add_to_cart` · `already_subscribed` → `list_restock_subscriptions`
+- 에러: `already_in_stock` → `add_to_cart` · `already_subscribed` → `list_restock_subscriptions` · `invalid_state`(단종된 변형) → `search_products` · `invalid_input`(그 상품에 없는 사이즈·색, 여럿이 맞음; `detail.allowed`에 변형 목록) → `get_product`
 - 멱등성: `(variant_id, 신청자, channel)`로 한 건
 
 ### `list_restock_subscriptions` — Kind: R
@@ -708,7 +726,7 @@
 - 요약: 로그인한 쇼퍼의 재입고 알림 신청 목록.
 - consumes → produces: → `restock_alert_id[]`
 - 입력: `limit?`(기본 20), `cursor?`
-- 출력: `{items: [{id: "rsa_204", product_id: "prd_chore_coat", variant_id: "var_chore_coat_m_olive", size: "M", channel: "email", availability: "out_of_stock", start_time: "2026-11-05T09:12:00-05:00"}], total: 1}`
+- 출력: `{items: [{id: "rsa_204", product_id: "prd_chore_coat", product_name: "Cotton chore coat", variant_id: "var_chore_coat_m_olive", size: "M", color: "Olive", channel: "email", availability: "out_of_stock", start_time: "2026-11-05T09:12:00-05:00", expires: "2027-02-03T09:12:00-05:00", notified_at: null}], total: 1}`. 최신 순이고, 알림이 나간 것(`notified_at`)과 만료된 것도 보입니다. 로그인하지 않으면 `forbidden`
 - 프리뷰: 해당 없음(읽기)
 - 정책: 본인 것만
 - 에러: `invalid_filter` → `list_restock_subscriptions`

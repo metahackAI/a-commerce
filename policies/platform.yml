@@ -29,6 +29,12 @@ watchers:
     run_fix: ask                         # ask(사람 승인 대기) | standing_approval(미리 승인된 자동화로 바로 실행, 되돌리기 기한 적용)
     origin: automation
 
+# 할 일 맡기기: 감시 작업이 새로 연 agent_noticed 할 일을 사람이 열기 전에 운영 에이전트가 맡는다. docs/api/platform.md §task
+# 게이트웨이가 acts_as 운영자의 위임 토큰(human:* 스코프 없음)으로 할 일의 요청 문장을 턴으로 보낸다. 초안은 승인 대기에서 멈춘다.
+task_pickup:
+  enabled: false                         # 기본값. 스토어가 켠다
+  acts_as: null                          # 운영자 id(adm_…). 초안은 이 사람의 이름과 역할로 만들어진다
+
 roles:
   known_scopes: [tools, changeset, human, external, admin]   # check: roles.known_scopes. 스코프 앞부분(gateway.md §2). 이 밖의 스코프는 거부
   known_roles: [operator, merchandiser, catalog_admin, payout_approver, platform_admin]   # check: roles.known_roles. approval.yml approver_role 값 포함
@@ -43,3 +49,10 @@ orgs:
 api_keys:
   scope_within_issuer: true              # check: api_keys.scope_within_issuer. 발급자 역할의 스코프를 넘지 않음
   external_agent_scopes: [external:read, external:cart, external:prepare_order]   # check: api_keys.external_agent_scopes. 외부 에이전트 키가 가질 수 있는 스코프
+
+# API 키로 들어오는 외부 에이전트·연동 클라이언트의 세션(login · refresh_token · logout). 사람의 세션은 게이트웨이가 한다
+client_sessions:
+  access_token_minutes: 15               # 액세스 토큰 수명(expires_in)
+  refresh_token_days: 30                 # 리프레시 토큰 수명. 쓸 때마다 새 토큰으로 바뀜
+  max_sessions_per_client: 5             # 클라이언트(키)마다 살아 있는 세션 상한. 넘으면 가장 오래된 세션을 끝냄
+  lockout_from: customer.password.lockout   # 틀린 비밀 값이 이어지면 비밀번호와 같은 규칙으로 키를 잠근다

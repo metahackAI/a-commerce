@@ -97,7 +97,6 @@ Unit tests reproduce the B1, B2, F1, F2 and F5 numbers. The SQL paths have datab
 - **Blocked:** the model endpoint (Glimmer) has not answered since Oct 31 01:37 KST, so the design and held-out numbers wait for it. Until it answers, the assistant says plainly that its model is down instead of timing out.
 - **Open:**
   - expiring gifts nobody accepted and unpaid orders (the policies exist; no job applies them yet);
-  - receiving a reorder into stock;
   - the held-out run and the README numbers (M6).
 
 ## 5. Work tracks

@@ -33,6 +33,7 @@ import {
 
 import {signOut} from '@/lib/session';
 
+import {AilismMark} from '@/components/brand/Ailism';
 import {useAgentDock} from './AgentDock';
 import {StoreClock} from './StoreClock';
 
@@ -91,10 +92,8 @@ export function BoNav({userName, role}: {userName: string; role: string}) {
     <SideNav
       header={
         <VStack gap={2}>
-          <VStack gap={0}>
-            <Text type="label" weight="semibold">
-              Northwind Apparel
-            </Text>
+          <VStack gap={1}>
+            <AilismMark size="sm" />
             <Text type="supporting" color="secondary">
               Back office
             </Text>

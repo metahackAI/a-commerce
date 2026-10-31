@@ -24,6 +24,7 @@ import {Token} from '@astryxdesign/core/Token';
 import {Toolbar} from '@astryxdesign/core/Toolbar';
 import {ResizeHandle, useResizable} from '@astryxdesign/core/Resizable';
 
+import {AILISM, AilismAvatar} from '@/components/brand/Ailism';
 import {useAi} from '@/ai/AiProvider';
 import {useAiTarget} from '@/ai/useAiTarget';
 import type {UiBlock} from '@/ai/types';
@@ -120,7 +121,11 @@ export function Workspace({greeting, composerPlaceholder, canvasTitle, canvasEmp
                       m.sender === 'system' ? (
                         <ChatSystemMessage key={m.id}>{m.text}</ChatSystemMessage>
                       ) : (
-                        <ChatMessage key={m.id} sender={m.sender}>
+                        <ChatMessage
+                          key={m.id}
+                          sender={m.sender}
+                          name={m.sender === 'assistant' ? AILISM.assistant : undefined}
+                          avatar={m.sender === 'assistant' ? <AilismAvatar size="sm" /> : undefined}>
                           <ChatMessageBubble>{m.text}</ChatMessageBubble>
                         </ChatMessage>
                       ),

@@ -53,6 +53,9 @@ acom-fulfillment = { path = "crates/domains/fulfillment" }
 acom-messaging = { path = "crates/domains/messaging" }
 acom-platform = { path = "crates/domains/platform" }
 acom-analytics = { path = "crates/domains/analytics" }
+acom-community = { path = "crates/domains/community" }
+acom-partner = { path = "crates/domains/partner" }
+acom-integration = { path = "crates/domains/integration" }
 
 # external
 axum = "0.8"

@@ -90,7 +90,7 @@ impl Sessions {
     }
 
     /// The scopes an operator's roles grant, plus demo controls for platform admins in demo mode.
-    async fn operator(&self, admin_id: &str) -> Result<Option<Principal>, StoreError> {
+    pub(crate) async fn operator(&self, admin_id: &str) -> Result<Option<Principal>, StoreError> {
         let mut tx = self.tx().await?;
         let row: Option<(String, Option<String>, String)> = sqlx::query_as(
             "SELECT name, alternate_name, admin_status FROM platform.admin_user

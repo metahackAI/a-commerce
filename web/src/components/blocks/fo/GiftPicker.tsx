@@ -84,7 +84,7 @@ export function GiftPickerBlock({block}: BlockProps) {
       footer={
         <HStack gap={3} justify="between" vAlign="center" wrap="wrap">
           <Text type="supporting" color="secondary">
-            Northwind prepares the order. Only you can place it.
+            Ailism prepares the order. Only you can place it.
           </Text>
           <BlockActions block={rest} />
         </HStack>

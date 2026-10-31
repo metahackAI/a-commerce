@@ -1,6 +1,6 @@
 'use client';
 
-// The storefront frame: the top navigation with the store's display categories, search, the
+// The storefront frame (Ailism Commerce): the top navigation with the store's display categories, search, the
 // assistant, who is signed in, and the cart; the assistant drawer; and below the phone
 // breakpoint, AppShell's own compact bar and menu drawer (scene F6).
 
@@ -25,6 +25,8 @@ import type {ReactNode} from 'react';
 
 import {words} from '@/app/(storefront)/_lib/format';
 import {signOut} from '@/lib/session';
+
+import {AilismFooter, AilismMark} from '@/components/brand/Ailism';
 
 import {AssistantDrawer} from './AssistantDrawer';
 import {StorefrontProvider, useStorefront, type ShopperInfo} from './StorefrontContext';
@@ -118,7 +120,7 @@ function EndContent() {
         // A button, not a TopNavItem: TopNavItem always renders the router link (next/link), which
         // throws during server rendering when there is no href.
         <Button
-          label="Ask Northwind"
+          label="Ask Ailism"
           variant="ghost"
           size="sm"
           icon={<Icon icon={ChatBubbleLeftEllipsisIcon} size="sm" />}
@@ -145,7 +147,7 @@ function NavLinks({categories}: {categories: NavCategory[]}) {
       <TopNavItem label="Shop all" href="/search" isSelected={pathname === '/search'} />
       {isMobile ? (
         <>
-          <TopNavItem label="Ask Northwind" href="/ask" isSelected={pathname === '/ask'} />
+          <TopNavItem label="Ask Ailism" href="/ask" isSelected={pathname === '/ask'} />
           <TopNavItem label="Orders" href="/orders" isSelected={pathname.startsWith('/orders')} />
           <TopNavItem label="Account" href="/account" isSelected={pathname === '/account'} />
         </>
@@ -163,10 +165,8 @@ function Shell({categories, children}: {categories: NavCategory[]; children: Rea
         <TopNav
           label="Store"
           heading={
-            <Link href="/" label="Northwind home">
-              <Text type="label" weight="bold">
-                NORTHWIND
-              </Text>
+            <Link href="/" label="Ailism Commerce home">
+              <AilismMark />
             </Link>
           }
           startContent={<NavLinks categories={categories} />}
@@ -174,6 +174,7 @@ function Shell({categories, children}: {categories: NavCategory[]; children: Rea
         />
       }>
       {children}
+      <AilismFooter />
       <AssistantDrawer />
     </AppShell>
   );

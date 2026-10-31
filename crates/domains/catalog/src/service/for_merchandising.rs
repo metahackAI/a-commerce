@@ -1,6 +1,7 @@
 //! What the merchandising domain reads from the catalog: a short card per product (name, main
 //! image, colors, stock, whether it can be sold), to check a banner's product image and to hide
-//! sold-out or unsellable products in a display slot. Plain reads over the caller's transaction.
+//! sold-out or unsellable products in a display slot, and brand names to arrange a brand strip.
+//! Plain reads over the caller's transaction.
 
 use acom_contract::ToolError;
 use acom_store::{StoreError, TxCx};
@@ -39,6 +40,21 @@ pub async fn product_cards(
     )
     .bind(tx.tenant.as_str())
     .bind(product_ids)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(|e| ToolError::from(StoreError::from(e)))
+}
+
+/// `(id, name)` of the brands among `brand_ids` that exist in this store.
+pub async fn brand_names(
+    tx: &mut TxCx,
+    brand_ids: &[String],
+) -> Result<Vec<(String, String)>, ToolError> {
+    sqlx::query_as(
+        "SELECT id, name FROM catalog.brand WHERE tenant_id = $1 AND id = ANY($2) ORDER BY id",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(brand_ids)
     .fetch_all(&mut *tx.tx)
     .await
     .map_err(|e| ToolError::from(StoreError::from(e)))

@@ -20,6 +20,9 @@ acom-fulfillment.workspace = true
 acom-messaging.workspace = true
 acom-platform.workspace = true
 acom-analytics.workspace = true
+acom-community.workspace = true
+acom-partner.workspace = true
+acom-integration.workspace = true
 
 [lints]
 workspace = true

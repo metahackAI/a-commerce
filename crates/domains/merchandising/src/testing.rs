@@ -99,6 +99,8 @@ pub(crate) fn bookings_of(slot_id: &str) -> Vec<BookingRow> {
                 image: from_banner("image"),
                 image_product_group_id: from_banner("image_product_group_id"),
                 image_color: from_banner("image_color"),
+                item_list_element: None,
+                sales_channel: None,
             }
         })
         .collect()

@@ -196,6 +196,16 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:zoneType of a shipping zone: an ordinary area or a remote one (usually a surcharge).
+    ZoneType = "zone_type" { Standard = "standard", Remote = "remote" }
+}
+
+word_enum! {
+    /// acom:feeType, how a shipping zone charges shipping.
+    ShippingFeeType = "shipping_fee_type" { Paid = "paid", Free = "free", FreeOverMinSubtotal = "free_over_min_subtotal" }
+}
+
+word_enum! {
     /// schema.org `ActionStatusType`.
     ActionStatus = "action_status" {
         Potential = "potential", Active = "active", Completed = "completed", Failed = "failed",
@@ -273,6 +283,47 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:promotionType of a promotion made by `create_promotion` (member and sale prices have
+    /// none).
+    PromotionType = "promotion_type" {
+        Bogo = "bogo", Bundle = "bundle", Threshold = "threshold", AmountOff = "amount_off",
+    }
+}
+
+word_enum! {
+    /// acom:loyaltyTransactionType, what a store-point ledger entry records.
+    LoyaltyTransactionType = "loyalty_transaction_type" {
+        Accrual = "accrual", Spend = "spend", Expire = "expire", Grant = "grant", Restore = "restore",
+        Reversal = "reversal",
+    }
+}
+
+word_enum! {
+    /// acom:eventStatus of a promotion event.
+    EventStatus = "event_status" {
+        Draft = "draft", Scheduled = "scheduled", Running = "running", Paused = "paused", Closed = "closed",
+        Drawing = "drawing", Announced = "announced", Fulfilling = "fulfilling", Completed = "completed",
+        Cancelled = "cancelled",
+    }
+}
+
+word_enum! {
+    /// acom:entryStatus of an event entry.
+    EntryStatus = "entry_status" {
+        Entered = "entered", Invalid = "invalid", Won = "won", Lost = "lost", Waitlist = "waitlist",
+        Cancelled = "cancelled",
+    }
+}
+
+word_enum! {
+    /// acom:rewardStatus of an event reward.
+    RewardStatus = "reward_status" {
+        Pending = "pending", CompliancePending = "compliance_pending", Ready = "ready",
+        Dispatched = "dispatched", Delivered = "delivered", Failed = "failed", Forfeited = "forfeited",
+    }
+}
+
+word_enum! {
     /// acom:displayStatus of a display booking or curated page.
     DisplayStatus = "display_status" { Draft = "draft", Scheduled = "scheduled", Active = "active", Ended = "ended" }
 }
@@ -288,6 +339,19 @@ word_enum! {
 word_enum! {
     /// acom:termSet, which set a category belongs to.
     TermSet = "term_set" { Standard = "standard", Display = "display" }
+}
+
+word_enum! {
+    /// acom:popupType, what a store popup is for.
+    PopupType = "popup_type" { Image = "image", Notice = "notice", Event = "event", Consent = "consent" }
+}
+
+word_enum! {
+    /// acom:resourceType of a display cache clear: the kind of display content that changed, or all.
+    CacheResourceType = "cache_resource_type" {
+        Category = "category", DisplaySlot = "display_slot", Banner = "banner", Popup = "popup",
+        CollectionPage = "collection_page", All = "all",
+    }
 }
 
 word_enum! {
@@ -338,6 +402,22 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:billingCycle, how often a subscription orders again.
+    BillingCycle = "billing_cycle" { EveryWeek = "every_week", Every2Weeks = "every_2_weeks", EveryMonth = "every_month" }
+}
+
+word_enum! {
+    /// acom:subscriptionStatus: ordering every cycle, skipping cycles until resumed, or ended.
+    SubscriptionStatus = "subscription_status" { Active = "active", Paused = "paused", Cancelled = "cancelled" }
+}
+
+word_enum! {
+    /// acom:receiptType, which document a receipt is: for income deduction, proof of expense, or
+    /// a tax invoice made out to a business tax id.
+    ReceiptType = "receipt_type" { Deduction = "deduction", Proof = "proof", TaxInvoice = "tax_invoice" }
+}
+
+word_enum! {
     /// schema.org `ReturnFeesEnumeration`.
     ReturnFees = "return_fees" {
         FreeReturn = "free_return", ReturnFeesCustomerResponsibility = "return_fees_customer_responsibility",
@@ -380,6 +460,21 @@ word_enum! {
 word_enum! {
     /// acom:adminStatus of an operator account.
     AdminStatus = "admin_status" { Active = "active", Suspended = "suspended", Locked = "locked" }
+}
+
+word_enum! {
+    /// acom:storeStatus of a store (tenant): open for business or suspended.
+    StoreStatus = "store_status" { Active = "active", Suspended = "suspended" }
+}
+
+word_enum! {
+    /// acom:organizationType of an organization operators belong to.
+    OrganizationType = "organization_type" { Department = "department", Vendor = "vendor", Branch = "branch" }
+}
+
+word_enum! {
+    /// acom:apiKeyStatus of an API key: it can sign in, or it was revoked.
+    ApiKeyStatus = "api_key_status" { Active = "active", Revoked = "revoked" }
 }
 
 word_enum! {
@@ -430,6 +525,108 @@ word_enum! {
     ImportMode = "import_mode" { Create = "create", Upsert = "upsert" }
 }
 
+word_enum! {
+    /// schema:creativeWorkStatus of a product question: whether shoppers see it (and its answer).
+    QuestionStatus = "question_status" { Visible = "visible", Hidden = "hidden" }
+}
+
+word_enum! {
+    /// acom:reportReason, why a shopper reports a review or a post as inappropriate.
+    ReportReason = "report_reason" {
+        Spam = "spam", Abuse = "abuse", Obscene = "obscene", Advertisement = "advertisement",
+        Fake = "fake", Irrelevant = "irrelevant", Other = "other",
+    }
+}
+
+word_enum! {
+    /// acom:copyType, which text of a product `generate_copy` drafts.
+    CopyType = "copy_type" { Title = "title", Summary = "summary", Description = "description", Seo = "seo" }
+}
+
+word_enum! {
+    /// acom:imageStyle, how a generated product image is staged.
+    ImageStyle = "image_style" { Studio = "studio", Lifestyle = "lifestyle", FlatLay = "flat_lay" }
+}
+
+// ── customer (docs/api/enums.md §1.13, §2.4) ────────────────────────────────────────────
+
+word_enum! {
+    /// acom:businessVerification of a business member.
+    BusinessVerification = "business_verification" { Unverified = "unverified", Verified = "verified" }
+}
+
+word_enum! {
+    /// acom:consentType, what a member agreed to.
+    ConsentType = "consent_type" {
+        Terms = "terms", Privacy = "privacy", MarketingEmail = "marketing_email", MarketingSms = "marketing_sms",
+        MarketingPush = "marketing_push", MarketingInApp = "marketing_in_app", EntryTerms = "entry_terms",
+        WinnerContact = "winner_contact",
+    }
+}
+
+word_enum! {
+    /// acom:inquiryType, what a customer inquiry is about.
+    InquiryType = "inquiry_type" {
+        OrderStatus = "order_status", Return = "return", ProductQuestion = "product_question",
+        Account = "account", Callback = "callback", Other = "other",
+    }
+}
+
+word_enum! {
+    /// acom:inquiryStatus of a customer inquiry.
+    InquiryStatus = "inquiry_status" { Received = "received", InProgress = "in_progress", Resolved = "resolved" }
+}
+
+word_enum! {
+    /// acom:authorType, who wrote a comment in an inquiry thread.
+    AuthorType = "author_type" { Customer = "customer", Staff = "staff", Agent = "agent" }
+}
+
+word_enum! {
+    /// acom:remedyType, what a remedy gives.
+    RemedyType = "remedy_type" { LoyaltyPoints = "loyalty_points", Coupon = "coupon", Cash = "cash" }
+}
+
+word_enum! {
+    /// acom:remedyStatus.
+    RemedyStatus = "remedy_status" {
+        Requested = "requested", Approved = "approved", Rejected = "rejected", PayoutPending = "payout_pending",
+        Paid = "paid", Failed = "failed",
+    }
+}
+
+word_enum! {
+    /// acom:noticeStatus of a store notice.
+    NoticeStatus = "notice_status" { Draft = "draft", Published = "published" }
+}
+
+word_enum! {
+    /// acom:withdrawalReason a member gives when leaving.
+    WithdrawalReason = "withdrawal_reason" {
+        NotUsing = "not_using", TooManyMessages = "too_many_messages", PrivacyConcern = "privacy_concern",
+        PoorService = "poor_service", FoundAlternative = "found_alternative", Other = "other",
+    }
+}
+
+word_enum! {
+    /// acom:tierChangeCause, why a member's tier changed (`list_tier_history`).
+    TierChangeCause = "tier_change_cause" {
+        Entry = "entry", Evaluation = "evaluation", Event = "event", ManualOverride = "manual_override",
+        OverrideExpired = "override_expired", GraceStarted = "grace_started", GraceEnded = "grace_ended",
+        ProgramChange = "program_change", Withdrawal = "withdrawal",
+    }
+}
+
+word_enum! {
+    /// acom:discountLimitPeriod, the period an employee discount limit renews over.
+    DiscountLimitPeriod = "discount_limit_period" { Month = "month", Year = "year" }
+}
+
+word_enum! {
+    /// acom:recoveryKind of an account recovery request.
+    RecoveryKind = "recovery_kind" { PasswordReset = "password_reset", LoginId = "login_id" }
+}
+
 /// Every word list, by name. `cargo xtask check-schema` compares database `CHECK` lists with these.
 pub const LISTS: &[(&str, &[&str])] = &[
     (OrderStatus::LIST, OrderStatus::WORDS),
@@ -446,6 +643,8 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (RefundStatus::LIST, RefundStatus::WORDS),
     (RefundMethod::LIST, RefundMethod::WORDS),
     (RefundType::LIST, RefundType::WORDS),
+    (ZoneType::LIST, ZoneType::WORDS),
+    (ShippingFeeType::LIST, ShippingFeeType::WORDS),
     (ActionStatus::LIST, ActionStatus::WORDS),
     (ChangeSetState::LIST, ChangeSetState::WORDS),
     (PreviewState::LIST, PreviewState::WORDS),
@@ -457,9 +656,16 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (CouponStatus::LIST, CouponStatus::WORDS),
     (CouponApplication::LIST, CouponApplication::WORDS),
     (DiscountLayer::LIST, DiscountLayer::WORDS),
+    (PromotionType::LIST, PromotionType::WORDS),
+    (LoyaltyTransactionType::LIST, LoyaltyTransactionType::WORDS),
+    (EventStatus::LIST, EventStatus::WORDS),
+    (EntryStatus::LIST, EntryStatus::WORDS),
+    (RewardStatus::LIST, RewardStatus::WORDS),
     (DisplayStatus::LIST, DisplayStatus::WORDS),
     (SlotType::LIST, SlotType::WORDS),
     (TermSet::LIST, TermSet::WORDS),
+    (PopupType::LIST, PopupType::WORDS),
+    (CacheResourceType::LIST, CacheResourceType::WORDS),
     (MemberState::LIST, MemberState::WORDS),
     (MemberType::LIST, MemberType::WORDS),
     (MessageChannel::LIST, MessageChannel::WORDS),
@@ -467,6 +673,9 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (CampaignStatus::LIST, CampaignStatus::WORDS),
     (SalesChannel::LIST, SalesChannel::WORDS),
     (PaymentMethod::LIST, PaymentMethod::WORDS),
+    (BillingCycle::LIST, BillingCycle::WORDS),
+    (SubscriptionStatus::LIST, SubscriptionStatus::WORDS),
+    (ReceiptType::LIST, ReceiptType::WORDS),
     (ReturnFees::LIST, ReturnFees::WORDS),
     (TaskState::LIST, TaskState::WORDS),
     (TaskOrigin::LIST, TaskOrigin::WORDS),
@@ -474,6 +683,9 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (PreferenceKey::LIST, PreferenceKey::WORDS),
     (ActorKind::LIST, ActorKind::WORDS),
     (AdminStatus::LIST, AdminStatus::WORDS),
+    (StoreStatus::LIST, StoreStatus::WORDS),
+    (OrganizationType::LIST, OrganizationType::WORDS),
+    (ApiKeyStatus::LIST, ApiKeyStatus::WORDS),
     (ReviewStatus::LIST, ReviewStatus::WORDS),
     (FitVote::LIST, FitVote::WORDS),
     (MeasurementName::LIST, MeasurementName::WORDS),
@@ -482,6 +694,22 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (StepKind::LIST, StepKind::WORDS),
     (DraftStatus::LIST, DraftStatus::WORDS),
     (ImportMode::LIST, ImportMode::WORDS),
+    (QuestionStatus::LIST, QuestionStatus::WORDS),
+    (ReportReason::LIST, ReportReason::WORDS),
+    (CopyType::LIST, CopyType::WORDS),
+    (ImageStyle::LIST, ImageStyle::WORDS),
+    (BusinessVerification::LIST, BusinessVerification::WORDS),
+    (ConsentType::LIST, ConsentType::WORDS),
+    (InquiryType::LIST, InquiryType::WORDS),
+    (InquiryStatus::LIST, InquiryStatus::WORDS),
+    (AuthorType::LIST, AuthorType::WORDS),
+    (RemedyType::LIST, RemedyType::WORDS),
+    (RemedyStatus::LIST, RemedyStatus::WORDS),
+    (NoticeStatus::LIST, NoticeStatus::WORDS),
+    (WithdrawalReason::LIST, WithdrawalReason::WORDS),
+    (TierChangeCause::LIST, TierChangeCause::WORDS),
+    (DiscountLimitPeriod::LIST, DiscountLimitPeriod::WORDS),
+    (RecoveryKind::LIST, RecoveryKind::WORDS),
 ];
 
 /// The words of one list, by name.
@@ -525,7 +753,8 @@ mod tests {
         for (_, words) in LISTS {
             for w in *words {
                 assert!(
-                    w.bytes().all(|b| b.is_ascii_lowercase() || b == b'_'),
+                    w.bytes()
+                        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_'),
                     "{w}"
                 );
             }

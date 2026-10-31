@@ -172,7 +172,7 @@ export function ReturnPanel({orderId, item}: {orderId: string; item: OrderItem})
                 {reason === 'damaged_in_transit' || reason === 'defect' ? (
                   <HStack gap={2} wrap="wrap" vAlign="center">
                     <Text type="supporting" color="secondary">
-                      Photos help the store decide. Send them to Northwind in the chat.
+                      Photos help the store decide. Send them to Ailism in the chat.
                     </Text>
                     <Button label="Send photos" size="sm" variant="ghost" onClick={() => say(`I have photos of the ${item.name} from order ${orderId}.`)} />
                   </HStack>

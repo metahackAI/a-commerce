@@ -1,22 +1,23 @@
 //! The `fulfillment` domain: claims (cancel, return, exchange), inspection, refunds, deliveries, shipping rates.
 //!
 //! Operations, inputs, outputs, checks, and errors are specified in `docs/api/fulfillment.md`.
-//! Layout: `model` (pure business rules, unit-tested against scenes B2 and F5), one module per
-//! resource with one type per operation (`claim`, `options`, `decide`, `refund`, `delivery`,
-//! and the person-only endpoints in `person`), `repo` (SQL). Other domains are reached only
-//! through their `service` modules, never through their tables.
+//! Layout follows the API hierarchy `fulfillment.{resource}.{operation}`: one folder per
+//! resource (`claim`, `inspection`, `refund`, `parcel_delivery`, `shipping_rate`) with one file
+//! per operation, named by its tool (person-only endpoints included), and the resource's shared
+//! code in its `mod.rs`. Domain-wide: `model` (pure business rules, unit-tested against scenes B2
+//! and F5), `repo` (SQL). Other domains are reached only through their `service` modules, never
+//! through their tables.
 
 pub mod errors;
 pub mod model;
 pub mod service;
 
 mod claim;
-mod decide;
-mod delivery;
-mod options;
-mod person;
+mod inspection;
+mod parcel_delivery;
 mod refund;
 mod repo;
+mod shipping_rate;
 #[cfg(test)]
 mod tests;
 mod watch;
@@ -25,7 +26,7 @@ use acom_contract::{ErrorCode, RegistryBuilder, ToolError};
 use acom_sales::service::for_fulfillment as sales;
 use acom_store::{Cx, TxCx};
 use chrono::{DateTime, Utc};
-use serde_json::{Value, json};
+use serde_json::json;
 
 use crate::errors::{NOT_YOUR_ORDER, ORDER_NOT_FOUND};
 use crate::model::Rules;
@@ -39,18 +40,32 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .read(claim::EvaluateReturnRequest)
         .read(claim::SearchClaims)
         .read(claim::GetClaim)
-        .read(options::GetReturnOptions)
-        .read(options::GetCancelOptions)
-        .write(decide::ApproveClaim)
-        .write(decide::RejectClaim)
+        .read(claim::GetReturnOptions)
+        .read(claim::GetCancelOptions)
+        .write(claim::ApproveClaim)
+        .write(claim::RejectClaim)
         .write(refund::RefundReturn)
         .read(refund::GetRefund)
-        .read(delivery::GetDeliveryDates)
-        .read(delivery::GetDelivery)
-        .read(delivery::TrackShipment)
-        .person(person::SendReturnRequest)
-        .person(person::CancelMyOrder)
-        .person(person::WithdrawClaim);
+        .read(parcel_delivery::GetDeliveryDates)
+        .read(parcel_delivery::GetDelivery)
+        .read(parcel_delivery::TrackShipment)
+        .person(claim::SendReturnRequest)
+        .person(claim::CancelMyOrder)
+        .person(claim::WithdrawClaim)
+        .read(claim::GetExchangeOptions)
+        .write(claim::CancelOrderLines)
+        .write(claim::ConvertExchangeToReturn)
+        .write(claim::UploadEvidence)
+        .person(claim::SendExchangeRequest)
+        .person(claim::PayClaimCharge)
+        .write(inspection::AssessReturnCondition)
+        .write(refund::RetryRefund)
+        .write(parcel_delivery::ScheduleShipment)
+        .write(parcel_delivery::ConfirmShipment)
+        .write(parcel_delivery::RegisterShortage)
+        .read(shipping_rate::ListShippingZones)
+        .write(shipping_rate::ManageShippingZone)
+        .write(shipping_rate::SetShippingRate);
     // Scheduled work (platform.job): the watcher over waiting return requests.
     b.job(watch::ReturnsOverRefundThreshold);
 }
@@ -133,21 +148,6 @@ pub(crate) fn delivered_at(
         .filter(|d| d.order_id == order_id && d.delivery_state == "delivered")
         .filter_map(|d| d.delivered_at)
         .max()
-}
-
-/// Keeps only the named top-level fields (all when `fields` is empty); `id` always stays.
-pub(crate) fn select(v: Value, fields: &[String]) -> Value {
-    if fields.is_empty() {
-        return v;
-    }
-    match v {
-        Value::Object(m) => Value::Object(
-            m.into_iter()
-                .filter(|(k, _)| k == "id" || fields.iter().any(|f| f == k))
-                .collect(),
-        ),
-        other => other,
-    }
 }
 
 /// An internal error for a state the data should never be in.
