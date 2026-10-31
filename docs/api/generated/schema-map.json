@@ -3102,6 +3102,485 @@
     ]
   },
   {
+    "schema": "community",
+    "table": "board",
+    "kind": "table",
+    "term": "schema:CreativeWork/acom:Board",
+    "description": "a community board shoppers write posts on, with who may write and how it is moderated. id prefix brd_.",
+    "id_prefix": "brd",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix brd_; the same value the API, logs and events use (API board_id)."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "the board's name shown to shoppers; one board per name in a store (community.yml board.name_unique)."
+      },
+      {
+        "name": "board_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:boardType",
+        "description": "what the board is for. values: board_type",
+        "values": [
+          "free",
+          "review",
+          "question",
+          "event"
+        ],
+        "values_list": "board_type"
+      },
+      {
+        "name": "write_permission",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:writePermission",
+        "description": "who may write posts: everyone (guests too), member (signed-in members) or staff (the store). values: write_permission",
+        "values": [
+          "everyone",
+          "member",
+          "staff"
+        ],
+        "values_list": "write_permission"
+      },
+      {
+        "name": "allow_secret",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:allowSecret",
+        "description": "true when a post may be secret (only its writer and the store read it)."
+      },
+      {
+        "name": "allow_attachment",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:allowAttachment",
+        "description": "true when posts may carry uploaded images (community.yml attachment)."
+      },
+      {
+        "name": "moderation_mode",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:moderationMode",
+        "description": "pre_review holds new posts until the store looks; post_review shows them at once and reports hold them; none keeps no queue. values: moderation_mode",
+        "values": [
+          "pre_review",
+          "post_review",
+          "none"
+        ],
+        "values_list": "moderation_mode"
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "community",
+    "table": "comment",
+    "kind": "table",
+    "term": "schema:Comment",
+    "description": "a reply to a post, or to another reply up to community.yml reply.max_depth. id prefix rpl_. API: reply.",
+    "id_prefix": "rpl",
+    "api_name": "reply",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix rpl_; the same value the API, logs and events use (API reply_id)."
+      },
+      {
+        "name": "discussion_forum_posting_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:about",
+        "description": "the post the reply belongs to (post_ id, API post_id).",
+        "references": "community.discussion_forum_posting"
+      },
+      {
+        "name": "parent_item_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:parentItem",
+        "description": "the reply this one answers (rpl_ id); NULL for a reply to the post itself.",
+        "references": "community.comment"
+      },
+      {
+        "name": "reply_depth",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:replyDepth",
+        "description": "1 for a reply to the post, 2 for a reply to a reply, and so on."
+      },
+      {
+        "name": "author_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:author",
+        "description": "who wrote it: a shopper (cus_), a guest's browser session (ses_) or an operator of the store (adm_); only they may edit it."
+      },
+      {
+        "name": "author_name",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:author",
+        "description": "the name shown with the reply, masked as community.yml moderation.author_masking said when it was written; NULL for the store and for guests."
+      },
+      {
+        "name": "text",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:text",
+        "description": "the reply as its writer wrote it."
+      },
+      {
+        "name": "is_secret",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:isSecret",
+        "description": "true when only its writer, the post's writer and the store may read it."
+      },
+      {
+        "name": "moderation_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:moderationStatus",
+        "description": "published, held_for_review, blinded by the store, or deleted by its writer. values: moderation_status",
+        "values": [
+          "published",
+          "held_for_review",
+          "blinded",
+          "deleted"
+        ],
+        "values_list": "moderation_status"
+      },
+      {
+        "name": "moderation_reason",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:moderationReason",
+        "description": "why the store blinded it, or why it is held; NULL for a published reply."
+      },
+      {
+        "name": "date_created",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:dateCreated",
+        "description": "when it was written (store clock)."
+      },
+      {
+        "name": "date_modified",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:dateModified",
+        "description": "when its writer last changed it; NULL when never changed."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "community",
+    "table": "content_report",
+    "kind": "table",
+    "term": "schema:Action/acom:ContentReport",
+    "description": "a shopper's report that a post is inappropriate; enough reports from different shoppers hold or blind it (community.yml moderation.report_threshold). id prefix rpt_.",
+    "id_prefix": "rpt",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix rpt_; the same value the API, logs and events use (API report_id)."
+      },
+      {
+        "name": "discussion_forum_posting_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:object",
+        "description": "the post reported (post_ id, API post_id).",
+        "references": "community.discussion_forum_posting"
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "the shopper who reported it (cus_ id); one report per shopper and post.",
+        "references": "customer.person"
+      },
+      {
+        "name": "report_reason",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:reportReason",
+        "description": "why it was reported (community.yml moderation.report_reasons). values: report_reason",
+        "values": [
+          "spam",
+          "abuse",
+          "obscene",
+          "advertisement",
+          "fake",
+          "irrelevant",
+          "other"
+        ],
+        "values_list": "report_reason"
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:description",
+        "description": "the reporter's own words; NULL when they gave none."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the report was made (store clock)."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "community",
+    "table": "discussion_forum_posting",
+    "kind": "table",
+    "term": "schema:DiscussionForumPosting",
+    "description": "a post on a community board. id prefix post_. API: post.",
+    "id_prefix": "post",
+    "api_name": "post",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix post_; the same value the API, logs and events use (API post_id)."
+      },
+      {
+        "name": "board_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:isPartOf",
+        "description": "the board the post is on (brd_ id).",
+        "references": "community.board"
+      },
+      {
+        "name": "author_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:author",
+        "description": "who wrote it: a shopper (cus_), a guest's browser session (ses_) or an operator of the store (adm_); only they may edit it."
+      },
+      {
+        "name": "author_name",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:author",
+        "description": "the name shown with the post, masked as community.yml moderation.author_masking said when it was written (Ja***); NULL for the store and for guests."
+      },
+      {
+        "name": "headline",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:headline",
+        "description": "the post's title."
+      },
+      {
+        "name": "article_body",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:articleBody",
+        "description": "the post's text."
+      },
+      {
+        "name": "associated_media",
+        "type": "text[]",
+        "nullable": false,
+        "term": "schema:associatedMedia",
+        "description": "uploaded images attached to the post (upl_ ids); empty when none."
+      },
+      {
+        "name": "is_secret",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:isSecret",
+        "description": "true when only the writer and the store may read it (board allow_secret)."
+      },
+      {
+        "name": "in_language",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:inLanguage",
+        "description": "the language it is written in (BCP 47, for example en); NULL when not given."
+      },
+      {
+        "name": "moderation_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:moderationStatus",
+        "description": "published; held_for_review (board pre_review, a filter hold, or enough reports); blinded by the store; deleted by its writer or the store. values: moderation_status",
+        "values": [
+          "published",
+          "held_for_review",
+          "blinded",
+          "deleted"
+        ],
+        "values_list": "moderation_status"
+      },
+      {
+        "name": "moderation_reason",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:moderationReason",
+        "description": "why the store blinded or deleted it, or why it is held (report_threshold, profanity_filter, spam, pre_review); NULL for a published post."
+      },
+      {
+        "name": "like_count",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:likeCount",
+        "description": "how many shoppers liked the post; 0 or more."
+      },
+      {
+        "name": "date_published",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:datePublished",
+        "description": "when it was written (store clock)."
+      },
+      {
+        "name": "date_modified",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:dateModified",
+        "description": "when its writer last changed it; NULL when never changed."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
     "schema": "customer",
     "table": "comment",
     "kind": "table",
