@@ -166,8 +166,10 @@ async fn recipients(
                 .clone()
                 .ok_or_else(|| field("segment_id", "`issue_mode: segment` needs `segment_id`."))?;
             check_id("segment_id", "seg", &id, false)?;
-            // Segments are not stored yet, so no segment can be found.
-            Err(not_found("segment", &id, "preview_segment"))
+            // Members of another tier are not dropped quietly: the tier check below names them.
+            let (_, members) =
+                crate::segment::members_of(tx, &id, cx.clock.now(), "list_segments").await?;
+            Ok(members)
         }
         IssueMode::OnCondition => {
             let condition = input.condition.ok_or_else(|| {

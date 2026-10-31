@@ -9,8 +9,8 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::LoyaltyTransactionType;
-use crate::{known_member, whose};
+use super::{LoyaltyTransactionType, ledger};
+use crate::{known_member, money, whose};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -54,13 +54,38 @@ impl Operation for ListLoyaltyTransactions {
 
 impl ReadOp<Cx> for ListLoyaltyTransactions {
     async fn read(&self, cx: &Cx, input: LoyaltyTransactionsInput) -> Result<Value, ToolError> {
-        Page::new(input.limit, input.cursor.as_deref())?;
-        // Every kind filters the same, still empty, ledger.
-        let _kinds = input.r#type.unwrap_or_default();
+        let page = Page::new(input.limit, input.cursor.as_deref())?;
+        let kinds: Vec<&str> = input.r#type.iter().flatten().map(|k| k.as_str()).collect();
         let customer_id = whose(cx, &input.customer_id)?;
         let mut tx = cx.read().await.map_err(ToolError::from)?;
         known_member(&mut tx, &customer_id).await?;
+        let mut entries = ledger(&mut tx, &customer_id).await?;
         tx.commit().await.map_err(ToolError::from)?;
-        Ok(json!({"items": [], "total": 0}))
+        // Newest first; the kinds asked for only.
+        entries.reverse();
+        entries.retain(|e| kinds.is_empty() || kinds.contains(&e.transaction_type.as_str()));
+        let total = entries.len() as i64;
+        let from = usize::try_from(page.offset).unwrap_or(usize::MAX);
+        let items: Vec<Value> = entries
+            .iter()
+            .skip(from)
+            .take(usize::try_from(page.limit).unwrap_or(20))
+            .map(|e| {
+                json!({
+                    "id": e.id,
+                    "type": e.transaction_type,
+                    "amount": money(e.amount_value, e.amount_currency.trim()),
+                    "order_id": e.order_id,
+                    "at": cx.time.format(e.start_time),
+                    "expires": e.expires.map(|d| d.to_string()),
+                    "description": e.description,
+                })
+            })
+            .collect();
+        let mut out = json!({"items": items, "total": total});
+        if let Some(c) = page.next_cursor(items.len(), total) {
+            out["next_cursor"] = json!(c);
+        }
+        Ok(out)
     }
 }

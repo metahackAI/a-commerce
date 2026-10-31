@@ -273,6 +273,47 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:promotionType of a promotion made by `create_promotion` (member and sale prices have
+    /// none).
+    PromotionType = "promotion_type" {
+        Bogo = "bogo", Bundle = "bundle", Threshold = "threshold", AmountOff = "amount_off",
+    }
+}
+
+word_enum! {
+    /// acom:loyaltyTransactionType, what a store-point ledger entry records.
+    LoyaltyTransactionType = "loyalty_transaction_type" {
+        Accrual = "accrual", Spend = "spend", Expire = "expire", Grant = "grant", Restore = "restore",
+        Reversal = "reversal",
+    }
+}
+
+word_enum! {
+    /// acom:eventStatus of a promotion event.
+    EventStatus = "event_status" {
+        Draft = "draft", Scheduled = "scheduled", Running = "running", Paused = "paused", Closed = "closed",
+        Drawing = "drawing", Announced = "announced", Fulfilling = "fulfilling", Completed = "completed",
+        Cancelled = "cancelled",
+    }
+}
+
+word_enum! {
+    /// acom:entryStatus of an event entry.
+    EntryStatus = "entry_status" {
+        Entered = "entered", Invalid = "invalid", Won = "won", Lost = "lost", Waitlist = "waitlist",
+        Cancelled = "cancelled",
+    }
+}
+
+word_enum! {
+    /// acom:rewardStatus of an event reward.
+    RewardStatus = "reward_status" {
+        Pending = "pending", CompliancePending = "compliance_pending", Ready = "ready",
+        Dispatched = "dispatched", Delivered = "delivered", Failed = "failed", Forfeited = "forfeited",
+    }
+}
+
+word_enum! {
     /// acom:displayStatus of a display booking or curated page.
     DisplayStatus = "display_status" { Draft = "draft", Scheduled = "scheduled", Active = "active", Ended = "ended" }
 }
@@ -457,6 +498,11 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (CouponStatus::LIST, CouponStatus::WORDS),
     (CouponApplication::LIST, CouponApplication::WORDS),
     (DiscountLayer::LIST, DiscountLayer::WORDS),
+    (PromotionType::LIST, PromotionType::WORDS),
+    (LoyaltyTransactionType::LIST, LoyaltyTransactionType::WORDS),
+    (EventStatus::LIST, EventStatus::WORDS),
+    (EntryStatus::LIST, EntryStatus::WORDS),
+    (RewardStatus::LIST, RewardStatus::WORDS),
     (DisplayStatus::LIST, DisplayStatus::WORDS),
     (SlotType::LIST, SlotType::WORDS),
     (TermSet::LIST, TermSet::WORDS),

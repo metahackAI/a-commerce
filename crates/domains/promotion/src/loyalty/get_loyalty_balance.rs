@@ -5,12 +5,12 @@ use acom_contract::{
     ToolError,
 };
 use acom_store::Cx;
-use rust_decimal::Decimal;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::currency;
+use super::{balance, currency, expiring, ledger, store_date};
+use crate::rules::LoyaltyRules;
 use crate::{known_member, money, whose};
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -47,14 +47,25 @@ impl Operation for GetLoyaltyBalance {
 impl ReadOp<Cx> for GetLoyaltyBalance {
     async fn read(&self, cx: &Cx, input: LoyaltyBalanceInput) -> Result<Value, ToolError> {
         let customer_id = whose(cx, &input.customer_id)?;
-        let currency = currency(cx)?;
+        let rules = LoyaltyRules::read(&cx.policy)?;
         let mut tx = cx.read().await.map_err(ToolError::from)?;
         known_member(&mut tx, &customer_id).await?;
+        let entries = ledger(&mut tx, &customer_id).await?;
         tx.commit().await.map_err(ToolError::from)?;
+        let currency = match entries.first() {
+            Some(e) => e.amount_currency.trim().to_owned(),
+            None => currency(cx)?,
+        };
+        // Points past their last day no longer count, even before the nightly expiry records it.
+        let today = store_date(&cx.time, cx.clock.now());
+        let soon: Vec<Value> = expiring(&entries, today, rules.soon_days)
+            .into_iter()
+            .map(|(day, amount)| json!({"amount": money(amount, &currency), "expires": day.to_string()}))
+            .collect();
         Ok(json!({
             "customer_id": customer_id,
-            "balance": money(Decimal::ZERO, &currency),
-            "expiring_soon": [],
+            "balance": money(balance(&entries, today), &currency),
+            "expiring_soon": soon,
         }))
     }
 }

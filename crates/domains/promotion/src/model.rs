@@ -862,7 +862,10 @@ mod tests {
         // The asked tier itself is never offered as the way out.
         ask.tier = Some("vip".into());
         let c = check_max_discount(&r, &ask, &plan_sale(&r, &ask, &products));
-        assert_eq!(c.detail.as_deref(), Some("35% is over the 30% limit for vip"));
+        assert_eq!(
+            c.detail.as_deref(),
+            Some("35% is over the 30% limit for vip")
+        );
         // Several tiers that would allow it, lowest limit first.
         let mut more = r.clone();
         more.max_discount_by_tier.insert("gold".into(), d("0.25"));

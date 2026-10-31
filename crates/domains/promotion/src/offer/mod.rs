@@ -42,7 +42,7 @@ fn valid_percent(field: &str, p: Decimal) -> Result<Decimal, ToolError> {
 }
 
 /// The promotions in the compared statuses whose period overlaps, with the products each covers.
-async fn others(
+pub(crate) async fn others(
     tx: &mut TxCx,
     rules: &SaleRules,
     from: DateTime<Utc>,

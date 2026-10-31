@@ -99,6 +99,8 @@
 | 쿠폰 적용 `acom:coupon_application` | `automatic_at_checkout`, `code_entry`, `download` |
 | 쿠폰 중복 `acom:coupon_stacking` | `no_tier_coupons`, `with_tier_coupons`, `no_other_coupons` |
 | 할인 층 `acom:discount_layer` (예전 정수 `stacking_tier` 1·2·3) | `item_price`, `order_discount`, `add_on` |
+| 프로모션 종류 `acom:promotion_type` (`create_promotion`, 회원가·기간가 프로모션은 없음) | `bogo`, `bundle`, `threshold`, `amount_off` |
+| 적립금 거래 `acom:loyalty_transaction_type` | `accrual`(적립), `spend`(사용), `expire`(만료), `grant`(지급), `restore`(취소·반품 복원), `reversal`(지급 되돌리기의 차감) |
 | 이벤트 `acom:event_status` | `draft`, `scheduled`, `running`, `paused`, `closed`, `drawing`, `announced`, `fulfilling`, `completed`, `cancelled` |
 | 응모 `acom:entry_status` | `entered`, `invalid`, `won`, `lost`, `waitlist`, `cancelled` |
 | 보상 `acom:reward_status` | `pending`, `compliance_pending`, `ready`, `dispatched`, `delivered`, `failed`, `forfeited` |

@@ -9,13 +9,17 @@
 pub mod benefit;
 pub mod service;
 
+mod conditional_gift;
 mod coupon;
+mod event;
 mod loyalty;
 mod model;
 mod offer;
 mod promotion;
 mod repo;
+mod rules;
 mod schedule;
+mod segment;
 
 #[cfg(test)]
 mod b1;
@@ -40,19 +44,45 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
     b.read(promotion::list_active_promotions::ListActivePromotions)
         .read(promotion::search_promotions::SearchPromotions)
         .read(promotion::get_promotion::GetPromotion)
+        .write(promotion::create_promotion::CreatePromotion)
+        .write(promotion::update_promotion::UpdatePromotion)
         .write(promotion::pause_promotion::PausePromotion)
         .write(promotion::end_promotion::EndPromotion)
         .write(offer::set_sale_prices::SetSalePrices)
         .write(coupon::create_coupon::CreateCoupon)
         .write(coupon::issue_coupon::IssueCoupon)
+        .write(coupon::redeem_coupon::RedeemCoupon)
+        .write(coupon::restore_coupon::RestoreCoupon)
+        .write(coupon::revoke_coupon::RevokeCoupon)
         .read(coupon::search_coupons::SearchCoupons)
         .read(coupon::get_coupon::GetCoupon)
         .read(coupon::list_member_coupons::ListMemberCoupons)
         .read(loyalty::get_loyalty_balance::GetLoyaltyBalance)
-        .read(loyalty::list_loyalty_transactions::ListLoyaltyTransactions);
-    // Scheduled work (platform.job): starts and ends at the period's edges.
+        .read(loyalty::list_loyalty_transactions::ListLoyaltyTransactions)
+        .write(loyalty::grant_loyalty::GrantLoyalty)
+        .write(loyalty::spend_loyalty::SpendLoyalty)
+        .write(loyalty::expire_loyalty::ExpireLoyalty);
+    // Scheduled work (platform.job): starts and ends at the period's edges, and the nightly
+    // store-point expiry.
     b.job(schedule::PromotionStarts)
-        .job(schedule::PromotionEnds);
+        .job(schedule::PromotionEnds)
+        .job(loyalty::expire_loyalty::LoyaltyExpires);
+    b.write(conditional_gift::create_conditional_gift::CreateConditionalGift)
+        .read(conditional_gift::list_conditional_gifts::ListConditionalGifts);
+    b.read(event::list_event_types::ListEventTypes)
+        .read(event::list_reward_types::ListRewardTypes)
+        .read(event::search_events::SearchEvents)
+        .read(event::get_event::GetEvent)
+        .write(event::create_event::CreateEvent)
+        .write(event::update_event::UpdateEvent)
+        .write(event::enter_event::EnterEvent)
+        .read(event::list_my_entries::ListMyEntries)
+        .write(event::run_draw::RunDraw)
+        .read(event::get_draw_record::GetDrawRecord)
+        .write(event::dispatch_reward::DispatchReward);
+    b.write(segment::define_segment::DefineSegment)
+        .read(segment::preview_segment::PreviewSegment)
+        .read(segment::list_segments::ListSegments);
 }
 
 pub const TIER_NOT_FOUND: ErrorCode = ErrorCode::new("tier_not_found", ErrorClass::NotFound);

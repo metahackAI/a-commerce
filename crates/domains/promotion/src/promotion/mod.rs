@@ -1,29 +1,105 @@
 //! The `promotion` resource (docs/api/promotion.md#promotion): what the reads of a promotion
-//! share (its list item, what it covers, the period inputs) and the status change behind
-//! `pause_promotion` and `end_promotion`. One file per operation beside this one.
+//! share (its list item, what it covers, the period inputs), the overlap check of promotions of
+//! any layer, and the status change behind `pause_promotion` and `end_promotion`. One file per
+//! operation beside this one.
 
+pub(crate) mod create_promotion;
 pub(crate) mod end_promotion;
 pub(crate) mod get_promotion;
 pub(crate) mod list_active_promotions;
 pub(crate) mod pause_promotion;
 pub(crate) mod search_promotions;
+pub(crate) mod update_promotion;
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use acom_contract::{
-    ApprovalNeed, Basis, Change, ChangeOp, Committed, ErrorCode, Planned, ToolError, Verification,
+    ApprovalNeed, Basis, Change, ChangeOp, Check, Committed, ErrorCode, Planned, ToolError,
+    Verification,
 };
-use acom_core::enums::PromotionStatus;
+use acom_core::StoreTime;
+use acom_core::enums::{DiscountLayer, PromotionStatus};
 use acom_store::{Cx, TxCx};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::model::{AppliesTo, promotion_status};
+use crate::model::{AppliesTo, OtherPromotion, SaleRules, and_list, promotion_status};
 use crate::repo::{self, PromotionRow};
 use crate::service::for_merchandising::category_products;
 use crate::{audience, check_id, not_found, parse_time, time_or_null};
+
+/// "Nov 20–30", "Nov 28 – Dec 2", "from Jan 1": a period as people say it, in store time.
+pub(crate) fn period_words(
+    time: &StoreTime,
+    from: DateTime<Utc>,
+    through: Option<DateTime<Utc>>,
+) -> String {
+    let a = from.with_timezone(&time.zone);
+    let Some(through) = through else {
+        return format!("from {}", a.format("%b %-d"));
+    };
+    let b = through.with_timezone(&time.zone);
+    if a.date_naive() == b.date_naive() {
+        a.format("%b %-d").to_string()
+    } else if a.format("%Y-%m").to_string() == b.format("%Y-%m").to_string() {
+        format!("{}–{}", a.format("%b %-d"), b.format("%-d"))
+    } else {
+        format!("{} – {}", a.format("%b %-d"), b.format("%b %-d"))
+    }
+}
+
+/// `promotion_overlap` for a promotion of any layer: another promotion in the compared statuses
+/// whose period overlaps (`others` were read for the period), on the same layer, for an
+/// overlapping audience, covering a product in common (`None` products = the whole order).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn layer_overlap(
+    rules: &SaleRules,
+    layer: DiscountLayer,
+    tier: Option<&str>,
+    products: Option<&BTreeSet<String>>,
+    others: &[OtherPromotion],
+    scope_words: &str,
+    from: DateTime<Utc>,
+    through: DateTime<Utc>,
+    time: &StoreTime,
+) -> Check {
+    let layer_words = layer.as_str().replace('_', " ");
+    let clashes: Vec<String> = others
+        .iter()
+        .filter(|o| o.layer == layer)
+        .filter(|o| tier.is_none() || o.tier.is_none() || o.tier.as_deref() == tier)
+        .filter(|o| match (products, &o.products) {
+            (None, _) | (_, None) => true,
+            (Some(a), Some(b)) => a.intersection(b).next().is_some(),
+        })
+        .map(|o| format!("{} ({})", o.name, audience(o.tier.as_deref())))
+        .collect();
+    if clashes.is_empty() {
+        return Check {
+            rule: "promotion_overlap".into(),
+            passed: true,
+            detail: Some(format!(
+                "No {layer_words} runs {} on {scope_words}",
+                period_words(time, from, Some(through))
+            )),
+            fix_tool: None,
+        };
+    }
+    Check {
+        rule: "promotion_overlap".into(),
+        passed: !rules.overlap_blocks,
+        detail: Some(format!(
+            "{} already {} an {layer_words} on {scope_words} in this period",
+            and_list(&clashes),
+            if clashes.len() == 1 { "gives" } else { "give" }
+        )),
+        fix_tool: rules
+            .overlap_blocks
+            .then(|| "list_active_promotions".into()),
+    }
+}
 
 /// How many products each promotion covers: the listed products, or the products of its
 /// categories; `None` for an order-wide promotion.
