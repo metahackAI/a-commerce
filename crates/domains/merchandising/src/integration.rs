@@ -9,10 +9,15 @@ use acom_contract::{ApprovalNeed, ReadOp, Registry, RegistryBuilder, WriteOp};
 use acom_store::Cx;
 use serde_json::{Value, json};
 
-use crate::banner::{ListBanners, ScheduleBanner, SetBanner};
-use crate::category::{GetCategory, ListCategories};
-use crate::curation::{GetCuration, ListCurations};
-use crate::display_slot::{GetDisplaySlot, ListDisplaySlots};
+use crate::banner::list_banners::ListBanners;
+use crate::banner::schedule_banner::ScheduleBanner;
+use crate::banner::set_banner::SetBanner;
+use crate::category::get_category::GetCategory;
+use crate::category::list_categories::ListCategories;
+use crate::collection_page::get_curation::GetCuration;
+use crate::collection_page::list_curations::ListCurations;
+use crate::display_slot::get_display_slot::GetDisplaySlot;
+use crate::display_slot::list_display_slots::ListDisplaySlots;
 use crate::testing::{operator_cx, shopper_cx};
 
 fn input<T: serde::de::DeserializeOwned>(v: Value) -> T {
