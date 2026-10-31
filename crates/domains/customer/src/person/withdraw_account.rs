@@ -119,6 +119,58 @@ fn words(tx: &TxCx, path: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// Deletes the member's saved addresses. An address an order's delivery or a cart still points
+/// at belongs to records kept for their retention period (`data_handling.retain`), so it is
+/// emptied of the person's details instead of deleted.
+async fn remove_addresses(tx: &mut TxCx, customer_id: &str) -> Result<(), ToolError> {
+    let ids: Vec<String> = sqlx::query_scalar(
+        "SELECT id FROM customer.postal_address WHERE tenant_id = $1 AND customer_id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(customer_id)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    for id in ids {
+        sqlx::query("SAVEPOINT withdraw_address")
+            .execute(&mut *tx.tx)
+            .await
+            .map_err(db)?;
+        let deleted =
+            sqlx::query("DELETE FROM customer.postal_address WHERE tenant_id = $1 AND id = $2")
+                .bind(tx.tenant.as_str())
+                .bind(&id)
+                .execute(&mut *tx.tx)
+                .await;
+        match deleted {
+            Ok(_) => {
+                sqlx::query("RELEASE SAVEPOINT withdraw_address")
+                    .execute(&mut *tx.tx)
+                    .await
+                    .map_err(db)?;
+            }
+            Err(_) => {
+                sqlx::query("ROLLBACK TO SAVEPOINT withdraw_address")
+                    .execute(&mut *tx.tx)
+                    .await
+                    .map_err(db)?;
+                sqlx::query(
+                    "UPDATE customer.postal_address SET label = NULL, name = NULL,
+                       street_address = '(removed)', telephone = NULL, is_primary = false,
+                       updated_at = now(), version = version + 1
+                     WHERE tenant_id = $1 AND id = $2",
+                )
+                .bind(tx.tenant.as_str())
+                .bind(&id)
+                .execute(&mut *tx.tx)
+                .await
+                .map_err(db)?;
+            }
+        }
+    }
+    Ok(())
+}
+
 /// What `withdrawal.on_withdraw.{key}` says to do.
 fn on_withdraw(tx: &TxCx, key: &str) -> String {
     tx.policy
@@ -411,8 +463,10 @@ impl PersonOp<Cx> for WithdrawAccount {
             }
             // Deleted now: addresses, memories, wishlist (data_handling.delete_now).
             let delete_now = words(tx, "data_handling.delete_now");
+            if delete_now.iter().any(|d| d == "addresses") {
+                remove_addresses(tx, &a.id).await?;
+            }
             for (data, table) in [
-                ("addresses", "customer.postal_address"),
                 ("preferences", "customer.preference"),
                 ("wishlist", "customer.wishlist_item"),
             ] {

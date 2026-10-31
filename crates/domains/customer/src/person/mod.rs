@@ -1023,11 +1023,22 @@ mod tests {
         );
         drop(tx);
 
+        // The demo store has no business member (every seeded person counts toward a tier), so
+        // Sam becomes one for this test and is put back.
+        let mut setup = cx.begin().await.unwrap();
+        sqlx::query(
+            "UPDATE customer.person SET member_type = 'business', legal_name = 'Harbor Supply Co.',
+               tax_id = '12-3456789' WHERE id = 'cus_sam'",
+        )
+        .execute(&mut *setup.tx)
+        .await
+        .unwrap();
+        setup.commit().await.unwrap();
         let wrong = VerifyBusiness
             .preview(
                 &cx,
                 VerifyBusinessInput {
-                    customer_id: "cus_biz_31".into(),
+                    customer_id: "cus_sam".into(),
                     tax_id: "99-0000000".into(),
                     legal_name: "Harbor Supply Co.".into(),
                     registration_document: None,
@@ -1040,7 +1051,7 @@ mod tests {
             .preview(
                 &cx,
                 VerifyBusinessInput {
-                    customer_id: "cus_biz_31".into(),
+                    customer_id: "cus_sam".into(),
                     tax_id: "123456789".into(),
                     legal_name: "harbor supply co".into(),
                     registration_document: None,
@@ -1049,6 +1060,15 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(ok.changes[0].to["acom:business_verification"], "verified");
+        let mut restore = cx.begin().await.unwrap();
+        sqlx::query(
+            "UPDATE customer.person SET member_type = 'individual', legal_name = NULL,
+               tax_id = NULL WHERE id = 'cus_sam'",
+        )
+        .execute(&mut *restore.tx)
+        .await
+        .unwrap();
+        restore.commit().await.unwrap();
 
         let reset = SendPasswordReset
             .preview(
@@ -1104,5 +1124,77 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(taken["reason"], "taken");
+    }
+
+    /// Integration: Jamie leaves; her home address is kept for her past deliveries but emptied.
+    #[tokio::test]
+    #[ignore = "integration: needs a PostgreSQL database"]
+    async fn a_member_with_past_deliveries_leaves() {
+        use acom_contract::PersonOp;
+        use acom_core::enums::WithdrawalReason;
+
+        let mut tx = crate::testdb::tx("cus_jamie").await;
+        sqlx::query("UPDATE customer.person SET password_hash = $2 WHERE id = $1")
+            .bind("cus_jamie")
+            .bind(acom_auth::password::hash("harbor-lantern-42").unwrap())
+            .execute(&mut *tx.tx)
+            .await
+            .unwrap();
+        let wrong = WithdrawAccount
+            .run(
+                &mut tx,
+                WithdrawAccountInput {
+                    reasons: vec![WithdrawalReason::TooManyMessages],
+                    reason_text: None,
+                    confirmation: WithdrawalConfirmation {
+                        acknowledged_data_handling: true,
+                        eligibility_checked_at: "2026-11-07T09:50".into(),
+                    },
+                    reauthentication: Reauthentication {
+                        method: ReauthMethod::Password,
+                        credential: Some("not-it".into()),
+                        verification_token: None,
+                    },
+                },
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(wrong.code, "reauthentication_failed");
+        let left = WithdrawAccount
+            .run(
+                &mut tx,
+                WithdrawAccountInput {
+                    reasons: vec![WithdrawalReason::TooManyMessages],
+                    reason_text: Some("Too many emails.".into()),
+                    confirmation: WithdrawalConfirmation {
+                        acknowledged_data_handling: true,
+                        eligibility_checked_at: "2026-11-07T09:50".into(),
+                    },
+                    reauthentication: Reauthentication {
+                        method: ReauthMethod::Password,
+                        credential: Some("harbor-lantern-42".into()),
+                        verification_token: None,
+                    },
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(left["status"], "withdrawn");
+        assert_eq!(left["rejoin_after"], "2027-02-05");
+        let a = repo::account(&mut tx, "cus_jamie").await.unwrap().unwrap();
+        assert_eq!((a.name.as_str(), a.email), ("J***", None));
+        let home = repo::address(&mut tx, "cus_jamie", "adr_home")
+            .await
+            .unwrap();
+        if let Some(h) = home {
+            assert_eq!(h.street_address, "(removed)");
+        }
+        assert!(
+            repo::all_preferences(&mut tx, "cus_jamie")
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        // Rolled back on drop.
     }
 }

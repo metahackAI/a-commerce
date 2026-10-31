@@ -1,9 +1,9 @@
 # Customer: the named shoppers (Jamie vip, Alex member, and the customers behind the scene B2 return
 # requests), their home addresses, the Northwind Rewards program with tiers member, gold and vip,
 # memberships, and Jamie's remembered preferences. Tier member counts (9,816 / 2,900 / 1,284) are
-# reached by the generator (generate.yml); these 13 people count toward them. The business member
-# cus_biz_31 has no tier, so the counts stay. Then consent and tier history, an employee, customer
-# service inquiries with their threads, a remedy waiting for approval, FAQs and notices.
+# reached by the generator (generate.yml); these 13 people count toward them, so no other person is
+# added here. Then consent and tier history, an employee, customer service inquiries with their
+# threads, a remedy waiting for approval, FAQs and notices.
 tables:
   customer.person:
     - tenant_id: store_northwind
@@ -145,18 +145,6 @@ tables:
       sizes: {}
       card_last4: "8826"
       registered_at: "2025-08-14T17:36:00-04:00"
-    - tenant_id: store_northwind
-      id: cus_biz_31
-      name: Harbor Supply Co.
-      email: "orders@harborsupply.example.com"
-      member_state: active
-      member_type: business
-      sizes: {}
-      legal_name: Harbor Supply Co.
-      tax_id: "12-3456789"
-      business_verification: unverified
-      registered_at: "2026-11-02T14:10:00-05:00"
-      email_verified_at: "2026-11-02T14:12:00-05:00"
   customer.postal_address:
     - tenant_id: store_northwind
       id: adr_home
@@ -374,8 +362,6 @@ tables:
     - {tenant_id: store_northwind, id: cns_202, customer_id: cus_jamie, consent_type: privacy, granted: true, recorded_at: "2025-02-14T20:05:00-05:00", agent_id: cus_jamie, instrument: register_member}
     - {tenant_id: store_northwind, id: cns_203, customer_id: cus_jamie, consent_type: marketing_email, granted: true, recorded_at: "2025-02-14T20:05:00-05:00", agent_id: cus_jamie, instrument: register_member}
     - {tenant_id: store_northwind, id: cns_204, customer_id: cus_jamie, consent_type: marketing_push, granted: true, recorded_at: "2026-06-14T19:05:00-04:00", agent_id: cus_jamie, instrument: set_consent}
-    - {tenant_id: store_northwind, id: cns_301, customer_id: cus_biz_31, consent_type: terms, granted: true, recorded_at: "2026-11-02T14:10:00-05:00", agent_id: cus_biz_31, instrument: register_member}
-    - {tenant_id: store_northwind, id: cns_302, customer_id: cus_biz_31, consent_type: privacy, granted: true, recorded_at: "2026-11-02T14:10:00-05:00", agent_id: cus_biz_31, instrument: register_member}
   # The program's saved definition (define_tier_program keeps every version).
   customer.member_program_version:
     - tenant_id: store_northwind
