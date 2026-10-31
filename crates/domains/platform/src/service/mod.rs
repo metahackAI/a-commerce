@@ -3,3 +3,4 @@
 //! (`for_<that_domain>.rs`) and one `pub mod` line below.
 
 pub mod for_customer;
+pub mod for_partner;
