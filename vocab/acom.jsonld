@@ -27,6 +27,15 @@
       "rdfs:comment": "Content shown in a display slot: headline, image, link. Used as additionalType on a CreativeWork."
     },
     {
+      "@id": "acom:CacheInvalidation",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CacheInvalidation",
+      "rdfs:subClassOf": {
+        "@id": "schema:Action"
+      },
+      "rdfs:comment": "a request to clear cached store pages after a display change; the store runs no display cache yet, so the request is recorded and clears nothing. id prefix cin_."
+    },
+    {
       "@id": "acom:Campaign",
       "@type": "rdfs:Class",
       "rdfs:label": "Campaign",
@@ -286,6 +295,15 @@
         "@id": "schema:Order"
       },
       "rdfs:comment": "one row per paid order with only what aggregates need (day, state, tier, campaign, amount, return request), never who placed it; orders still awaiting payment are left out."
+    },
+    {
+      "@id": "acom:Popup",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Popup",
+      "rdfs:subClassOf": {
+        "@id": "schema:WebPageElement"
+      },
+      "rdfs:comment": "a window that opens over store pages for a period, with a do-not-show-again choice. id prefix pop_."
     },
     {
       "@id": "acom:Preference",
@@ -859,14 +877,20 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:DisplayBooking"
+        },
+        {
+          "@id": "schema:CollectionPage"
         }
       ],
       "schema:rangeIncludes": [
         {
           "@id": "acom:Banner"
+        },
+        {
+          "@id": "schema:Text"
         }
       ],
-      "rdfs:comment": "banner shown (bnr_ id); NULL when the booking shows the slot's items."
+      "rdfs:comment": "banners linked to the page (bnr_ ids), in order; empty when none."
     },
     {
       "@id": "acom:basis",
@@ -995,6 +1019,22 @@
         }
       ],
       "rdfs:comment": "whether the business details were checked (verify_business); turns on business pricing and tax receipts. values: business_verification"
+    },
+    {
+      "@id": "acom:cacheKey",
+      "@type": "rdf:Property",
+      "rdfs:label": "cacheKey",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CacheInvalidation"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the cache keys the request covers, for example display_slot:slot_home_hero and page:main."
     },
     {
       "@id": "acom:campaignId",
@@ -1953,6 +1993,9 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:DisplayBooking"
+        },
+        {
+          "@id": "schema:CollectionPage"
         }
       ],
       "schema:rangeIncludes": [
@@ -3830,6 +3873,12 @@
       "rdfs:label": "page",
       "schema:domainIncludes": [
         {
+          "@id": "acom:CacheInvalidation"
+        },
+        {
+          "@id": "acom:Popup"
+        },
+        {
           "@id": "schema:WebPageElement"
         }
       ],
@@ -4026,6 +4075,22 @@
       "rdfs:comment": "policy snapshot hash used by checks."
     },
     {
+      "@id": "acom:popupType",
+      "@type": "rdf:Property",
+      "rdfs:label": "popupType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Popup"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:PopupType"
+        }
+      ],
+      "rdfs:comment": "what the popup is for. values: popup_type"
+    },
+    {
       "@id": "acom:preferenceKey",
       "@type": "rdf:Property",
       "rdfs:label": "preferenceKey",
@@ -4093,6 +4158,22 @@
         }
       ],
       "rdfs:comment": "open until committed, expired or superseded. values: preview_state"
+    },
+    {
+      "@id": "acom:priority",
+      "@type": "rdf:Property",
+      "rdfs:label": "priority",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Popup"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "order among the popups of a page, 1 first; two popups that share a page and a moment never share a priority."
     },
     {
       "@id": "acom:productGroupId",
@@ -4270,6 +4351,9 @@
       "@type": "rdf:Property",
       "rdfs:label": "reason",
       "schema:domainIncludes": [
+        {
+          "@id": "acom:CacheInvalidation"
+        },
         {
           "@id": "acom:DrawRecord"
         },
@@ -4725,6 +4809,38 @@
       "rdfs:comment": "when it was closed as resolved; NULL until then."
     },
     {
+      "@id": "acom:resourceId",
+      "@type": "rdf:Property",
+      "rdfs:label": "resourceId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CacheInvalidation"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the one item that changed (cat_, slot_, bnr_, pop_ or col_ id); NULL for every item of the kind."
+    },
+    {
+      "@id": "acom:resourceType",
+      "@type": "rdf:Property",
+      "rdfs:label": "resourceType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CacheInvalidation"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:CacheResourceType"
+        }
+      ],
+      "rdfs:comment": "what kind of display content changed; all clears every page. values: cache_resource_type"
+    },
+    {
       "@id": "acom:resultId",
       "@type": "rdf:Property",
       "rdfs:label": "resultId",
@@ -4934,7 +5050,13 @@
           "@id": "acom:ConditionalGift"
         },
         {
+          "@id": "acom:DisplayBooking"
+        },
+        {
           "@id": "acom:Promotion"
+        },
+        {
+          "@id": "schema:CollectionPage"
         },
         {
           "@id": "schema:Order"
@@ -5513,6 +5635,22 @@
         }
       ],
       "rdfs:comment": "the supplier's description, kept so the store can write its own copy in its tone; NULL when the sheet had none."
+    },
+    {
+      "@id": "acom:suppressDays",
+      "@type": "rdf:Property",
+      "rdfs:label": "suppressDays",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Popup"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "days a shopper who chose do-not-show-again does not see it; NULL offers no such choice."
     },
     {
       "@id": "acom:surcharge",
@@ -6193,6 +6331,16 @@
       "acom:wireList": "business_verification"
     },
     {
+      "@id": "acom:CacheResourceType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CacheResourceType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the cache_resource_type list (docs/api/enums.md).",
+      "acom:wireList": "cache_resource_type"
+    },
+    {
       "@id": "acom:CampaignStatus",
       "@type": "rdfs:Class",
       "rdfs:label": "CampaignStatus",
@@ -6561,6 +6709,16 @@
       },
       "rdfs:comment": "Values of the payment_method list (docs/api/enums.md).",
       "acom:wireList": "payment_method"
+    },
+    {
+      "@id": "acom:PopupType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "PopupType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the popup_type list (docs/api/enums.md).",
+      "acom:wireList": "popup_type"
     },
     {
       "@id": "acom:PreferenceKey",
@@ -7013,6 +7171,48 @@
       "rdfs:label": "Verified",
       "acom:wireWord": "verified",
       "schema:position": 2
+    },
+    {
+      "@id": "acom:CacheResourceTypeCategory",
+      "@type": "acom:CacheResourceType",
+      "rdfs:label": "Category",
+      "acom:wireWord": "category",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:CacheResourceTypeDisplaySlot",
+      "@type": "acom:CacheResourceType",
+      "rdfs:label": "DisplaySlot",
+      "acom:wireWord": "display_slot",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:CacheResourceTypeBanner",
+      "@type": "acom:CacheResourceType",
+      "rdfs:label": "Banner",
+      "acom:wireWord": "banner",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:CacheResourceTypePopup",
+      "@type": "acom:CacheResourceType",
+      "rdfs:label": "Popup",
+      "acom:wireWord": "popup",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:CacheResourceTypeCollectionPage",
+      "@type": "acom:CacheResourceType",
+      "rdfs:label": "CollectionPage",
+      "acom:wireWord": "collection_page",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:CacheResourceTypeAll",
+      "@type": "acom:CacheResourceType",
+      "rdfs:label": "All",
+      "acom:wireWord": "all",
+      "schema:position": 6
     },
     {
       "@id": "acom:CampaignStatusDraft",
@@ -8315,6 +8515,34 @@
       "rdfs:label": "StoreCredit",
       "acom:wireWord": "store_credit",
       "schema:position": 5
+    },
+    {
+      "@id": "acom:PopupTypeImage",
+      "@type": "acom:PopupType",
+      "rdfs:label": "Image",
+      "acom:wireWord": "image",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:PopupTypeNotice",
+      "@type": "acom:PopupType",
+      "rdfs:label": "Notice",
+      "acom:wireWord": "notice",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:PopupTypeEvent",
+      "@type": "acom:PopupType",
+      "rdfs:label": "Event",
+      "acom:wireWord": "event",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:PopupTypeConsent",
+      "@type": "acom:PopupType",
+      "rdfs:label": "Consent",
+      "acom:wireWord": "consent",
+      "schema:position": 4
     },
     {
       "@id": "acom:PreferenceKeySize",

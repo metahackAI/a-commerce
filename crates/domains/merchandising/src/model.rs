@@ -1,6 +1,9 @@
 //! The merchandising domain's rules as pure functions: display status from the period and the
-//! clock, free time of a slot per audience (`slot_free`), banner text limits, and the policy
-//! values they use. No I/O, so the B1 numbers are unit-tested here.
+//! clock, free time of a slot per audience (`slot_free`), banner text limits, what a slot kind
+//! may hold, how many popups share a moment, and the policy values they use. No I/O, so the B1
+//! numbers are unit-tested here.
+
+use std::collections::BTreeMap;
 
 use acom_contract::{ErrorCode, ToolError};
 use acom_core::enums::DisplayStatus;
@@ -33,6 +36,23 @@ pub struct DisplayRules {
     pub image_formats: Vec<String>,
     /// `reaches_customers`: the tools whose results shoppers see.
     pub reaches_customers: Vec<String>,
+    /// `display.max_items_per_slot`.
+    pub max_items_per_slot: usize,
+    /// `display.exclude_discontinued`: discontinued products cannot be put on display.
+    pub exclude_discontinued: bool,
+    /// `display.slot_items`: per slot kind, the kinds of item it may hold (`product`,
+    /// `banner`, `collection_page`, `brand`).
+    pub slot_items: BTreeMap<String, Vec<String>>,
+    /// `popup.max_concurrent_per_page`.
+    pub popups_per_page: usize,
+    /// `popup.suppress_days_max`.
+    pub suppress_days_max: i64,
+    /// `curation.no_empty_section`.
+    pub no_empty_section: bool,
+    /// `cache_invalidation.allowed_resource_types`.
+    pub cache_resource_types: Vec<String>,
+    /// `cache_invalidation.all_scope_max_per_hour`.
+    pub all_scope_max_per_hour: i64,
 }
 
 fn list(p: &PolicySet, key: &str) -> Result<Vec<String>, ToolError> {
@@ -48,6 +68,30 @@ fn flag(p: &PolicySet, key: &str) -> Result<bool, ToolError> {
     p.lookup(key)
         .and_then(Value::as_bool)
         .ok_or_else(|| missing(key))
+}
+
+fn number(p: &PolicySet, key: &str) -> Result<i64, ToolError> {
+    p.lookup(key)
+        .and_then(Value::as_i64)
+        .ok_or_else(|| missing(key))
+}
+
+fn kinds(p: &PolicySet, key: &str) -> Result<BTreeMap<String, Vec<String>>, ToolError> {
+    p.lookup(key)
+        .and_then(Value::as_object)
+        .ok_or_else(|| missing(key))?
+        .iter()
+        .map(|(slot, l)| {
+            let words = l.as_array().ok_or_else(|| missing(key))?;
+            Ok((
+                slot.clone(),
+                words
+                    .iter()
+                    .filter_map(|w| w.as_str().map(str::to_owned))
+                    .collect(),
+            ))
+        })
+        .collect()
 }
 
 fn size(p: &PolicySet, key: &str) -> Result<usize, ToolError> {
@@ -68,6 +112,20 @@ impl DisplayRules {
             cta_label_max: size(p, "merchandising.banner.text_max_length.cta_label")?,
             image_formats: list(p, "merchandising.banner.image_spec.formats")?,
             reaches_customers: list(p, "merchandising.reaches_customers")?,
+            max_items_per_slot: size(p, "merchandising.display.max_items_per_slot")?,
+            exclude_discontinued: flag(p, "merchandising.display.exclude_discontinued")?,
+            slot_items: kinds(p, "merchandising.display.slot_items")?,
+            popups_per_page: size(p, "merchandising.popup.max_concurrent_per_page")?,
+            suppress_days_max: number(p, "merchandising.popup.suppress_days_max")?,
+            no_empty_section: flag(p, "merchandising.curation.no_empty_section")?,
+            cache_resource_types: list(
+                p,
+                "merchandising.cache_invalidation.allowed_resource_types",
+            )?,
+            all_scope_max_per_hour: number(
+                p,
+                "merchandising.cache_invalidation.all_scope_max_per_hour",
+            )?,
         })
     }
 
@@ -75,6 +133,100 @@ impl DisplayRules {
     pub fn blocks(&self, audience: &str, other: &str) -> bool {
         audience == other || (other == "everyone" && self.everyone_blocks_tiers)
     }
+
+    /// The item kinds a slot of this kind may hold (`display.slot_items`); none for a kind the
+    /// policy does not name.
+    pub fn slot_holds(&self, slot_type: &str) -> &[String] {
+        self.slot_items.get(slot_type).map_or(&[], Vec::as_slice)
+    }
+
+    /// Whether `tool` changes what shoppers see (`reaches_customers`).
+    pub fn reaches(&self, tool: &str) -> bool {
+        self.reaches_customers.iter().any(|t| t == tool)
+    }
+}
+
+/// The kind of item an id names, by its prefix: `product`, `banner`, `collection_page` or
+/// `brand`.
+pub fn item_kind(id: &str) -> Option<&'static str> {
+    let (prefix, rest) = id.split_once('_')?;
+    if rest.is_empty() {
+        return None;
+    }
+    match prefix {
+        "prd" => Some("product"),
+        "bnr" => Some("banner"),
+        "col" => Some("collection_page"),
+        "brn" => Some("brand"),
+        _ => None,
+    }
+}
+
+/// A curated page's status at `at`: a draft stays a draft; a published page follows its period
+/// like a booking.
+pub fn page_status(
+    stored: &str,
+    valid_from: Option<DateTime<Utc>>,
+    valid_through: Option<DateTime<Utc>>,
+    at: DateTime<Utc>,
+) -> DisplayStatus {
+    match (stored.parse::<DisplayStatus>(), valid_from) {
+        (Ok(DisplayStatus::Draft) | Err(_), _) | (_, None) => {
+            stored.parse().unwrap_or(DisplayStatus::Draft)
+        }
+        (_, Some(from)) => display_status(stored, from, valid_through, at),
+    }
+}
+
+/// The most of `others` that run at one moment inside `from`–`through` (both inclusive).
+pub fn most_at_once(
+    others: &[(DateTime<Utc>, DateTime<Utc>)],
+    from: DateTime<Utc>,
+    through: DateTime<Utc>,
+) -> usize {
+    // The count only rises where a period starts, so the window's start and the starts inside
+    // it are the moments to look at.
+    let moments = std::iter::once(from).chain(
+        others
+            .iter()
+            .map(|o| o.0)
+            .filter(|s| *s > from && *s <= through),
+    );
+    moments
+        .map(|m| others.iter().filter(|o| o.0 <= m && m <= o.1).count())
+        .max()
+        .unwrap_or(0)
+}
+
+/// Ids to try, in order, for a new row named `name`: `col_winter_edit`, then `col_winter_edit_2`
+/// … `_9`. Empty when the name has no letter or digit.
+pub fn id_candidates(prefix: &str, name: &str) -> Vec<String> {
+    let words: String = slug(name).chars().take(40).collect();
+    let words = words.trim_end_matches('_');
+    if words.is_empty() {
+        return Vec::new();
+    }
+    let base = format!("{prefix}_{words}");
+    std::iter::once(base.clone())
+        .chain((2..10).map(|n| format!("{base}_{n}")))
+        .collect()
+}
+
+/// Lowercase words joined by `_`, for ids made from names: `Winter outerwear edit` →
+/// `winter_outerwear_edit`.
+pub fn slug(text: &str) -> String {
+    let mut out = String::new();
+    for ch in text.trim().chars() {
+        if ch.is_ascii_alphanumeric() {
+            out.push(ch.to_ascii_lowercase());
+        } else if !out.ends_with('_') && !out.is_empty() {
+            out.push('_');
+        }
+    }
+    while out.ends_with('_') {
+        out.pop();
+    }
+    out
 }
 
 /// A booking's status at `at`: `draft` and `ended` (ended early or cancelled by a person) stay;
@@ -235,6 +387,70 @@ pub(crate) mod tests {
         assert!(r.blocks("vip", "vip"));
         assert!(!r.blocks("vip", "everyone"));
         assert!(r.reaches_customers.contains(&"schedule_banner".to_owned()));
+        assert_eq!(r.max_items_per_slot, 24);
+        assert_eq!(r.popups_per_page, 2);
+        assert_eq!(r.suppress_days_max, 7);
+        assert_eq!(r.all_scope_max_per_hour, 2);
+        assert_eq!(r.slot_holds("product_grid"), ["product"]);
+        assert_eq!(r.slot_holds("brand_strip"), ["brand"]);
+        assert!(r.slot_holds("unknown").is_empty());
+        assert!(r.reaches("set_popup") && r.reaches("update_curation"));
+        assert!(!r.reaches("arrange_display_slot"));
+    }
+
+    #[test]
+    fn items_pages_and_popups() {
+        assert_eq!(item_kind("prd_wool_overcoat"), Some("product"));
+        assert_eq!(item_kind("brn_northwind"), Some("brand"));
+        assert_eq!(item_kind("col_winter_edit"), Some("collection_page"));
+        assert_eq!(item_kind("cat_knitwear"), None);
+        assert_eq!(item_kind("prd_"), None);
+        assert_eq!(slug("Winter outerwear edit!"), "winter_outerwear_edit");
+
+        let fri = t("2026-11-06T11:00:00-05:00");
+        assert_eq!(page_status("draft", None, None, fri), DisplayStatus::Draft);
+        let from = t("2026-11-13T00:00:00-05:00");
+        let through = Some(t("2026-11-20T23:59:00-05:00"));
+        // A draft with a tentative period is still a draft.
+        assert_eq!(
+            page_status("draft", Some(from), through, fri),
+            DisplayStatus::Draft
+        );
+        assert_eq!(
+            page_status("scheduled", Some(from), through, fri),
+            DisplayStatus::Scheduled
+        );
+        assert_eq!(
+            page_status(
+                "scheduled",
+                Some(from),
+                through,
+                t("2026-11-14T09:00:00-05:00")
+            ),
+            DisplayStatus::Active
+        );
+
+        // Holiday hours Dec 20–26; a sale popup Dec 18–21 and a survey Dec 24–31 never share a
+        // moment, so at most one other popup runs at once.
+        let window = (
+            t("2026-12-20T00:00:00-05:00"),
+            t("2026-12-26T23:59:00-05:00"),
+        );
+        let sale = (
+            t("2026-12-18T00:00:00-05:00"),
+            t("2026-12-21T23:59:00-05:00"),
+        );
+        let survey = (
+            t("2026-12-24T00:00:00-05:00"),
+            t("2026-12-31T23:59:00-05:00"),
+        );
+        assert_eq!(most_at_once(&[sale, survey], window.0, window.1), 1);
+        let wrap = (
+            t("2026-12-19T00:00:00-05:00"),
+            t("2026-12-25T23:59:00-05:00"),
+        );
+        assert_eq!(most_at_once(&[sale, survey, wrap], window.0, window.1), 2);
+        assert_eq!(most_at_once(&[], window.0, window.1), 0);
     }
 
     #[test]

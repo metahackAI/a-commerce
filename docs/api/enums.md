@@ -115,7 +115,8 @@
 | 예약·기획전 `acom:display_status` | `draft`, `scheduled`, `active`, `ended` |
 | 슬롯 종류 `acom:slot_type` | `hero`, `banner_board`, `product_grid`, `brand_strip`, `collection_feed` |
 | 카테고리 묶음 `acom:term_set` | `standard`, `display` |
-| 팝업 종류 | `image`, `notice`, `event`, `consent` |
+| 팝업 종류 `acom:popup_type` | `image`, `notice`, `event`, `consent` |
+| 캐시 무효화 범위 `acom:cache_resource_type` | `category`, `display_slot`, `banner`, `popup`, `collection_page`, `all` |
 
 ### 1.13 회원·고객 서비스
 

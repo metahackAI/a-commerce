@@ -6871,6 +6871,103 @@
   },
   {
     "schema": "merchandising",
+    "table": "cache_invalidation",
+    "kind": "table",
+    "term": "schema:Action/acom:CacheInvalidation",
+    "description": "a request to clear cached store pages after a display change; the store runs no display cache yet, so the request is recorded and clears nothing. id prefix cin_.",
+    "id_prefix": "cin",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix cin_; the same value the API, logs and events use."
+      },
+      {
+        "name": "resource_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:resourceType",
+        "description": "what kind of display content changed; all clears every page. values: cache_resource_type",
+        "values": [
+          "category",
+          "display_slot",
+          "banner",
+          "popup",
+          "collection_page",
+          "all"
+        ],
+        "values_list": "cache_resource_type"
+      },
+      {
+        "name": "resource_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:resourceId",
+        "description": "the one item that changed (cat_, slot_, bnr_, pop_ or col_ id); NULL for every item of the kind."
+      },
+      {
+        "name": "page",
+        "type": "text[]",
+        "nullable": false,
+        "term": "acom:page",
+        "description": "store pages named in the request (main, category, product, search); empty when none was named."
+      },
+      {
+        "name": "cache_key",
+        "type": "text[]",
+        "nullable": false,
+        "term": "acom:cacheKey",
+        "description": "the cache keys the request covers, for example display_slot:slot_home_hero and page:main."
+      },
+      {
+        "name": "reason",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:reason",
+        "description": "why it was cleared, as the caller said."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the clear ran, by the store clock; the hourly limit on all counts these."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "merchandising",
     "table": "category_mapping",
     "kind": "table",
     "term": "schema:Intangible/acom:CategoryMapping",
@@ -6914,6 +7011,125 @@
         "nullable": false,
         "term": "acom:isPrimary",
         "description": "true for the one display category a standard category's product pages show as their path."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "merchandising",
+    "table": "collection_page",
+    "kind": "table",
+    "term": "schema:CollectionPage",
+    "description": "a curated page of products in sections, published for one audience over a period. id prefix col_. API: collection_page_id.",
+    "id_prefix": "col",
+    "api_name": "collection_page_id",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix col_; the same value the API, logs and events use."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "page title shown to shoppers, for example Winter outerwear edit."
+      },
+      {
+        "name": "has_part",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "schema:hasPart",
+        "description": "the sections in order, each an ItemList: [{name, item_list_element: [prd_ ids]}]."
+      },
+      {
+        "name": "valid_for_member_tier",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:validForMemberTier",
+        "description": "tier that sees the page; NULL means everyone (the reserved word everyone is never stored).",
+        "references": "customer.member_program_tier"
+      },
+      {
+        "name": "valid_from",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:validFrom",
+        "description": "first moment the page shows; set for good when it is published, tentative on a draft."
+      },
+      {
+        "name": "valid_through",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:validThrough",
+        "description": "last moment it shows (inclusive); NULL when open-ended or not set yet."
+      },
+      {
+        "name": "display_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:displayStatus",
+        "description": "draft until published; after that computed from the period and the store clock, ended when taken down early. values: display_status",
+        "values": [
+          "draft",
+          "scheduled",
+          "active",
+          "ended"
+        ],
+        "values_list": "display_status"
+      },
+      {
+        "name": "sales_channel",
+        "type": "text[]",
+        "nullable": true,
+        "term": "acom:salesChannel",
+        "description": "channels the page shows on, every element a word from the list; NULL means every channel. values: sales_channel",
+        "values_list": "sales_channel"
+      },
+      {
+        "name": "banner_id",
+        "type": "text[]",
+        "nullable": false,
+        "term": "acom:bannerId",
+        "description": "banners linked to the page (bnr_ ids), in order; empty when none."
+      },
+      {
+        "name": "keywords",
+        "type": "text[]",
+        "nullable": false,
+        "term": "schema:keywords",
+        "description": "search words that lead to the page, for example winter coat."
       },
       {
         "name": "created_at",
@@ -7151,6 +7367,21 @@
         "nullable": false,
         "term": "-",
         "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      },
+      {
+        "name": "item_list_element",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "schema:itemListElement",
+        "description": "the slot items this booking shows, copied from the slot when booked: [{position, item_id}]; NULL when the booking shows a banner."
+      },
+      {
+        "name": "sales_channel",
+        "type": "text[]",
+        "nullable": true,
+        "term": "acom:salesChannel",
+        "description": "channels the booking shows on, every element a word from the list; NULL means every channel. values: sales_channel",
+        "values_list": "sales_channel"
       }
     ]
   },
@@ -7219,6 +7450,129 @@
         "nullable": false,
         "term": "schema:itemListElement",
         "description": "default content: [{position, item_id}] with prd_, bnr_ or col_ ids."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "merchandising",
+    "table": "popup",
+    "kind": "table",
+    "term": "schema:WebPageElement/acom:Popup",
+    "description": "a window that opens over store pages for a period, with a do-not-show-again choice. id prefix pop_.",
+    "id_prefix": "pop",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix pop_; the same value the API, logs and events use."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "popup name for operators, for example Holiday hours."
+      },
+      {
+        "name": "popup_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:popupType",
+        "description": "what the popup is for. values: popup_type",
+        "values": [
+          "image",
+          "notice",
+          "event",
+          "consent"
+        ],
+        "values_list": "popup_type"
+      },
+      {
+        "name": "text",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:text",
+        "description": "the words the popup shows; NULL for a picture-only popup."
+      },
+      {
+        "name": "image",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:image",
+        "description": "URL of the picture the popup shows; NULL for a text-only popup."
+      },
+      {
+        "name": "url",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:url",
+        "description": "store path the popup opens when pressed, starting with /; NULL when it opens nothing."
+      },
+      {
+        "name": "page",
+        "type": "text[]",
+        "nullable": false,
+        "term": "acom:page",
+        "description": "pages the popup opens on, each main, category, product or search (list_display_slots page values)."
+      },
+      {
+        "name": "priority",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:priority",
+        "description": "order among the popups of a page, 1 first; two popups that share a page and a moment never share a priority."
+      },
+      {
+        "name": "suppress_days",
+        "type": "integer",
+        "nullable": true,
+        "term": "acom:suppressDays",
+        "description": "days a shopper who chose do-not-show-again does not see it; NULL offers no such choice."
+      },
+      {
+        "name": "valid_from",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:validFrom",
+        "description": "first moment the popup opens."
+      },
+      {
+        "name": "valid_through",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:validThrough",
+        "description": "last moment it opens (inclusive)."
       },
       {
         "name": "created_at",

@@ -1252,6 +1252,24 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `merchandising.cache_invalidation`
+
+`schema:Action/acom:CacheInvalidation` — a request to clear cached store pages after a display change; the store runs no display cache yet, so the request is recorded and clears nothing. id prefix cin_. · id `cin_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix cin_; the same value the API, logs and events use. |
+| `resource_type` | text |  | `acom:resourceType` | what kind of display content changed; all clears every page. values: cache_resource_type Values: `category` · `display_slot` · `banner` · `popup` · `collection_page` · `all`. |
+| `resource_id` | text | ✓ | `acom:resourceId` | the one item that changed (cat_, slot_, bnr_, pop_ or col_ id); NULL for every item of the kind. |
+| `page` | text[] |  | `acom:page` | store pages named in the request (main, category, product, search); empty when none was named. |
+| `cache_key` | text[] |  | `acom:cacheKey` | the cache keys the request covers, for example display_slot:slot_home_hero and page:main. |
+| `reason` | text | ✓ | `acom:reason` | why it was cleared, as the caller said. |
+| `start_time` | timestamptz |  | `schema:startTime` | when the clear ran, by the store clock; the hourly limit on all counts these. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `merchandising.category_mapping`
 
 `schema:Intangible/acom:CategoryMapping` — links a standard category to a display category, so the display tree shows the standard category's products. id prefix map_. · id `map_…`
@@ -1263,6 +1281,27 @@
 | `standard_category_id` | text |  | `acom:standardCategory` | the internal category whose products are shown (cat_ id, term set standard). → `merchandising.defined_term` |
 | `display_category_id` | text |  | `acom:displayCategory` | the shopper menu category that shows them (cat_ id, term set display). → `merchandising.defined_term` |
 | `is_primary` | boolean |  | `acom:isPrimary` | true for the one display category a standard category's product pages show as their path. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `merchandising.collection_page`
+
+`schema:CollectionPage` — a curated page of products in sections, published for one audience over a period. id prefix col_. API: collection_page_id. · id `col_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix col_; the same value the API, logs and events use. |
+| `name` | text |  | `schema:name` | page title shown to shoppers, for example Winter outerwear edit. |
+| `has_part` | jsonb |  | `schema:hasPart` | the sections in order, each an ItemList: [{name, item_list_element: [prd_ ids]}]. |
+| `valid_for_member_tier` | text | ✓ | `schema:validForMemberTier` | tier that sees the page; NULL means everyone (the reserved word everyone is never stored). → `customer.member_program_tier` |
+| `valid_from` | timestamptz | ✓ | `schema:validFrom` | first moment the page shows; set for good when it is published, tentative on a draft. |
+| `valid_through` | timestamptz | ✓ | `schema:validThrough` | last moment it shows (inclusive); NULL when open-ended or not set yet. |
+| `display_status` | text |  | `acom:displayStatus` | draft until published; after that computed from the period and the store clock, ended when taken down early. values: display_status Values: `draft` · `scheduled` · `active` · `ended`. |
+| `sales_channel` | text[] | ✓ | `acom:salesChannel` | channels the page shows on, every element a word from the list; NULL means every channel. values: sales_channel |
+| `banner_id` | text[] |  | `acom:bannerId` | banners linked to the page (bnr_ ids), in order; empty when none. |
+| `keywords` | text[] |  | `schema:keywords` | search words that lead to the page, for example winter coat. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
@@ -1305,6 +1344,8 @@
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `item_list_element` | jsonb | ✓ | `schema:itemListElement` | the slot items this booking shows, copied from the slot when booked: [{position, item_id}]; NULL when the booking shows a banner. |
+| `sales_channel` | text[] | ✓ | `acom:salesChannel` | channels the booking shows on, every element a word from the list; NULL means every channel. values: sales_channel |
 
 ### `merchandising.display_slot`
 
@@ -1319,6 +1360,28 @@
 | `slot_type` | text |  | `acom:slotType` | what kind of content the slot shows. values: slot_type Values: `hero` · `banner_board` · `product_grid` · `brand_strip` · `collection_feed`. |
 | `position` | integer |  | `schema:position` | order of the slot on its page, top first. |
 | `item_list_element` | jsonb |  | `schema:itemListElement` | default content: [{position, item_id}] with prd_, bnr_ or col_ ids. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `merchandising.popup`
+
+`schema:WebPageElement/acom:Popup` — a window that opens over store pages for a period, with a do-not-show-again choice. id prefix pop_. · id `pop_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix pop_; the same value the API, logs and events use. |
+| `name` | text |  | `schema:name` | popup name for operators, for example Holiday hours. |
+| `popup_type` | text |  | `acom:popupType` | what the popup is for. values: popup_type Values: `image` · `notice` · `event` · `consent`. |
+| `text` | text | ✓ | `schema:text` | the words the popup shows; NULL for a picture-only popup. |
+| `image` | text | ✓ | `schema:image` | URL of the picture the popup shows; NULL for a text-only popup. |
+| `url` | text | ✓ | `schema:url` | store path the popup opens when pressed, starting with /; NULL when it opens nothing. |
+| `page` | text[] |  | `acom:page` | pages the popup opens on, each main, category, product or search (list_display_slots page values). |
+| `priority` | integer |  | `acom:priority` | order among the popups of a page, 1 first; two popups that share a page and a moment never share a priority. |
+| `suppress_days` | integer | ✓ | `acom:suppressDays` | days a shopper who chose do-not-show-again does not see it; NULL offers no such choice. |
+| `valid_from` | timestamptz |  | `schema:validFrom` | first moment the popup opens. |
+| `valid_through` | timestamptz |  | `schema:validThrough` | last moment it opens (inclusive). |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
