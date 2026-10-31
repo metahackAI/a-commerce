@@ -197,6 +197,11 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .read(membership::ListTiers)
         .read(membership::GetTier)
         .read(membership::GetMemberTier)
+        .write(membership::DefineTierProgram)
+        .read(membership::PreviewTierEvaluation)
+        .write(membership::RunTierEvaluation)
+        .write(membership::SetMemberTier)
+        .read(membership::ListTierHistory)
         .read(address::ListAddresses)
         .write(address::AddAddress)
         .write(address::UpdateAddress)
@@ -236,7 +241,7 @@ mod tests {
         let mut b = RegistryBuilder::default();
         super::register(&mut b);
         let registry = b.build().unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(registry.len(), 49);
+        assert_eq!(registry.len(), 54);
         for op in registry.iter() {
             let m = op.meta();
             assert_eq!(m.domain(), "customer", "{}", m.tool);
