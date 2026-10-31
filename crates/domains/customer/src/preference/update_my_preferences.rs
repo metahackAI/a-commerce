@@ -1,103 +1,21 @@
-//! `get_preferences`, `update_my_preferences`, and the person-only
-//! `POST /v1/customer/me/memories/{memory_id}/undo`: what the agent remembers about a shopper,
-//! always visible to them and undoable with one tap. Only facts about the shopper themselves
-//! are kept; never a gift recipient's, never payment or health data.
+//! `update_my_preferences`.
 
-use acom_contract::{
-    ActionType, Audience, Basis, Change, ChangeOp, Check, Committed, ErrorCode, Group, Kind,
-    Method, OpMeta, Operation, PersonOp, Planned, ReadOp, Slot, ToolError, UndoSupport,
-    Verification, WriteOp,
-};
-use acom_core::enums::{ActionStatus, PreferenceKey};
-use acom_core::ids::MemoryId;
-use acom_store::{Cx, Page, TxCx};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value, json};
-
-use crate::access::{customer_for, policy_words, signed_in_shopper};
+use super::MAX_ITEMS;
+use crate::access::{policy_words, signed_in_shopper};
 use crate::person::customer_not_found;
 use crate::repo::{self, PreferenceRow};
 use crate::wording::{about_someone_else, memory_texts, sensitive_reason};
-use crate::{
-    CUSTOMER_NOT_FOUND, GIFT_RECIPIENT_DATA, MEMORY_NOT_FOUND, NOT_SIGNED_IN, NOTHING_TO_CHANGE,
-    SENSITIVE_DATA,
+use crate::{GIFT_RECIPIENT_DATA, NOT_SIGNED_IN, NOTHING_TO_CHANGE, SENSITIVE_DATA};
+use acom_contract::{
+    ActionType, Audience, Basis, Change, ChangeOp, Check, Committed, Group, Kind, Method, OpMeta,
+    Operation, Planned, Slot, ToolError, UndoSupport, Verification, WriteOp,
 };
-
-/// How many memories one call may add or remove.
-const MAX_ITEMS: usize = 5;
-
-// ── get_preferences ─────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct GetPreferencesInput {
-    /// The member; a shopper uses `me`.
-    #[schemars(regex(pattern = r"^(me|cus_[a-z0-9_]+)$"), example = &"me")]
-    pub customer_id: String,
-    /// Only memories about this.
-    #[schemars(example = &"travel_priority")]
-    pub key: Option<PreferenceKey>,
-    /// Page size, 1–100. Default 20.
-    #[schemars(range(min = 1, max = 100), example = 20)]
-    pub limit: Option<u32>,
-    /// `next_cursor` from the previous page.
-    #[schemars(example = &"o20")]
-    pub cursor: Option<String>,
-}
-
-pub struct GetPreferences;
-
-impl Operation for GetPreferences {
-    const META: OpMeta = OpMeta {
-        address: "customer.preference.get",
-        tool: "get_preferences",
-        group: Group::Engage,
-        kind: Kind::Read,
-        method: Method::Get,
-        path: "/v1/customer/people/{customer_id}/preferences",
-        summary: "Everything the agent remembers about a member, newest first, each as the line the shopper sees.",
-        consumes: &[Slot::one("customer_id")],
-        produces: &[Slot::many("memory_id")],
-        checks: &[],
-        errors: &[CUSTOMER_NOT_FOUND],
-        audience: Audience::Both,
-        action_type: ActionType::SEARCH,
-        person_scope: "",
-    };
-    type Input = GetPreferencesInput;
-    type Output = Value;
-}
-
-impl ReadOp<Cx> for GetPreferences {
-    async fn read(&self, cx: &Cx, input: GetPreferencesInput) -> Result<Value, ToolError> {
-        let customer_id = customer_for(cx, &input.customer_id)?;
-        let page = Page::new(input.limit, input.cursor.as_deref())?;
-        let mut tx = cx.read().await.map_err(ToolError::from)?;
-        if repo::person(&mut tx, &customer_id).await?.is_none() {
-            return Err(customer_not_found(&customer_id));
-        }
-        let key = input.key.map(|k| k.as_str());
-        let (total, rows) =
-            repo::preferences(&mut tx, &customer_id, key, page.limit, page.offset).await?;
-        tx.commit().await.map_err(ToolError::from)?;
-        let items: Vec<Value> = rows
-            .iter()
-            .map(|p| {
-                json!({"id": p.id, "key": p.preference_key, "value": p.value,
-                       "text": p.description, "source": p.source,
-                       "created_at": cx.time.format(p.learned_at)})
-            })
-            .collect();
-        let mut out = json!({"items": items, "total": total});
-        if let Some(c) = page.next_cursor(rows.len(), total) {
-            out["next_cursor"] = json!(c);
-        }
-        Ok(out)
-    }
-}
-
-// ── update_my_preferences ───────────────────────────────────────────────────────────────
+use acom_core::enums::PreferenceKey;
+use acom_core::ids::MemoryId;
+use acom_store::{Cx, TxCx};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value, json};
 
 /// Where a memory was learned.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
@@ -522,85 +440,6 @@ impl WriteOp<Cx> for UpdateMyPreferences {
     }
 }
 
-// ── POST /v1/customer/me/memories/{memory_id}/undo ──────────────────────────────────────
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct UndoMemoryInput {
-    /// The memory to forget (the `memory_note` block's Undo button).
-    #[schemars(regex(pattern = r"^mem_[a-z0-9_]+$"), example = &"mem_12")]
-    pub memory_id: String,
-}
-
-/// Person-only: the shopper forgets one remembered preference.
-pub struct UndoMemory;
-
-impl Operation for UndoMemory {
-    const META: OpMeta = OpMeta {
-        address: "customer.preference.undo_memory",
-        tool: "undo_memory",
-        group: Group::Engage,
-        kind: Kind::Person,
-        method: Method::Post,
-        path: "/v1/customer/me/memories/{memory_id}/undo",
-        summary: "Forget one remembered preference. The shopper's Undo button on a memory note.",
-        consumes: &[Slot::one("memory_id")],
-        produces: &[],
-        checks: &[],
-        errors: &[MEMORY_NOT_FOUND, NOT_SIGNED_IN],
-        audience: Audience::Shopper,
-        action_type: ActionType::DELETE,
-        person_scope: "human:undo",
-    };
-    type Input = UndoMemoryInput;
-    type Output = Value;
-}
-
-impl PersonOp<Cx> for UndoMemory {
-    async fn run(&self, tx: &mut TxCx, input: UndoMemoryInput) -> Result<Value, ToolError> {
-        let me = tx
-            .principal
-            .customer_id()
-            .map(str::to_owned)
-            .ok_or_else(crate::access::not_signed_in)?;
-        let memory = repo::preference(tx, &input.memory_id)
-            .await?
-            .ok_or_else(|| {
-                ToolError::new(
-                    MEMORY_NOT_FOUND,
-                    format!(
-                        "There is no memory {}; it may already be forgotten.",
-                        input.memory_id
-                    ),
-                )
-                .detail(json!({"entity": "preference", "id": input.memory_id}))
-            })?;
-        if memory.customer_id != me {
-            return Err(ToolError::new(
-                ErrorCode::FORBIDDEN,
-                "That memory belongs to someone else.",
-            )
-            .detail(json!({"reason": "owner"})));
-        }
-        repo::delete_preference(tx, &me, &memory.id).await?;
-        acom_changeset::log_action(
-            tx,
-            acom_changeset::LogEntry {
-                object: Some(("preference", &memory.id)),
-                result: Some(json!({"forgotten": {"key": memory.preference_key,
-                                                  "value": memory.value}})),
-                ..acom_changeset::LogEntry::new(
-                    ActionType::DELETE.0,
-                    ActionStatus::Completed,
-                    "undo_memory",
-                )
-            },
-        )
-        .await?;
-        Ok(json!({"ok": true, "id": memory.id, "undo": null}))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use acom_contract::schema::{closed_schema_for, violations};
@@ -608,80 +447,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn inputs_are_closed_and_flat() {
-        for s in [
-            closed_schema_for::<GetPreferencesInput>(),
-            closed_schema_for::<UpdateMyPreferencesInput>(),
-            closed_schema_for::<UndoMemoryInput>(),
-        ] {
-            assert_eq!(violations(&s), Vec::<String>::new(), "{s:#}");
-        }
+    fn input_is_closed_and_flat() {
         let s = closed_schema_for::<UpdateMyPreferencesInput>();
+        assert_eq!(violations(&s), Vec::<String>::new(), "{s:#}");
         let remove = &s["properties"]["remove"]["items"]["properties"];
         assert_eq!(remove["match"]["enum"], json!(["memory_id", "key_value"]));
         assert_eq!(
             s["properties"]["add"]["items"]["properties"]["source"]["enum"],
             json!(["conversation"])
         );
-    }
-
-    #[test]
-    fn undo_is_person_only() {
-        assert_eq!(UndoMemory::META.kind, Kind::Person);
-        assert_eq!(UndoMemory::META.person_scope, "human:undo");
         assert_eq!(
             UpdateMyPreferences::META.path,
             "/v1/customer/people/me/preferences"
         );
-    }
-
-    /// Integration: needs a seeded database (`DATABASE_URL`). Run with `-- --ignored`.
-    #[tokio::test]
-    #[ignore = "integration: needs a PostgreSQL database"]
-    async fn remembers_and_forgets() {
-        let cx = crate::testdb::cx("cus_jamie").await;
-        let planned = UpdateMyPreferences
-            .preview(
-                &cx,
-                UpdateMyPreferencesInput {
-                    add: Some(vec![AddMemory {
-                        key: PreferenceKey::TravelPriority,
-                        value: "weight and packed size".into(),
-                        source: MemorySource::Conversation,
-                    }]),
-                    remove: None,
-                },
-            )
-            .await
-            .unwrap();
-        assert_eq!(
-            planned.plan.add[0].text,
-            "Remembered: weight and packed size matter to you when traveling"
-        );
-        let mut tx = cx.begin().await.unwrap();
-        let done = UpdateMyPreferences
-            .commit(&mut tx, &planned.plan)
-            .await
-            .unwrap();
-        let again = UpdateMyPreferences
-            .commit(&mut tx, &planned.plan)
-            .await
-            .unwrap();
-        assert_eq!(done.id, again.id);
-        let out = UndoMemory
-            .run(
-                &mut tx,
-                UndoMemoryInput {
-                    memory_id: done.id.clone(),
-                },
-            )
-            .await
-            .unwrap();
-        assert_eq!(out["ok"], true);
-        let e = UndoMemory
-            .run(&mut tx, UndoMemoryInput { memory_id: done.id })
-            .await
-            .unwrap_err();
-        assert_eq!(e.code, "memory_not_found");
     }
 }

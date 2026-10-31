@@ -1,5 +1,5 @@
 //! SQL for the customer domain. Every query filters `tenant_id`; values are bind parameters.
-//! Tables: `migrations/0003_customer.sql`, `migrations/0013_customer_wishlist.sql`.
+//! Tables: `migrations/0003_customer.sql`, `0013_customer_wishlist.sql`, `0021_customer_members_and_service.sql`.
 
 use acom_contract::ToolError;
 use acom_store::TxCx;
@@ -668,6 +668,231 @@ pub(crate) async fn delete_wishlist_item(
     .bind(tx.tenant.as_str())
     .bind(customer_id)
     .bind(product_id)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+// ── accounts (sign-in and account facts of a person, 0021) ─────────────────────────────
+
+/// Everything about a person's account the person writes need. Password hashes stay inside
+/// the crate and never go to an output or a log.
+#[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
+pub(crate) struct AccountRow {
+    pub id: String,
+    pub name: String,
+    pub given_name: Option<String>,
+    pub family_name: Option<String>,
+    pub email: Option<String>,
+    pub telephone: Option<String>,
+    pub login_id: Option<String>,
+    pub member_state: String,
+    pub member_type: String,
+    pub legal_name: Option<String>,
+    pub tax_id: Option<String>,
+    pub business_verification: String,
+    pub email_verified_at: Option<DateTime<Utc>>,
+    pub telephone_verified_at: Option<DateTime<Utc>>,
+    pub password_hash: Option<String>,
+    pub password_history: Vec<String>,
+    pub failed_password_attempts: i32,
+    pub first_failed_password_at: Option<DateTime<Utc>>,
+    pub locked_until: Option<DateTime<Utc>>,
+    pub block_reason: Option<String>,
+    pub blocked_until: Option<DateTime<Utc>>,
+    pub withdrawn_at: Option<DateTime<Utc>>,
+    pub card_last4: Option<String>,
+    pub registered_at: DateTime<Utc>,
+    pub version: i32,
+}
+
+const ACCOUNT_COLUMNS: &str = "id, name, given_name, family_name, email, telephone, login_id,
+    member_state, member_type, legal_name, tax_id, business_verification, email_verified_at,
+    telephone_verified_at, password_hash, password_history, failed_password_attempts,
+    first_failed_password_at, locked_until, block_reason, blocked_until, withdrawn_at,
+    card_last4, registered_at, version";
+
+pub(crate) async fn account(tx: &mut TxCx, id: &str) -> Result<Option<AccountRow>, ToolError> {
+    sqlx::query_as::<_, AccountRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {ACCOUNT_COLUMNS} FROM customer.person WHERE tenant_id = $1 AND id = $2"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// The account (not withdrawn) whose email, sign-in id or phone is `normalized`
+/// (`secret::normalize`).
+pub(crate) async fn account_by_identifier(
+    tx: &mut TxCx,
+    normalized: &str,
+) -> Result<Option<AccountRow>, ToolError> {
+    sqlx::query_as::<_, AccountRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {ACCOUNT_COLUMNS} FROM customer.person
+         WHERE tenant_id = $1 AND member_state <> 'withdrawn'
+           AND (lower(email) = $2 OR lower(login_id) = $2
+                OR regexp_replace(telephone, '[^0-9+]', '', 'g') = $2)
+         ORDER BY registered_at, id LIMIT 1"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(normalized)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// The contact fields a member can change.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct ContactFields {
+    pub name: String,
+    pub email: Option<String>,
+    pub telephone: Option<String>,
+    pub email_verified_at: Option<DateTime<Utc>>,
+    pub telephone_verified_at: Option<DateTime<Utc>>,
+}
+
+impl From<&AccountRow> for ContactFields {
+    fn from(a: &AccountRow) -> Self {
+        Self {
+            name: a.name.clone(),
+            email: a.email.clone(),
+            telephone: a.telephone.clone(),
+            email_verified_at: a.email_verified_at,
+            telephone_verified_at: a.telephone_verified_at,
+        }
+    }
+}
+
+pub(crate) async fn write_contact(
+    tx: &mut TxCx,
+    id: &str,
+    c: &ContactFields,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE customer.person SET name = $3, email = $4, telephone = $5,
+           email_verified_at = $6, telephone_verified_at = $7, updated_at = now(),
+           version = version + 1
+         WHERE tenant_id = $1 AND id = $2
+           AND (name, email, telephone, email_verified_at, telephone_verified_at)
+               IS DISTINCT FROM ($3, $4, $5, $6, $7)",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(&c.name)
+    .bind(c.email.as_deref())
+    .bind(c.telephone.as_deref())
+    .bind(c.email_verified_at)
+    .bind(c.telephone_verified_at)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// A member's state and block fields.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct StateFields {
+    pub member_state: String,
+    pub block_reason: Option<String>,
+    pub blocked_until: Option<DateTime<Utc>>,
+}
+
+impl From<&AccountRow> for StateFields {
+    fn from(a: &AccountRow) -> Self {
+        Self {
+            member_state: a.member_state.clone(),
+            block_reason: a.block_reason.clone(),
+            blocked_until: a.blocked_until,
+        }
+    }
+}
+
+pub(crate) async fn write_state(tx: &mut TxCx, id: &str, s: &StateFields) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE customer.person SET member_state = $3, block_reason = $4, blocked_until = $5,
+           updated_at = now(), version = version + 1
+         WHERE tenant_id = $1 AND id = $2
+           AND (member_state, block_reason, blocked_until) IS DISTINCT FROM ($3, $4, $5)",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(&s.member_state)
+    .bind(s.block_reason.as_deref())
+    .bind(s.blocked_until)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// One tier change to add to the history (append only).
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct TierChange {
+    pub customer_id: String,
+    pub program_id: String,
+    pub from_tier_id: Option<String>,
+    pub to_tier_id: Option<String>,
+    /// A word of `tier_change_cause`.
+    pub cause: String,
+    pub evaluation_id: Option<String>,
+    pub snapshot: Option<Value>,
+    pub agent_id: String,
+    pub reason: Option<String>,
+    pub expires: Option<DateTime<Utc>>,
+}
+
+/// Adds one tier change at the end of the member's history in that program.
+pub(crate) async fn add_history(tx: &mut TxCx, c: &TierChange) -> Result<(), ToolError> {
+    sqlx::query(
+        "INSERT INTO customer.program_membership_event (tenant_id, customer_id, member_program_id,
+           position, from_tier_id, to_tier_id, cause, evaluation_id, snapshot, agent_id, reason,
+           expires, changed_at)
+         SELECT $1, $2, $3, COALESCE(max(position), 0) + 1, $4, $5, $6, $7, $8, $9, $10, $11, $12
+         FROM customer.program_membership_event
+         WHERE tenant_id = $1 AND customer_id = $2 AND member_program_id = $3",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(&c.customer_id)
+    .bind(&c.program_id)
+    .bind(c.from_tier_id.as_deref())
+    .bind(c.to_tier_id.as_deref())
+    .bind(&c.cause)
+    .bind(c.evaluation_id.as_deref())
+    .bind(c.snapshot.as_ref())
+    .bind(&c.agent_id)
+    .bind(c.reason.as_deref())
+    .bind(c.expires)
+    .bind(tx.clock.now())
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// Sets a member's tier in a program (`tier_override` as given; NULL clears it).
+pub(crate) async fn set_membership_tier(
+    tx: &mut TxCx,
+    customer_id: &str,
+    program_id: &str,
+    tier_id: &str,
+    since: DateTime<Utc>,
+    tier_override: Option<&Value>,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE customer.program_membership SET tier_id = $4, tier_since = $5, tier_override = $6,
+           updated_at = now(), version = version + 1
+         WHERE tenant_id = $1 AND customer_id = $2 AND member_program_id = $3
+           AND (tier_id, tier_since, tier_override) IS DISTINCT FROM ($4, $5, $6)",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(customer_id)
+    .bind(program_id)
+    .bind(tier_id)
+    .bind(since)
+    .bind(tier_override)
     .execute(&mut *tx.tx)
     .await
     .map_err(db)?;

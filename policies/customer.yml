@@ -246,6 +246,10 @@ customer_service:
   max_open_per_agent: 20                 # 기본값. check: customer_service.max_open_per_agent. 상담원 한 명이 맡는 진행 중 문의 상한
   notify_member_on_resolve: true         # 기본값. resolved가 되면 회원에게 거래성 알림
 
+employee:                                # register_employee, set_discount_limit (customer.employee_role)
+  default_discount_limit: { value: 500.00, currency: USD }   # 기본값. register_employee에 discount_limit이 없을 때
+  default_period: year                   # 기본값. month | year (enums.md acom:discount_limit_period)
+
 remedy:
   liability: [store_fault, seller_fault, customer_fault, carrier_fault, none]   # check: remedy.liability. enums.md §2.1 acom:liability
   types: [loyalty_points, coupon, cash]  # enums.md §1.13 보상 종류

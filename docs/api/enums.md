@@ -125,11 +125,15 @@
 | 등급 혜택 종류 | `member_price`, `points_multiplier`, `free_shipping`, `free_returns`, `coupon_on_entry`, `recurring_coupon`, `custom` |
 | 등급 조건 지표 | `spend`, `order_count`, `points_earned`, `manual`, `invite`, `custom` |
 | 문의 `acom:inquiry_status` | `received`, `in_progress`, `resolved` |
-| 문의 종류 | `order_status`, `return`, `product_question`, `account`, `callback`, `other` |
+| 문의 종류 `acom:inquiry_type` | `order_status`, `return`, `product_question`, `account`, `callback`, `other` |
 | 보상 처리 `acom:remedy_status` | `requested`, `approved`, `rejected`, `payout_pending`, `paid`, `failed` |
-| 보상 종류 | `loyalty_points`, `coupon`, `cash` |
-| 동의 종류 | `terms`, `privacy`, `marketing_email`, `marketing_sms`, `marketing_push`, `marketing_in_app`, `entry_terms`, `winner_contact` |
+| 보상 종류 `acom:remedy_type` | `loyalty_points`, `coupon`, `cash` |
+| 동의 종류 `acom:consent_type` | `terms`, `privacy`, `marketing_email`, `marketing_sms`, `marketing_push`, `marketing_in_app`, `entry_terms`, `winner_contact` |
 | 주소 용도 | `shipping`, `billing`, `return` |
+| 등급 변경 원인 `acom:tier_change_cause` (`list_tier_history`의 `cause`) | `entry`, `evaluation`, `event`, `manual_override`, `override_expired`, `grace_started`, `grace_ended`, `program_change`, `withdrawal` |
+| 문의 답글 작성자 `acom:author_type` (`get_inquiry`의 `thread[].author_type`) | `customer`, `staff`, `agent` |
+| 임직원 할인 한도 기간 `acom:discount_limit_period` | `month`, `year` |
+| 계정 복구 요청 `acom:recovery_kind` | `password_reset`(비밀번호 재설정), `login_id`(로그인 id 찾기) |
 
 ### 1.14 그 밖의 상태
 
@@ -137,7 +141,7 @@
 |---|---|
 | 구독 | `active`, `paused`, `cancelled` |
 | 캠페인 `acom:campaign_status` | `draft`, `scheduled`, `sending`, `sent`, `failed`(발송이 메시지 하나 나가기 전에 멈춤, 예: 수신자 목록 가져오기 실패), `cancelled` |
-| 공지 | `draft`, `published` |
+| 공지 `acom:notice_status` | `draft`, `published` |
 | 게시글 | `published`, `held_for_review`, `blinded`, `deleted` |
 | 리뷰 노출 `review_status` (schema:creativeWorkStatus) | `visible`, `hidden`, `reported` |
 | 상품 문의 노출 `question_status` (schema:creativeWorkStatus) | `visible`, `hidden`(운영자가 숨김, 또는 `question.profanity_filter: hold_for_review`로 보류. 문의와 답이 함께 숨음) |
@@ -197,7 +201,7 @@
 | 클레임 거절 | `outside_return_window`, `not_returnable`, `inspection_failed`, `already_handed_over`, `outside_exchange_window` |
 | 교환 → 반품 전환 | `replacement_out_of_stock`, `replacement_discontinued`, `customer_declines` |
 | 신고(리뷰·게시글 공통) `acom:report_reason` | `spam`, `abuse`, `obscene`, `advertisement`, `fake`, `irrelevant`, `other` |
-| 탈퇴 | `not_using`, `too_many_messages`, `privacy_concern`, `poor_service`, `found_alternative`, `other` |
+| 탈퇴 `acom:withdrawal_reason` | `not_using`, `too_many_messages`, `privacy_concern`, `poor_service`, `found_alternative`, `other` |
 | 반품·교환 불가 | `used`, `final_sale`, `gift_card`, `digital`, `product_not_exchangeable` |
 
 ### 2.5 검수 결과 `acom:inspection_condition`

@@ -166,7 +166,7 @@
   | subject | Object | registry_lookup | 예 `{tax_id, legal_name}` |
   | code | Text | 두 번째 호출 | 받은 일회용 코드 `"482913"` |
 - 출력(프리뷰): `{"preview_id": "pv_v01a", "expires_at": "2026-11-07T10:30:00-05:00", "changes": [{"op": "create", "entity": "identity_verification", "id": null, "from": null, "to": "code_sent"}], "checks": [{"rule": "identity_verification.required_for", "passed": true, "detail": "email_code is allowed for signup", "fix_tool": "get_policy"}, {"rule": "identity_verification.resend_cooldown_seconds", "passed": true, "detail": "1 code per minute, 5 per hour", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
-- 출력(실행): `{"ok": true, "id": "ivf_201", "undo": null}` — 코드 확인 후 `{verification_token, expires_in: 300}`. 외부 제공자 방법이면 `{"ok": true, "id": "ivf_202", "redirect_url": "…"}`를 돌려주고, 제공자 콜백은 integration 도메인이 받아 같은 `ivf` id를 완료합니다.
+- 출력(실행): `{"ok": true, "id": "ivf_201", "undo": null}` — 코드 확인 후 `{verification_token, expires_in: 300}`. `verification_token`은 이 확인의 id(`ivf_…`)입니다. 그 자체로는 비밀이 아니고, 확인한 목적·연락처에 한 번, 기한 안에만 쓰입니다(코드는 해시로만 저장, 출력·액션 로그에 남지 않음). 이메일·SMS 발송은 messaging에 연결되지 않아 지금은 스텁이며, 실행 결과의 `delivery`가 `delivered: false`로 그 사실을 말합니다. 사업자 등록 조회도 연결된 제공자가 없어 스텁입니다(`registry.stub: true`). 외부 제공자 방법이면 `{"ok": true, "id": "ivf_202", "redirect_url": "…"}`를 돌려주고, 제공자 콜백은 integration 도메인이 받아 같은 `ivf` id를 완료합니다.
 - 정책: `identity_verification.methods`, `identity_verification.required_for`, `identity_verification.code`, `identity_verification.resend_cooldown_seconds`
 - 에러: `method_not_enabled` → `get_policy` · `code_mismatch` → `verify_identity` · `verification_expired` → `verify_identity` · `too_many_attempts`(이 확인의 시도를 다 씀, 새 확인을 시작) → `verify_identity` · `rate_limited`(`detail.retry_after_seconds` 뒤에 다시) → null
 - 멱등성: 코드 발송은 `(destination, resend_cooldown_seconds)` 제한, 토큰은 1회용.
@@ -367,6 +367,7 @@ schema.org 대응: `member_price` → `TierBenefitLoyaltyPrice`, `points_multipl
   | has_tiers | Object[] | ✓ | 위 정의 형식의 등급 전체 목록. 빠진 등급은 삭제로 봄 |
   | evaluation | Object | | 생략 시 `tier.evaluation` 기본값 |
   | movement | Object | | 생략 시 `tier.movement` 기본값 |
+  | has_tiers[].has_tier_requirement[] | Object[] | | `{metric, threshold?, threshold_count?, retain_threshold?, retain_threshold_count?, window?, counts?, custom_metric?}`. 툴 입력은 닫힌 스키마라 금액 기준(`spend`)은 `threshold`(`{value, currency}`), 수 기준(`order_count`, `points_earned`)은 `threshold_count`로 나눠 받고, 저장·`get_tier` 출력은 위 정의 형식처럼 `threshold` 하나입니다 |
   | tier_migrations | Object[] | 등급 삭제 시 ✓ | `[{from_tier_id: "silver", to_tier_id: "gold"}]` — 삭제할 등급의 회원이 갈 곳 |
   | takes_effect | Text(enum) | | `next_evaluation`(기본) \| `immediately`(승인과 함께 평가 실행) |
 - 출력(프리뷰, 예시 — VIP 기준을 800 → 1000 USD로 올리고 Platinum 추가):
@@ -743,7 +744,7 @@ schema.org 대응: `member_price` → `TierBenefitLoyaltyPrice`, `points_multipl
 
 ### `approve_remedy` — Kind: W$
 - 논리주소/REST: `customer.remedy.approve` · `POST /v1/customer/remedies/{remedy_id}/approve`
-- 요약: 보상 승인(`requested` → `approved`, 현금은 → `payout_pending`). 현금 보상은 지급 승인자 단계가 하나 더 있습니다.
+- 요약: 보상 승인(`requested` → `approved` | `rejected`). 현금 보상은 지급 승인자 단계가 하나 더 있고, `payout_pending`은 `pay_remedy`가 거칩니다(위 절의 상태 흐름과 `pay_remedy` 프리뷰 예시에 맞춤). 결정한 사람은 변경셋이 기록하고, 보상의 `decided_by_id`는 그 변경셋을 가리킵니다. 지급 승인자 역할(`approval.yml` `remedy_cash`의 `approver_role`)은 변경셋 엔진이 승인 때 확인합니다.
 - consumes → produces: `remedy_id` → `remedy_id`
 - 입력: `remedy_id`(✓), `decision`(✓, `approve` \| `reject`), `reason`(reject 시 ✓)
 - 출력(프리뷰): `{"preview_id": "pv_y02b", "expires_at": "2026-11-06T11:30:00-05:00", "changes": [{"op": "update", "entity": "remedy", "id": "rmd_310", "from": "requested", "to": "approved"}], "checks": [{"rule": "remedy.approval_levels", "passed": true, "detail": "Points, no payout step", "fix_tool": null}], "needs_approval": true, "approval_reason": "Approves a $15.00 remedy", "change_set_id": "cs_1045"}`
@@ -833,6 +834,9 @@ schema.org 대응: `member_price` → `TierBenefitLoyaltyPrice`, `points_multipl
 | `POST /v1/customer/account-recovery/login-id` | 누구나(비로그인, 익명 세션) | `human:account` | 로그인 id 찾기 |
 | `PUT /v1/customer/me/password` | 회원 본인 | `human:account` | 로그인한 상태에서 비밀번호 변경 |
 
+- 주소와 이름(레지스트리): `customer.person.withdraw`(`withdraw_account`), `customer.person.request_password_reset`, `customer.person.confirm_password_reset`, `customer.person.recover_login_id`, `customer.person.change_password`, `customer.preference.undo_memory`. 툴이 아니므로 매니페스트에 나오지 않습니다.
+- 틀린 코드·비밀번호는 실패해도 셉니다: 그 에러의 `detail.attempt_recorded: true`이면 엔드포인트의 트랜잭션이 커밋되어 시도 횟수와 잠금(`password.lockout`, `account_recovery.confirm_max_attempts`)이 남습니다(acom-http). 로그인하지 못한 사람(게스트 세션)도 `human:account`를 가집니다(재설정 요청·로그인 id 찾기).
+- "`202`"로 적힌 응답은 지금 HTTP `200`과 같은 본문으로 나갑니다(사람 전용 엔드포인트의 상태 코드는 공통 계층이 정함). 비밀번호 재설정 링크·코드와 로그인 id 안내는 확인된 연락처로 "보내는" 스텁이며 응답·액션 로그에 비밀이 없습니다.
 - 공통: 사람이 직접 누른 요청(세션 + `X-CSRF-Token`)만 받고, 에이전트 위임 토큰은 `human:*` 스코프가 없어 `forbidden`입니다. `Idempotency-Key` 필수(재설정 요청은 선택). 에러는 공통 형식이고 **`next_tool`은 항상 `null`**입니다(화면이 다음 단계를 안내). 정책 `withdrawal`, `identity_verification`, `account_recovery`, `password`, `preference.undo` ([customer.yml](../../policies/customer.yml)).
 - 비밀번호는 이 엔드포인트들의 본문으로만 오가고, 툴 입력·출력·액션 로그·변경셋 어디에도 남지 않습니다. 비밀번호 규칙은 화면이 `get_policy`(`password`)로 읽어 미리 보여 줍니다.
 
@@ -912,3 +916,17 @@ schema.org 대응: `member_price` → `TierBenefitLoyaltyPrice`, `points_multipl
 - 응답 `200`: `{"ok": true, "id": "cus_alex", "sessions_revoked": 2}` — `password.on_change`(기본: 지금 세션 말고 모두 폐기). `password.rotation_reminder_days`가 있으면 그 날짜 계산을 다시 시작합니다(강제 변경은 없음).
 - 에러: `current_password_wrong`(로그인 실패와 같이 `password.lockout`에 셈) → null · `password_policy` → null · `password_reused` → null
 - 멱등성: `Idempotency-Key`.
+
+---
+
+## 구현 메모 (백엔드, 2026-11)
+
+명세를 코드로 옮기며 고르거나 고친 것입니다.
+
+- **다른 도메인에 닿는 일은 스텁입니다.** customer는 의존 방향상 promotion·messaging·sales를 부를 수 없습니다([../backend/README.md](../backend/README.md) §2.1). 그래서 (1) 이메일·SMS(본인 확인 코드, 재설정 링크, 문의 답변, 해결 안내, 등급 알림, 탈퇴 완료 안내)는 기록만 하고 결과에 `delivered: false`와 이유를 적고, (2) 보상 지급의 포인트·쿠폰과 등급 진입 쿠폰은 promotion의 `grant_loyalty`·`issue_coupon`을 `next_tool`로 이름만 대며, (3) 현금 지급은 결제사 스텁(`reference: stub_…`)이 즉시 확정합니다. 탈퇴의 쿠폰 무효·구독 해지·연결 로그인 해제·적립금·충전금도 `settled[].connected: false`로 남습니다.
+- **주문만 대상인 보상**(`request_remedy`의 `target: order`)은 주문이 sales에 있어 확인할 수 없습니다. 같은 주문의 문의가 있으면 그 고객을 쓰고, 없으면 고객 없이 기록합니다.
+- **탈퇴 자격**의 `pending_refund`, `loyalty_points`, `store_credit`은 읽을 길이 없어 `not_checked`에 이름을 올립니다(추측하지 않음). `open_order`·`open_claim`은 sales·fulfillment가 등록한 읽기로 봅니다. 정책이 `warn`인 항목은 `warnings`에 갑니다.
+- **등급 평가**는 회원마다 sales의 주문 읽기를 부릅니다. 주문 읽기가 연결되지 않은 곳에서는 아무도 움직이지 않고 결과가 그렇게 말합니다(`measured: false`). 초대(`invite`)·수동처럼 주문으로 잴 수 없는 요건이 `any`로 묶인 등급은 유지됩니다. `scope: segment`는 세그먼트가 promotion 소유라 아직 받지 않습니다(`invalid_input`).
+- **실패한 시도의 기록**: `verify_identity`의 틀린 코드는 프리뷰 중에 시도 횟수만 따로 커밋합니다(상태 변경이 아니라 보안 기록, 가림 해제 사유 기록과 같은 방식).
+- **세션 폐기**(재설정·비밀번호 변경·탈퇴)는 게이트웨이의 `platform.session`에 `revoked_at`을 씁니다. commerce가 세션을 끝낼 다른 길이 없어 이 한 문장만 그 테이블에 닿습니다.
+- `check_withdrawal_eligibility`의 운영자 경로는 같은 `GET /v1/customer/people/me/withdrawal-eligibility`에 `customer_id`를 쿼리로 줍니다.
