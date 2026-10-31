@@ -381,18 +381,19 @@ async fn a_message_about_an_order_goes_to_its_customer() {
 #[ignore = "integration: needs a PostgreSQL database"]
 async fn the_vip_reminder_reaches_only_members_who_opted_in() {
     let cx = demo("adm_sj").await;
-    // The seeded draft: only Jamie of the vip tier agreed to marketing email.
+    // The seeded draft: 1,198 of the 1,284 vip members agreed to marketing email (the seed
+    // generator's `members.marketing_consent`); Jamie is first in id order.
     let p = SendBulk
         .preview(&cx, input(json!({"campaign_id": "cmp_vip_weekend"})))
         .await
         .unwrap();
-    assert_eq!(p.plan.recipients.len(), 1);
+    assert_eq!(p.plan.recipients.len(), 1198);
     assert_eq!(p.plan.recipients[0].customer_id, "cus_jamie");
     let consent = &p.checks[0];
     assert_eq!(consent.rule, "consent.marketing_gate");
-    assert!(
-        consent.detail.as_deref().unwrap().starts_with("1 of "),
-        "{consent:?}"
+    assert_eq!(
+        consent.detail.as_deref(),
+        Some("1,198 of 1,284 opted in to email; 86 left out")
     );
     assert_eq!(
         p.changes[0].to["sample"]["subject"],
@@ -402,22 +403,21 @@ async fn the_vip_reminder_reaches_only_members_who_opted_in() {
     assert_eq!(
         p.approval,
         ApprovalNeed::Needed {
-            reason: "Sends email to 1 customer".into()
+            reason: "Sends email to 1,198 customers".into()
         }
     );
 
     let mut tx = cx.as_system("sys_runner").begin().await.unwrap();
     let done = SendBulk.commit(&mut tx, &p.plan).await.unwrap();
-    assert_eq!(
-        done.produced["message_id"],
-        json!(["msg_cmp_vip_weekend_cus_jamie"])
-    );
+    let ids = done.produced["message_id"].as_array().unwrap();
+    assert_eq!(ids.len(), 1198);
+    assert_eq!(ids[0], json!("msg_cmp_vip_weekend_cus_jamie"));
     let again = SendBulk.commit(&mut tx, &p.plan).await.unwrap();
     assert_eq!(done, again);
     let (status, text): (String, String) = sqlx::query_as(
         "SELECT c.campaign_status, m.text FROM messaging.campaign c
          JOIN messaging.message m ON m.tenant_id = c.tenant_id AND m.campaign_id = c.id
-         WHERE c.tenant_id = $1 AND c.id = 'cmp_vip_weekend'",
+         WHERE c.tenant_id = $1 AND c.id = 'cmp_vip_weekend' AND m.recipient_id = 'cus_jamie'",
     )
     .bind("store_northwind")
     .fetch_one(&mut *tx.tx)
@@ -430,7 +430,7 @@ async fn the_vip_reminder_reaches_only_members_who_opted_in() {
         crate::campaign::under_cap(&mut tx, p.plan.recipients.clone(), cx.clock.now())
             .await
             .unwrap();
-    assert_eq!((keep.len(), capped), (1, 0));
+    assert_eq!((keep.len(), capped), (1198, 0));
     // Rolled back on drop.
 }
 

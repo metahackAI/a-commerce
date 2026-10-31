@@ -46,6 +46,7 @@ event rows (the scene setup in `acom-testkit`).
 | 40 of 42 in the VIP sale | chore coat (7) and rain parka (4) are under `promo_min_stock` 10; all 35 generated have ≥ 12 units |
 | About 400 products, 24 categories | 18 named + 382 generated; 24 standard `cat_` terms in `05_merchandising.yml` |
 | VIP 1,284 / Gold 2,900 / Member 9,816 | named 1 / 3 / 9 in `02_customer.yml` + 1,283 / 2,897 / 9,807 generated |
+| 1,198 of 1,284 VIP members opted in to marketing email (86 left out) | one `marketing_email` consent per generated member; every 15th of a tier, from the 8th, declines (`generate.yml` `members.marketing_consent`) |
 | Stock: field jacket 86, windbreaker 214 (M Slate 18, L Slate 12, M Black 9), overshirt 53, utility 31, chore coat 7 (S 3, XL 4), rain parka 4 (S 2, XL 2), camp overshirt 40, overcoat 24, boots Tan 9: 6, cashmere 18, fleece 30, merino tee 45, linen shirt 38, denim jacket M·L 0 | `catalog.offer.inventory_level` per variant |
 | Chore coat, rain parka, denim jacket M·L sold out Wed Nov 4 15:00; chore coat and denim back Nov 12 | `sold_out_at`, `availability_starts` on those offers |
 | Overshirt floor $66.70 (20% would be $63.20) | `cost_value` 58.00 on the overshirt offers |
