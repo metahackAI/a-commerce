@@ -1,5 +1,6 @@
 //! Query strings and path segments arrive as text; the input schema says what each field is.
-//! Tool schemas are flat (docs/api/conventions.md §8), so the field's `type` is enough.
+//! Tool schemas are flat (docs/api/conventions.md §8), so the field's `type` is enough, except for
+//! a money filter, which the query names by its parts (`min_amount.value=200&min_amount.currency=USD`).
 
 use acom_contract::ToolError;
 use serde_json::{Map, Number, Value, json};
@@ -37,12 +38,29 @@ fn type_of(schema: &Value) -> &str {
 }
 
 /// Turns `key=value` pairs into a JSON object shaped by `schema`. Repeated keys and
-/// comma-separated values both make arrays. Unknown keys stay text; the operation's closed
+/// comma-separated values both make arrays; `field.part` sets one part of an object field (a
+/// MonetaryAmount's `value` and `currency`). Unknown keys stay text; the operation's closed
 /// input type rejects them.
 pub fn coerce(schema: &Value, pairs: &[(String, String)]) -> Result<Map<String, Value>, ToolError> {
     let props = schema.get("properties");
     let mut out = Map::new();
     for (key, raw) in pairs {
+        if let Some((field, part)) = key.split_once('.') {
+            let prop = props.and_then(|p| p.get(field));
+            if prop.is_some_and(|p| type_of(p) == "object") {
+                let ty = prop
+                    .and_then(|p| p.get("properties"))
+                    .and_then(|p| p.get(part))
+                    .map_or("string", type_of);
+                let parts = out
+                    .entry(field.to_owned())
+                    .or_insert_with(|| Value::Object(Map::new()));
+                if let Value::Object(parts) = parts {
+                    parts.insert(part.to_owned(), scalar(key, ty, raw)?);
+                }
+                continue;
+            }
+        }
         let prop = props.and_then(|p| p.get(key));
         let ty = prop.map_or("string", type_of);
         if ty == "array" {
@@ -90,6 +108,28 @@ mod tests {
         assert_eq!(v["state"], json!(["live", "drafting", "failed"]));
         assert_eq!(v["query"], json!("linen, shirt"));
         let bad = [("limit".to_owned(), "lots".to_owned())];
+        assert!(coerce(&schema, &bad).is_err());
+    }
+
+    #[test]
+    fn a_money_filter_is_named_by_its_parts() {
+        let schema = json!({"type": "object", "properties": {
+            "min_amount": {"type": "object", "properties": {
+                "value": {"type": "number"}, "currency": {"type": "string"}}},
+            "note": {"type": "string"}}});
+        let pairs: Vec<(String, String)> = [
+            ("min_amount.value", "200"),
+            ("min_amount.currency", "USD"),
+            ("note.part", "x"),
+        ]
+        .iter()
+        .map(|(a, b)| ((*a).to_owned(), (*b).to_owned()))
+        .collect();
+        let v = Value::Object(coerce(&schema, &pairs).unwrap());
+        assert_eq!(v["min_amount"], json!({"value": 200, "currency": "USD"}));
+        // Not an object field: the key stays as sent, for the closed input type to reject.
+        assert_eq!(v["note.part"], json!("x"));
+        let bad = [("min_amount.value".to_owned(), "lots".to_owned())];
         assert!(coerce(&schema, &bad).is_err());
     }
 }

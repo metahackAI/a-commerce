@@ -196,6 +196,16 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:zoneType of a shipping zone: an ordinary area or a remote one (usually a surcharge).
+    ZoneType = "zone_type" { Standard = "standard", Remote = "remote" }
+}
+
+word_enum! {
+    /// acom:feeType, how a shipping zone charges shipping.
+    ShippingFeeType = "shipping_fee_type" { Paid = "paid", Free = "free", FreeOverMinSubtotal = "free_over_min_subtotal" }
+}
+
+word_enum! {
     /// schema.org `ActionStatusType`.
     ActionStatus = "action_status" {
         Potential = "potential", Active = "active", Completed = "completed", Failed = "failed",
@@ -389,6 +399,22 @@ word_enum! {
         CreditCard = "credit_card", BankTransfer = "bank_transfer", VirtualAccount = "virtual_account",
         LoyaltyPoints = "loyalty_points", StoreCredit = "store_credit",
     }
+}
+
+word_enum! {
+    /// acom:billingCycle, how often a subscription orders again.
+    BillingCycle = "billing_cycle" { EveryWeek = "every_week", Every2Weeks = "every_2_weeks", EveryMonth = "every_month" }
+}
+
+word_enum! {
+    /// acom:subscriptionStatus: ordering every cycle, skipping cycles until resumed, or ended.
+    SubscriptionStatus = "subscription_status" { Active = "active", Paused = "paused", Cancelled = "cancelled" }
+}
+
+word_enum! {
+    /// acom:receiptType, which document a receipt is: for income deduction, proof of expense, or
+    /// a tax invoice made out to a business tax id.
+    ReceiptType = "receipt_type" { Deduction = "deduction", Proof = "proof", TaxInvoice = "tax_invoice" }
 }
 
 word_enum! {
@@ -617,6 +643,8 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (RefundStatus::LIST, RefundStatus::WORDS),
     (RefundMethod::LIST, RefundMethod::WORDS),
     (RefundType::LIST, RefundType::WORDS),
+    (ZoneType::LIST, ZoneType::WORDS),
+    (ShippingFeeType::LIST, ShippingFeeType::WORDS),
     (ActionStatus::LIST, ActionStatus::WORDS),
     (ChangeSetState::LIST, ChangeSetState::WORDS),
     (PreviewState::LIST, PreviewState::WORDS),
@@ -645,6 +673,9 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (CampaignStatus::LIST, CampaignStatus::WORDS),
     (SalesChannel::LIST, SalesChannel::WORDS),
     (PaymentMethod::LIST, PaymentMethod::WORDS),
+    (BillingCycle::LIST, BillingCycle::WORDS),
+    (SubscriptionStatus::LIST, SubscriptionStatus::WORDS),
+    (ReceiptType::LIST, ReceiptType::WORDS),
     (ReturnFees::LIST, ReturnFees::WORDS),
     (TaskState::LIST, TaskState::WORDS),
     (TaskOrigin::LIST, TaskOrigin::WORDS),
@@ -722,7 +753,8 @@ mod tests {
         for (_, words) in LISTS {
             for w in *words {
                 assert!(
-                    w.bytes().all(|b| b.is_ascii_lowercase() || b == b'_'),
+                    w.bytes()
+                        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_'),
                     "{w}"
                 );
             }

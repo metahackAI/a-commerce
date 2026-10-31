@@ -242,4 +242,8 @@ delivery:
   tracking:
     source: carrier_event                # 배송 상태는 택배사 이벤트로 전이 (integration receive_carrier_event)
     validate_number_format: true         # confirm_shipment가 택배사별 송장 형식을 확인
+    number_formats:                      # 택배사별 송장 형식(앞자리·길이·문자). 택배사 연동은 범위 밖이라 형식만 본다. 목록에 없는 택배사는 확인하지 않음
+      UPS: { prefix: "1Z", min_length: 10, max_length: 35, characters: alphanumeric }
+      USPS: { prefix: "", min_length: 20, max_length: 22, characters: digits }
+      FedEx: { prefix: "", min_length: 12, max_length: 15, characters: digits }
   no_ship_for: [gift_card]               # 배송하지 않는 상품

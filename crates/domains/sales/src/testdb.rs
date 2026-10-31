@@ -48,6 +48,35 @@ pub(crate) async fn cx_at(subject: &str, at: &str) -> Cx {
     }
 }
 
+/// A context whose pool never connects, for inputs refused before any query: `cus_…` is a
+/// signed-in shopper, anything else an operator, at Sat Nov 7, 10:00.
+pub(crate) fn offline(subject: &str) -> Cx {
+    let time = StoreTime::new(chrono_tz::America::New_York);
+    let (kind, set): (ActorKind, BTreeSet<String>) = if subject.starts_with("cus_") {
+        (ActorKind::Shopper, scopes::shopper())
+    } else {
+        (ActorKind::Operator, scopes::admin())
+    };
+    Cx {
+        tenant: TenantId::parse("store_northwind").unwrap(),
+        principal: Arc::new(Principal {
+            subject: subject.to_owned(),
+            kind,
+            tenant: TenantId::parse("store_northwind").unwrap(),
+            surface: Surface::Fo,
+            scopes: set,
+            name: None,
+            session_id: None,
+        }),
+        request_id: "req_test".into(),
+        clock: Arc::new(FixedClock::at(time.parse("2026-11-07T10:00").unwrap())),
+        time,
+        currency: acom_core::Currency::USD,
+        policy: Arc::new(crate::rules::tests::defaults()),
+        db: Db::connect_lazy("postgres://offline.invalid/acom", 1).unwrap(),
+    }
+}
+
 /// The sales operations alone, for running previews through the preview store.
 pub(crate) fn registry() -> Registry<Cx> {
     let mut b = RegistryBuilder::default();

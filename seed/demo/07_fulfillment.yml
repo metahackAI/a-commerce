@@ -899,3 +899,43 @@ tables:
       change_set_id: null
       start_time: "2026-10-15T04:45:00-04:00"
       end_time: "2026-10-21T10:10:00-04:00"
+  # Delivery zones (list_shipping_zones): the contiguous US keeps delivery.default_zone's values
+  # ($6.00, free over $80.00, 2 transit days), so every scene's address prices and dates as before.
+  fulfillment.shipping_zone:
+    - tenant_id: store_northwind
+      id: zone_us_contiguous
+      name: Contiguous US
+      zone_type: standard
+      shipping_destination: [{address_country: US}]
+      fee_type: free_over_min_subtotal
+      shipping_rate_value: 6.00
+      shipping_rate_currency: USD
+      free_shipping_threshold_value: 80.00
+      free_shipping_threshold_currency: USD
+      surcharge_value: 0.00
+      surcharge_currency: USD
+      transit_business_days: 2
+    - tenant_id: store_northwind
+      id: zone_us_remote
+      name: Alaska and Hawaii
+      zone_type: remote
+      shipping_destination: [{address_country: US, address_region: AK}, {address_country: US, address_region: HI}]
+      fee_type: free_over_min_subtotal
+      shipping_rate_value: 6.00
+      shipping_rate_currency: USD
+      free_shipping_threshold_value: 80.00
+      free_shipping_threshold_currency: USD
+      surcharge_value: 12.00
+      surcharge_currency: USD
+      transit_business_days: 5
+    - tenant_id: store_northwind
+      id: zone_us_territories
+      name: Puerto Rico and US territories
+      zone_type: remote
+      shipping_destination: [{address_country: PR}, {address_country: GU}, {address_country: VI}]
+      fee_type: paid
+      shipping_rate_value: 6.00
+      shipping_rate_currency: USD
+      surcharge_value: 15.00
+      surcharge_currency: USD
+      transit_business_days: 6

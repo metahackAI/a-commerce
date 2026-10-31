@@ -5612,6 +5612,27 @@
         "nullable": false,
         "term": "-",
         "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      },
+      {
+        "name": "charge_value",
+        "type": "numeric(12,2)",
+        "nullable": true,
+        "term": "acom:charge",
+        "description": "extra cost the shopper pays before the claim goes ahead (cancel shipping over the refund, exchange shipping); NULL when there is none."
+      },
+      {
+        "name": "charge_currency",
+        "type": "char(3)",
+        "nullable": true,
+        "term": "acom:charge",
+        "description": "ISO 4217 code of charge_value."
+      },
+      {
+        "name": "charge_paid_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:chargePaidAt",
+        "description": "when the shopper paid the charge; NULL while it is due or when there is none."
       }
     ]
   },
@@ -6109,6 +6130,182 @@
         "nullable": false,
         "term": "-",
         "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      },
+      {
+        "name": "claim_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:claimId",
+        "description": "exchange claim whose replacement this parcel reships (clm_ id); NULL for the order's own shipments.",
+        "references": "fulfillment.claim"
+      }
+    ]
+  },
+  {
+    "schema": "fulfillment",
+    "table": "parcel_delivery_event",
+    "kind": "table",
+    "term": "schema:Action",
+    "description": "one state change of a parcel (scheduled, short of stock, labelled, carrier events); rows are only added.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "parcel_delivery_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:parcelDeliveryId",
+        "description": "the parcel that changed (dlv_ id), the object of the event.",
+        "references": "fulfillment.parcel_delivery"
+      },
+      {
+        "name": "position",
+        "type": "integer",
+        "nullable": false,
+        "term": "schema:position",
+        "description": "1-based order of this event within its aggregate."
+      },
+      {
+        "name": "action_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:actionType",
+        "description": "the schema.org Action subtype (@type), for example CreateAction or UpdateAction."
+      },
+      {
+        "name": "action_status",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:actionStatus",
+        "description": "lifecycle of the action. values: action_status",
+        "values": [
+          "potential",
+          "active",
+          "completed",
+          "failed"
+        ],
+        "values_list": "action_status"
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:agent",
+        "description": "person or system that acted (adm_ or sys_ id); NULL when only a model acted."
+      },
+      {
+        "name": "agent_name",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:agent",
+        "description": "name of the software agent (model) that acted; NULL for people."
+      },
+      {
+        "name": "instrument",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:instrument",
+        "description": "tool name or endpoint that caused the event."
+      },
+      {
+        "name": "from_state",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:fromState",
+        "description": "state before the event; NULL for the creating event. values: delivery_state",
+        "values": [
+          "awaiting_stock",
+          "ship_instructed",
+          "packed",
+          "label_created",
+          "picked_up",
+          "in_transit",
+          "delivered",
+          "delivery_failed",
+          "cancelled"
+        ],
+        "values_list": "delivery_state"
+      },
+      {
+        "name": "to_state",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:toState",
+        "description": "state after the event; NULL when the state did not change. values: delivery_state",
+        "values": [
+          "awaiting_stock",
+          "ship_instructed",
+          "packed",
+          "label_created",
+          "picked_up",
+          "in_transit",
+          "delivered",
+          "delivery_failed",
+          "cancelled"
+        ],
+        "values_list": "delivery_state"
+      },
+      {
+        "name": "result",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "schema:result",
+        "description": "what the action produced, as JSON (lines, tracking number, carrier)."
+      },
+      {
+        "name": "error",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "schema:error",
+        "description": "failure as {code, class, message}; NULL when it succeeded."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the action started."
+      },
+      {
+        "name": "end_time",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:endTime",
+        "description": "when the action ended; NULL while it runs."
+      },
+      {
+        "name": "request_id",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "request trace id (req_) from the gateway; joins agent turns and the action log."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
       }
     ]
   },
@@ -6248,6 +6445,296 @@
         "nullable": true,
         "term": "schema:endTime",
         "description": "when the provider confirmed or failed it."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "fulfillment",
+    "table": "refund_event",
+    "kind": "table",
+    "term": "schema:Action",
+    "description": "one state change of a refund (sent, retried, confirmed or failed by the payment provider); rows are only added.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "refund_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:refundId",
+        "description": "the refund that changed (rfd_ id), the object of the event.",
+        "references": "fulfillment.refund"
+      },
+      {
+        "name": "position",
+        "type": "integer",
+        "nullable": false,
+        "term": "schema:position",
+        "description": "1-based order of this event within its aggregate."
+      },
+      {
+        "name": "action_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:actionType",
+        "description": "the schema.org Action subtype (@type), for example PayAction."
+      },
+      {
+        "name": "action_status",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:actionStatus",
+        "description": "lifecycle of the action. values: action_status",
+        "values": [
+          "potential",
+          "active",
+          "completed",
+          "failed"
+        ],
+        "values_list": "action_status"
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:agent",
+        "description": "person or system that acted (adm_ or sys_ id); NULL when only a model acted."
+      },
+      {
+        "name": "agent_name",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:agent",
+        "description": "name of the software agent (model) that acted; NULL for people."
+      },
+      {
+        "name": "instrument",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:instrument",
+        "description": "tool name or endpoint that caused the event, for example retry_refund."
+      },
+      {
+        "name": "from_state",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:fromState",
+        "description": "state before the event. values: refund_status",
+        "values": [
+          "requested",
+          "completed",
+          "failed"
+        ],
+        "values_list": "refund_status"
+      },
+      {
+        "name": "to_state",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:toState",
+        "description": "state after the event. values: refund_status",
+        "values": [
+          "requested",
+          "completed",
+          "failed"
+        ],
+        "values_list": "refund_status"
+      },
+      {
+        "name": "result",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "schema:result",
+        "description": "what the action produced, as JSON (attempt number, payment provider note)."
+      },
+      {
+        "name": "error",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "schema:error",
+        "description": "the provider's failure as {code, class, message}; NULL when it succeeded."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the action started."
+      },
+      {
+        "name": "end_time",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:endTime",
+        "description": "when the action ended; NULL while it runs."
+      },
+      {
+        "name": "request_id",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "request trace id (req_) from the gateway; joins agent turns and the action log."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "fulfillment",
+    "table": "shipping_zone",
+    "kind": "table",
+    "term": "schema:ShippingRateSettings/acom:ShippingZone",
+    "description": "a delivery area with its shipping rate, free-shipping minimum, surcharge and transit days. id prefix zone_.",
+    "id_prefix": "zone",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix zone_; the same value the API, logs and events use."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "name people use for the zone, for example Contiguous US."
+      },
+      {
+        "name": "zone_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:zoneType",
+        "description": "standard or remote (remote zones usually carry a surcharge). values: zone_type",
+        "values": [
+          "standard",
+          "remote"
+        ],
+        "values_list": "zone_type"
+      },
+      {
+        "name": "shipping_destination",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "schema:shippingDestination",
+        "description": "DefinedRegion list [{address_country, address_region}]; an entry without address_region covers the whole country except regions another zone names."
+      },
+      {
+        "name": "fee_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:feeType",
+        "description": "how shipping is charged: paid, free, or free over a minimum subtotal. values: shipping_fee_type",
+        "values": [
+          "paid",
+          "free",
+          "free_over_min_subtotal"
+        ],
+        "values_list": "shipping_fee_type"
+      },
+      {
+        "name": "shipping_rate_value",
+        "type": "numeric(12,2)",
+        "nullable": false,
+        "term": "schema:shippingRate",
+        "description": "shipping charged per parcel when it is not free, in major units of the currency."
+      },
+      {
+        "name": "shipping_rate_currency",
+        "type": "char(3)",
+        "nullable": false,
+        "term": "schema:shippingRate",
+        "description": "ISO 4217 code of shipping_rate_value."
+      },
+      {
+        "name": "free_shipping_threshold_value",
+        "type": "numeric(12,2)",
+        "nullable": true,
+        "term": "schema:freeShippingThreshold",
+        "description": "subtotal before member benefits from which shipping is free; set only for free_over_min_subtotal."
+      },
+      {
+        "name": "free_shipping_threshold_currency",
+        "type": "char(3)",
+        "nullable": true,
+        "term": "schema:freeShippingThreshold",
+        "description": "ISO 4217 code of free_shipping_threshold_value."
+      },
+      {
+        "name": "surcharge_value",
+        "type": "numeric(12,2)",
+        "nullable": false,
+        "term": "acom:surcharge",
+        "description": "remote-area amount added to every parcel leg to this zone (fulfillment.yml delivery.remote_area_surcharge: by_zone), 0 for none."
+      },
+      {
+        "name": "surcharge_currency",
+        "type": "char(3)",
+        "nullable": false,
+        "term": "acom:surcharge",
+        "description": "ISO 4217 code of surcharge_value."
+      },
+      {
+        "name": "transit_business_days",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:transitBusinessDays",
+        "description": "business days a parcel travels from ship day to arrival in this zone."
       },
       {
         "name": "created_at",
@@ -11590,6 +12077,94 @@
   },
   {
     "schema": "sales",
+    "table": "guest_lookup",
+    "kind": "table",
+    "term": "-",
+    "description": "tries to open an order without signing in, by order number (verify_guest): wrong tries counted toward a lock, and the short-lived token the last right try was given, kept only as a hash. Unknown numbers are counted like known ones.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "order_number",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "order number as tried (digits, without #), whether or not such an order exists."
+      },
+      {
+        "name": "failed_attempt_count",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "wrong tries since the last right one or since the lock lifted (order.yml guest_lookup.max_attempts)."
+      },
+      {
+        "name": "first_failed_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "-",
+        "description": "when the first of the counted wrong tries happened; NULL when none is counted."
+      },
+      {
+        "name": "locked_until",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "-",
+        "description": "no try is checked before this time (order.yml guest_lookup.lock_minutes); NULL when not locked."
+      },
+      {
+        "name": "order_id",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "the order the last token opens (ord_ id); NULL before a right try.",
+        "references": "sales.sales_order"
+      },
+      {
+        "name": "token_hash",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "SHA-256 of the last token handed out; the token itself is shown once and never stored."
+      },
+      {
+        "name": "token_expires_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "-",
+        "description": "when the last token stops opening the order (order.yml guest_lookup.token_ttl_seconds)."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change."
+      }
+    ]
+  },
+  {
+    "schema": "sales",
     "table": "order_event",
     "kind": "table",
     "term": "schema:Action",
@@ -12030,6 +12605,109 @@
   },
   {
     "schema": "sales",
+    "table": "receipt",
+    "kind": "table",
+    "term": "schema:Invoice/acom:Receipt",
+    "description": "a receipt or tax document issued for a paid order; one live receipt per order and type. id prefix rct_. API: receipt_id.",
+    "id_prefix": "rct",
+    "api_name": "receipt_id",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix rct_; the same value the API, logs and events use."
+      },
+      {
+        "name": "order_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:referencesOrder",
+        "description": "the order the receipt is for (ord_ id).",
+        "references": "sales.sales_order"
+      },
+      {
+        "name": "receipt_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:receiptType",
+        "description": "what kind of document: deduction (income deduction), proof (proof of expense) or tax_invoice (needs the buyer's tax id). values: receipt_type",
+        "values": [
+          "deduction",
+          "proof",
+          "tax_invoice"
+        ],
+        "values_list": "receipt_type"
+      },
+      {
+        "name": "tax_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:taxID",
+        "description": "the buyer's business tax id a tax invoice is made out to; NULL for other types."
+      },
+      {
+        "name": "total_payment_due_value",
+        "type": "numeric(12,2)",
+        "nullable": false,
+        "term": "schema:totalPaymentDue",
+        "description": "the amount the receipt states, the order's total when issued, in major units of the currency."
+      },
+      {
+        "name": "total_payment_due_currency",
+        "type": "char(3)",
+        "nullable": false,
+        "term": "schema:totalPaymentDue",
+        "description": "ISO 4217 code of total_payment_due_value."
+      },
+      {
+        "name": "issued_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:issuedAt",
+        "description": "when the receipt was issued."
+      },
+      {
+        "name": "cancelled_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:cancelledAt",
+        "description": "when it was cancelled to be issued again for a changed amount (order.yml receipt.after_claim); NULL while it stands."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "sales",
     "table": "sales_order",
     "kind": "table",
     "term": "schema:Order",
@@ -12247,6 +12925,173 @@
         "term": "acom:campaignId",
         "description": "campaign whose message the shopper followed to place the order (cmp_ id); NULL when the order came from anywhere else.",
         "references": "messaging.campaign"
+      }
+    ]
+  },
+  {
+    "schema": "sales",
+    "table": "subscription",
+    "kind": "table",
+    "term": "schema:Order/acom:Subscription",
+    "description": "a standing order: the same lines ordered and charged to the saved card every billing cycle. id prefix sub_. API: subscription_id.",
+    "id_prefix": "sub",
+    "api_name": "subscription_id",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix sub_; the same value the API, logs and events use."
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:customer",
+        "description": "shopper who subscribed (cus_ id).",
+        "references": "customer.person"
+      },
+      {
+        "name": "subscription_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:subscriptionStatus",
+        "description": "active orders every cycle, paused skips cycles until resumed, cancelled is final. values: subscription_status",
+        "values": [
+          "active",
+          "paused",
+          "cancelled"
+        ],
+        "values_list": "subscription_status"
+      },
+      {
+        "name": "billing_cycle",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:billingCycle",
+        "description": "how often an order is placed; the length of each cycle is order.yml subscription.cycle_length. values: billing_cycle",
+        "values": [
+          "every_week",
+          "every_2_weeks",
+          "every_month"
+        ],
+        "values_list": "billing_cycle"
+      },
+      {
+        "name": "next_charge_date",
+        "type": "date",
+        "nullable": false,
+        "term": "acom:nextChargeDate",
+        "description": "store-time day the next order is placed and charged."
+      },
+      {
+        "name": "ordered_item",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "schema:orderedItem",
+        "description": "the lines every order repeats: [{variant_id, product_id, name, size, color, quantity, price: {value, currency}, discount: {value, currency}}], price per unit and discount per line."
+      },
+      {
+        "name": "order_delivery",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "schema:orderDelivery",
+        "description": "where every order goes: {address_id (NULL for an address given for this subscription only), delivery_address: {name, street_address, address_locality, address_region, postal_code, address_country}, address_label}."
+      },
+      {
+        "name": "payment_method",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:paymentMethod",
+        "description": "how every order is paid; a saved card (order.yml payment.subscription_card_only). values: payment_method",
+        "values": [
+          "credit_card",
+          "bank_transfer",
+          "virtual_account",
+          "loyalty_points",
+          "store_credit"
+        ],
+        "values_list": "payment_method"
+      },
+      {
+        "name": "card_last4",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:cardLast4",
+        "description": "last four digits of the card charged; NULL for other methods."
+      },
+      {
+        "name": "total_payment_due_value",
+        "type": "numeric(12,2)",
+        "nullable": false,
+        "term": "schema:totalPaymentDue",
+        "description": "what each order comes to: subtotal − subscription discounts + shipping, in major units of the currency."
+      },
+      {
+        "name": "total_payment_due_currency",
+        "type": "char(3)",
+        "nullable": false,
+        "term": "schema:totalPaymentDue",
+        "description": "ISO 4217 code of total_payment_due_value."
+      },
+      {
+        "name": "preview_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:previewId",
+        "description": "prepare_subscription preview the shopper confirmed (pv_ id); NULL for subscriptions made before previews.",
+        "references": "platform.preview"
+      },
+      {
+        "name": "paused_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:pausedAt",
+        "description": "when it was last paused; NULL when it never was."
+      },
+      {
+        "name": "cancelled_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:cancelledAt",
+        "description": "when it was cancelled; NULL while it runs or is paused."
+      },
+      {
+        "name": "cancel_reason_text",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:cancelReasonText",
+        "description": "why the shopper cancelled, in their words; NULL when not given."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the subscription started."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
       }
     ]
   },

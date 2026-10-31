@@ -346,6 +346,48 @@ tables:
       shipping_currency: USD
       total_payment_due_value: 289.00
       total_payment_due_currency: USD
+    # After the order (sales.order.verify_guest … sales.subscription): two orders still waiting
+    # for their money, numbered above every generated order so the generator's numbering and the
+    # B3 sales days stay as they were (payment_due orders are not sales).
+    # #29001: Priya pays by virtual account; the deposit is due by Sun Nov 8 16:20
+    # (confirm_virtual_account_deposit, change_shipping_address).
+    - tenant_id: store_northwind
+      id: ord_29001
+      order_number: "29001"
+      order_date: "2026-11-05T16:20:00-05:00"
+      order_status: payment_due
+      customer_id: cus_priya
+      sales_channel: web
+      is_gift: false
+      subtotal_value: 128.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      total_payment_due_value: 128.00
+      total_payment_due_currency: USD
+    # #29002: Owen's gift for his dad, who accepts it through a link; the card payment waits for
+    # him (set_installment, get_gift_order).
+    - tenant_id: store_northwind
+      id: ord_29002
+      order_number: "29002"
+      order_date: "2026-11-06T09:05:00-05:00"
+      order_status: payment_due
+      customer_id: cus_owen
+      sales_channel: web
+      is_gift: true
+      gift_options: {wrap: true, wrap_fee: {value: 5.00, currency: USD}, card_message: "Happy birthday, Dad. Stay warm on the trail.", gift_receipt: true, receipt_hides_prices: true, exchange_until: "2026-12-31", recipient: Dad, recipient_mode: recipient_accepts}
+      subtotal_value: 84.00
+      subtotal_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+      shipping_value: 0.00
+      shipping_currency: USD
+      gift_wrap_value: 5.00
+      gift_wrap_currency: USD
+      total_payment_due_value: 89.00
+      total_payment_due_currency: USD
   sales.order_item:
     - tenant_id: store_northwind
       id: oln_20105_1
@@ -650,6 +692,30 @@ tables:
       price_currency: USD
       discount_value: 0.00
       discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_29001_1
+      order_id: ord_29001
+      position: 1
+      product_id: var_field_jacket_m_olive
+      name: Linen blend field jacket
+      order_quantity: 1
+      order_item_status: payment_due
+      price: 128.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
+    - tenant_id: store_northwind
+      id: oln_29002_1
+      order_id: ord_29002
+      position: 1
+      product_id: var_fleece_half_zip_l_heather_grey
+      name: Fleece half-zip
+      order_quantity: 1
+      order_item_status: payment_due
+      price: 84.00
+      price_currency: USD
+      discount_value: 0.00
+      discount_currency: USD
   sales.payment:
     - tenant_id: store_northwind
       id: pay_20105
@@ -882,6 +948,23 @@ tables:
       installment_months: 0
       external_id: ch_demo_20431
       paid_at: "2026-10-29T10:06:00-04:00"
+    - tenant_id: store_northwind
+      id: pay_29001
+      order_id: ord_29001
+      payment_method: virtual_account
+      payment_status: payment_due
+      amount_value: 128.00
+      amount_currency: USD
+      installment_months: 0
+    - tenant_id: store_northwind
+      id: pay_29002
+      order_id: ord_29002
+      payment_method: credit_card
+      payment_status: payment_due
+      amount_value: 89.00
+      amount_currency: USD
+      card_last4: "8826"
+      installment_months: 0
   sales.order_event:
     - tenant_id: store_northwind
       order_id: ord_20105
@@ -1588,3 +1671,74 @@ tables:
       to_state: delivered
       start_time: "2026-11-02T15:20:00-05:00"
       end_time: "2026-11-02T15:20:00-05:00"
+    - tenant_id: store_northwind
+      order_id: ord_29001
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_priya
+      instrument: POST /v1/sales/orders
+      to_state: payment_due
+      result: {payment_id: pay_29001, delivery: {address_id: adr_priya_home, address_label: "Home · 260 Grove St, Jersey City, NJ 07302", arrives: "2026-11-09", delivery_address: {name: Priya Shah, street_address: "260 Grove St", address_locality: Jersey City, address_region: NJ, postal_code: "07302", address_country: US}}}
+      start_time: "2026-11-05T16:20:00-05:00"
+      end_time: "2026-11-05T16:20:00-05:00"
+    - tenant_id: store_northwind
+      order_id: ord_29002
+      position: 1
+      action_type: OrderAction
+      action_status: completed
+      agent_id: cus_owen
+      instrument: POST /v1/sales/orders
+      to_state: payment_due
+      result: {payment_id: pay_29002, delivery: null, gift: {wrap: true, wrap_fee: {value: 5.00, currency: USD}, card_message: "Happy birthday, Dad. Stay warm on the trail.", gift_receipt: true, receipt_hides_prices: true, exchange_until: "2026-12-31", recipient: {name: Dad, mode: recipient_accepts}, gift_order_id: gift_29002, expires: "2026-11-09T09:05:00-05:00"}}
+      start_time: "2026-11-06T09:05:00-05:00"
+      end_time: "2026-11-06T09:05:00-05:00"
+  # Owen's gift waits for his dad until Mon Nov 9 09:05 (gift.auto_cancel_if_no_address_days).
+  sales.gift_order:
+    - tenant_id: store_northwind
+      id: gift_29002
+      order_id: ord_29002
+      recipient_name: Dad
+      recipient_contact: "dad.doyle@example.com"
+      action_status: potential
+      expires: "2026-11-09T09:05:00-05:00"
+  # Jamie's proof of expense for her merino tee (#20381), issued when she ordered it.
+  sales.receipt:
+    - tenant_id: store_northwind
+      id: rct_20381
+      order_id: ord_20381
+      receipt_type: proof
+      total_payment_due_value: 64.00
+      total_payment_due_currency: USD
+      issued_at: "2026-10-24T16:20:00-04:00"
+  # Standing orders: Jamie's merino tee every month (next Tue Dec 1; $58.00 + $6.00 shipping),
+  # and Grace's hiking socks every two weeks, paused since Oct 25 with Oct 30 still due.
+  sales.subscription:
+    - tenant_id: store_northwind
+      id: sub_3301
+      customer_id: cus_jamie
+      subscription_status: active
+      billing_cycle: every_month
+      next_charge_date: "2026-12-01"
+      ordered_item: [{variant_id: var_merino_tee_m_charcoal, product_id: prd_merino_tee, name: Merino trail tee, size: M, color: Charcoal, quantity: 1, price: {value: 58.00, currency: USD}, discount: {value: 0.00, currency: USD}}]
+      order_delivery: {address_id: adr_home, address_label: "Home · 12 Harbor St, Apt 3, Brooklyn, NY 11201", delivery_address: {name: Jamie Rivera, street_address: "12 Harbor St, Apt 3", address_locality: Brooklyn, address_region: NY, postal_code: "11201", address_country: US}}
+      payment_method: credit_card
+      card_last4: "4821"
+      total_payment_due_value: 64.00
+      total_payment_due_currency: USD
+    - tenant_id: store_northwind
+      id: sub_3302
+      customer_id: cus_grace
+      subscription_status: paused
+      billing_cycle: every_2_weeks
+      next_charge_date: "2026-10-30"
+      ordered_item: [{variant_id: var_hiking_socks_m_grey, product_id: prd_hiking_socks, name: Hiking socks, size: M, color: Grey, quantity: 2, price: {value: 14.95, currency: USD}, discount: {value: 0.00, currency: USD}}]
+      order_delivery: {address_id: adr_grace_home, address_label: "Home · 301 Main St, Stamford, CT 06901", delivery_address: {name: Grace Liu, street_address: "301 Main St", address_locality: Stamford, address_region: CT, postal_code: "06901", address_country: US}}
+      payment_method: credit_card
+      card_last4: "1350"
+      total_payment_due_value: 35.90
+      total_payment_due_currency: USD
+      paused_at: "2026-10-25T08:00:00-04:00"
+  # Jamie's next merino tee order (subscription.renew on its charge date).
+  platform.job:
+    - {tenant_id: store_northwind, id: job_renew_sub_3301_20261201, kind: subscription.renew, run_at: "2026-12-01T00:00:00-05:00", payload: {subscription_id: sub_3301, charge_date: "2026-12-01"}, attempts: 0}

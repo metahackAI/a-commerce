@@ -271,7 +271,7 @@ pub(crate) struct CartView {
     pub card_last4: Option<String>,
 }
 
-fn address_of(a: &SavedAddress) -> Address {
+pub(crate) fn address_of(a: &SavedAddress) -> Address {
     Address {
         name: a.name.clone(),
         street_address: a.street_address.clone(),
