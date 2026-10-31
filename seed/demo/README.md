@@ -11,7 +11,7 @@ members and sales history) under fixed counts and a fixed random seed.
 | `01_platform.yml` | Store `store_northwind` (USD, America/New_York), operator `adm_sj` with roles `rol_merchandiser` and `rol_catalog_admin` (B4 saves and publishes drafts) and their scopes, the other system roles, store policy overrides, the demo clock (Fri Nov 6 2026 11:00), change sets #1039 (Fall layers banner, live), #1040 (below-cost fix, live, undo until Nov 7 23:59) and #1041 (linen reorder draft) with previews, items, events and action log rows, the five home tasks of B5, and scheduled jobs |
 | `02_customer.yml` | 13 named shoppers (Jamie vip; Alex member; the customers behind the B2 returns), home addresses, program `prg_rewards` with tiers `member`, `gold`, `vip`, memberships, Jamie's four remembered preferences |
 | `03_catalog.yml` | 3 brands, 2 return policies, the 18 named products with all 127 variants and offers (list price, cost, stock), measurements (windbreaker M; wool overcoat M and L), 41 wool overcoat reviews |
-| `04_promotion.yml` | The six promotions of §4, autumn knitwear sale prices of the cashmere sweater, the birthday and Gold tier coupons, three used birthday coupons |
+| `04_promotion.yml` | The six promotions of §4, autumn knitwear sale prices of the cashmere sweater, the birthday and Gold tier coupons, three used birthday coupons; store-point ledgers of Jamie (balance $13.94, $2.00 expiring Nov 14) and Alex ($1.50 expiring Nov 6), the holiday gift over $120 (Nov 20–30), segments `seg_recent_buyers` and `seg_lapsed_knit_buyers`, the October raffle `evt_1001` (drawn Oct 16 with draw record `drw_1001_01`, Jamie's points sent, Alex's merino tee still to send) and the Fall check-in week `evt_0311` (scheduled Nov 9–15), and the first nightly store-point expiry job (Nov 7 00:00) |
 | `05_merchandising.yml` | 24 standard and 3 display categories, placement of the named products, the four main-page slots, hero banners and bookings (October edit ended 09:59; Fall layers for everyone from 10:00) |
 | `06_sales.yml` | 21 named orders with items, payments and events |
 | `07_fulfillment.yml` | Deliveries of those orders, the 12 B2 return requests (`requested`), cus_4431's three completed returns with inspections and refunds |
@@ -78,7 +78,7 @@ event rows (the scene setup in `acom-testkit`).
 
 Family names, addresses and cards of the shoppers other than those in §2; colors and per-variant stock
 splits; brand names Fieldstone Boot Co. and Ridgeline Outdoor; return policy `mrp_free_size_exchange`
-for the overcoat; birthday coupon $10.00 off; denim bundle $20.00 off; linen clearance 20%; the earlier
+for the overcoat; birthday coupon $10.00 off; store points (1% of each delivered order, Jamie's $5.00 VIP welcome, Alex's $1.50 birthday points); the two events, their seeds and the raffle's entrants; denim bundle $20.00 off; linen clearance 20%; the earlier
 hero banner "The October edit"; reorder split S 70 / M 90 / L 80; per-day revenue for Oct 23 – Nov 4
 in `generate.yml`; the weekly email (template text, recipient counts 11,204–11,270, sends at 08:01–08:02) and the
 split of its 5,200.00 over the four Thursdays (1,240 / 1,410 / 1,180 / 1,370).

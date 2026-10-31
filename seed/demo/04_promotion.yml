@@ -1,6 +1,10 @@
 # Promotion: the six promotions of docs/scenarios.md §4 (four running, one scheduled, one ended),
 # the autumn knitwear sale prices of the named cashmere sweater, the birthday and Gold tier coupons,
 # and the birthday coupons used on the three B2 orders that had a coupon (#20352, #20388, #20395).
+# Then what the scenes do not name (values chosen here): Jamie's and Alex's store-point ledgers,
+# the holiday gift over $120, two segments, the October raffle (drawn, Jamie's reward sent, Alex's
+# merino tee still to send), the Fall check-in week (scheduled Nov 9-15), and the first nightly
+# store-point expiry job (Nov 7 00:00, it books the next one itself).
 tables:
   promotion.promotion:
     - tenant_id: store_northwind
@@ -244,3 +248,101 @@ tables:
       used_at: "2026-10-26T09:48:00-04:00"
       benefit_recorded_value: 10.00
       benefit_recorded_currency: USD
+  promotion.loyalty_transaction:
+    - {tenant_id: store_northwind, id: lyt_jamie_vip_welcome, customer_id: cus_jamie, transaction_type: grant, amount_value: 5.00, amount_currency: USD, expires: "2026-11-14", description: "Welcome to VIP", agent_id: adm_sj, start_time: "2025-11-14T10:00:00-05:00"}
+    - {tenant_id: store_northwind, id: lyt_jamie_20105, customer_id: cus_jamie, transaction_type: accrual, amount_value: 3.12, amount_currency: USD, order_id: ord_20105, expires: "2027-01-23", description: "1% of order 20105", agent_id: sys_scheduler, start_time: "2026-01-23T10:00:00-05:00"}
+    - {tenant_id: store_northwind, id: lyt_jamie_20151_spend, customer_id: cus_jamie, transaction_type: spend, amount_value: 3.00, amount_currency: USD, order_id: ord_20151, description: "Spent on order 20151", agent_id: cus_jamie, start_time: "2026-03-09T20:41:00-04:00"}
+    - {tenant_id: store_northwind, id: lyt_jamie_20151, customer_id: cus_jamie, transaction_type: accrual, amount_value: 0.68, amount_currency: USD, order_id: ord_20151, expires: "2027-03-13", description: "1% of order 20151", agent_id: sys_scheduler, start_time: "2026-03-13T10:00:00-04:00"}
+    - {tenant_id: store_northwind, id: lyt_jamie_20188, customer_id: cus_jamie, transaction_type: accrual, amount_value: 0.79, amount_currency: USD, order_id: ord_20188, expires: "2027-05-06", description: "1% of order 20188", agent_id: sys_scheduler, start_time: "2026-05-06T10:00:00-04:00"}
+    - {tenant_id: store_northwind, id: lyt_jamie_20236, customer_id: cus_jamie, transaction_type: accrual, amount_value: 0.88, amount_currency: USD, order_id: ord_20236, expires: "2027-07-15", description: "1% of order 20236", agent_id: sys_scheduler, start_time: "2026-07-15T10:00:00-04:00"}
+    - {tenant_id: store_northwind, id: lyt_jamie_20268, customer_id: cus_jamie, transaction_type: accrual, amount_value: 0.89, amount_currency: USD, order_id: ord_20268, expires: "2027-09-11", description: "1% of order 20268", agent_id: sys_scheduler, start_time: "2026-09-11T10:00:00-04:00"}
+    - {tenant_id: store_northwind, id: lyt_jamie_raffle, customer_id: cus_jamie, transaction_type: grant, amount_value: 5.00, amount_currency: USD, expires: "2027-10-16", description: "October raffle, rank 1 reward", agent_id: sys_runner, start_time: "2026-10-16T10:05:00-04:00"}
+    - {tenant_id: store_northwind, id: lyt_jamie_20381, customer_id: cus_jamie, transaction_type: accrual, amount_value: 0.58, amount_currency: USD, order_id: ord_20381, expires: "2027-10-28", description: "1% of order 20381", agent_id: sys_scheduler, start_time: "2026-10-28T10:00:00-04:00"}
+    - {tenant_id: store_northwind, id: lyt_alex_birthday, customer_id: cus_alex, transaction_type: grant, amount_value: 1.50, amount_currency: USD, expires: "2026-11-06", description: "Birthday points", agent_id: adm_sj, start_time: "2025-11-06T09:00:00-05:00"}
+    - {tenant_id: store_northwind, id: lyt_alex_20402, customer_id: cus_alex, transaction_type: accrual, amount_value: 3.12, amount_currency: USD, order_id: ord_20402, expires: "2027-11-01", description: "1% of order 20402", agent_id: sys_scheduler, start_time: "2026-11-01T10:00:00-05:00"}
+  promotion.conditional_gift:
+    - tenant_id: store_northwind
+      id: cgf_holiday_120
+      name: "Holiday gift over $120"
+      gift_tiers: [{trigger_threshold: {value: 120.00, currency: USD}, gift_product_id: prd_merino_tee}]
+      valid_for_member_tier: null
+      valid_from: "2026-11-20T00:00:00-05:00"
+      valid_through: "2026-11-30T23:59:00-05:00"
+  promotion.segment:
+    - tenant_id: store_northwind
+      id: seg_recent_buyers
+      name: Recent buyers
+      condition_rules: {last_order_within_days: 30}
+      estimated_size: 5143
+      estimated_at: "2026-11-06T09:00:00-05:00"
+    - tenant_id: store_northwind
+      id: seg_lapsed_knit_buyers
+      name: Lapsed knit buyers
+      condition_rules: {purchased_category_ids: [cat_knitwear], exclude_segment_ids: [seg_recent_buyers]}
+      estimated_size: 22
+      estimated_at: "2026-11-06T09:00:00-05:00"
+  promotion.event:
+    - tenant_id: store_northwind
+      id: evt_0311
+      name: Fall check-in week
+      event_status: scheduled
+      start_date: "2026-11-09T00:00:00-05:00"
+      end_date: "2026-11-15T23:59:00-05:00"
+      entry_mechanic: check_in
+      selection_method: random_draw
+      reward_tiers:
+        - {rank: 1, reward_type: product, reward_ref: prd_wool_overcoat, reward_value: {value: 289.00, currency: USD}, winner_count: 1, waitlist_count: 2}
+        - {rank: 2, reward_type: loyalty_points, reward_value: {value: 5.00, currency: USD}, winner_count: 100}
+      eligibility: {}
+      valid_for_member_tier: null
+      entry_limit: {count: 1, period: day}
+      draw_at: "2026-11-16T10:00:00-05:00"
+      compliance_jurisdictions: []
+      seed_commitment: "sha256:acac29344adea7f25a16f0dc967b0c42023758bcfc3abb6c933b80bcbd9c54b0"
+      draw_seed: fallcheckinweek2026
+    - tenant_id: store_northwind
+      id: evt_1001
+      name: October raffle
+      event_status: fulfilling
+      start_date: "2026-10-01T00:00:00-04:00"
+      end_date: "2026-10-15T23:59:00-04:00"
+      entry_mechanic: click_apply
+      selection_method: random_draw
+      reward_tiers:
+        - {rank: 1, reward_type: loyalty_points, reward_value: {value: 5.00, currency: USD}, winner_count: 1, waitlist_count: 1}
+        - {rank: 2, reward_type: product, reward_ref: prd_merino_tee, reward_value: {value: 58.00, currency: USD}, winner_count: 1}
+      eligibility: {}
+      valid_for_member_tier: null
+      entry_limit: {count: 1, period: event}
+      draw_at: "2026-10-16T10:00:00-04:00"
+      announce_at: "2026-10-16T10:00:00-04:00"
+      compliance_jurisdictions: []
+      seed_commitment: "sha256:e0cff094d32f24775b05757b2d270208957ed5d9e1e45669feba64adfa56e704"
+      draw_seed: octoberraffle00044
+  promotion.event_entry:
+    - {tenant_id: store_northwind, id: ent_1001_jamie, event_id: evt_1001, customer_id: cus_jamie, entry_status: won, entry_consent: {entry_terms: true, winner_contact: true}, period_bucket: event, entry_number: 1, rank: 1, draw_record_id: drw_1001_01, start_time: "2026-10-02T19:12:00-04:00"}
+    - {tenant_id: store_northwind, id: ent_1001_alex, event_id: evt_1001, customer_id: cus_alex, entry_status: won, entry_consent: {entry_terms: true, winner_contact: true}, period_bucket: event, entry_number: 1, rank: 2, draw_record_id: drw_1001_01, start_time: "2026-10-05T08:40:00-04:00"}
+    - {tenant_id: store_northwind, id: ent_1001_theo, event_id: evt_1001, customer_id: cus_theo, entry_status: waitlist, entry_consent: {entry_terms: true, winner_contact: true}, period_bucket: event, entry_number: 1, rank: 1, waitlist_position: 1, draw_record_id: drw_1001_01, start_time: "2026-10-07T21:03:00-04:00"}
+    - {tenant_id: store_northwind, id: ent_1001_noor, event_id: evt_1001, customer_id: cus_noor, entry_status: lost, entry_consent: {entry_terms: true, winner_contact: true}, period_bucket: event, entry_number: 1, draw_record_id: drw_1001_01, start_time: "2026-10-09T12:25:00-04:00"}
+    - {tenant_id: store_northwind, id: ent_1001_elena, event_id: evt_1001, customer_id: cus_elena, entry_status: lost, entry_consent: {entry_terms: true, winner_contact: true}, period_bucket: event, entry_number: 1, draw_record_id: drw_1001_01, start_time: "2026-10-12T17:51:00-04:00"}
+  promotion.draw_record:
+    - tenant_id: store_northwind
+      id: drw_1001_01
+      event_id: evt_1001
+      draw_position: 1
+      draw_mode: draw
+      method: seeded_shuffle
+      seed_commitment: "sha256:e0cff094d32f24775b05757b2d270208957ed5d9e1e45669feba64adfa56e704"
+      seed: octoberraffle00044
+      entrant_snapshot_digest: "sha256:fcf9f7dd9d580fabb5652c07ec6ead42024215030b391be774ed356c6e96e64c"
+      entrant_count: 5
+      excluded: {previous_winners: 0, invalid_entries: 0}
+      result:
+        - {rank: 1, winners: [ent_1001_jamie], waitlist: [ent_1001_theo]}
+        - {rank: 2, winners: [ent_1001_alex], waitlist: []}
+      agent_id: adm_sj
+      start_time: "2026-10-16T10:00:00-04:00"
+  promotion.event_reward:
+    - {tenant_id: store_northwind, id: rwd_1001_jamie, event_id: evt_1001, entry_id: ent_1001_jamie, customer_id: cus_jamie, rank: 1, reward_type: loyalty_points, reward_value: 5.00, reward_currency: USD, fulfillment: grant, reward_status: dispatched, compliance_requirements: [], fulfillment_ref: lyt_jamie_raffle, reward_batch_id: rwb_1001_01, dispatched_at: "2026-10-16T10:05:00-04:00"}
+  platform.job:
+    - {tenant_id: store_northwind, id: job_loyalty_expire_20261107, kind: loyalty.expire, run_at: "2026-11-07T00:00:00-05:00", payload: {}, attempts: 0}

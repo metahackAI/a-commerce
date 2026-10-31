@@ -28,6 +28,8 @@ mod contract;
 #[cfg(test)]
 mod integration;
 #[cfg(test)]
+mod integration_engage;
+#[cfg(test)]
 mod testing;
 
 use acom_contract::{ErrorClass, ErrorCode, RegistryBuilder, ToolError};

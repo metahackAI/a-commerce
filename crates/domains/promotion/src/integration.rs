@@ -272,7 +272,7 @@ async fn coupon_reads() {
 
 #[tokio::test]
 #[ignore = "integration: needs a PostgreSQL database"]
-async fn loyalty_reads_an_empty_ledger() {
+async fn loyalty_reads_the_ledger() {
     let cx = operator_cx().await;
     let b = GetLoyaltyBalance
         .read(&cx, input(json!({"customer_id": "cus_jamie"})))
@@ -283,7 +283,7 @@ async fn loyalty_reads_an_empty_ledger() {
         .read(&cx, input(json!({"customer_id": "cus_jamie"})))
         .await
         .unwrap();
-    assert_eq!(t["total"], 0);
+    assert_eq!(t["total"], 9);
     let e = GetLoyaltyBalance
         .read(&cx, input(json!({"customer_id": "cus_nobody"})))
         .await
