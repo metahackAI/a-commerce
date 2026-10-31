@@ -115,7 +115,7 @@
 ```
   - `price`는 정가(`list_price`), `member_price`는 그 시각 적용되는 회원·기간 한정 판매가(`UnitPriceSpecification`, `price_type: sale_price`)이고 없으면 `null`입니다. 가격 계산은 `search_products`와 같습니다.
   - `cost`는 운영자 주체에게만 있는 필드입니다. 쇼퍼·외부 에이전트 응답에는 키 자체가 없습니다.
-  - `additional_property`의 이름은 `compare_products`의 속성(`weight`, `packed_size`, `packing`, `warmth`, `rain`, `material`)과 같습니다.
+  - `additional_property`는 상품의 사실입니다. 이름은 `compare_products`의 속성(`weight`, `packed_size`, `packing`, `warmth`, `rain`, `material`)과 상품 사실 속성(`fiber_content`, `materials`(신발·가방 등 부위별 소재), `fit`, `care`, `fabric`, `fabric_weight`, `knit_gauge`, `finish`, `insulation`, `closure`, `sleeve_length`, `neckline`, `hood`, `support`, `features`, `dimensions`, `capacity`, `width`, `fits_shoe_size`, `fits_waist`, `product_type`, `google_product_category`)입니다. 단위가 있으면 `unit_code`(예: `g`, `cm`, `g/m2`), 사이즈마다 다르면 `size`(예: `weight`는 M 기준)를 함께 둡니다.
 - 프리뷰: 해당 없음(읽기)
 - 정책: [catalog.yml](../../policies/catalog.yml) `pricing.cost_visibility`, `pricing.sale_price`, `inventory.product_status`
 - 에러: `not_found`(`detail.entity: product`) → `search_products` · `tier_not_found` → `list_tiers` · `forbidden`(쇼퍼가 운영자 전용 필드를 보냄) → null
@@ -140,7 +140,7 @@
    {"size": "L", "chest": 59, "shoulder": 48, "sleeve": 65.5, "length": 100}],
  "how_measured": "Garment laid flat. Chest is armpit to armpit; length is from the highest point of the shoulder."}
 ```
-  - `measurements[]`는 이 상품에 있는 측정 이름의 순서이고 값은 enum `chest` \| `shoulder` \| `sleeve` \| `length` \| `waist` \| `hip` \| `inseam` \| `rise` \| `foot_length`입니다. `sizes[]`의 각 항목은 `size`와 이 이름들을 키로 가진 숫자(`unit` 단위, 소수 한 자리까지)입니다.
+  - `measurements[]`는 이 상품에 있는 측정 이름의 순서이고 값은 enum `chest` \| `underbust` \| `shoulder` \| `sleeve` \| `length` \| `waist` \| `hip` \| `inseam` \| `rise` \| `foot_length`입니다. `sizes[]`의 각 항목은 `size`와 이 이름들을 키로 가진 숫자(`unit` 단위, 소수 한 자리까지)입니다.
   - 예: `prd_windbreaker` M은 `{"size": "M", "chest": 57, "shoulder": 47, "sleeve": 64, "length": 71}`(F3에서 Jamie가 가진 windbreaker M과 비교).
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음

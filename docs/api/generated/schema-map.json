@@ -1580,6 +1580,7 @@
         "description": "what was measured. values: measurement_name",
         "values": [
           "chest",
+          "underbust",
           "shoulder",
           "sleeve",
           "length",
@@ -2100,7 +2101,7 @@
         "type": "jsonb",
         "nullable": false,
         "term": "schema:additionalProperty",
-        "description": "comparison attributes: [{name, value, unit_text}], names from search.yml compare.attributes (weight, packed_size, packing, warmth, rain)."
+        "description": "facts about the product: [{name, value, unit_text, size?}]; the comparison attributes from search.yml compare.attributes plus product facts such as fiber_content, fit, care and product_type (docs/api/catalog.md)."
       },
       {
         "name": "image",

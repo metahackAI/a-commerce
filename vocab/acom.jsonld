@@ -9237,60 +9237,67 @@
       "schema:position": 1
     },
     {
+      "@id": "acom:MeasurementNameUnderbust",
+      "@type": "acom:MeasurementName",
+      "rdfs:label": "Underbust",
+      "acom:wireWord": "underbust",
+      "schema:position": 2
+    },
+    {
       "@id": "acom:MeasurementNameShoulder",
       "@type": "acom:MeasurementName",
       "rdfs:label": "Shoulder",
       "acom:wireWord": "shoulder",
-      "schema:position": 2
+      "schema:position": 3
     },
     {
       "@id": "acom:MeasurementNameSleeve",
       "@type": "acom:MeasurementName",
       "rdfs:label": "Sleeve",
       "acom:wireWord": "sleeve",
-      "schema:position": 3
+      "schema:position": 4
     },
     {
       "@id": "acom:MeasurementNameLength",
       "@type": "acom:MeasurementName",
       "rdfs:label": "Length",
       "acom:wireWord": "length",
-      "schema:position": 4
+      "schema:position": 5
     },
     {
       "@id": "acom:MeasurementNameWaist",
       "@type": "acom:MeasurementName",
       "rdfs:label": "Waist",
       "acom:wireWord": "waist",
-      "schema:position": 5
+      "schema:position": 6
     },
     {
       "@id": "acom:MeasurementNameHip",
       "@type": "acom:MeasurementName",
       "rdfs:label": "Hip",
       "acom:wireWord": "hip",
-      "schema:position": 6
+      "schema:position": 7
     },
     {
       "@id": "acom:MeasurementNameInseam",
       "@type": "acom:MeasurementName",
       "rdfs:label": "Inseam",
       "acom:wireWord": "inseam",
-      "schema:position": 7
+      "schema:position": 8
     },
     {
       "@id": "acom:MeasurementNameRise",
       "@type": "acom:MeasurementName",
       "rdfs:label": "Rise",
       "acom:wireWord": "rise",
-      "schema:position": 8
+      "schema:position": 9
     },
     {
       "@id": "acom:MeasurementNameFootLength",
       "@type": "acom:MeasurementName",
       "rdfs:label": "FootLength",
       "acom:wireWord": "foot_length",
-      "schema:position": 9
+      "schema:position": 10
     },
     {
       "@id": "acom:MemberStateActive",

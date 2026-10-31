@@ -9,6 +9,7 @@
 //! A row only references rows earlier in the named rows or in the output.
 
 mod catalog;
+pub mod content;
 mod members;
 mod named;
 mod orders;

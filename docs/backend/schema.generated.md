@@ -330,7 +330,7 @@
 | `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
 | `product_group_id` | text |  | `acom:productGroupId` | product measured (prd_ id). → `catalog.product_group` |
 | `size` | text |  | `schema:size` | size the measurement is for, a value of the product's size axis. |
-| `name` | text |  | `schema:name` | what was measured. values: measurement_name Values: `chest` · `shoulder` · `sleeve` · `length` · `waist` · `hip` · `inseam` · `rise` · `foot_length`. |
+| `name` | text |  | `schema:name` | what was measured. values: measurement_name Values: `chest` · `underbust` · `shoulder` · `sleeve` · `length` · `waist` · `hip` · `inseam` · `rise` · `foot_length`. |
 | `value` | numeric(6,1) |  | `schema:value` | the measurement, one decimal place. |
 | `unit_text` | text |  | `schema:unitText` | unit of value, for example cm. |
 | `measurement_technique` | text | ✓ | `schema:measurementTechnique` | how it was measured, for example garment laid flat, chest armpit to armpit. |
@@ -419,7 +419,7 @@
 | `varies_by` | text[] |  | `schema:variesBy` | option axes of the variants, for example {color,size}. |
 | `material` | text | ✓ | `schema:material` | main material shown to shoppers, for example Recycled nylon. |
 | `keywords` | text[] |  | `schema:keywords` | product tags used by search filters, for example {packable,bestseller}. |
-| `additional_property` | jsonb |  | `schema:additionalProperty` | comparison attributes: [{name, value, unit_text}], names from search.yml compare.attributes (weight, packed_size, packing, warmth, rain). |
+| `additional_property` | jsonb |  | `schema:additionalProperty` | facts about the product: [{name, value, unit_text, size?}]; the comparison attributes from search.yml compare.attributes plus product facts such as fiber_content, fit, care and product_type (docs/api/catalog.md). |
 | `image` | text | ✓ | `schema:image` | URL of the main image. |
 | `has_merchant_return_policy_id` | text | ✓ | `schema:hasMerchantReturnPolicy` | return policy (mrp_ id); NULL means the store default. → `catalog.merchant_return_policy` |
 | `release_date` | date | ✓ | `schema:releaseDate` | first day on sale; sorts newest first. |

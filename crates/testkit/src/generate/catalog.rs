@@ -7,7 +7,7 @@ use chrono::{NaiveDate, TimeDelta};
 use serde_json::{Value, json};
 
 use super::named::Named;
-use super::spec::{CategorySpec, Spec, prose};
+use super::spec::{CategorySpec, Rename, Spec, prose};
 use super::util::{Dice, decimal, money, round_div, slug};
 
 #[derive(Debug)]
@@ -111,6 +111,7 @@ pub(crate) fn generate(spec: &Spec, named: &Named, dice: &mut Dice) -> Result<Ca
             c.total_products
         ));
     }
+    rename(&mut products, &c.renames, named)?;
 
     let mut placements = Vec::new();
     for (term, display) in prose::PLACEMENT {
@@ -288,6 +289,49 @@ fn product(
         attributes,
         variants,
     })
+}
+
+/// Applies `catalog.renames` once every product is drawn. Renaming earlier would change which
+/// names count as taken, so a later product could draw again and move every number after it;
+/// here no dice are used, and only the name, the variant names, the placeholder description and
+/// the picture (which follows the name) change. A new name may not repeat any other product's.
+fn rename(products: &mut [Product], renames: &[Rename], named: &Named) -> Result<(), String> {
+    for r in renames {
+        let p = products.iter_mut().find(|p| p.id == r.id).ok_or_else(|| {
+            format!(
+                "generate.yml catalog.renames: no generated product `{}`",
+                r.id
+            )
+        })?;
+        let old = std::mem::replace(&mut p.name, r.name.clone());
+        if let Some(m) = &r.material {
+            p.material = m.clone();
+        }
+        p.description = format!("{} {}.", article(&p.name), p.name.to_lowercase());
+        for v in &mut p.variants {
+            if let Some(rest) = v.name.strip_prefix(&old) {
+                v.name = format!("{}{rest}", p.name);
+            }
+        }
+        p.image = crate::media::garment_image(
+            &p.name,
+            p.variants.first().map_or("", |v| v.color.as_str()),
+        );
+    }
+    let mut seen: BTreeSet<String> = named
+        .products
+        .values()
+        .map(|(n, _)| n.to_lowercase())
+        .collect();
+    for p in products.iter() {
+        if !seen.insert(p.name.to_lowercase()) {
+            return Err(format!(
+                "catalog: `{}` ({}) has the same name as another product; pick another in catalog.renames",
+                p.name, p.id
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Rows in load order: product groups, variants, offers, category placement, then the
