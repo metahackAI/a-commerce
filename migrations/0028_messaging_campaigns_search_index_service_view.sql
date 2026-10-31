@@ -49,7 +49,6 @@ CREATE TABLE search.reindex_job (
   changed_since timestamptz,
   action_status text NOT NULL DEFAULT 'active',
   document_count integer NOT NULL DEFAULT 0,
-  removed_count integer NOT NULL DEFAULT 0,
   result jsonb,
   error jsonb,
   agent_id text NOT NULL,
@@ -64,7 +63,6 @@ CREATE TABLE search.reindex_job (
   CONSTRAINT reindex_job_action_status_check CHECK (action_status IN ('potential', 'active', 'completed', 'failed')),
   CONSTRAINT reindex_job_analyzer_version_check CHECK (analyzer_version ~ '^v[0-9]+$'),
   CONSTRAINT reindex_job_document_count_check CHECK (document_count >= 0),
-  CONSTRAINT reindex_job_removed_count_check CHECK (removed_count >= 0),
   CONSTRAINT reindex_job_end_time_check CHECK (end_time >= start_time)
 );
 
@@ -132,8 +130,6 @@ COMMENT ON COLUMN search.reindex_job.action_status IS
   'schema:actionStatus — active while it runs, then completed or failed. values: action_status';
 COMMENT ON COLUMN search.reindex_job.document_count IS
   'acom:documentCount — search documents written.';
-COMMENT ON COLUMN search.reindex_job.removed_count IS
-  'acom:removedCount — search documents removed because their product is gone.';
 COMMENT ON COLUMN search.reindex_job.result IS
   'schema:result — what the job reports besides the counts, for example that no embedding model is connected.';
 COMMENT ON COLUMN search.reindex_job.error IS
@@ -164,13 +160,9 @@ CREATE POLICY reindex_job_tenant_isolation ON search.reindex_job
   WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
 
 -- DELETE where removing a row is part of the design (see 0014_app_delete_grants.sql):
---   search.search_document   a reindex removes the documents of products that are gone
---   search.lexicon           undoing update_lexicon removes a version no index has used
--- Reindex jobs are only ever added to.
-GRANT DELETE ON
-  search.search_document,
-  search.lexicon
-TO acom_app;
+--   search.lexicon   undoing update_lexicon removes a version no index has used yet
+-- Reindex jobs are only ever added to; a reindex rewrites search documents in place.
+GRANT DELETE ON search.lexicon TO acom_app;
 
 
 -- One row per customer inquiry with only what service figures need (day, type, state, when it

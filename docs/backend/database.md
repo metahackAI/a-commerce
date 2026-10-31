@@ -203,6 +203,8 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `merchandising.banner` | schema:CreativeWork/acom:Banner | `bnr` | `headline`, `alternative_headline`, `image`, `url` |
 | `merchandising.display_booking` | schema:Schedule/acom:DisplayBooking | `dsp` | 슬롯 × 대상 × 기간 |
 | `search.search_document` | - | — | §10 |
+| `search.lexicon` | schema:DefinedTermSet/acom:Lexicon | `lex` | 언어별 검색 사전의 버전(동의어·신조어·부스트/제외). `v1`은 정책 기본값, 재색인이 쓰면 적용 |
+| `search.reindex_job` | schema:UpdateAction/acom:ReindexJob | `rij` | 검색 문서 재작성 한 번(`full`/`incremental`), 쓴 사전 버전, 문서 수 |
 | `promotion.promotion` | schema:OfferCatalog/acom:Promotion | `promo` | 상태, 기간, 대상 등급 |
 | `promotion.unit_price_specification` | schema:UnitPriceSpecification | `ups` | 회원가·기간가 |
 | `promotion.coupon` | schema:Offer/acom:Coupon | `cpn` | `code`, 적용 방식, 중복 규칙 |
@@ -231,11 +233,12 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `fulfillment.inspection` | schema:CheckAction | `ins` | `inspection_condition` |
 | `fulfillment.refund` | schema:MoneyTransfer/acom:Refund | `rfd` | `refund_status`, `refund_method`, `amount_value`·`amount_currency` |
 | `messaging.message` | schema:Message | `msg` | `recipient_id`, `text`, `message_channel`, `about_id` |
-| `messaging.campaign` | schema:CreativeWork/acom:Campaign | `cmp` | `campaign_status`(`failed` 포함), `scheduled_time`, `date_sent`, `error`. 주문은 `sales_order.campaign_id`로 자기를 데려온 캠페인을 가리킴 |
+| `messaging.campaign` | schema:CreativeWork/acom:Campaign | `cmp` | `campaign_status`(`failed` 포함), `scheduled_time`, `date_sent`, `error`, 대상(`valid_for_member_tier`·`segment_id`·`recipient_ids`), `variable_values`. 고객별 메시지는 `messaging.message.campaign_id`(`message_kind: campaign`). 주문은 `sales_order.campaign_id`로 자기를 데려온 캠페인을 가리킴 |
 | `analytics.daily_sales` | - (뷰) | — | 일별 매출·주문 수 |
 | `analytics.order_summary`, `analytics.order_line_summary` | - (뷰) | — | 주문·주문 줄 하나에 한 행: 날짜, 상태, 등급, 캠페인, 금액. 누가 샀는지는 없음 |
 | `analytics.variant_stock_out`, `analytics.campaign_send` | - (뷰) | — | 지금 품절인 변형과 품절 시각, 캠페인 발송 여부·실패 이유 |
 | `analytics.member_tier_count`, `analytics.daily_new_members` | - (뷰) | — | 등급별 회원 수, 일별 신규 가입 수 |
+| `analytics.inquiry_summary` | - (뷰) | — | 고객 문의 하나에 한 행: 들어온 날, 종류, 상태, 첫 답 시각, 해결 시각. 누가 무엇을 물었는지는 없음 |
 | `agent.conversation`, `agent.turn`, `agent.step`, `agent.model_call` | schema:Conversation, schema:Message, schema:Action | `conv`, `turn` | agent 서비스 |
 
 ## 13. 마이그레이션 규칙과 검사
