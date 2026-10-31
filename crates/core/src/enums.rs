@@ -338,6 +338,22 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:billingCycle, how often a subscription orders again.
+    BillingCycle = "billing_cycle" { EveryWeek = "every_week", Every2Weeks = "every_2_weeks", EveryMonth = "every_month" }
+}
+
+word_enum! {
+    /// acom:subscriptionStatus: ordering every cycle, skipping cycles until resumed, or ended.
+    SubscriptionStatus = "subscription_status" { Active = "active", Paused = "paused", Cancelled = "cancelled" }
+}
+
+word_enum! {
+    /// acom:receiptType, which document a receipt is: for income deduction, proof of expense, or
+    /// a tax invoice made out to a business tax id.
+    ReceiptType = "receipt_type" { Deduction = "deduction", Proof = "proof", TaxInvoice = "tax_invoice" }
+}
+
+word_enum! {
     /// schema.org `ReturnFeesEnumeration`.
     ReturnFees = "return_fees" {
         FreeReturn = "free_return", ReturnFeesCustomerResponsibility = "return_fees_customer_responsibility",
@@ -482,6 +498,9 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (CampaignStatus::LIST, CampaignStatus::WORDS),
     (SalesChannel::LIST, SalesChannel::WORDS),
     (PaymentMethod::LIST, PaymentMethod::WORDS),
+    (BillingCycle::LIST, BillingCycle::WORDS),
+    (SubscriptionStatus::LIST, SubscriptionStatus::WORDS),
+    (ReceiptType::LIST, ReceiptType::WORDS),
     (ReturnFees::LIST, ReturnFees::WORDS),
     (TaskState::LIST, TaskState::WORDS),
     (TaskOrigin::LIST, TaskOrigin::WORDS),
@@ -543,7 +562,8 @@ mod tests {
         for (_, words) in LISTS {
             for w in *words {
                 assert!(
-                    w.bytes().all(|b| b.is_ascii_lowercase() || b == b'_'),
+                    w.bytes()
+                        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_'),
                     "{w}"
                 );
             }
