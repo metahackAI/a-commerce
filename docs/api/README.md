@@ -137,6 +137,8 @@ a-commerce API
 ```
 `limit`(기본 20, 최대 100), `cursor`, `fields`, `sort`. 하나를 가져오는 `get_*`는 목록 봉투 없이 엔티티를 돌려주고, 없으면 `not_found`.
 
+`fields`의 규칙(없는 이름은 `invalid_input`)은 [conventions.md](conventions.md) §6.
+
 ### 3.3 쓰기 (전선 위의 형식)
 
 모든 쓰기는 두 단계입니다. 도메인 파일의 입력 표에는 이 단계를 위한 필드(`preview`, `preview_id`)가 없습니다. 모델이 보는 툴 스키마에도 없고, 우리 에이전트의 런타임이 처리합니다([conventions.md](conventions.md) §7–§8).

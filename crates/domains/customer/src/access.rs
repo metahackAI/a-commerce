@@ -171,21 +171,6 @@ pub(crate) fn parse_time(
     .transpose()
 }
 
-/// Keeps only the requested top-level fields of an entity (`fields` input).
-pub(crate) fn only_fields(value: Value, fields: &[String]) -> Value {
-    if fields.is_empty() {
-        return value;
-    }
-    match value {
-        Value::Object(map) => Value::Object(
-            map.into_iter()
-                .filter(|(k, _)| fields.iter().any(|f| f == k))
-                .collect(),
-        ),
-        other => other,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
@@ -226,15 +211,5 @@ mod tests {
             caller(&principal("adm_sj", ActorKind::Operator)),
             Caller::Staff
         );
-    }
-
-    #[test]
-    fn keeps_only_requested_fields() {
-        let v = json!({"id": "cus_jamie", "name": "Jamie", "sizes": {}});
-        assert_eq!(
-            only_fields(v.clone(), &["sizes".into()]),
-            json!({"sizes": {}})
-        );
-        assert_eq!(only_fields(v.clone(), &[]), v);
     }
 }

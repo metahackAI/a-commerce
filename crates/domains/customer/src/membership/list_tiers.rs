@@ -1,9 +1,8 @@
 //! `list_tiers`.
 
-use crate::access::only_fields;
 use crate::{PROGRAM_NOT_FOUND, repo};
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_store::{Cx, Page};
 use schemars::JsonSchema;
@@ -107,7 +106,7 @@ impl ReadOp<Cx> for ListTiers {
             .take(usize::try_from(page.limit).unwrap_or(0))
             .map(|t| {
                 let n = counts.iter().find(|(id, _)| *id == t.id).map_or(0, |c| c.1);
-                only_fields(
+                fields::pick(
                     json!({"id": t.id, "name": t.name, "rank": t.rank,
                            "program_id": t.member_program_id, "member_count": n}),
                     &fields,

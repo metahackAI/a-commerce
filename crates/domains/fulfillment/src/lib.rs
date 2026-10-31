@@ -26,7 +26,7 @@ use acom_contract::{ErrorCode, RegistryBuilder, ToolError};
 use acom_sales::service::for_fulfillment as sales;
 use acom_store::{Cx, TxCx};
 use chrono::{DateTime, Utc};
-use serde_json::{Value, json};
+use serde_json::json;
 
 use crate::errors::{NOT_YOUR_ORDER, ORDER_NOT_FOUND};
 use crate::model::Rules;
@@ -148,21 +148,6 @@ pub(crate) fn delivered_at(
         .filter(|d| d.order_id == order_id && d.delivery_state == "delivered")
         .filter_map(|d| d.delivered_at)
         .max()
-}
-
-/// Keeps only the named top-level fields (all when `fields` is empty); `id` always stays.
-pub(crate) fn select(v: Value, fields: &[String]) -> Value {
-    if fields.is_empty() {
-        return v;
-    }
-    match v {
-        Value::Object(m) => Value::Object(
-            m.into_iter()
-                .filter(|(k, _)| k == "id" || fields.iter().any(|f| f == k))
-                .collect(),
-        ),
-        other => other,
-    }
 }
 
 /// An internal error for a state the data should never be in.

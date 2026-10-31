@@ -1,7 +1,7 @@
 //! `get_refund`: one refund and its status as the payment provider confirms it.
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_sales::service::for_fulfillment as sales;
 use acom_store::Cx;
@@ -116,6 +116,6 @@ impl ReadOp<Cx> for GetRefund {
             "refund_status": r.refund_status,
             "events": events,
         });
-        Ok(crate::select(out, &input.fields.unwrap_or_default()))
+        fields::keep(out, &input.fields.unwrap_or_default())
     }
 }

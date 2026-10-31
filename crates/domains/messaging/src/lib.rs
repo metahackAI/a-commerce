@@ -24,7 +24,7 @@ mod tests;
 use acom_contract::{RegistryBuilder, ToolError};
 use acom_store::Cx;
 use chrono::{DateTime, Utc};
-use serde_json::{Value, json};
+use serde_json::json;
 
 /// Adds every operation of this domain to the registry.
 pub fn register(b: &mut RegistryBuilder<Cx>) {
@@ -53,19 +53,4 @@ pub(crate) fn parse_time(
         })
     })
     .transpose()
-}
-
-/// Keeps only the named top-level fields (all when `fields` is empty); `id` always stays.
-pub(crate) fn select(v: Value, fields: &[String]) -> Value {
-    if fields.is_empty() {
-        return v;
-    }
-    match v {
-        Value::Object(m) => Value::Object(
-            m.into_iter()
-                .filter(|(k, _)| k == "id" || fields.iter().any(|f| f == k))
-                .collect(),
-        ),
-        other => other,
-    }
 }

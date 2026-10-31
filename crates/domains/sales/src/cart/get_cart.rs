@@ -1,7 +1,7 @@
 //! `get_cart` (`sales.cart.get`): the caller's own cart, priced by `calculate_benefits`.
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_store::Cx;
 use schemars::JsonSchema;
@@ -102,7 +102,7 @@ impl ReadOp<Cx> for GetCart {
             .iter()
             .map(|f| f.word().to_owned())
             .collect();
-        Ok(pricing::pick(pricing::cart_json(&view), &fields))
+        Ok(fields::pick(pricing::cart_json(&view), &fields))
     }
 }
 

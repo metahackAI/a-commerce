@@ -2,7 +2,7 @@
 
 use acom_contract::{
     ActionType, Audience, ErrorCode, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot,
-    ToolError,
+    ToolError, fields,
 };
 use acom_core::enums::OrderStatus;
 use acom_customer::service::for_sales as customer;
@@ -13,7 +13,6 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::owner::{self, Viewer};
-use crate::pricing;
 use crate::repo;
 use crate::{INVALID_FILTER, parse_time};
 
@@ -202,7 +201,7 @@ impl ReadOp<Cx> for SearchOrders {
         let items: Vec<Value> = orders
             .iter()
             .map(|o| {
-                Ok(pricing::pick(
+                Ok(fields::pick(
                     json!({"id": o.id, "order_number": o.order_number,
                            "order_status": o.order_status, "customer_id": o.customer_id,
                            "order_date": cx.time.format(o.order_date),

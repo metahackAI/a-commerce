@@ -2,7 +2,7 @@
 
 use acom_contract::{
     ActionType, Audience, ErrorCode, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot,
-    ToolError,
+    ToolError, fields,
 };
 use acom_store::Cx;
 use schemars::JsonSchema;
@@ -10,7 +10,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::viewer::Viewer;
-use crate::{TIER_NOT_FOUND, cards, not_found, project};
+use crate::{TIER_NOT_FOUND, cards, not_found};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -70,10 +70,10 @@ impl ReadOp<Cx> for GetProduct {
         tx.commit().await.map_err(ToolError::from)?;
         let card =
             card.ok_or_else(|| not_found("product", &input.product_id, "search_products"))?;
-        Ok(project(
+        fields::keep(
             card.product_json(&viewer, &cx.time),
             &input.fields.unwrap_or_default(),
-        ))
+        )
     }
 }
 

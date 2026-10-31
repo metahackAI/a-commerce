@@ -1,7 +1,7 @@
 //! `get_inventory` (docs/api/catalog.md#inventory).
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_store::Cx;
 use schemars::JsonSchema;
@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 
 use crate::model::{self};
 use crate::repo::{self};
-use crate::{PRODUCT_NOT_FOUND, product_not_found, project, visible_group};
+use crate::{PRODUCT_NOT_FOUND, product_not_found, visible_group};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -84,6 +84,6 @@ impl ReadOp<Cx> for GetInventory {
                          "inventory_level": summary.inventory_level,
                          "availability": summary.availability, "variants": lines,
                          "reorders": ordered.reorders});
-        Ok(project(out, &input.fields.unwrap_or_default()))
+        fields::keep(out, &input.fields.unwrap_or_default())
     }
 }

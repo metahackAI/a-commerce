@@ -6,6 +6,7 @@
 
 pub mod envelope;
 pub mod error;
+pub mod fields;
 pub mod job;
 pub mod meta;
 pub mod op;

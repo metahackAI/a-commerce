@@ -2,7 +2,7 @@
 //! send did.
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_store::Cx;
 use schemars::JsonSchema;
@@ -100,9 +100,6 @@ impl ReadOp<Cx> for GetCampaign {
             })?;
         let s = repo::send_stats(&mut tx, &c.id).await?;
         tx.commit().await.map_err(ToolError::from)?;
-        Ok(crate::select(
-            campaign_json(cx, &c, s),
-            &input.fields.unwrap_or_default(),
-        ))
+        fields::keep(campaign_json(cx, &c, s), &input.fields.unwrap_or_default())
     }
 }

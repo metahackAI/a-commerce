@@ -176,18 +176,6 @@ pub(crate) fn percent(d: Decimal) -> Value {
     serde_json::from_str(&model::percent_text(d)).unwrap_or(Value::Null)
 }
 
-/// Keeps only the asked fields of an entity (`fields` in a `get_*` input); `id` always stays.
-pub(crate) fn pick(v: Value, fields: Option<&[String]>) -> Value {
-    match (v, fields) {
-        (Value::Object(o), Some(f)) if !f.is_empty() => Value::Object(
-            o.into_iter()
-                .filter(|(k, _)| k == "id" || f.iter().any(|x| x == k))
-                .collect(),
-        ),
-        (v, _) => v,
-    }
-}
-
 /// Time in store time, or `null`.
 pub(crate) fn time_or_null(time: &StoreTime, t: Option<DateTime<Utc>>) -> Value {
     t.map_or(Value::Null, |t| json!(time.format(t)))

@@ -2,7 +2,7 @@
 //! were evaluated now (or `as_of`). Changes nothing.
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_store::{Cx, Page};
 use schemars::JsonSchema;
@@ -13,7 +13,7 @@ use super::{
     EvaluationScope, as_of, entry_benefits, evaluate_members, grouped, program_not_found,
     scope_ids, tier_defs,
 };
-use crate::access::{only_fields, staff_only};
+use crate::access::staff_only;
 use crate::progress::Direction;
 use crate::wording::mask_name;
 use crate::{AS_OF_IN_FUTURE, PROGRAM_NOT_FOUND, repo};
@@ -176,8 +176,8 @@ impl ReadOp<Cx> for PreviewTierEvaluation {
             .into_iter()
             .skip(usize::try_from(page.offset).unwrap_or(usize::MAX))
             .take(usize::try_from(page.limit).unwrap_or(0))
-            .map(|r| only_fields(r, &fields))
             .collect();
+        let items = fields::keep_each(items, &fields)?;
         let mut out = json!({"items": items, "total": total,
                              "as_of": cx.time.format(at), "measured": outcome.measured});
         if !outcome.measured {

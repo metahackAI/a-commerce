@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use acom_catalog::service::for_merchandising::{ProductCard, product_cards};
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_core::enums::DisplayStatus;
 use acom_store::Cx;
@@ -15,7 +15,7 @@ use serde_json::{Value, json};
 use super::{COLLECTION_PAGE_NOT_FOUND, not_found, page, page_summary};
 use crate::display_slot::{View, hidden_reason, view};
 use crate::model::DisplayRules;
-use crate::{audience, check_id, pick};
+use crate::{audience, check_id};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -86,6 +86,6 @@ impl ReadOp<Cx> for GetCuration {
         let mut out = page_summary(cx, &p, now);
         out["has_part"] = json!(p.sections());
         out["hidden_items"] = json!(hidden);
-        Ok(pick(out, input.fields.as_deref()))
+        fields::keep(out, &input.fields.unwrap_or_default())
     }
 }
