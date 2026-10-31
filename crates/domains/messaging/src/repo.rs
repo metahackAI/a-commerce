@@ -1,5 +1,5 @@
-//! SQL over the messaging tables (`migrations/0009_messaging.sql`). Every query filters
-//! `tenant_id`; values are always bind parameters.
+//! SQL over the messaging tables (`migrations/0009_messaging.sql`, `0016`, `0028`). Every query
+//! filters `tenant_id`; values are always bind parameters.
 
 use acom_contract::ToolError;
 use acom_store::{StoreError, TxCx};
@@ -20,10 +20,12 @@ pub struct MessageRow {
     pub text: String,
     pub date_sent: Option<DateTime<Utc>>,
     pub date_read: Option<DateTime<Utc>>,
+    /// The campaign a marketing message is one shopper's copy of.
+    pub campaign_id: Option<String>,
 }
 
 const MESSAGE_COLUMNS: &str = "id, recipient_id, about_id, message_kind, message_channel,
-    headline, text, date_sent, date_read";
+    headline, text, date_sent, date_read, campaign_id";
 
 pub async fn message(tx: &mut TxCx, id: &str) -> Result<Option<MessageRow>, ToolError> {
     sqlx::query_as::<_, MessageRow>(sqlx::AssertSqlSafe(format!(
@@ -268,4 +270,301 @@ pub async fn set_template_status(tx: &mut TxCx, id: &str, status: &str) -> Resul
     .await
     .map_err(db)?;
     Ok(())
+}
+
+// ── campaigns (`messaging.campaign`) ─────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
+pub struct CampaignRow {
+    pub id: String,
+    pub name: String,
+    pub message_channel: String,
+    pub template_id: Option<String>,
+    pub valid_for_member_tier: Option<String>,
+    pub segment_id: Option<String>,
+    pub recipient_ids: Option<Vec<String>>,
+    pub variable_values: Option<serde_json::Value>,
+    pub campaign_status: String,
+    pub scheduled_time: Option<DateTime<Utc>>,
+    pub date_sent: Option<DateTime<Utc>>,
+    pub recipient_count: Option<i32>,
+    pub error: Option<serde_json::Value>,
+    pub change_set_id: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub version: i32,
+}
+
+const CAMPAIGN_COLUMNS: &str = "id, name, message_channel, template_id, valid_for_member_tier,
+    segment_id, recipient_ids, variable_values, campaign_status, scheduled_time, date_sent,
+    recipient_count, error, change_set_id, created_at, version";
+
+pub async fn campaign(tx: &mut TxCx, id: &str) -> Result<Option<CampaignRow>, ToolError> {
+    sqlx::query_as::<_, CampaignRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {CAMPAIGN_COLUMNS} FROM messaging.campaign WHERE tenant_id = $1 AND id = $2"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// The campaign, locked for a send (two sends of one campaign wait for each other).
+pub async fn campaign_for_send(tx: &mut TxCx, id: &str) -> Result<Option<CampaignRow>, ToolError> {
+    sqlx::query_as::<_, CampaignRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {CAMPAIGN_COLUMNS} FROM messaging.campaign WHERE tenant_id = $1 AND id = $2
+         FOR UPDATE"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// Filters of `search_campaigns`.
+#[derive(Debug, Clone, Default)]
+pub struct CampaignFilter<'a> {
+    pub status: Option<&'a str>,
+    pub channel: Option<&'a str>,
+    pub template_id: Option<&'a str>,
+    pub from: Option<DateTime<Utc>>,
+    pub through: Option<DateTime<Utc>>,
+}
+
+const CAMPAIGN_FILTER: &str = "tenant_id = $1
+    AND ($2::text IS NULL OR campaign_status = $2)
+    AND ($3::text IS NULL OR message_channel = $3)
+    AND ($4::text IS NULL OR template_id = $4)
+    AND ($5::timestamptz IS NULL OR scheduled_time >= $5)
+    AND ($6::timestamptz IS NULL OR scheduled_time <= $6)";
+
+/// One page of campaigns, latest send time first (drafts without a time first of all), and the
+/// total that match.
+pub async fn campaigns(
+    tx: &mut TxCx,
+    f: &CampaignFilter<'_>,
+    limit: i64,
+    offset: i64,
+) -> Result<(i64, Vec<CampaignRow>), ToolError> {
+    let total: i64 = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
+        "SELECT count(*) FROM messaging.campaign WHERE {CAMPAIGN_FILTER}"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(f.status)
+    .bind(f.channel)
+    .bind(f.template_id)
+    .bind(f.from)
+    .bind(f.through)
+    .fetch_one(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    let rows = sqlx::query_as::<_, CampaignRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {CAMPAIGN_COLUMNS} FROM messaging.campaign WHERE {CAMPAIGN_FILTER}
+         ORDER BY scheduled_time DESC NULLS FIRST, created_at DESC, id DESC LIMIT $7 OFFSET $8"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(f.status)
+    .bind(f.channel)
+    .bind(f.template_id)
+    .bind(f.from)
+    .bind(f.through)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok((total, rows))
+}
+
+/// A campaign as it is set up.
+#[derive(Debug, Clone)]
+pub struct NewCampaign<'a> {
+    pub id: &'a str,
+    pub name: &'a str,
+    pub channel: &'a str,
+    pub template_id: &'a str,
+    pub tier: Option<&'a str>,
+    pub segment_id: Option<&'a str>,
+    pub recipient_ids: Option<&'a [String]>,
+    pub variable_values: &'a serde_json::Value,
+    pub status: &'a str,
+    pub scheduled_time: Option<DateTime<Utc>>,
+    pub recipient_count: i32,
+}
+
+/// A campaign already set up with the same name, channel, audience and time that is not
+/// cancelled: the same send is never booked twice.
+pub async fn same_campaign(tx: &mut TxCx, c: &NewCampaign<'_>) -> Result<Option<String>, ToolError> {
+    sqlx::query_scalar(
+        "SELECT id FROM messaging.campaign
+         WHERE tenant_id = $1 AND name = $2 AND message_channel = $3
+           AND valid_for_member_tier IS NOT DISTINCT FROM $4
+           AND segment_id IS NOT DISTINCT FROM $5
+           AND recipient_ids IS NOT DISTINCT FROM $6
+           AND scheduled_time IS NOT DISTINCT FROM $7
+           AND campaign_status <> 'cancelled'
+         ORDER BY created_at LIMIT 1",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(c.name)
+    .bind(c.channel)
+    .bind(c.tier)
+    .bind(c.segment_id)
+    .bind(c.recipient_ids)
+    .bind(c.scheduled_time)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// Creates the campaign; running it again with the same id changes nothing.
+pub async fn insert_campaign(tx: &mut TxCx, c: &NewCampaign<'_>) -> Result<(), ToolError> {
+    sqlx::query(
+        "INSERT INTO messaging.campaign (tenant_id, id, name, message_channel, template_id,
+           valid_for_member_tier, segment_id, recipient_ids, variable_values, campaign_status,
+           scheduled_time, recipient_count)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         ON CONFLICT (tenant_id, id) DO NOTHING",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(c.id)
+    .bind(c.name)
+    .bind(c.channel)
+    .bind(c.template_id)
+    .bind(c.tier)
+    .bind(c.segment_id)
+    .bind(c.recipient_ids)
+    .bind(c.variable_values)
+    .bind(c.status)
+    .bind(c.scheduled_time)
+    .bind(c.recipient_count)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    sqlx::query(
+        "UPDATE messaging.message_template SET template_status = 'in_use', updated_at = now(),
+           version = version + 1
+         WHERE tenant_id = $1 AND id = $2 AND template_status = 'draft'",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(c.template_id)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// Moves a campaign to a status, with when it went out, how many it reached and why it failed.
+pub async fn set_campaign_status(
+    tx: &mut TxCx,
+    id: &str,
+    status: &str,
+    date_sent: Option<DateTime<Utc>>,
+    recipient_count: Option<i32>,
+    error: Option<&serde_json::Value>,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE messaging.campaign SET campaign_status = $3, date_sent = COALESCE($4, date_sent),
+           recipient_count = COALESCE($5, recipient_count), error = $6, updated_at = now(),
+           version = version + 1
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(status)
+    .bind(date_sent)
+    .bind(recipient_count)
+    .bind(error)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// What a campaign's own messages say: how many went out and how many were opened.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct SendStats {
+    pub messages: i64,
+    pub opened: i64,
+}
+
+pub async fn send_stats(tx: &mut TxCx, campaign_id: &str) -> Result<SendStats, ToolError> {
+    let (messages, opened): (i64, i64) = sqlx::query_as(
+        "SELECT count(*), count(date_read) FROM messaging.message
+         WHERE tenant_id = $1 AND campaign_id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(campaign_id)
+    .fetch_one(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(SendStats { messages, opened })
+}
+
+/// Marketing messages each of these shoppers was sent in `[from, to)`, for the daily cap.
+pub async fn marketing_sent(
+    tx: &mut TxCx,
+    recipients: &[String],
+    from: DateTime<Utc>,
+    to: DateTime<Utc>,
+) -> Result<Vec<(String, i64)>, ToolError> {
+    sqlx::query_as(
+        "SELECT recipient_id, count(*) FROM messaging.message
+         WHERE tenant_id = $1 AND recipient_id = ANY($2) AND message_kind = 'campaign'
+           AND date_sent >= $3 AND date_sent < $4
+         GROUP BY recipient_id",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(recipients)
+    .bind(from)
+    .bind(to)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// One shopper's copy of a campaign.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CampaignMessage {
+    pub id: String,
+    pub recipient_id: String,
+    pub headline: Option<String>,
+    pub text: String,
+}
+
+/// Records a campaign's messages as sent now (a message already recorded stays as it is).
+pub async fn insert_campaign_messages(
+    tx: &mut TxCx,
+    campaign_id: &str,
+    channel: &str,
+    messages: &[CampaignMessage],
+) -> Result<u64, ToolError> {
+    let ids: Vec<&str> = messages.iter().map(|m| m.id.as_str()).collect();
+    let recipients: Vec<&str> = messages.iter().map(|m| m.recipient_id.as_str()).collect();
+    let headlines: Vec<Option<&str>> = messages.iter().map(|m| m.headline.as_deref()).collect();
+    let texts: Vec<&str> = messages.iter().map(|m| m.text.as_str()).collect();
+    let now = tx.clock.now();
+    let sender = tx.principal.subject.clone();
+    let done = sqlx::query(
+        "INSERT INTO messaging.message (tenant_id, id, recipient_id, message_kind,
+           message_channel, headline, text, sender_id, date_sent, campaign_id)
+         SELECT $1, m.id, m.recipient_id, 'campaign', $6, m.headline, m.text, $7, $8, $9
+         FROM unnest($2::text[], $3::text[], $4::text[], $5::text[])
+              AS m(id, recipient_id, headline, text)
+         ON CONFLICT (tenant_id, id) DO NOTHING",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(&ids)
+    .bind(&recipients)
+    .bind(&headlines)
+    .bind(&texts)
+    .bind(channel)
+    .bind(&sender)
+    .bind(now)
+    .bind(campaign_id)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(done.rows_affected())
 }

@@ -141,6 +141,7 @@
 |---|---|
 | 구독 | `active`, `paused`, `cancelled` |
 | 캠페인 `acom:campaign_status` | `draft`, `scheduled`, `sending`, `sent`, `failed`(발송이 메시지 하나 나가기 전에 멈춤, 예: 수신자 목록 가져오기 실패), `cancelled` |
+| 재색인 `acom:reindex_mode` | `full`(문서 전부), `incremental`(지정한 상품·시각 이후 바뀐 상품·낡은 문서만) |
 | 공지 `acom:notice_status` | `draft`, `published` |
 | 게시글 | `published`, `held_for_review`, `blinded`, `deleted` |
 | 리뷰 노출 `review_status` (schema:creativeWorkStatus) | `visible`, `hidden`, `reported` |
@@ -166,7 +167,7 @@
 | 주체 종류 `acom:actor_kind` | `operator`, `shopper`, `agent_on_behalf`, `external_agent`, `system` |
 | 주소 용도 `acom:address_usage` | `shipping`, `billing`, `return` |
 | 기억 키 `acom:preference_key` | `size`, `fit_note`, `fabric_preference`, `compares_specs`, `layout_preference`, `travel_priority`, `other` |
-| 메시지 종류 `acom:message_kind` | `ask_for_photos`, `decline`, `refund_done`, `custom` |
+| 메시지 종류 `acom:message_kind` | `ask_for_photos`, `decline`, `refund_done`, `custom`, `campaign`(캠페인이 고객 한 명에게 남긴 메시지. `send_customer_message`의 `kind`로는 받지 않음) |
 
 ---
 
