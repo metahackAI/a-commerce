@@ -1,23 +1,32 @@
 //! The `search` domain: product search, compare, autocomplete, lexicon, index.
 //!
 //! Operations, inputs, outputs, checks, and errors are specified in `docs/api/search.md`.
-//! Layout: `model` (pure logic: query terms and synonyms, comparison values, facets,
-//! suggestions), `ops` (one type per operation implementing `ReadOp`), `repo` (full-text SQL),
-//! `wiring` (catalog's lookups in the domains above it). Products, prices and stock come from
+//! Layout: the folders follow the API hierarchy `search.{resource}.{operation}`, one folder per
+//! resource (`product`, `lexicon`, `index`) and one file per operation, named after its tool
+//! (`product/search_products.rs`). Domain-wide: `model` (pure logic: query terms and synonyms,
+//! comparison values, facets, suggestions), `repo` (full-text SQL), `wiring` (catalog's lookups
+//! in the domains above it). Products, prices and stock come from
 //! `acom_catalog::service::for_search`, never from catalog tables.
 
 pub mod model;
 pub mod service;
 
-mod ops;
+mod index;
+mod lexicon;
+mod product;
 mod repo;
 mod wiring;
 
 #[cfg(test)]
+mod testing;
+
+#[cfg(test)]
 mod b4;
 
-use acom_contract::{ErrorClass, ErrorCode, RegistryBuilder};
+use acom_contract::{ErrorClass, ErrorCode, RegistryBuilder, ToolError};
 use acom_store::Cx;
+use chrono::{DateTime, Utc};
+use serde_json::json;
 
 /// More products than a comparison takes (`compare.max_products`).
 pub const TOO_MANY_PRODUCTS: ErrorCode =
@@ -35,8 +44,27 @@ pub const INDEX_UNAVAILABLE: ErrorCode =
 /// domains above it (member prices, categories, tiers, purchases).
 pub fn register(b: &mut RegistryBuilder<Cx>) {
     acom_catalog::neighbors::install(wiring::Wiring);
-    b.read(ops::products::SearchProducts)
-        .read(ops::compare::CompareProducts)
-        .read(ops::autocomplete::Autocomplete)
-        .read(ops::facets::GetFacets);
+    b.read(product::SearchProducts)
+        .read(product::CompareProducts)
+        .read(product::Autocomplete)
+        .read(product::GetFacets)
+        .read(lexicon::GetLexicon)
+        .write(lexicon::UpdateLexicon)
+        .write(index::Reindex)
+        .read(index::GetIndexStatus);
+}
+
+/// A time in store time (`2026-11-06T00:00`), or `invalid_input` naming the field.
+pub(crate) fn parse_time(
+    cx: &Cx,
+    field: &str,
+    s: Option<&str>,
+) -> Result<Option<DateTime<Utc>>, ToolError> {
+    s.map(|s| {
+        cx.time.parse(s).map_err(|e| {
+            ToolError::invalid_input(e.to_string())
+                .detail(json!({"field": field, "reason": "format"}))
+        })
+    })
+    .transpose()
 }

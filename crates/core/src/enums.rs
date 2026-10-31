@@ -373,9 +373,10 @@ word_enum! {
 }
 
 word_enum! {
-    /// acom:messageKind of a customer message.
+    /// acom:messageKind of a customer message; `campaign` is one shopper's copy of a campaign.
     MessageKind = "message_kind" {
         AskForPhotos = "ask_for_photos", Decline = "decline", RefundDone = "refund_done", Custom = "custom",
+        Campaign = "campaign",
     }
 }
 
@@ -386,6 +387,11 @@ word_enum! {
         Draft = "draft", Scheduled = "scheduled", Sending = "sending", Sent = "sent", Failed = "failed",
         Cancelled = "cancelled",
     }
+}
+
+word_enum! {
+    /// acom:reindexMode of a search reindex job: every document, or only what changed.
+    ReindexMode = "reindex_mode" { Full = "full", Incremental = "incremental" }
 }
 
 word_enum! {
@@ -671,6 +677,7 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (MessageChannel::LIST, MessageChannel::WORDS),
     (MessageKind::LIST, MessageKind::WORDS),
     (CampaignStatus::LIST, CampaignStatus::WORDS),
+    (ReindexMode::LIST, ReindexMode::WORDS),
     (SalesChannel::LIST, SalesChannel::WORDS),
     (PaymentMethod::LIST, PaymentMethod::WORDS),
     (BillingCycle::LIST, BillingCycle::WORDS),

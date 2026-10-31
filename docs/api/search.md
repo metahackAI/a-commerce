@@ -160,10 +160,10 @@
 
 ### `get_lexicon` — Kind: R
 - 논리주소/REST: `search.lexicon.get` · `GET /v1/search/lexicon`
-- 요약: 스토어·언어별 동의어·신조어 사전과 분석기 버전을 돌려줍니다.
+- 요약: 스토어·언어별 동의어·신조어 사전과 분석기 버전을 돌려줍니다. 가장 최근 버전과, 지금 색인이 쓰는 버전이 같은지(재색인이 남았는지)도 알려 줍니다.
 - consumes → produces: → lexicon
-- 입력: `in_language`(예 `"en"`)
-- 출력: `{in_language: "en", synonyms: [{terms: ["jacket", "coat"], bidirectional: true}], neologisms: [], analyzer_version: "v12"}` (단건 읽기라 목록 봉투 없음)
+- 입력: `in_language`(✓, 예 `"en"`)
+- 출력: `{in_language: "en", synonyms: [{terms: ["jacket", "coat"], bidirectional: true}], neologisms: [], boost_rules: [], analyzer_version: "v12", source: "saved", saved_at: "2026-11-06T09:40:00-05:00", in_use_version: "v12", reindex_pending: false}` (단건 읽기라 목록 봉투 없음). `v1`은 정책([search.yml](../../policies/search.yml) `lexicon.synonyms`)의 기본 사전(`source: policy_default`)이고, `update_lexicon`이 저장할 때마다 다음 버전이 됩니다.
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음
 - 에러: `lexicon_not_found` → `update_lexicon`
@@ -176,15 +176,16 @@
 - 입력:
   | 필드 | 타입 | 필수 | 설명·예 |
   |------|------|:--:|--------|
-  | in_language | Text | ✓ | `"en"` \| `"ko"` |
-  | synonyms | object[] | ✓ | 전체 집합, 예 `[{terms: ["windbreaker", "wind jacket"], bidirectional: true}]` |
-  | neologisms | object[] | | 예 `[{surface: "packable", normalize: "packs into pocket"}]` |
-  | boost_rules | object[] | | 언어별 부스트·제외. 제외어는 결과 0건 |
+  | in_language | Text | ✓ | `"en"`. 스토어 검색이 분석하는 언어만([search.yml](../../policies/search.yml) `lexicon.languages`, 기본 `[en]`) |
+  | synonyms | object[] | ✓ | 전체 집합, 예 `[{terms: ["windbreaker", "wind jacket"], bidirectional: true}]`. `bidirectional: false`면 첫 단어만 나머지로 넓힘 |
+  | neologisms | object[] | | 예 `[{surface: "packable", normalize: "packs into pocket"}]`. 그 단어로 찾으면 뜻의 단어로도 찾음 |
+  | boost_rules | object[] | | 언어별 부스트·제외 `[{term, effect: boost \| exclude}]`. 부스트어가 있는 상품이 위로, 제외어가 든 질의는 결과 0건 |
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "v13", undo: {by: "person", target: "cs_1044", until: "2026-11-07T23:59:00-05:00"}}`. 실행 뒤 다음 툴은 `reindex`
 - 프리뷰: `changes`=`update` `lexicon`(`from`/`to`에 추가·삭제한 동의어). checks `lexicon.no_circular_synonym`, `lexicon.no_self_reference`, `index.lexicon_change_requires_reindex`(`detail: "Takes effect after reindex"`, `fix_tool: "reindex"`). [approval.yml](../../policies/approval.yml)에 이 툴의 임계가 없으므로 `needs_approval: false`.
 - 정책: [search.yml](../../policies/search.yml) `lexicon`, `index.lexicon_change_requires_reindex`, `boost_exclude`
-- 에러: `circular_synonym` → `update_lexicon` · `unsupported_language` → `get_lexicon` · `reindex_pending`(이전 사전이 아직 재색인 전) → `get_index_status`
-- 멱등성: `Idempotency-Key`. 같은 사전을 다시 보내면 버전을 올리지 않고 첫 결과
+- 에러: `circular_synonym`(한 방향 동의어·신조어가 돌아 제자리로) → `update_lexicon` · `unsupported_language` → `get_lexicon` · `reindex_pending`(이전 사전이 아직 재색인 전) → `get_index_status` · `invalid_input`(`detail.rule: lexicon.no_self_reference`, 같은 단어를 두 번 쓰거나 자기 자신을 뜻하는 항목) → `update_lexicon`
+- 멱등성: 같은 `preview_id` 재실행은 첫 결과. 같은 사전을 다시 보내면 버전을 올리지 않고 첫 결과(프리뷰 `note`가 그렇게 말함)
+- 되돌리기: 아직 어떤 색인도 쓰지 않은 버전만 지웁니다. 재색인이 이미 쓴 버전은 `not_revocable`(사전을 다시 저장해 바꿈).
 
 ---
 
@@ -203,17 +204,19 @@
   | analyzer_version | Text | | 없으면 최신 사전 |
   | embeddings | object | | 벡터 재생성 `{text: true, image: true}`(비용 큼) |
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "rij_42", undo: null}`. 진행은 `get_index_status`
-- 프리뷰: `changes`=`create` `reindex_job`(`to`에 예상 문서 수·시간). checks `index.distributed_lock`(진행 중 작업이 없는지), `index.resource_budget`(하루 전체 재색인 횟수). [approval.yml](../../policies/approval.yml)에 임계가 없으므로 `needs_approval: false`.
+- 프리뷰: `changes`=`create` `reindex_job`(`to`에 모드, 색인 이름, 사전 버전, 다시 쓸 문서 수. 한 번에 끝나므로 시간은 없음). checks `index.distributed_lock`(진행 중 작업이 없는지), `index.resource_budget`(오늘의 전체 재색인 횟수, `full_reindex_max_per_day`). [approval.yml](../../policies/approval.yml)에 임계가 없으므로 `needs_approval: false`.
+- 구현: 바깥 검색 엔진 없이 Postgres 검색 문서(`search.search_document`)를 다시 씁니다. 재색인은 트랜잭션 하나라 검색은 커밋까지 이전 문서를 읽고, 커밋 순간 새 문서로 바뀝니다(별칭 교체와 같은 효과). 증분은 `product_ids`, `since` 이후 바뀐 상품, 둘 다 없으면 문서가 없거나 상품보다 오래된 상품만. 검색은 최신 문서만 색인에서 읽고, 없거나 오래된 상품은 같은 질의 안에서 카탈로그 글로 순위를 매기므로 색인이 낡아도 상품이 빠지지 않습니다. 임베딩 모델은 연결되어 있지 않아 `embeddings`를 청해도 벡터는 그대로이고 결과가 그렇게 말합니다. 실행이 끝나면 그 사전 버전이 쓰이기 시작합니다(검색 질의 확장).
 - 정책: [search.yml](../../policies/search.yml) `index.reindex`, `index.distributed_lock`, `index.incremental`, `index.resource_budget`
 - 에러: `reindex_in_progress` → `get_index_status` · `analyzer_version_not_found` → `get_lexicon` · `swap_failed` → `get_index_status`
-- 멱등성: `Idempotency-Key = hash(tenant + mode + scope + analyzer_version)`. 다시 보내면 진행 중인 작업을 돌려줌. 별칭 교체 실패 시 이전 색인을 그대로 씀
+- 멱등성: 같은 `preview_id` 재실행은 첫 결과(같은 작업). 스토어마다 잠금 하나라 동시에 둘이 돌지 않습니다(`reindex_in_progress`). 문서 쓰기에 실패하면 트랜잭션이 되돌아가 이전 색인을 그대로 씀(`swap_failed`)
+- 되돌리기: 없음(`undo: null`). 다시 재색인합니다.
 
 ### `get_index_status` — Kind: R
 - 논리주소/REST: `search.index.get_status` · `GET /v1/search/index/status`
 - 요약: 지금 쓰는 색인·별칭과 재색인 작업 상태를 돌려줍니다.
 - consumes → produces: `reindex_job_id?` → index status
 - 입력: `reindex_job_id?`
-- 출력: `{active_alias: "products_active", active_index: "products-store_northwind-en-v42", analyzer_version: "v12", job: {id: "rij_42", mode: "full", action_status: "active", progress: 0.72, start_time: "2026-11-06T09:10:00-05:00", end_time: null}}` (단건 읽기라 목록 봉투 없음)
+- 출력: `{active_alias: "products-store_northwind-en", active_index: "products-store_northwind-en-v42", in_language: "en", analyzer_version: "v12", latest_analyzer_version: "v13", reindex_pending: true, serving: "index", products: 400, documents: 400, out_of_date: 3, note: "...", job: {id: "rij_42", mode: "full", action_status: "completed", progress: 1.0, analyzer_version: "v12", index: "products-store_northwind-en-v42", documents: 400, start_time: "2026-11-06T09:10:00-05:00", end_time: "2026-11-06T09:10:00-05:00"}}` (단건 읽기라 목록 봉투 없음). 재색인 전에는 `active_index: null`, `serving: "catalog_text"`(검색이 카탈로그 글을 바로 순위 매김). `job`은 준 작업 또는 가장 최근 작업
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음
 - 에러: `job_not_found` → `reindex`

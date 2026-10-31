@@ -246,7 +246,7 @@ impl ReadOp<Cx> for SearchProducts {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ops::testing;
+    use crate::testing;
     use acom_core::Currency;
     use acom_core::enums::ActorKind;
     use rust_decimal::Decimal;

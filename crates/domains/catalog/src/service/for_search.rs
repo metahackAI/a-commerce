@@ -132,3 +132,48 @@ pub async fn brand_names(tx: &mut TxCx) -> Result<Vec<(String, String)>, ToolErr
     let (rows, _) = repo::brands(tx, None, i64::from(i32::MAX), 0).await?;
     Ok(rows.into_iter().map(|b| (b.id, b.name)).collect())
 }
+
+/// What a search document keeps of a product besides its text (`search.search_document`): the
+/// version it was built from, approval, brand, tags, sizes and colors in stock, list price range.
+#[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
+pub struct IndexFacts {
+    pub id: String,
+    /// `product_group.version`; a document built from an older one is out of date.
+    pub version: i32,
+    pub approval_status: String,
+    pub brand_id: Option<String>,
+    pub keywords: Vec<String>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub available_sizes: Vec<String>,
+    pub available_colors: Vec<String>,
+    pub price_min: Option<rust_decimal::Decimal>,
+    pub price_max: Option<rust_decimal::Decimal>,
+    pub price_currency: Option<String>,
+}
+
+/// The index facts of these products (every product when `None`), by id.
+pub async fn index_facts(
+    tx: &mut TxCx,
+    product_ids: Option<&[String]>,
+) -> Result<Vec<IndexFacts>, ToolError> {
+    sqlx::query_as::<_, IndexFacts>(
+        "SELECT g.id, g.version, g.approval_status, g.brand_id, g.keywords, g.updated_at,
+                COALESCE(array_agg(DISTINCT p.size) FILTER (
+                  WHERE p.size IS NOT NULL AND o.availability = 'in_stock'), '{}') AS available_sizes,
+                COALESCE(array_agg(DISTINCT p.color) FILTER (
+                  WHERE p.color IS NOT NULL AND o.availability = 'in_stock'), '{}') AS available_colors,
+                min(o.price) AS price_min, max(o.price) AS price_max,
+                min(o.price_currency)::text AS price_currency
+         FROM catalog.product_group g
+         LEFT JOIN catalog.product p ON p.tenant_id = g.tenant_id AND p.product_group_id = g.id
+         LEFT JOIN catalog.offer o ON o.tenant_id = p.tenant_id AND o.product_id = p.id
+         WHERE g.tenant_id = $1 AND ($2::text[] IS NULL OR g.id = ANY($2))
+         GROUP BY g.tenant_id, g.id
+         ORDER BY g.id",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(product_ids)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(|e| ToolError::from(acom_store::StoreError::from(e)))
+}

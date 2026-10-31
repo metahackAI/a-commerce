@@ -1,3 +1,6 @@
 //! What other domains may use from `messaging`: plain async functions over `TxCx`/`Cx`, never
 //! this domain's tables directly. A domain that needs something adds its own file here
-//! (`for_<that_domain>.rs`) and one `pub mod` line below.
+//! (`for_<that_domain>.rs`) and one `pub mod` line below. `providers` is the other way round:
+//! readers of other domains' data that the registry installs for messaging.
+
+pub mod providers;
