@@ -117,6 +117,24 @@
       "rdfs:comment": "A store-defined rule for prize reporting, withholding, or winner information in a jurisdiction."
     },
     {
+      "@id": "acom:ContentReport",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ContentReport",
+      "rdfs:subClassOf": {
+        "@id": "schema:Action"
+      },
+      "rdfs:comment": "a shopper's report that a review is inappropriate; it puts the review in the moderation queue. id prefix rpt_."
+    },
+    {
+      "@id": "acom:CopyDraft",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CopyDraft",
+      "rdfs:subClassOf": {
+        "@id": "schema:CreativeWork"
+      },
+      "rdfs:comment": "generated text for a product (generate_copy), kept as a draft until update_product_group uses it. id prefix cpd_."
+    },
+    {
       "@id": "acom:Coupon",
       "@type": "rdfs:Class",
       "rdfs:label": "Coupon",
@@ -259,6 +277,15 @@
         "@id": "schema:Order"
       },
       "rdfs:comment": "stock the store orders from its supplier for one product; id prefix ro_. API: reorder."
+    },
+    {
+      "@id": "acom:RestockAlert",
+      "@type": "rdfs:Class",
+      "rdfs:label": "RestockAlert",
+      "rdfs:subClassOf": {
+        "@id": "schema:SubscribeAction"
+      },
+      "rdfs:comment": "a shopper asks to be told when a sold-out variant is back; a transactional alert, not marketing. id prefix rsa_."
     },
     {
       "@id": "acom:ReviewVote",
@@ -421,6 +448,25 @@
         }
       ],
       "rdfs:comment": "specialized agent that handled the turn."
+    },
+    {
+      "@id": "acom:aiGenerated",
+      "@type": "rdf:Property",
+      "rdfs:label": "aiGenerated",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CopyDraft"
+        },
+        {
+          "@id": "schema:ImageObject"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Boolean"
+        }
+      ],
+      "rdfs:comment": "true for generated content (catalog.yml content.ai_content_disclosure)."
     },
     {
       "@id": "acom:amountOff",
@@ -1026,6 +1072,22 @@
       "rdfs:comment": "the conversation (conv_ id)."
     },
     {
+      "@id": "acom:copyType",
+      "@type": "rdf:Property",
+      "rdfs:label": "copyType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CopyDraft"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:CopyType"
+        }
+      ],
+      "rdfs:comment": "which text of the product this drafts. values: copy_type"
+    },
+    {
       "@id": "acom:cost",
       "@type": "rdf:Property",
       "rdfs:label": "cost",
@@ -1539,6 +1601,22 @@
       "rdfs:comment": "product whose main image the banner shows (prd_ id)."
     },
     {
+      "@id": "acom:imageStyle",
+      "@type": "rdf:Property",
+      "rdfs:label": "imageStyle",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:ImageObject"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ImageStyle"
+        }
+      ],
+      "rdfs:comment": "how the image is staged. values: image_style"
+    },
+    {
       "@id": "acom:importMode",
       "@type": "rdf:Property",
       "rdfs:label": "importMode",
@@ -1719,6 +1797,22 @@
         }
       ],
       "rdfs:comment": "the shopper's main address; at most one per shopper."
+    },
+    {
+      "@id": "acom:isPrivate",
+      "@type": "rdf:Property",
+      "rdfs:label": "isPrivate",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Question"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Boolean"
+        }
+      ],
+      "rdfs:comment": "true when only the asker and the store may read it (catalog.yml question.private_allowed)."
     },
     {
       "@id": "acom:isSystem",
@@ -2000,6 +2094,9 @@
           "@id": "acom:MessageTemplate"
         },
         {
+          "@id": "acom:RestockAlert"
+        },
+        {
           "@id": "schema:Message"
         }
       ],
@@ -2089,6 +2186,22 @@
         }
       ],
       "rdfs:comment": "true when only an approved change set may run it."
+    },
+    {
+      "@id": "acom:notifiedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "notifiedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:RestockAlert"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the variant came back and the alert was handed to messaging (platform.outbox topic restock_alert.notify); NULL while waiting."
     },
     {
       "@id": "acom:number",
@@ -2490,6 +2603,9 @@
         },
         {
           "@id": "schema:QuantitativeValue"
+        },
+        {
+          "@id": "schema:TypeAndQuantityNode"
         }
       ],
       "schema:rangeIncludes": [
@@ -2555,6 +2671,22 @@
         }
       ],
       "rdfs:comment": "Where a promotion is in its life."
+    },
+    {
+      "@id": "acom:prompt",
+      "@type": "rdf:Property",
+      "rdfs:label": "prompt",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:ImageObject"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "what the operator asked the image to show."
     },
     {
       "@id": "acom:purpose",
@@ -2785,6 +2917,22 @@
         }
       ],
       "rdfs:comment": "short text answer shown with the blocks."
+    },
+    {
+      "@id": "acom:reportReason",
+      "@type": "rdf:Property",
+      "rdfs:label": "reportReason",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ContentReport"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ReportReason"
+        }
+      ],
+      "rdfs:comment": "why it was reported (catalog.yml review.report_reasons). values: report_reason"
     },
     {
       "@id": "acom:requestText",
@@ -3595,6 +3743,22 @@
       "rdfs:comment": "state after the event; NULL when the state did not change. values: claim_status"
     },
     {
+      "@id": "acom:tone",
+      "@type": "rdf:Property",
+      "rdfs:label": "tone",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CopyDraft"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the tone the draft was written in: the request's, or catalog.yml content.copy.tone."
+    },
+    {
       "@id": "acom:undoUntil",
       "@type": "rdf:Property",
       "rdfs:label": "undoUntil",
@@ -3929,6 +4093,16 @@
       "acom:wireList": "claim_type"
     },
     {
+      "@id": "acom:CopyType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CopyType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the copy_type list (docs/api/enums.md).",
+      "acom:wireList": "copy_type"
+    },
+    {
       "@id": "acom:CouponApplication",
       "@type": "rdfs:Class",
       "rdfs:label": "CouponApplication",
@@ -4017,6 +4191,16 @@
       },
       "rdfs:comment": "Values of the fulfillment_stage list (docs/api/enums.md).",
       "acom:wireList": "fulfillment_stage"
+    },
+    {
+      "@id": "acom:ImageStyle",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ImageStyle",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the image_style list (docs/api/enums.md).",
+      "acom:wireList": "image_style"
     },
     {
       "@id": "acom:ImportMode",
@@ -4149,6 +4333,16 @@
       "acom:wireList": "promotion_status"
     },
     {
+      "@id": "acom:QuestionStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "QuestionStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the question_status list (docs/api/enums.md).",
+      "acom:wireList": "question_status"
+    },
+    {
       "@id": "acom:RefundMethod",
       "@type": "rdfs:Class",
       "rdfs:label": "RefundMethod",
@@ -4167,6 +4361,16 @@
       },
       "rdfs:comment": "Values of the refund_status list (docs/api/enums.md).",
       "acom:wireList": "refund_status"
+    },
+    {
+      "@id": "acom:ReportReason",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ReportReason",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the report_reason list (docs/api/enums.md).",
+      "acom:wireList": "report_reason"
     },
     {
       "@id": "acom:ReviewStatus",
@@ -4777,6 +4981,34 @@
       "schema:position": 3
     },
     {
+      "@id": "acom:CopyTypeTitle",
+      "@type": "acom:CopyType",
+      "rdfs:label": "Title",
+      "acom:wireWord": "title",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:CopyTypeSummary",
+      "@type": "acom:CopyType",
+      "rdfs:label": "Summary",
+      "acom:wireWord": "summary",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:CopyTypeDescription",
+      "@type": "acom:CopyType",
+      "rdfs:label": "Description",
+      "acom:wireWord": "description",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:CopyTypeSeo",
+      "@type": "acom:CopyType",
+      "rdfs:label": "Seo",
+      "acom:wireWord": "seo",
+      "schema:position": 4
+    },
+    {
       "@id": "acom:CouponApplicationAutomaticAtCheckout",
       "@type": "acom:CouponApplication",
       "rdfs:label": "AutomaticAtCheckout",
@@ -5041,6 +5273,27 @@
       "rdfs:label": "Shipped",
       "acom:wireWord": "shipped",
       "schema:position": 4
+    },
+    {
+      "@id": "acom:ImageStyleStudio",
+      "@type": "acom:ImageStyle",
+      "rdfs:label": "Studio",
+      "acom:wireWord": "studio",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:ImageStyleLifestyle",
+      "@type": "acom:ImageStyle",
+      "rdfs:label": "Lifestyle",
+      "acom:wireWord": "lifestyle",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:ImageStyleFlatLay",
+      "@type": "acom:ImageStyle",
+      "rdfs:label": "FlatLay",
+      "acom:wireWord": "flat_lay",
+      "schema:position": 3
     },
     {
       "@id": "acom:ImportModeCreate",
@@ -5449,6 +5702,20 @@
       "schema:position": 5
     },
     {
+      "@id": "acom:QuestionStatusVisible",
+      "@type": "acom:QuestionStatus",
+      "rdfs:label": "Visible",
+      "acom:wireWord": "visible",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:QuestionStatusHidden",
+      "@type": "acom:QuestionStatus",
+      "rdfs:label": "Hidden",
+      "acom:wireWord": "hidden",
+      "schema:position": 2
+    },
+    {
       "@id": "acom:RefundMethodOriginalPayment",
       "@type": "acom:RefundMethod",
       "rdfs:label": "OriginalPayment",
@@ -5489,6 +5756,55 @@
       "rdfs:label": "Failed",
       "acom:wireWord": "failed",
       "schema:position": 3
+    },
+    {
+      "@id": "acom:ReportReasonSpam",
+      "@type": "acom:ReportReason",
+      "rdfs:label": "Spam",
+      "acom:wireWord": "spam",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:ReportReasonAbuse",
+      "@type": "acom:ReportReason",
+      "rdfs:label": "Abuse",
+      "acom:wireWord": "abuse",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:ReportReasonObscene",
+      "@type": "acom:ReportReason",
+      "rdfs:label": "Obscene",
+      "acom:wireWord": "obscene",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:ReportReasonAdvertisement",
+      "@type": "acom:ReportReason",
+      "rdfs:label": "Advertisement",
+      "acom:wireWord": "advertisement",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:ReportReasonFake",
+      "@type": "acom:ReportReason",
+      "rdfs:label": "Fake",
+      "acom:wireWord": "fake",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:ReportReasonIrrelevant",
+      "@type": "acom:ReportReason",
+      "rdfs:label": "Irrelevant",
+      "acom:wireWord": "irrelevant",
+      "schema:position": 6
+    },
+    {
+      "@id": "acom:ReportReasonOther",
+      "@type": "acom:ReportReason",
+      "rdfs:label": "Other",
+      "acom:wireWord": "other",
+      "schema:position": 7
     },
     {
       "@id": "acom:ReviewStatusVisible",

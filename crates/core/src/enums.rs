@@ -461,6 +461,29 @@ word_enum! {
     ImportMode = "import_mode" { Create = "create", Upsert = "upsert" }
 }
 
+word_enum! {
+    /// schema:creativeWorkStatus of a product question: whether shoppers see it (and its answer).
+    QuestionStatus = "question_status" { Visible = "visible", Hidden = "hidden" }
+}
+
+word_enum! {
+    /// acom:reportReason, why a shopper reports a review or a post as inappropriate.
+    ReportReason = "report_reason" {
+        Spam = "spam", Abuse = "abuse", Obscene = "obscene", Advertisement = "advertisement",
+        Fake = "fake", Irrelevant = "irrelevant", Other = "other",
+    }
+}
+
+word_enum! {
+    /// acom:copyType, which text of a product `generate_copy` drafts.
+    CopyType = "copy_type" { Title = "title", Summary = "summary", Description = "description", Seo = "seo" }
+}
+
+word_enum! {
+    /// acom:imageStyle, how a generated product image is staged.
+    ImageStyle = "image_style" { Studio = "studio", Lifestyle = "lifestyle", FlatLay = "flat_lay" }
+}
+
 /// Every word list, by name. `cargo xtask check-schema` compares database `CHECK` lists with these.
 pub const LISTS: &[(&str, &[&str])] = &[
     (OrderStatus::LIST, OrderStatus::WORDS),
@@ -519,6 +542,10 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (StepKind::LIST, StepKind::WORDS),
     (DraftStatus::LIST, DraftStatus::WORDS),
     (ImportMode::LIST, ImportMode::WORDS),
+    (QuestionStatus::LIST, QuestionStatus::WORDS),
+    (ReportReason::LIST, ReportReason::WORDS),
+    (CopyType::LIST, CopyType::WORDS),
+    (ImageStyle::LIST, ImageStyle::WORDS),
 ];
 
 /// The words of one list, by name.
