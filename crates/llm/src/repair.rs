@@ -436,13 +436,10 @@ fn alias(s: &str, schema: &Value) -> Option<String> {
         .map(|(_, value)| value)
 }
 
-/// `Some(prefix)` for the id pattern `^prefix_[a-z0-9_]+$`.
+/// `Some(prefix)` for the id pattern `^prefix_[a-z0-9_]+$`, also when widened to take what
+/// people say (`acom_core::handle`).
 fn id_prefix(pattern: &str) -> Option<&str> {
-    let rest = pattern.strip_prefix('^')?.strip_suffix("_[a-z0-9_]+$")?;
-    rest.bytes()
-        .all(|b| b.is_ascii_lowercase())
-        .then_some(rest)
-        .filter(|r| !r.is_empty())
+    acom_core::handle::id_prefix(pattern)
 }
 
 fn is_suffix_word(s: &str) -> bool {
@@ -539,6 +536,16 @@ fn fix_string(
 
     if let Some(pattern) = schema.get("pattern").and_then(Value::as_str) {
         if let Some(prefix) = id_prefix(pattern) {
+            // A value people say (an order number, an email) where the field takes it: the
+            // server finds the record, so it must not be turned into a made-up id.
+            if schema.get("x-handle").is_some()
+                && let Some((_, v)) = acom_core::handle::read_value(prefix, &s)
+            {
+                if v != s {
+                    out.notes.push(format!("{path}: {s:?} written as {v}"));
+                }
+                return Some(Value::String(v));
+            }
             let w = word(&s);
             // A prefix alone ("promo_") names no record; making one up from it would be a guess.
             if w.trim_end_matches('_') == prefix {
@@ -849,6 +856,31 @@ mod tests {
         assert_eq!(
             r.value["valid_through"], "2026-10-30",
             "a week back, not today"
+        );
+    }
+
+    #[test]
+    fn keeps_what_people_say_where_the_field_takes_it() {
+        let widened = json!({"type": "object", "additionalProperties": false, "properties": {
+            "order_id": {"type": "string", "pattern": "^(?:ord_[a-z0-9_]+|#?[0-9]+)$",
+                         "x-handle": {"field": "order_number", "shape": "number"},
+                         "description": "The order."}}});
+        let r = repair(&json!({"order_id": "#27184"}), &widened, &env());
+        assert!(r.is_valid(), "{r:#?}");
+        assert_eq!(
+            r.value,
+            json!({"order_id": "27184"}),
+            "the number, not a made-up id"
+        );
+        let r = repair(&json!({"order_id": "ord_27184"}), &widened, &env());
+        assert_eq!(r.value, json!({"order_id": "ord_27184"}));
+        let plain = json!({"type": "object", "additionalProperties": false, "properties": {
+            "order_id": {"type": "string", "pattern": "^ord_[a-z0-9_]+$", "description": "The order."}}});
+        let r = repair(&json!({"order_id": "27184"}), &plain, &env());
+        assert_eq!(
+            r.value,
+            json!({"order_id": "ord_27184"}),
+            "a field without a handle is unchanged"
         );
     }
 

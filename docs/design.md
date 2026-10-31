@@ -21,7 +21,7 @@ This is the one list of principles. The README repeats it in short and links her
 
 **Evidence rule.** A claim that a principle holds is made only with numbers from the shared task set ([../eval](../eval), design and held-out tasks). One scene working is not evidence.
 
-The tool rules in §3 are how principles 1–3 are built. [research.md](research.md) §3 records the research that led to this list.
+The tool rules in §3 are how principles 1–3 are built (rule 9 is principle 1 for references). [research.md](research.md) §3 records the research that led to this list.
 
 ## 1. Goal
 
@@ -57,6 +57,7 @@ Every capability in A-Commerce is exposed as a tool that follows these rules. Co
 6. **Declared links.** Each tool declares what it consumes and produces (for example, `search_products` produces `product_id[]`; `create_promotion` consumes `product_id[]` and produces `promotion_id`). The harness builds a tool graph from these declarations.
 7. **Rules are data.** Business rules (maximum discount, stacking, approval thresholds) live in a policy file that the back-end enforces. A violation comes back as a readable reason plus the tool that can fix it. Rules are never hidden in a prompt.
 8. **Actionable errors.** Each error has a code, a human sentence, and a suggested next tool.
+9. **References take what people say.** A field that takes an order, change set, or customer id also takes the order number, the change set number, or the email; the server finds the record before the tool runs. Values that can match several records, such as product names, go through a search tool. The table is in [api/conventions.md](api/conventions.md) §2.
 
 ## 4. Domain scope
 

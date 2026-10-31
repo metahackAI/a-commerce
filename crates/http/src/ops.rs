@@ -15,6 +15,7 @@ use axum::{Json, Router};
 use serde_json::{Map, Value, json};
 
 use crate::coerce::coerce;
+use crate::handles;
 use crate::idempotency;
 use crate::{Api, ApiError, Caller, forbidden_scope};
 
@@ -191,7 +192,9 @@ async fn rest(
             input.extend(json_body(body)?);
             input.extend(from_path);
             let cx = api.cx(caller).await?;
-            Ok(Json(op.read(&cx, Value::Object(input)).await?).into_response())
+            let mut input = Value::Object(input);
+            handles::resolve(&cx, schema, &mut input).await?;
+            Ok(Json(op.read(&cx, input).await?).into_response())
         }
         Kind::Write | Kind::WriteApproval => {
             let preview = query_value(&query, "preview") == Some("true");
@@ -203,14 +206,10 @@ async fn rest(
                     caller.require("changeset:draft")?;
                 }
                 input.extend(from_path);
-                let p = acom_changeset::preview(
-                    &api.registry,
-                    &cx,
-                    tool,
-                    Value::Object(input),
-                    change_set_id,
-                )
-                .await?;
+                let mut input = Value::Object(input);
+                handles::resolve(&cx, schema, &mut input).await?;
+                let p =
+                    acom_changeset::preview(&api.registry, &cx, tool, input, change_set_id).await?;
                 return Ok(Json(p).into_response());
             }
             let preview_id = match input.remove("preview_id") {
@@ -339,7 +338,13 @@ async fn manifest(
         let wanted =
             |m: &OpMeta| visible(&caller.principal, m) && domain.is_none_or(|d| m.domain() == d);
         let mut items = match tool_set(&query)? {
-            ToolSet::Commerce => api.registry.manifest(wanted),
+            ToolSet::Commerce => {
+                let mut items = api.registry.manifest(wanted);
+                for item in &mut items {
+                    handles::widen(&mut item.input_schema);
+                }
+                items
+            }
             ToolSet::Facade => {
                 facade_allowed(&api, &caller)?;
                 api.facade.manifest(wanted)
@@ -420,6 +425,10 @@ async fn call_tool(
             return Err(ToolError::invalid_input(format!("Unknown field `{k}`.")).into());
         }
         let cx = api.cx(&caller).await?;
+        let mut input = input;
+        if preview_id.is_none() {
+            handles::resolve(&cx, op.input_schema(), &mut input).await?;
+        }
         let out = match meta.kind {
             Kind::Read => op.read(&cx, input).await?,
             _ => match (preview_id, change_set_id) {
