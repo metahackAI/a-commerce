@@ -939,6 +939,88 @@
   },
   {
     "schema": "catalog",
+    "table": "answer",
+    "kind": "table",
+    "term": "schema:Answer",
+    "description": "the accepted answer to a product question; one per question. id prefix ans_.",
+    "id_prefix": "ans",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix ans_; the same value the API, logs and events use (API answer_id)."
+      },
+      {
+        "name": "question_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:parentItem",
+        "description": "the question answered (qst_ id); it shows the answer as acceptedAnswer.",
+        "references": "catalog.question"
+      },
+      {
+        "name": "author_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:author",
+        "description": "who answered: an operator (adm_), the system (sys_), or a shopper (cus_) when catalog.yml question.answered_by allows it."
+      },
+      {
+        "name": "author_name",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:author",
+        "description": "the masked name shown for a shopper's answer; NULL when the store answered, shown as the store."
+      },
+      {
+        "name": "text",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:text",
+        "description": "the answer shoppers read, word for word as previewed."
+      },
+      {
+        "name": "date_created",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:dateCreated",
+        "description": "when the answer was posted (store clock)."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
     "table": "brand",
     "kind": "table",
     "term": "schema:Brand",
@@ -980,6 +1062,109 @@
         "nullable": true,
         "term": "schema:description",
         "description": "short brand description."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
+    "table": "copy_draft",
+    "kind": "table",
+    "term": "schema:CreativeWork/acom:CopyDraft",
+    "description": "generated text for a product (generate_copy), kept as a draft until update_product_group uses it. id prefix cpd_.",
+    "id_prefix": "cpd",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix cpd_; the same value the API, logs and events use (API copy_draft_id)."
+      },
+      {
+        "name": "product_group_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:about",
+        "description": "the product the copy is for (prd_ id, API product_id).",
+        "references": "catalog.product_group"
+      },
+      {
+        "name": "copy_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:copyType",
+        "description": "which text of the product this drafts. values: copy_type",
+        "values": [
+          "title",
+          "summary",
+          "description",
+          "seo"
+        ],
+        "values_list": "copy_type"
+      },
+      {
+        "name": "text",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:text",
+        "description": "the drafted text."
+      },
+      {
+        "name": "keywords",
+        "type": "text[]",
+        "nullable": false,
+        "term": "schema:keywords",
+        "description": "words the draft was asked to use; empty when none."
+      },
+      {
+        "name": "tone",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:tone",
+        "description": "the tone the draft was written in: the request's, or catalog.yml content.copy.tone."
+      },
+      {
+        "name": "is_ai_generated",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:aiGenerated",
+        "description": "true for generated content (catalog.yml content.ai_content_disclosure)."
+      },
+      {
+        "name": "date_created",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:dateCreated",
+        "description": "when the draft was made (store clock)."
       },
       {
         "name": "created_at",
@@ -1157,6 +1342,115 @@
         "nullable": true,
         "term": "acom:draftNote",
         "description": "one sentence for the person about what is open, for example Fabric mix is missing in the sheet; NULL when nothing is."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
+    "table": "image_object",
+    "kind": "table",
+    "term": "schema:ImageObject",
+    "description": "a generated product image (generate_image), kept as a draft off the product page until it is used. id prefix img_.",
+    "id_prefix": "img",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix img_; the same value the API, logs and events use (API image_id)."
+      },
+      {
+        "name": "product_group_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:about",
+        "description": "the product pictured (prd_ id, API product_id).",
+        "references": "catalog.product_group"
+      },
+      {
+        "name": "content_url",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:contentUrl",
+        "description": "where the image is; while no image generator is connected (catalog.yml content.generator: placeholder), a placeholder picture that says so."
+      },
+      {
+        "name": "encoding_format",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:encodingFormat",
+        "description": "media type of the image, for example image/svg+xml."
+      },
+      {
+        "name": "caption",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:caption",
+        "description": "the alternative text shown with the image."
+      },
+      {
+        "name": "prompt",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:prompt",
+        "description": "what the operator asked the image to show."
+      },
+      {
+        "name": "image_style",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:imageStyle",
+        "description": "how the image is staged. values: image_style",
+        "values": [
+          "studio",
+          "lifestyle",
+          "flat_lay"
+        ],
+        "values_list": "image_style"
+      },
+      {
+        "name": "is_ai_generated",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:aiGenerated",
+        "description": "true for generated content (catalog.yml content.ai_content_disclosure)."
+      },
+      {
+        "name": "date_created",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:dateCreated",
+        "description": "when the image was made (store clock)."
       },
       {
         "name": "created_at",
@@ -1898,6 +2192,108 @@
   },
   {
     "schema": "catalog",
+    "table": "question",
+    "kind": "table",
+    "term": "schema:Question",
+    "description": "a shopper's question about a product; a hidden question hides its answer too. id prefix qst_.",
+    "id_prefix": "qst",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix qst_; the same value the API, logs and events use (API question_id)."
+      },
+      {
+        "name": "product_group_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:about",
+        "description": "the product asked about (prd_ id, API product_id).",
+        "references": "catalog.product_group"
+      },
+      {
+        "name": "author_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:author",
+        "description": "the shopper who asked (cus_ id); only they may edit or delete it.",
+        "references": "customer.person"
+      },
+      {
+        "name": "author_name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:author",
+        "description": "the name shown with the question, masked as catalog.yml author_masking says when it was asked, for example Ja***."
+      },
+      {
+        "name": "text",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:text",
+        "description": "the question as the shopper wrote it."
+      },
+      {
+        "name": "is_private",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:isPrivate",
+        "description": "true when only the asker and the store may read it (catalog.yml question.private_allowed)."
+      },
+      {
+        "name": "creative_work_status",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:creativeWorkStatus",
+        "description": "visible, or hidden by moderate_question or held by question.profanity_filter. values: question_status",
+        "values": [
+          "visible",
+          "hidden"
+        ],
+        "values_list": "question_status"
+      },
+      {
+        "name": "date_created",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:dateCreated",
+        "description": "when the shopper asked (store clock)."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
     "table": "reorder",
     "kind": "table",
     "term": "schema:Order/acom:Reorder",
@@ -2074,6 +2470,103 @@
   },
   {
     "schema": "catalog",
+    "table": "restock_alert",
+    "kind": "table",
+    "term": "schema:SubscribeAction/acom:RestockAlert",
+    "description": "a shopper asks to be told when a sold-out variant is back; a transactional alert, not marketing. id prefix rsa_.",
+    "id_prefix": "rsa",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix rsa_; the same value the API, logs and events use (API restock_alert_id)."
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "the shopper who asked (cus_ id); only they see it.",
+        "references": "customer.person"
+      },
+      {
+        "name": "product_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:object",
+        "description": "the variant waited for (var_ id, API variant_id).",
+        "references": "catalog.product"
+      },
+      {
+        "name": "message_channel",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:messageChannel",
+        "description": "how the shopper wants to hear (catalog.yml restock_alert.channels). values: message_channel",
+        "values": [
+          "email",
+          "sms",
+          "push",
+          "in_app"
+        ],
+        "values_list": "message_channel"
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the shopper asked (store clock)."
+      },
+      {
+        "name": "expires",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:expires",
+        "description": "when the request lapses if the variant is not back by then (start_time + restock_alert.expires_after_days)."
+      },
+      {
+        "name": "notified_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:notifiedAt",
+        "description": "when the variant came back and the alert was handed to messaging (platform.outbox topic restock_alert.notify); NULL while waiting."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
     "table": "review",
     "kind": "table",
     "term": "schema:Review",
@@ -2233,6 +2726,99 @@
   },
   {
     "schema": "catalog",
+    "table": "review_report",
+    "kind": "table",
+    "term": "schema:Action/acom:ContentReport",
+    "description": "a shopper's report that a review is inappropriate; it puts the review in the moderation queue. id prefix rpt_.",
+    "id_prefix": "rpt",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix rpt_; the same value the API, logs and events use."
+      },
+      {
+        "name": "review_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:object",
+        "description": "the review reported (rev_ id).",
+        "references": "catalog.review"
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "the shopper who reported it (cus_ id); one report per shopper and review.",
+        "references": "customer.person"
+      },
+      {
+        "name": "report_reason",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:reportReason",
+        "description": "why it was reported (catalog.yml review.report_reasons). values: report_reason",
+        "values": [
+          "spam",
+          "abuse",
+          "obscene",
+          "advertisement",
+          "fake",
+          "irrelevant",
+          "other"
+        ],
+        "values_list": "report_reason"
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:description",
+        "description": "the reporter's own words; NULL when they gave none."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the report was made (store clock)."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
     "table": "review_vote",
     "kind": "table",
     "term": "schema:VoteAction/acom:ReviewVote",
@@ -2268,6 +2854,67 @@
         "nullable": false,
         "term": "acom:isHelpful",
         "description": "true while the shopper marks the review helpful; false after they take the vote back."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
+    "table": "type_and_quantity_node",
+    "kind": "table",
+    "term": "schema:TypeAndQuantityNode",
+    "description": "one component of a bundle (create_bundle): a variant and how many of it; the bundle's price and stock are derived from its components.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "product_group_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:productGroupId",
+        "description": "the bundle this is a component of (prd_ id); schema:includesObject seen from the bundle.",
+        "references": "catalog.product_group"
+      },
+      {
+        "name": "product_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:typeOfGood",
+        "description": "the component variant (var_ id, API variant_id).",
+        "references": "catalog.product"
+      },
+      {
+        "name": "amount_of_this_good",
+        "type": "integer",
+        "nullable": false,
+        "term": "schema:amountOfThisGood",
+        "description": "units of the variant in one bundle (API order_quantity)."
       },
       {
         "name": "created_at",
