@@ -8,12 +8,13 @@ tax_id_unique: true                      # check: tax_id_unique. 같은 사업�
 onboarding:
   required_documents: [business_registration, payout_account_proof]   # check: onboarding.required_documents
   prohibited_categories: []              # check: onboarding.prohibited_categories. 기본값: 금지 업종 없음(스토어가 카테고리 id로 채움)
+  tax_id_digits: { min: 9, max: 13 }     # invalid_tax_id: 사업자 번호의 숫자 개수(하이픈·공백은 세지 않음). 사업자 등록부 조회는 외부 시스템이라 스텁(형식만 봄)
 
 profile:
   editable_fields: [contact_point, address, business_category]   # update_seller가 바꿀 수 있는 필드. 계약·상태는 별도 오퍼레이션
 
 lifecycle:
-  allowed_transitions:                   # 판매자 상태 전이(enums.md §1.14 판매자)
+  allowed_transitions:                   # 판매자 상태 전이(enums.md §1.16 acom:seller_status)
     applied: [under_review, terminated]
     under_review: [approved, terminated]
     approved: [active, terminated]
@@ -33,7 +34,21 @@ contract:
 grade:
   computed_metrics: [shipping_compliance, order_fulfillment, claim_rate, service_score]   # 서버가 계산하는 등급 근거
   override_requires_reason: true         # check: grade.override_requires_reason. 계산값과 다른 등급은 사유 필수
-  benefits: {}                           # 기본값: 등급별 혜택 없음. 예: { platinum: { commission_discount_rate: 0.02 } }
+  benefits: {}                           # 기본값: 등급별 혜택 없음. 예: { platinum: { commission_discount_rate: 0.02, exposure_weight: 1.2 } }
+  levels:                                # 등급 기준(비율 0–1). platinum부터 차례로 보아 computed_metrics의 기준을 모두 만족하는 첫 등급. 없으면 watch
+    platinum: { shipping_compliance_min: 0.98, order_fulfillment_min: 0.99, claim_rate_max: 0.02, service_score_min: 0.95 }
+    gold: { shipping_compliance_min: 0.95, order_fulfillment_min: 0.97, claim_rate_max: 0.04, service_score_min: 0.90 }
+    silver: { shipping_compliance_min: 0.90, order_fulfillment_min: 0.95, claim_rate_max: 0.06, service_score_min: 0.80 }
+    bronze: { shipping_compliance_min: 0.80, order_fulfillment_min: 0.90, claim_rate_max: 0.10, service_score_min: 0.60 }
+  ship_within_days: 2                    # 배송 준수: 주문 시각부터 이 일수 안에 출고하면 준수, 넘기면 늦은 출고
+  review_day_of_month: 1                 # 정기 평가일(acom:next_review_date): 매달 이 날
+
+settlement:                              # 정산 예정액(get_seller_overview, set_seller_status). 지급은 우리 시스템 밖이라 결정적인 추정치
+  payout_delay_days: 14                  # 정산 주기가 끝난 다음 날부터 이 일수 뒤 지급(월 정산: 10월분 → 11월 15일)
+
+privacy:                                 # 판매자의 민감 정보. customer.yml privacy와 같은 생각: 스토어 운영자에게는 가려 보임
+  masked_fields: [tax_id, payout_account]   # 운영자에게 가리는 필드. 판매자 본인(판매사 조직의 운영자)에게는 그대로
+  visible_trailing_characters: 4         # 가린 값에서 끝에 남기는 글자 수(512-73-4410 → ***-**-4410)
 
 dashboard:
   visible_metrics_by_role:               # get_seller_overview가 역할별로 보여 주는 지표 묶음

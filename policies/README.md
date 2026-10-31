@@ -51,7 +51,7 @@
 | [merchandising.yml](merchandising.yml) | merchandising | **슬롯 중복 예약 금지**, 카테고리 묶음·매핑, 진열 기간 계산·대상, 기획전 공개 |
 | [search.yml](search.yml) | search | 검색 모드와 확장, 스토어 격리, 등급 필터를 쿼리 안에서, 랭킹 신호, 색인 교체, 비교 속성 |
 | [community.yml](community.yml) | community | 게시판 쓰기 권한, 금칙어·스팸·첨부, 신고·블라인드 |
-| [partner.yml](partner.yml) | partner | 입점 서류·금지 업종, 판매자 상태 전이, 수수료 범위, 계약 기간, 등급 |
+| [partner.yml](partner.yml) | partner | 입점 서류·금지 업종·사업자 번호 형식, 판매자 상태 전이, 수수료 범위, 계약 기간, 등급 기준·배송 기한·평가일, 정산 지급일, 사업자 번호·정산 계좌 가림, 대시보드 역할별 지표 |
 | [integration.yml](integration.yml) | integration | 가져오기 배치 한도·필수 필드, 외부 상태 매핑, 자격 증명 보관, 이벤트 서명·재생 창 |
 | [platform.yml](platform.yml) | platform | **할 일 감시 작업(`watchers`)**, 역할·관리자·조직·API 키 규칙 |
 
