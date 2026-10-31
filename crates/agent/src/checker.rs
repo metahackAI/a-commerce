@@ -197,6 +197,20 @@ pub fn echo_start(reply: &str, prompt: &str) -> Option<usize> {
         .min()
 }
 
+/// Whether `reply` repeats the person's whole request: a model narrating its own reasoning
+/// ("X is selling fast. Draft a reorder… The results show…") instead of answering. Requests
+/// under 20 characters are too short to tell.
+pub fn repeats_request(reply: &str, request: &str) -> bool {
+    let flat = |s: &str| {
+        s.split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .to_lowercase()
+    };
+    let request = flat(request);
+    request.chars().count() >= 20 && flat(reply).contains(&request)
+}
+
 /// The reply with every date said as weekday, month and day ("Sun Nov 2", "Monday, November 2")
 /// given the weekday that date falls on, in the year nearest `today`. A small model names the
 /// weekday of a date wrong now and then; the calendar does not.
@@ -413,5 +427,19 @@ mod tests {
         );
         let said = "since Monday, 3 orders";
         assert_eq!(fix_weekdays(said, today), said);
+    }
+
+    #[test]
+    fn a_reply_that_repeats_the_whole_request_is_narrating() {
+        let asked = "Cushioned ankle socks is selling fast. Draft a reorder for the sizes that will run out.";
+        assert!(repeats_request(
+            "Cushioned ankle socks is selling fast.  Draft a reorder for the sizes that will run out. The results show a search…",
+            asked
+        ));
+        assert!(!repeats_request(
+            "Cushioned ankle socks is selling fast, but nothing needs ordering yet: every size lasts 24 days or more.",
+            asked
+        ));
+        assert!(!repeats_request("Hi there. Hi!", "Hi!"));
     }
 }

@@ -192,7 +192,7 @@ a-commerce API
 | product | **`get_product`** R · **`get_product_measurements`** R · `create_product` W · `update_product` W · `set_variants` W · `discontinue_product` W · `get_return_policy` R · `get_delivery_policy` R · `batch_import` W$ · `generate_image` W$ · `generate_copy` W |
 | offer | `get_price_breakdown` R · `set_price` W · `schedule_price_change` W |
 | inventory | `get_inventory` R · `set_variant_stock` W · `set_safety_stock` W |
-| reorder | `create_reorder` W · `receive_reorder` W |
+| reorder | `suggest_reorder` R · `create_reorder` W · `receive_reorder` W |
 | approval | `submit_for_review` W · `approve_product` W$ · `reject_product` W · `get_change_history` R |
 | brand | `list_brands` R · `get_brand` R · `create_brand` W · `update_brand` W |
 | review | **`get_review_summary`** R · `list_reviews` R · `moderate_review` W · `create_review` W · `update_review` W · `delete_review` W · `vote_review_helpful` W · `report_review` W |

@@ -1,6 +1,6 @@
 //! The `reorder` resource (docs/api/catalog.md#reorder): stock the store orders from its supplier
-//! (`create_reorder`), receives (`receive_reorder`), and what `get_inventory` shows of it until it
-//! arrives.
+//! (`create_reorder`, sized by `suggest_reorder`), receives (`receive_reorder`), and what
+//! `get_inventory` shows of it until it arrives.
 //!
 //! A reorder is an order the store places as the buyer. Each item is a variant and a quantity at
 //! the variant's cost; the expected arrival is the store's date plus `reorder.lead_time_days`.
@@ -8,6 +8,7 @@
 
 pub mod create_reorder;
 pub mod receive_reorder;
+pub mod suggest_reorder;
 
 use std::collections::BTreeMap;
 

@@ -3,21 +3,16 @@
 //! sales rate is this domain's data (order lines); the stock comes from catalog's exported
 //! `product_stock`. One finding per product, so each gets its own task.
 
-use std::collections::BTreeMap;
-
 use acom_catalog::service::for_sales::{ProductStock, product_stock};
 use acom_contract::{EntityRef, ErrorCode, Job, JobMeta, JobOutcome, TaskDraft, ToolError};
-use acom_store::{Cx, StoreError, TxCx};
-use chrono::Days;
+use acom_store::{Cx, TxCx};
 use rust_decimal::{Decimal, RoundingStrategy};
 use serde_json::{Value, json};
 
+use crate::service::for_catalog::units_sold;
+
 #[derive(Debug)]
 pub struct StockOutForecast;
-
-fn db(e: sqlx::Error) -> ToolError {
-    ToolError::from(StoreError::from(e))
-}
 
 fn internal(message: String) -> ToolError {
     ToolError::new(ErrorCode::INTERNAL, message)
@@ -36,39 +31,12 @@ impl Job<Cx> for StockOutForecast {
             .watchers()
             .map_err(|e| internal(e.to_string()))?
             .stock_out_forecast;
-        // The last `lookback_days` whole store days, today left out.
-        let today = tx.clock.now().with_timezone(&tx.time.zone).date_naive();
-        let from = today
-            .checked_sub_days(Days::new(u64::from(w.lookback_days)))
-            .ok_or_else(|| internal("the lookback reaches before the calendar".into()))?;
-        let day_start = |d: chrono::NaiveDate| {
-            tx.time
-                .parse(&format!("{d}T00:00"))
-                .map_err(|e| internal(e.to_string()))
-        };
-        let (from, through) = (day_start(from)?, day_start(today)?);
         let stock = product_stock(tx, &w.exclude_availability).await?;
         let variants: Vec<String> = stock
             .iter()
             .flat_map(|p| p.variant_ids.iter().cloned())
             .collect();
-        let sold: BTreeMap<String, i64> = sqlx::query_as::<_, (String, i64)>(
-            "SELECT i.product_id, sum(i.order_quantity)::bigint
-             FROM sales.order_item i
-             JOIN sales.sales_order o ON o.tenant_id = i.tenant_id AND o.id = i.order_id
-             WHERE i.tenant_id = $1 AND o.order_date >= $2 AND o.order_date < $3
-               AND i.order_item_status <> 'cancelled' AND i.product_id = ANY($4)
-             GROUP BY i.product_id",
-        )
-        .bind(tx.tenant.as_str())
-        .bind(from)
-        .bind(through)
-        .bind(&variants)
-        .fetch_all(&mut *tx.tx)
-        .await
-        .map_err(db)?
-        .into_iter()
-        .collect();
+        let (_, sold) = units_sold(tx, &variants, w.lookback_days).await?;
         let drafts = stock
             .iter()
             .filter_map(|p| {

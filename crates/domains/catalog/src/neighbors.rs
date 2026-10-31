@@ -5,13 +5,14 @@
 //! category (merchandising), and, to accept a review, the shopper's purchase (sales). Those
 //! domains export plain service functions (`service::for_catalog`); a crate above all of them
 //! (`acom-search`) wires them into catalog once at start-up with [`install`]. Until then the
-//! answers are empty: no member prices, no categories, no purchases.
+//! answers are empty: no member prices, no categories, no purchases, no units sold.
 
+use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
 use acom_contract::ToolError;
 use acom_store::TxCx;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use futures::future::BoxFuture;
 use rust_decimal::Decimal;
 
@@ -62,6 +63,16 @@ pub struct PurchasedItem {
     pub order_item_status: String,
 }
 
+/// Units each variant sold over the last whole store days (`sales.order_item`).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct UnitsSold {
+    /// First and last store day counted (the last is yesterday).
+    pub valid_from: Option<NaiveDate>,
+    pub valid_through: Option<NaiveDate>,
+    /// Variants that sold nothing are left out.
+    pub by_variant: BTreeMap<String, i64>,
+}
+
 /// The lookups catalog makes in other domains. Every method runs in the caller's transaction.
 pub trait Neighbors: Send + Sync + 'static {
     /// The member tier of a customer, or `None` when they have none.
@@ -109,6 +120,14 @@ pub trait Neighbors: Send + Sync + 'static {
         customer_id: &'a str,
         order_id: &'a str,
     ) -> BoxFuture<'a, Result<Vec<PurchasedItem>, ToolError>>;
+
+    /// Units each of these variants sold on orders of the last `days` whole store days.
+    fn units_sold<'a>(
+        &'a self,
+        tx: &'a mut TxCx,
+        variant_ids: &'a [String],
+        days: u32,
+    ) -> BoxFuture<'a, Result<UnitsSold, ToolError>>;
 
     /// Every category of the store, both term sets.
     fn category_terms<'a>(
@@ -203,6 +222,18 @@ pub(crate) async fn purchased_items(
     match get() {
         Some(n) => n.purchased_items(tx, customer_id, order_id).await,
         None => Ok(Vec::new()),
+    }
+}
+
+/// `None` when sales is not installed: nothing is known about what sold.
+pub(crate) async fn units_sold(
+    tx: &mut TxCx,
+    variant_ids: &[String],
+    days: u32,
+) -> Result<Option<UnitsSold>, ToolError> {
+    match get() {
+        Some(n) => n.units_sold(tx, variant_ids, days).await.map(Some),
+        None => Ok(None),
     }
 }
 
