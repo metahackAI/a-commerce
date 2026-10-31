@@ -123,6 +123,9 @@ products:
   weight_by_size: null
   measurements: {}
   measurement_technique: null
+  image: /media/products/prd_accessories_04-5038c2e6.webp
+  images: {Slate: /media/products/prd_accessories_04-5038c2e6.webp}
+  image_provenance: {model: muse-image-1.0, run: 20261031-213410-full, response_id: resp_6ae5f8882568a3a388694b71, created_at: '2026-10-31T14:17:44+00:00'}
   status: pass
   provenance:
     run: 20261031-165220-v2
@@ -249,6 +252,9 @@ products:
   weight_by_size: null
   measurements: {}
   measurement_technique: null
+  image: /media/products/prd_accessories_08-16e23600.webp
+  images: {Sand: /media/products/prd_accessories_08-16e23600.webp}
+  image_provenance: {model: muse-image-1.0, run: 20261031-213410-full, response_id: resp_6ae5f88622457ae8a67342f5, created_at: '2026-10-31T14:17:42+00:00'}
   status: pass
   provenance:
     run: 20261031-165220-v2
