@@ -103,8 +103,8 @@ impl WriteOp<Cx> for RevokeApiKey {
                 entity: "api_key".into(),
                 id: k.id.clone(),
                 from: json!({"status": "active", "name": k.name, "key_prefix": k.key_prefix}),
-                to: json!({"status": "revoked", "sessions_ended": live}),
-                note: Some(format!("{}; {}", last_used, plan.reason)),
+                to: json!({"status": "revoked"}),
+                note: Some(plan.reason.clone()),
             }],
             checks: Vec::new(),
             basis: vec![Basis {
@@ -113,8 +113,10 @@ impl WriteOp<Cx> for RevokeApiKey {
                 version: i64::from(k.version),
             }],
             approval: ApprovalNeed::Needed {
+                // What changes while the set waits (the last use, live sessions) is told here,
+                // not in `changes`, so approval does not find a different estimate.
                 reason: format!(
-                    "Stops the key {} ({last_used}) for good; it cannot be undone",
+                    "Stops the key {} for good ({last_used}; {live} live session(s) end now); it cannot be undone",
                     k.name
                 ),
             },
@@ -216,7 +218,11 @@ mod tests {
             )
             .await
             .unwrap();
-        assert!(p.changes[0].note.as_deref().unwrap().contains("last used"));
+        let ApprovalNeed::Needed { reason } = &p.approval else {
+            panic!("always approved")
+        };
+        assert!(reason.contains("last used"), "{reason}");
+        assert_eq!(p.changes[0].note.as_deref(), Some("Rotated by the vendor."));
         assert_eq!(RevokeApiKey::UNDO, UndoSupport::NotSupported);
         // Rolled back: the seeded key stays active.
         let mut tx = cx.begin().await.unwrap();

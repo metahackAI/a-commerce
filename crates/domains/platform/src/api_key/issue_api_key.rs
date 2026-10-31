@@ -495,4 +495,106 @@ mod tests {
         );
         drop(tx);
     }
+
+    async fn clean(cs: &str) {
+        for sql in [
+            "DELETE FROM platform.action_log WHERE change_set_id = $1
+               OR preview_id IN (SELECT id FROM platform.preview WHERE change_set_id = $1)",
+            "DELETE FROM platform.change_set_event WHERE change_set_id = $1",
+            "DELETE FROM platform.change_set_item WHERE change_set_id = $1",
+            "DELETE FROM platform.api_key WHERE id IN (SELECT result->>'id' FROM platform.preview
+               WHERE change_set_id = $1 AND result IS NOT NULL)",
+            "DELETE FROM platform.preview WHERE change_set_id = $1",
+            "DELETE FROM platform.change_set WHERE id = $1",
+        ] {
+            crate::testdb::owner_exec(sql, &[cs]).await;
+        }
+    }
+
+    /// The W$ path end to end: only a platform administrator approves, the approver sees the
+    /// secret once, and no stored row (preview, action log, change set) holds it.
+    #[tokio::test]
+    #[ignore = "integration: needs the seeded demo database and MIGRATION_DATABASE_URL"]
+    async fn the_approver_sees_the_secret_once_and_nothing_keeps_it() {
+        let registry = crate::testdb::registry();
+        let cx = crate::testdb::admin().await;
+        let created = acom_changeset::change_set::create(
+            &cx,
+            acom_changeset::NewChangeSet {
+                title: "Test key for an outside agent".into(),
+                request_text: vec!["Give the outside agent a key that can read.".into()],
+                interpretation: vec![],
+                conversation_id: None,
+            },
+        )
+        .await
+        .unwrap();
+        let cs = created["id"].as_str().unwrap().to_owned();
+        let p = acom_changeset::preview(
+            &registry,
+            &cx,
+            "issue_api_key",
+            json!({"name": "Test approval key", "scopes": ["external:read"]}),
+            Some(&cs),
+        )
+        .await
+        .unwrap();
+        assert!(p.needs_approval);
+        assert!(p.checks.iter().all(|c| c.passed), "{:?}", p.checks);
+        let head = acom_changeset::read::get(&cx, &cs, &[]).await.unwrap();
+        let version = i32::try_from(head["version"].as_i64().unwrap()).unwrap();
+        acom_changeset::change_set::submit(&cx, &cs, version)
+            .await
+            .unwrap();
+        // A merchandiser approves prices, not access: access_change needs platform_admin.
+        let sj = crate::testdb::cx_with(
+            "adm_sj",
+            ActorKind::Operator,
+            ["human:approve".to_owned()].into(),
+        )
+        .await;
+        let refused = acom_changeset::change_set::approve(&registry, &sj, &cs, version).await;
+        let done = acom_changeset::change_set::approve(&registry, &cx, &cs, version).await;
+        let checked = (|| {
+            let e = refused.as_ref().err()?;
+            let done = done.as_ref().ok()?;
+            Some((e.code.to_string(), done.clone()))
+        })();
+        let Some((refused_code, done)) = checked else {
+            clean(&cs).await;
+            panic!("refused: {refused:?}; approved: {done:?}");
+        };
+        assert_eq!(refused_code, "forbidden");
+        assert_eq!(done["state"], "live", "{done:#}");
+        let shown = &done["shown_once"][0];
+        let secret = shown["secret"].as_str().unwrap().to_owned();
+        let key_id = shown["result_id"].as_str().unwrap().to_owned();
+        let mut tx = cx.read().await.unwrap();
+        let kept: String = sqlx::query_scalar(
+            "SELECT coalesce(string_agg(t, ' '), '') FROM (
+               SELECT result::text AS t FROM platform.preview WHERE tenant_id = $1 AND change_set_id = $2
+               UNION ALL SELECT result::text FROM platform.action_log WHERE tenant_id = $1 AND change_set_id = $2
+               UNION ALL SELECT verification::text FROM platform.change_set WHERE tenant_id = $1 AND id = $2
+               UNION ALL SELECT result::text FROM platform.change_set_event WHERE tenant_id = $1 AND change_set_id = $2
+             ) x",
+        )
+        .bind("store_northwind")
+        .bind(&cs)
+        .fetch_one(&mut *tx.tx)
+        .await
+        .unwrap();
+        let hash: String = sqlx::query_scalar(
+            "SELECT secret_hash FROM platform.api_key WHERE tenant_id = $1 AND id = $2",
+        )
+        .bind("store_northwind")
+        .bind(&key_id)
+        .fetch_one(&mut *tx.tx)
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+        clean(&cs).await;
+        assert!(kept.contains(&key_id), "the run is recorded");
+        assert!(!kept.contains(&secret), "the secret is not");
+        assert_eq!(hash, sha256_hex(&secret));
+    }
 }

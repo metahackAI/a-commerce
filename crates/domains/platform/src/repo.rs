@@ -59,7 +59,8 @@ pub(crate) fn sha256_hex(secret: &str) -> String {
         .collect()
 }
 
-/// A new secret: `prefix` and 64 hex characters from the operating system's random source.
+/// A new secret: `prefix` and 64 hex characters from a cryptographically secure generator
+/// seeded by the operating system.
 pub(crate) fn new_secret(prefix: &str) -> String {
     let mut bytes = [0u8; 32];
     rand::rng().fill_bytes(&mut bytes);
