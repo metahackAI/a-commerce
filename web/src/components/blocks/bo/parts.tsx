@@ -22,7 +22,7 @@ import type {BlockAction, UiBlock} from '@/ai/types';
 import {PersonButton} from '@/components/PersonButton';
 import {useAgentDock} from '@/components/bo/AgentDock';
 import {mayPress, useBoSession} from '@/components/bo/BoSession';
-import {AskButton} from '@/components/bo/targets';
+import {AskButton, useAskReveal} from '@/components/bo/targets';
 import type {IntentsFor} from '@/components/bo/ChangeParts';
 
 /** Suggested intents of a block for one element (`<kind>:<id>`). */
@@ -64,8 +64,9 @@ export function BlockFrame({
   const title = block.title ?? label ?? block.ui;
   const t = useAiTarget({kind, label: label ?? title, ids: {[`${kind}_id`]: id, block_id: block.block_id}, blockId: block.block_id});
   const intents = blockIntents(block);
+  const reveal = useAskReveal();
   return (
-    <Card ref={t.ref} {...t.props}>
+    <Card ref={t.ref} {...t.props} {...reveal.container}>
       <VStack gap={4}>
         <HStack gap={2} vAlign="start">
           <StackItem size="fill">
@@ -83,7 +84,9 @@ export function BlockFrame({
               ) : null}
             </VStack>
           </StackItem>
-          <AskButton target={t} label={title} />
+          <StackItem {...reveal.ask}>
+            <AskButton target={t} label={title} />
+          </StackItem>
         </HStack>
         {children}
         {intents.length > 0 ? (

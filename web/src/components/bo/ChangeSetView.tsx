@@ -28,7 +28,7 @@ import {ChangesTable, ChecksList, changeSubject, type ItemCheck} from './ChangeP
 import {ErrorState} from './ErrorState';
 import {PageFrame, PageSection} from './PageFrame';
 import {StateToken} from './StateToken';
-import {TargetBlock, TargetFact, TargetRow} from './targets';
+import {AskHeaderCell, TargetBlock, TargetFact, TargetRow} from './targets';
 
 const SLOT_LABEL: Record<string, string> = {who: 'Who', products: 'Products', benefit: 'Benefit', when: 'When', where: 'Where', other: 'Also'};
 
@@ -182,11 +182,7 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
                 <TableHeaderCell>What</TableHeaderCell>
                 <TableHeaderCell>Why</TableHeaderCell>
                 <TableHeaderCell>Rule</TableHeaderCell>
-                <TableHeaderCell>
-                  <Text type="supporting" color="secondary">
-                    Ask
-                  </Text>
-                </TableHeaderCell>
+                <AskHeaderCell />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -245,11 +241,7 @@ function VerificationTable({verification}: {verification: Verification}) {
           <TableHeaderCell>Result</TableHeaderCell>
           <TableHeaderCell>Checked</TableHeaderCell>
           <TableHeaderCell>Matched</TableHeaderCell>
-          <TableHeaderCell>
-            <Text type="supporting" color="secondary">
-              Ask
-            </Text>
-          </TableHeaderCell>
+          <AskHeaderCell />
         </TableRow>
       </TableHeader>
       <TableBody>

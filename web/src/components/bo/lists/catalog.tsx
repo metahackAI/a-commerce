@@ -28,7 +28,7 @@ export function ProductList({items, names = {}}: {items: ProductGroupSummary[]; 
         term: 'schema:ProductGroup',
       })}
       columns={[
-        {header: 'Product', cell: r => <RecordCell href={`/bo/products/${encodeURIComponent(r.id)}`} name={r.name} id={r.id} />},
+        {header: 'Product', width: '30%', cell: r => <RecordCell href={`/bo/products/${encodeURIComponent(r.id)}`} name={r.name} id={r.id} image={r.image ?? null} />},
         {header: 'Approval', cell: r => (r.approval_status ? <StateToken state={r.approval_status} /> : <Text color="secondary">—</Text>)},
         {header: 'Availability', cell: r => (r.availability ? <StateToken state={r.availability} /> : <Text color="secondary">—</Text>)},
         {header: 'List price', cell: r => <Figure>{price(r.price, r.price_currency)}</Figure>},

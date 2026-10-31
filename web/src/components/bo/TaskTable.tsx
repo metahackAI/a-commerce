@@ -4,6 +4,7 @@
 // working, done. Each row is an AI target; its change set shows how far it got. Dismiss and undo
 // are a person's decisions and go through PersonButton.
 
+import {Fragment} from 'react';
 import {useRouter} from 'next/navigation';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
 import {Text} from '@astryxdesign/core/Text';
@@ -12,6 +13,7 @@ import {Button} from '@astryxdesign/core/Button';
 import {StatusDot} from '@astryxdesign/core/StatusDot';
 import {EmptyState} from '@astryxdesign/core/EmptyState';
 import {Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow} from '@astryxdesign/core/Table';
+import {VisuallyHidden} from '@astryxdesign/core/VisuallyHidden';
 
 import {PersonButton} from '@/components/PersonButton';
 import {dateTime, words} from '@/app/bo/_lib/format';
@@ -20,7 +22,7 @@ import type {ChangeSet, TaskState, TaskSummary} from '@/app/bo/_lib/types';
 import {useBoSession} from './BoSession';
 import {StateToken} from './StateToken';
 import type {IntentsFor as IntentsLookup} from './ChangeParts';
-import {TargetBlock, TargetRow} from './targets';
+import {AskHeaderCell, TargetBlock, TargetRow} from './targets';
 
 export const TASK_GROUPS: {state: TaskState; title: string; empty: string}[] = [
   {state: 'needs_you', title: 'Needs your decision', empty: 'Nothing is waiting for you.'},
@@ -36,7 +38,8 @@ export function dot(state: string) {
     case 'needs_you':
       return <StatusDot variant="warning" label="Needs you" />;
     case 'working':
-      return <StatusDot variant="accent" label="Working" isPulsing />;
+      // Neutral, not the brand's red accent: working is activity, not an alarm.
+      return <StatusDot variant="neutral" label="Working" isPulsing />;
     case 'done':
       return <StatusDot variant="success" label="Done" />;
     default:
@@ -62,7 +65,7 @@ function changeSetLine(cs: Pick<ChangeSet, 'number' | 'state' | 'version' | 'che
   if (!cs) return null;
   const checks = cs.checks_summary;
   return (
-    <HStack gap={1} vAlign="center" wrap="wrap">
+    <HStack gap={3} vAlign="center" wrap="wrap">
       <StateToken state={cs.state} />
       {checks && checks.total > 0 ? (
         <StateToken
@@ -101,7 +104,6 @@ function TaskRow({task, cs, blockId, intents}: {task: TaskSummary; cs?: ChangeSe
         blockId,
       }}
       intents={intents}>
-      <TableCell>{dot(task.state)}</TableCell>
       <TableCell>
         <VStack gap={0.5}>
           <Link href={`/bo/tasks/${encodeURIComponent(task.id)}`} color="primary">
@@ -123,8 +125,8 @@ function TaskRow({task, cs, blockId, intents}: {task: TaskSummary; cs?: ChangeSe
           {changeSetLine(cs)}
         </VStack>
       </TableCell>
-      <TableCell>
-        <HStack gap={1} hAlign="end" wrap="wrap">
+      <TableCell style={{maxWidth: 'none'}}>
+        <HStack gap={1} hAlign="end">
           {review ? (
             <Button label="Review" size="sm" href={`/bo/change-sets/${encodeURIComponent(task.change_set_id ?? '')}`} />
           ) : task.change_set_id ? (
@@ -141,6 +143,7 @@ function TaskRow({task, cs, blockId, intents}: {task: TaskSummary; cs?: ChangeSe
                 confirm: `Undo every change of #${cs.number} in reverse order?${cs.undo_until ? ` Undo is open until ${dateTime(cs.undo_until)}.` : ''}`,
               }}
               variant="secondary"
+              size="sm"
               onDone={() => router.refresh()}
             />
           ) : null}
@@ -153,6 +156,7 @@ function TaskRow({task, cs, blockId, intents}: {task: TaskSummary; cs?: ChangeSe
                 confirm: `Dismiss “${task.title}”? A linked change set that is still waiting is rejected too. If the same thing happens again, a new task appears.`,
               }}
               variant="secondary"
+              size="sm"
               onDone={() => router.refresh()}
             />
           ) : null}
@@ -162,47 +166,14 @@ function TaskRow({task, cs, blockId, intents}: {task: TaskSummary; cs?: ChangeSe
   );
 }
 
-/** One group of tasks as a table. */
-export function TaskTable({tasks, changeSets, blockId, intentsFor}: TaskTableProps) {
-  return (
-    <Table density="compact" verticalAlign="top" hasHover>
-      <TableHeader>
-        <TableRow isHeaderRow>
-          <TableHeaderCell>
-            <Text type="supporting" color="secondary">
-              State
-            </Text>
-          </TableHeaderCell>
-          <TableHeaderCell>Task</TableHeaderCell>
-          <TableHeaderCell>Where it is</TableHeaderCell>
-          <TableHeaderCell>
-            <Text type="supporting" color="secondary">
-              Actions
-            </Text>
-          </TableHeaderCell>
-          <TableHeaderCell>
-            <Text type="supporting" color="secondary">
-              Ask
-            </Text>
-          </TableHeaderCell>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {tasks.map(t => (
-          <TaskRow
-            key={t.id}
-            task={t}
-            cs={t.change_set_id ? changeSets[t.change_set_id] : undefined}
-            blockId={blockId}
-            intents={intentsFor?.('task_item', t.id)}
-          />
-        ))}
-      </TableBody>
-    </Table>
-  );
-}
+/** Shrink a column to its content (the buttons), so the text columns get the width. */
+const FIT = {width: '1%'} as const;
 
-/** Tasks in their groups, each with a heading and a count. */
+/**
+ * Tasks in their groups, as one table so the columns line up from group to group: each group is
+ * a row with its name and count, then its tasks (as Linear groups a list by status). The group
+ * says the tasks' state, so the rows don't repeat it.
+ */
 export function TaskGroups({
   tasks,
   changeSets,
@@ -214,30 +185,55 @@ export function TaskGroups({
     return <EmptyState title="No tasks" description="Tasks appear when you ask the agent for something, or when it notices something that needs you." />;
   }
   return (
-    <VStack gap={6}>
-      {TASK_GROUPS.filter(g => states.includes(g.state)).map(g => {
-        const group = tasks.filter(t => t.state === g.state);
-        return (
-          <VStack key={g.state} gap={2}>
-            <HStack gap={2} vAlign="center">
-              <Text type="label" weight="semibold">
-                {g.title}
-              </Text>
-              <Text type="supporting" color="secondary">
-                {group.length}
-              </Text>
-            </HStack>
-            {group.length === 0 ? (
-              <Text type="supporting" color="secondary">
-                {g.empty}
-              </Text>
-            ) : (
-              <TaskTable tasks={group} changeSets={changeSets} blockId={blockId} intentsFor={intentsFor} />
-            )}
-          </VStack>
-        );
-      })}
-    </VStack>
+    <Table density="compact" verticalAlign="top" hasHover>
+      <TableHeader>
+        <TableRow isHeaderRow>
+          <TableHeaderCell style={{width: '50%'}}>Task</TableHeaderCell>
+          <TableHeaderCell style={{width: '50%'}}>Where it is</TableHeaderCell>
+          <TableHeaderCell style={FIT}>
+            <VisuallyHidden>Actions</VisuallyHidden>
+          </TableHeaderCell>
+          <AskHeaderCell />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {TASK_GROUPS.filter(g => states.includes(g.state)).map(g => {
+          const group = tasks.filter(t => t.state === g.state);
+          return (
+            <Fragment key={g.state}>
+              <TableRow>
+                <TableCell colSpan={4}>
+                  <VStack gap={0.5} paddingBlockStart={2}>
+                    <HStack gap={2} vAlign="center">
+                      <Text type="label" weight="semibold">
+                        {g.title}
+                      </Text>
+                      <Text type="supporting" color="secondary">
+                        {group.length}
+                      </Text>
+                    </HStack>
+                    {group.length === 0 ? (
+                      <Text type="supporting" color="secondary">
+                        {g.empty}
+                      </Text>
+                    ) : null}
+                  </VStack>
+                </TableCell>
+              </TableRow>
+              {group.map(t => (
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  cs={t.change_set_id ? changeSets[t.change_set_id] : undefined}
+                  blockId={blockId}
+                  intents={intentsFor?.('task_item', t.id)}
+                />
+              ))}
+            </Fragment>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }
 

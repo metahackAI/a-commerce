@@ -15,7 +15,7 @@ import {Icon} from '@astryxdesign/core/Icon';
 import {useAiTarget} from '@/ai/useAiTarget';
 import type {ProductDraftsBlockData} from '@/app/bo/_lib/blocks';
 import {count, money, value, words} from '@/app/bo/_lib/format';
-import {AskButton, SuggestedIntents} from '@/components/bo/targets';
+import {AskButton, SuggestedIntents, useAskReveal} from '@/components/bo/targets';
 
 import type {BlockProps} from '../types';
 import {BlockFrame, intentsLookup} from './parts';
@@ -37,9 +37,10 @@ function CheckLine({c, blockId, intents}: {c: DraftCheck; blockId: string; inten
     term: 'acom:Check',
     blockId,
   });
+  const reveal = useAskReveal();
   const icon = status === 'passed' ? 'success' : status === 'open' ? 'warning' : 'error';
   return (
-    <HStack ref={t.ref} {...t.props} gap={3} vAlign="start" paddingBlock={1}>
+    <HStack ref={t.ref} {...t.props} {...reveal.container} gap={3} vAlign="start" paddingBlock={1}>
       <Icon icon={icon} color={icon} size="sm" label={words(status)} />
       <StackItem size="fill">
         <VStack gap={0.5}>
@@ -57,7 +58,9 @@ function CheckLine({c, blockId, intents}: {c: DraftCheck; blockId: string; inten
           <SuggestedIntents intents={intents} target={t} />
         </VStack>
       </StackItem>
-      <AskButton target={t} label={c.label ?? words(c.rule)} />
+      <StackItem {...reveal.ask}>
+        <AskButton target={t} label={c.label ?? words(c.rule)} />
+      </StackItem>
     </HStack>
   );
 }
