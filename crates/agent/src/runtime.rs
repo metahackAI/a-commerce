@@ -11,7 +11,7 @@
 //! over the facade's manifest, where every call runs at once (reads and direct writes alike).
 //! The turn's stored usage records which tool set it used.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -53,15 +53,42 @@ fn without_echo(text: String, prompt: &str) -> Option<String> {
     }
 }
 
+/// The longest reply text the schema takes. A reply that reaches it was stopped there.
+const REPLY_MAX_CHARS: usize = 600;
+
 /// The reply's shape: two or three sentences in one field.
 fn reply_schema() -> Value {
     json!({"type": "object", "additionalProperties": false, "required": ["text"],
-           "properties": {"text": {"type": "string", "maxLength": 600,
+           "properties": {"text": {"type": "string", "maxLength": REPLY_MAX_CHARS,
                                    "description": "Two or three plain sentences for the person."}}})
+}
+
+/// A reply the model wrote, and whether a length limit stopped it before it finished.
+struct ReplyDraft {
+    text: String,
+    cut: bool,
+}
+
+impl ReplyDraft {
+    /// The text to show: all of it, or up to its last finished sentence when it was cut.
+    fn finished(self) -> Option<String> {
+        if self.cut {
+            checker::whole_sentences(&self.text)
+        } else {
+            Some(self.text)
+        }
+    }
 }
 
 /// What a turn says when no model answers at all: the pages still work without the assistant.
 const MODEL_DOWN: &str = "The assistant's model is not answering right now, so I can't do this yet. Everything on the pages still works; please try again in a few minutes.";
+
+/// What the reply model is told when its reply was cut at the length limit.
+const CUT_REPLY: &str = "That was cut off at the length limit. Write it again in two or three \
+short sentences; the blocks on screen show the details.";
+
+/// What the reply model is told when its reply named tools or result fields.
+const SYSTEM_WORDS: &str = "That names tools or result fields the person never sees";
 
 /// What the reply model is told when its reply repeated the request.
 const REPEATED_REQUEST: &str = "That repeats the request and describes the results instead of \
@@ -537,8 +564,8 @@ struct Turn<'r> {
     view: Option<ChangeSetView>,
     blocks: Vec<Block>,
     problems: Vec<String>,
-    /// Steps not called because what they build on came back empty.
-    skipped: Vec<String>,
+    /// Steps not called because what they build on came back empty: the tool and why.
+    skipped: Vec<(String, String)>,
 }
 
 impl<'r> Turn<'r> {
@@ -884,7 +911,7 @@ impl<'r> Turn<'r> {
         purpose: &str,
         prefer: &[&str],
         req: ChatRequest,
-    ) -> Option<String> {
+    ) -> Option<(String, bool)> {
         for model in self.models_for(prefer) {
             if self.usage.len() as u32 >= self.limits.model_calls || self.time_left().is_zero() {
                 return None;
@@ -906,7 +933,8 @@ impl<'r> Turn<'r> {
             if let Ok(r) = res
                 && !r.text.trim().is_empty()
             {
-                return Some(r.text.trim().to_owned());
+                let stopped = r.finish_reason.as_deref() == Some("length");
+                return Some((r.text.trim().to_owned(), stopped));
             }
         }
         None
@@ -1453,8 +1481,8 @@ impl<'r> Turn<'r> {
                     // The result it builds on says there is nothing to do: not called, not
                     // made up by a model either. The reply says so.
                     if let Some(why) = bound.empty {
-                        self.skipped
-                            .push(format!("{} was not called: {why}.", tool.tool));
+                        let note = format!("{} was not called: {why}.", tool.tool);
+                        self.skipped.push((tool.tool.clone(), note));
                         continue;
                     }
                     let mut input = bound.input;
@@ -2845,7 +2873,7 @@ impl<'r> Turn<'r> {
             })
             .collect();
         json!({"request": self.text, "change_set": cs, "reads": reads, "saved": saved, "blocks_shown": blocks,
-               "problems": self.problems, "not_called": self.skipped,
+               "problems": self.problems, "not_called": self.skipped.iter().map(|(_, note)| note).collect::<Vec<_>>(),
                "interpretation": self.plan.as_ref().map(|p| p.interpretation.iter().map(|u| u.text.clone()).collect::<Vec<_>>())})
     }
 
@@ -2953,14 +2981,38 @@ impl<'r> Turn<'r> {
     }
 
     /// The reply's text: the `text` of the structured answer, or the answer itself when a model
-    /// wrote plain text.
-    async fn reply_text(&mut self, worker: &str, req: ChatRequest) -> Option<String> {
-        let raw = self.model_text("reply", &[worker], req).await?;
-        let text = acom_llm::parse::extract_json(&raw)
-            .and_then(|v| v.get("text").and_then(Value::as_str).map(str::to_owned))
-            .unwrap_or(raw);
-        let text = text.trim();
-        (!text.is_empty()).then(|| text.to_owned())
+    /// wrote plain text, without any copy of its instructions. A structured answer stopped
+    /// before its closing brace (the token limit, or the schema's `maxLength` closing the string)
+    /// still gives its text, marked cut, never the raw JSON.
+    async fn reply_text(
+        &mut self,
+        worker: &str,
+        req: ChatRequest,
+        prompt: &str,
+    ) -> Option<ReplyDraft> {
+        let (raw, stopped) = self.model_text("reply", &[worker], req).await?;
+        let parsed = acom_llm::parse::extract_json(&raw)
+            .and_then(|v| v.get("text").and_then(Value::as_str).map(str::to_owned));
+        let (text, cut) = match parsed {
+            Some(t) => {
+                let full = t.chars().count() >= REPLY_MAX_CHARS;
+                (t, stopped || full)
+            }
+            None => match checker::text_of_cut_reply(&raw) {
+                Some(t) => (t, true),
+                None => (raw, stopped),
+            },
+        };
+        let text = without_echo(text.trim().to_owned(), prompt)?;
+        Some(ReplyDraft { text, cut })
+    }
+
+    /// Marks the last model call as turned down by a reply check.
+    fn reject_last_call(&mut self, why: &str) {
+        if let Some(last) = self.usage.last_mut() {
+            last.succeeded = false;
+            last.error = Some(why.to_owned());
+        }
     }
 
     async fn reply(&mut self) -> String {
@@ -2986,20 +3038,43 @@ impl<'r> Turn<'r> {
         .json("reply", reply_schema())
         .max_tokens(500);
         let worker = self.worker().to_owned();
-        let Some(mut text) = self
-            .reply_text(&worker, req.clone())
-            .await
-            .and_then(|t| without_echo(t, &prompt))
-        else {
+        let Some(mut draft) = self.reply_text(&worker, req.clone(), &prompt).await else {
             return fallback;
         };
+        // A reply the length limit stopped ends mid-sentence: ask once for a shorter one, else
+        // keep its finished sentences.
+        if draft.cut {
+            self.reject_last_call("the reply was cut at the length limit");
+            self.log_rejected_reply(
+                "Checking the reply fits the length limit",
+                "The reply was cut at the length limit".into(),
+                json!({"reply": draft.text}),
+            )
+            .await;
+            let retried = if self.usage.len() < self.limits.model_calls as usize {
+                let mut again = req.clone();
+                again.messages.push(Message::assistant(draft.text.clone()));
+                again.messages.push(Message::user(CUT_REPLY));
+                self.reply_text(&worker, again, &prompt).await
+            } else {
+                None
+            };
+            draft = match retried {
+                Some(d) if !d.cut => d,
+                other => {
+                    let shorter = other.and_then(ReplyDraft::finished);
+                    match shorter.or_else(|| checker::whole_sentences(&draft.text)) {
+                        Some(text) => ReplyDraft { text, cut: false },
+                        None => return fallback,
+                    }
+                }
+            };
+        }
+        let mut text = draft.text;
         // A reply that repeats the request is the model thinking aloud: ask once for the answer
         // itself, else fall back to the plain reply.
         if checker::repeats_request(&text, &self.text) {
-            if let Some(last) = self.usage.last_mut() {
-                last.succeeded = false;
-                last.error = Some("the reply repeated the request".into());
-            }
+            self.reject_last_call("the reply repeated the request");
             self.log_rejected_reply(
                 "Checking the reply answers instead of repeating the request",
                 "The reply repeated the request".into(),
@@ -3013,12 +3088,50 @@ impl<'r> Turn<'r> {
             again.messages.push(Message::assistant(text.clone()));
             again.messages.push(Message::user(REPEATED_REQUEST));
             match self
-                .reply_text(&worker, again)
+                .reply_text(&worker, again, &prompt)
                 .await
-                .and_then(|t| without_echo(t, &prompt))
+                .and_then(ReplyDraft::finished)
             {
                 Some(t) if !checker::repeats_request(&t, &self.text) => text = t,
                 _ => return fallback,
+            }
+        }
+        // Tool and field names mean nothing to the person: ask once for plain words, and keep
+        // whichever reply names fewer of them.
+        let mut names: BTreeSet<String> = self
+            .history
+            .iter()
+            .map(|r| r.tool.clone())
+            .chain(self.skipped.iter().map(|(tool, _)| tool.clone()))
+            .collect();
+        for r in &self.history {
+            if let Some(out) = &r.output {
+                checker::field_names(out, &mut names);
+            }
+        }
+        let named = checker::system_words(&text, &self.text, &names);
+        if !named.is_empty() && self.usage.len() < self.limits.model_calls as usize {
+            self.reject_last_call("the reply named tools or fields");
+            self.log_rejected_reply(
+                "Checking the reply speaks in the store's words",
+                format!("Tool or field names in the reply: {}", named.join(", ")),
+                json!({"reply": text, "names": named}),
+            )
+            .await;
+            let mut again = req.clone();
+            again.messages.push(Message::assistant(text.clone()));
+            again.messages.push(Message::user(format!(
+                "{SYSTEM_WORDS}: {}. Write it again for the person in plain words, two or three \
+                 sentences: what it means for the store, not which tool or field said it.",
+                named.join(", ")
+            )));
+            if let Some(t) = self
+                .reply_text(&worker, again, &prompt)
+                .await
+                .and_then(ReplyDraft::finished)
+                && checker::system_words(&t, &self.text, &names).len() < named.len()
+            {
+                text = t;
             }
         }
         // Owned copies: the retry below calls the model, which needs `self` mutably.
@@ -3055,9 +3168,9 @@ impl<'r> Turn<'r> {
                 unsupported.join(", ")
             )));
             if let Some(t) = self
-                .reply_text(&worker, again)
+                .reply_text(&worker, again, &prompt)
                 .await
-                .and_then(|t| without_echo(t, &prompt))
+                .and_then(ReplyDraft::finished)
             {
                 unsupported = checker::unsupported_numbers(&t, &sources, &[&asked]);
                 text = t;
