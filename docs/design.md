@@ -61,7 +61,7 @@ Every capability in A-Commerce is exposed as a tool that follows these rules. Co
 
 ## 4. Domain scope
 
-Written from scratch; the names and shapes are ours. The store has 13 domains with 290 tools (131 reads, 119 writes, 40 writes that always need a person) and 18 person-only endpoints, all built. The full hierarchy is in [api/](api/README.md) §4, and the code follows it: `domain.resource.operation` is `crates/domains/{domain}/src/{resource}/{tool}.rs` (`cargo xtask check-layout`, `cargo xtask check-coverage`).
+Written from scratch; the names and shapes are ours. The store has 13 domains with 291 tools (132 reads, 119 writes, 40 writes that always need a person) and 18 person-only endpoints, all built. The full hierarchy is in [api/](api/README.md) §4, and the code follows it: `domain.resource.operation` is `crates/domains/{domain}/src/{resource}/{tool}.rs` (`cargo xtask check-layout`, `cargo xtask check-coverage`).
 
 | Domain | Entities | Example tools |
 |---|---|---|

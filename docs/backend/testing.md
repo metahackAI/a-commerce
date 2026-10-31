@@ -16,7 +16,7 @@
 - 레지스트리 대조(`acom-registry`의 테스트, `cargo test`가 돌림): 등록된 오퍼레이션마다 툴 이름·주소·종류·REST 경로가 [../api/](../api/README.md)의 그 절과 같은지(`every_operation_matches_its_spec`), 사람 전용 엔드포인트가 `approval.yml` `person_only`에 있는지, 두 오퍼레이션이 같은 경로를 쓰지 않는지. 레지스트리는 만들 때 닫히지 않은 입력 스키마(추가 필드 허용, `$ref`·`anyOf`·`oneOf`)를 거부합니다.
 - 명세와 코드 검사(xtask, CI):
   - `cargo xtask check-docs`: [../api/README.md](../api/README.md) §4의 인덱스와 도메인 파일의 절이 같은 툴·같은 종류인지.
-  - `cargo xtask check-coverage`: 명세의 툴 290개와 사람 전용 엔드포인트 18개가 모두 만들어졌는지("every specified operation is built").
+  - `cargo xtask check-coverage`: 명세의 툴 291개와 사람 전용 엔드포인트 18개가 모두 만들어졌는지("every specified operation is built").
   - `cargo xtask check-layout`: 오퍼레이션마다 `{domain}/src/{resource}/{tool}.rs`에 있는지("layout follows domain/resource/tool").
 - 정책 파일 검사(`acom-policy`의 테스트): 기본 파일이 모두 읽히는지, 덮어쓰기가 깊게 병합되고 버전이 바뀌는지, 감시 작업 설정과 승인 기준을 읽는지.
 
