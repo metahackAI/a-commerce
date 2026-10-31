@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 
 use super::{comment_json, thread, visible_inquiry};
 use crate::INQUIRY_NOT_FOUND;
-use crate::access::only_fields;
+use acom_contract::fields;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -60,7 +60,7 @@ impl ReadOp<Cx> for GetInquiry {
             "resolution": r.resolution,
             "thread": comments.iter().map(|c| comment_json(cx, c)).collect::<Vec<_>>(),
         });
-        Ok(only_fields(out, &input.fields.unwrap_or_default()))
+        fields::keep(out, &input.fields.unwrap_or_default())
     }
 }
 

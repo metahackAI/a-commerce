@@ -1,7 +1,7 @@
 //! `get_product_group` (docs/api/catalog.md#product_group).
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_core::StoreTime;
 use acom_store::Cx;
@@ -13,7 +13,7 @@ use super::draft_json;
 use crate::model::{self, num};
 use crate::repo::{self, PendingRow};
 use crate::write::{self};
-use crate::{PRODUCT_NOT_FOUND, is_operator, neighbors, product_not_found, project, visible_group};
+use crate::{PRODUCT_NOT_FOUND, is_operator, neighbors, product_not_found, visible_group};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -141,6 +141,6 @@ impl ReadOp<Cx> for GetProductGroup {
         if let Some(d) = &draft {
             out["acom:draft"] = draft_json(d);
         }
-        Ok(project(out, &input.fields.unwrap_or_default()))
+        fields::keep(out, &input.fields.unwrap_or_default())
     }
 }

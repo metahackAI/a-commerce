@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use acom_contract::{
     ActionType, Audience, ErrorCode, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot,
-    ToolError,
+    ToolError, fields,
 };
 use acom_core::enums::CouponStatus;
 use acom_store::Cx;
@@ -14,7 +14,7 @@ use serde_json::{Value, json};
 
 use super::coupon_json;
 use crate::repo;
-use crate::{check_id, not_found, pick};
+use crate::{check_id, not_found};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -74,6 +74,6 @@ impl ReadOp<Cx> for GetCoupon {
         let mut out = coupon_json(cx, &c);
         out["records_benefit_only"] = json!(c.is_benefit_record_only);
         out["counts"] = Value::Object(counts);
-        Ok(pick(out, input.fields.as_deref()))
+        fields::keep(out, &input.fields.unwrap_or_default())
     }
 }

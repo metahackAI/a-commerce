@@ -2,10 +2,15 @@
 //! (`search.search_document`) when they have been built, else from the catalog text itself.
 
 use acom_contract::ToolError;
-use acom_store::TxCx;
+use acom_store::{StoreError, TxCx};
 
 use crate::INDEX_UNAVAILABLE;
 use crate::model::Doc;
+
+/// A database error outside the text search itself.
+pub fn db(e: sqlx::Error) -> ToolError {
+    ToolError::from(StoreError::from(e))
+}
 
 /// A failed text search means the index cannot answer; the caller can retry or check it.
 fn unavailable(e: sqlx::Error) -> ToolError {
@@ -27,7 +32,7 @@ pub async fn has_documents(tx: &mut TxCx) -> Result<bool, ToolError> {
         .map_err(unavailable)
 }
 
-/// What a text query ranks by (`ops::text_ranks`): the widened query (what matches at all), the
+/// What a text query ranks by (`product::text_ranks`): the widened query (what matches at all), the
 /// shopper's own words, and one query per word with its synonyms.
 #[derive(Debug, Clone, Copy)]
 pub struct Rank<'a> {
@@ -46,24 +51,27 @@ fn relevance(v: &str, q: &str, o: &str, c: &str) -> String {
 }
 
 /// Products whose search document matches the query, by relevance (`relevance`). Shoppers only
-/// match documents of active products.
+/// match documents of active products; the documents of `skip` (out of date) are left out.
 pub async fn rank_documents(
     tx: &mut TxCx,
     rank: &Rank<'_>,
     active_only: bool,
+    skip: &[String],
 ) -> Result<Vec<(String, f64)>, ToolError> {
     let score = relevance("d.search_vector", "$2", "$4", "$5");
     sqlx::query_as::<_, (String, f64)>(sqlx::AssertSqlSafe(format!(
         "SELECT d.product_group_id, {score}
          FROM search.search_document d
          WHERE d.tenant_id = $1 AND d.search_vector @@ to_tsquery('english', $2)
-           AND (NOT $3 OR d.approval_status = 'active')"
+           AND (NOT $3 OR d.approval_status = 'active')
+           AND NOT (d.product_group_id = ANY($6))"
     )))
     .bind(tx.tenant.as_str())
     .bind(rank.query)
     .bind(active_only)
     .bind(rank.own)
     .bind(rank.concepts)
+    .bind(skip)
     .fetch_all(&mut *tx.tx)
     .await
     .map_err(unavailable)

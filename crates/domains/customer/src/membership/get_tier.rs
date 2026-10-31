@@ -1,10 +1,10 @@
 //! `get_tier`.
 
 use super::{member_count, points_json, tier_not_found};
-use crate::access::only_fields;
 use crate::progress::{requirement_combine, requirement_list};
 use crate::service::providers::{self};
 use crate::{TIER_NOT_FOUND, repo};
+use acom_contract::fields;
 use acom_contract::{
     ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
 };
@@ -76,7 +76,7 @@ impl ReadOp<Cx> for GetTier {
                                           "active_coupons": r.active_coupons,
                                           "display_targeting": null});
         }
-        Ok(only_fields(out, &input.fields.unwrap_or_default()))
+        fields::keep(out, &input.fields.unwrap_or_default())
     }
 }
 

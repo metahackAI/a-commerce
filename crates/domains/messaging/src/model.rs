@@ -2,6 +2,8 @@
 //! shopper can be reached on a channel, the default subject line, how a recipient's name is
 //! masked in previews, and template variables (`messaging.template.variables_declared`).
 
+use std::collections::BTreeMap;
+
 use acom_policy::PolicySet;
 use chrono::NaiveTime;
 use serde_json::Value;
@@ -67,6 +69,45 @@ pub fn reachable(
         "push" | "in_app" => member_state == "active",
         _ => false,
     }
+}
+
+/// Whether a shopper may get a marketing message on `channel`: reachable on it, and an account
+/// that is neither blocked nor on its way out.
+pub fn marketing_reachable(
+    channel: &str,
+    email: Option<&str>,
+    telephone: Option<&str>,
+    member_state: &str,
+) -> bool {
+    !matches!(member_state, "blocked" | "pending_withdrawal")
+        && reachable(channel, email, telephone, member_state)
+}
+
+/// The variables a campaign fills for each shopper itself; every other variable of a template
+/// needs a value given with the campaign.
+pub const PER_SHOPPER_VARIABLES: [&str; 1] = ["customer_name"];
+
+/// A template text with its `{{name}}` variables replaced; a variable without a value stays as
+/// written.
+pub fn render(text: &str, values: &BTreeMap<String, String>) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(start) = rest.find("{{") {
+        out.push_str(&rest[..start]);
+        let after = &rest[start + 2..];
+        let Some(end) = after.find("}}") else {
+            out.push_str(&rest[start..]);
+            return out;
+        };
+        let name = after[..end].trim();
+        match values.get(name) {
+            Some(v) => out.push_str(v),
+            None => out.push_str(&rest[start..start + 2 + end + 2]),
+        }
+        rest = &after[end + 2..];
+    }
+    out.push_str(rest);
+    out
 }
 
 /// Channels that show a subject line.
@@ -226,5 +267,42 @@ mod tests {
             ["product_name", "size"]
         );
         assert!(undeclared(&["No variables here"], &declared).is_empty());
+    }
+
+    #[test]
+    fn campaign_texts_are_filled_per_shopper() {
+        let values = BTreeMap::from([
+            ("customer_name".to_owned(), "Jamie".to_owned()),
+            ("headline_item".to_owned(), "the wool overcoat".to_owned()),
+        ]);
+        assert_eq!(
+            render(
+                "Hi {{customer_name}}, see {{ headline_item }}. {{other}}",
+                &values
+            ),
+            "Hi Jamie, see the wool overcoat. {{other}}"
+        );
+        assert_eq!(
+            render("Broken {{customer_name", &values),
+            "Broken {{customer_name"
+        );
+        assert!(marketing_reachable(
+            "email",
+            Some("j@example.com"),
+            None,
+            "dormant"
+        ));
+        assert!(!marketing_reachable(
+            "email",
+            Some("j@example.com"),
+            None,
+            "blocked"
+        ));
+        assert!(!marketing_reachable(
+            "sms",
+            Some("j@example.com"),
+            None,
+            "active"
+        ));
     }
 }

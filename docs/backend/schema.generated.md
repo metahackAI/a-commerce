@@ -139,6 +139,21 @@
 | `revenue_currency` |  | ✓ | `acom:revenue` | ISO 4217 code of revenue_value. |
 | `order_count` |  | ✓ | `acom:orderCount` | number of orders placed that day that were paid and not cancelled. |
 
+### `analytics.inquiry_summary` (view)
+
+`schema:Observation/acom:InquirySummary` — one row per customer inquiry: the store day it came in, its type and state, when staff or the agent first answered and when it was resolved; never who asked or what they wrote.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` |  | ✓ | `-` | store (tenant) the inquiry belongs to. |
+| `inquiry_id` |  | ✓ | `acom:inquiryId` | the inquiry (inq_ id). |
+| `observation_date` |  | ✓ | `schema:observationDate` | calendar day in the store's time zone on which the inquiry came in. |
+| `inquiry_type` |  | ✓ | `acom:inquiryType` | what the inquiry is about. values: inquiry_type |
+| `inquiry_status` |  | ✓ | `acom:inquiryStatus` | where the inquiry is now. values: inquiry_status |
+| `date_received` |  | ✓ | `schema:dateReceived` | when the inquiry came in. |
+| `first_response_time` |  | ✓ | `acom:firstResponseTime` | when staff or the agent first wrote in the thread; NULL while nobody has. |
+| `resolved_at` |  | ✓ | `acom:resolvedAt` | when the inquiry was resolved; NULL while it is open. |
+
 ### `analytics.member_tier_count` (view)
 
 `schema:Observation/acom:TierCount` — members per tier now, leaving out blocked and withdrawn accounts.
@@ -1252,6 +1267,24 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `merchandising.cache_invalidation`
+
+`schema:Action/acom:CacheInvalidation` — a request to clear cached store pages after a display change; the store runs no display cache yet, so the request is recorded and clears nothing. id prefix cin_. · id `cin_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix cin_; the same value the API, logs and events use. |
+| `resource_type` | text |  | `acom:resourceType` | what kind of display content changed; all clears every page. values: cache_resource_type Values: `category` · `display_slot` · `banner` · `popup` · `collection_page` · `all`. |
+| `resource_id` | text | ✓ | `acom:resourceId` | the one item that changed (cat_, slot_, bnr_, pop_ or col_ id); NULL for every item of the kind. |
+| `page` | text[] |  | `acom:page` | store pages named in the request (main, category, product, search); empty when none was named. |
+| `cache_key` | text[] |  | `acom:cacheKey` | the cache keys the request covers, for example display_slot:slot_home_hero and page:main. |
+| `reason` | text | ✓ | `acom:reason` | why it was cleared, as the caller said. |
+| `start_time` | timestamptz |  | `schema:startTime` | when the clear ran, by the store clock; the hourly limit on all counts these. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `merchandising.category_mapping`
 
 `schema:Intangible/acom:CategoryMapping` — links a standard category to a display category, so the display tree shows the standard category's products. id prefix map_. · id `map_…`
@@ -1263,6 +1296,27 @@
 | `standard_category_id` | text |  | `acom:standardCategory` | the internal category whose products are shown (cat_ id, term set standard). → `merchandising.defined_term` |
 | `display_category_id` | text |  | `acom:displayCategory` | the shopper menu category that shows them (cat_ id, term set display). → `merchandising.defined_term` |
 | `is_primary` | boolean |  | `acom:isPrimary` | true for the one display category a standard category's product pages show as their path. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `merchandising.collection_page`
+
+`schema:CollectionPage` — a curated page of products in sections, published for one audience over a period. id prefix col_. API: collection_page_id. · id `col_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix col_; the same value the API, logs and events use. |
+| `name` | text |  | `schema:name` | page title shown to shoppers, for example Winter outerwear edit. |
+| `has_part` | jsonb |  | `schema:hasPart` | the sections in order, each an ItemList: [{name, item_list_element: [prd_ ids]}]. |
+| `valid_for_member_tier` | text | ✓ | `schema:validForMemberTier` | tier that sees the page; NULL means everyone (the reserved word everyone is never stored). → `customer.member_program_tier` |
+| `valid_from` | timestamptz | ✓ | `schema:validFrom` | first moment the page shows; set for good when it is published, tentative on a draft. |
+| `valid_through` | timestamptz | ✓ | `schema:validThrough` | last moment it shows (inclusive); NULL when open-ended or not set yet. |
+| `display_status` | text |  | `acom:displayStatus` | draft until published; after that computed from the period and the store clock, ended when taken down early. values: display_status Values: `draft` · `scheduled` · `active` · `ended`. |
+| `sales_channel` | text[] | ✓ | `acom:salesChannel` | channels the page shows on, every element a word from the list; NULL means every channel. values: sales_channel |
+| `banner_id` | text[] |  | `acom:bannerId` | banners linked to the page (bnr_ ids), in order; empty when none. |
+| `keywords` | text[] |  | `schema:keywords` | search words that lead to the page, for example winter coat. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
@@ -1305,6 +1359,8 @@
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `item_list_element` | jsonb | ✓ | `schema:itemListElement` | the slot items this booking shows, copied from the slot when booked: [{position, item_id}]; NULL when the booking shows a banner. |
+| `sales_channel` | text[] | ✓ | `acom:salesChannel` | channels the booking shows on, every element a word from the list; NULL means every channel. values: sales_channel |
 
 ### `merchandising.display_slot`
 
@@ -1319,6 +1375,28 @@
 | `slot_type` | text |  | `acom:slotType` | what kind of content the slot shows. values: slot_type Values: `hero` · `banner_board` · `product_grid` · `brand_strip` · `collection_feed`. |
 | `position` | integer |  | `schema:position` | order of the slot on its page, top first. |
 | `item_list_element` | jsonb |  | `schema:itemListElement` | default content: [{position, item_id}] with prd_, bnr_ or col_ ids. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `merchandising.popup`
+
+`schema:WebPageElement/acom:Popup` — a window that opens over store pages for a period, with a do-not-show-again choice. id prefix pop_. · id `pop_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix pop_; the same value the API, logs and events use. |
+| `name` | text |  | `schema:name` | popup name for operators, for example Holiday hours. |
+| `popup_type` | text |  | `acom:popupType` | what the popup is for. values: popup_type Values: `image` · `notice` · `event` · `consent`. |
+| `text` | text | ✓ | `schema:text` | the words the popup shows; NULL for a picture-only popup. |
+| `image` | text | ✓ | `schema:image` | URL of the picture the popup shows; NULL for a text-only popup. |
+| `url` | text | ✓ | `schema:url` | store path the popup opens when pressed, starting with /; NULL when it opens nothing. |
+| `page` | text[] |  | `acom:page` | pages the popup opens on, each main, category, product or search (list_display_slots page values). |
+| `priority` | integer |  | `acom:priority` | order among the popups of a page, 1 first; two popups that share a page and a moment never share a priority. |
+| `suppress_days` | integer | ✓ | `acom:suppressDays` | days a shopper who chose do-not-show-again does not see it; NULL offers no such choice. |
+| `valid_from` | timestamptz |  | `schema:validFrom` | first moment the popup opens. |
+| `valid_through` | timestamptz |  | `schema:validThrough` | last moment it opens (inclusive). |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
@@ -1351,7 +1429,7 @@
 | `name` | text |  | `schema:name` | name operators know the campaign by, for example Weekly email. |
 | `message_channel` | text |  | `acom:messageChannel` | channel it is sent on; the template must be written for the same channel. values: message_channel Values: `email` · `sms` · `push` · `in_app`. |
 | `template_id` | text | ✓ | `acom:templateId` | template the message is made from (tpl_ id); campaigns of one template are the same recurring send. → `messaging.message_template` |
-| `valid_for_member_tier` | text | ✓ | `schema:validForMemberTier` | tier the campaign goes to; NULL means every member who agreed to marketing messages. → `customer.member_program_tier` |
+| `valid_for_member_tier` | text | ✓ | `schema:validForMemberTier` | tier the campaign goes to; NULL when it goes to a segment, a list of shoppers, or every member who agreed to marketing messages. → `customer.member_program_tier` |
 | `campaign_status` | text |  | `acom:campaignStatus` | where the campaign is; failed means the send stopped before any message went out. values: campaign_status Values: `draft` · `scheduled` · `sending` · `sent` · `failed` · `cancelled`. |
 | `scheduled_time` | timestamptz | ✓ | `acom:scheduledTime` | when the send is due, on the store clock; NULL while a draft has no time. |
 | `date_sent` | timestamptz | ✓ | `schema:dateSent` | when the messages went out; NULL while not sent, and for failed and cancelled campaigns. |
@@ -1361,10 +1439,13 @@
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `segment_id` | text | ✓ | `acom:segmentId` | segment the campaign goes to (seg_ id); NULL unless it was set up for a segment. |
+| `recipient_ids` | text[] | ✓ | `schema:recipient` | shoppers the campaign goes to when it was set up for a list (cus_ ids); NULL otherwise. |
+| `variable_values` | jsonb | ✓ | `acom:variableValues` | values of the template variables that are the same for every shopper, as [{name, value}]; per-shopper ones (customer_name) are filled at sending. |
 
 ### `messaging.message`
 
-`schema:Message` — a transactional message to one shopper about an order or claim; a sent message cannot be taken back. id prefix msg_. · id `msg_…`
+`schema:Message` — a message to one shopper: a transactional one about an order or claim, or one shopper's copy of a campaign; a sent message cannot be taken back. id prefix msg_. · id `msg_…`
 
 | column | type | null | term | description |
 |---|---|:--:|---|---|
@@ -1372,7 +1453,7 @@
 | `id` | text |  | `-` | id with prefix msg_; the same value the API, logs and events use. |
 | `recipient_id` | text |  | `schema:recipient` | shopper the message goes to (cus_ id). → `customer.person` |
 | `about_id` | text | ✓ | `schema:about` | order or claim the message is about (ord_ or clm_ id). |
-| `message_kind` | text |  | `acom:messageKind` | what the message does. values: message_kind Values: `ask_for_photos` · `decline` · `refund_done` · `custom`. |
+| `message_kind` | text |  | `acom:messageKind` | what the message does. values: message_kind Values: `ask_for_photos` · `decline` · `refund_done` · `custom` · `campaign`. |
 | `message_channel` | text |  | `acom:messageChannel` | channel it is sent on. values: message_channel Values: `email` · `sms` · `push` · `in_app`. |
 | `headline` | text | ✓ | `schema:headline` | subject line for email and push. |
 | `text` | text |  | `schema:text` | body exactly as the shopper reads it, up to 2,000 characters. |
@@ -1384,6 +1465,7 @@
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `campaign_id` | text | ✓ | `acom:campaignId` | campaign this message is one shopper's copy of (cmp_ id); NULL for a transactional message. → `messaging.campaign` |
 
 ### `messaging.message_template`
 
@@ -2139,6 +2221,24 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `sales.guest_lookup`
+
+`-` — tries to open an order without signing in, by order number (verify_guest): wrong tries counted toward a lock, and the short-lived token the last right try was given, kept only as a hash. Unknown numbers are counted like known ones.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `order_number` | text |  | `-` | order number as tried (digits, without #), whether or not such an order exists. |
+| `failed_attempt_count` | integer |  | `-` | wrong tries since the last right one or since the lock lifted (order.yml guest_lookup.max_attempts). |
+| `first_failed_at` | timestamptz | ✓ | `-` | when the first of the counted wrong tries happened; NULL when none is counted. |
+| `locked_until` | timestamptz | ✓ | `-` | no try is checked before this time (order.yml guest_lookup.lock_minutes); NULL when not locked. |
+| `order_id` | text | ✓ | `-` | the order the last token opens (ord_ id); NULL before a right try. → `sales.sales_order` |
+| `token_hash` | text | ✓ | `-` | SHA-256 of the last token handed out; the token itself is shown once and never stored. |
+| `token_expires_at` | timestamptz | ✓ | `-` | when the last token stops opening the order (order.yml guest_lookup.token_ttl_seconds). |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change. |
+
 ### `sales.order_event`
 
 `schema:Action` — one state change of an order; rows are only added.
@@ -2209,6 +2309,25 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `sales.receipt`
+
+`schema:Invoice/acom:Receipt` — a receipt or tax document issued for a paid order; one live receipt per order and type. id prefix rct_. API: receipt_id. · id `rct_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix rct_; the same value the API, logs and events use. |
+| `order_id` | text |  | `schema:referencesOrder` | the order the receipt is for (ord_ id). → `sales.sales_order` |
+| `receipt_type` | text |  | `acom:receiptType` | what kind of document: deduction (income deduction), proof (proof of expense) or tax_invoice (needs the buyer's tax id). values: receipt_type Values: `deduction` · `proof` · `tax_invoice`. |
+| `tax_id` | text | ✓ | `schema:taxID` | the buyer's business tax id a tax invoice is made out to; NULL for other types. |
+| `total_payment_due_value` | numeric(12,2) |  | `schema:totalPaymentDue` | the amount the receipt states, the order's total when issued, in major units of the currency. |
+| `total_payment_due_currency` | char(3) |  | `schema:totalPaymentDue` | ISO 4217 code of total_payment_due_value. |
+| `issued_at` | timestamptz |  | `acom:issuedAt` | when the receipt was issued. |
+| `cancelled_at` | timestamptz | ✓ | `acom:cancelledAt` | when it was cancelled to be issued again for a changed amount (order.yml receipt.after_claim); NULL while it stands. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `sales.sales_order`
 
 `schema:Order` — an order a shopper placed; order_number is what people see. id prefix ord_. API: order_id. · id `ord_…`
@@ -2243,7 +2362,76 @@
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 | `campaign_id` | text | ✓ | `acom:campaignId` | campaign whose message the shopper followed to place the order (cmp_ id); NULL when the order came from anywhere else. → `messaging.campaign` |
 
+### `sales.subscription`
+
+`schema:Order/acom:Subscription` — a standing order: the same lines ordered and charged to the saved card every billing cycle. id prefix sub_. API: subscription_id. · id `sub_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix sub_; the same value the API, logs and events use. |
+| `customer_id` | text |  | `schema:customer` | shopper who subscribed (cus_ id). → `customer.person` |
+| `subscription_status` | text |  | `acom:subscriptionStatus` | active orders every cycle, paused skips cycles until resumed, cancelled is final. values: subscription_status Values: `active` · `paused` · `cancelled`. |
+| `billing_cycle` | text |  | `acom:billingCycle` | how often an order is placed; the length of each cycle is order.yml subscription.cycle_length. values: billing_cycle Values: `every_week` · `every_2_weeks` · `every_month`. |
+| `next_charge_date` | date |  | `acom:nextChargeDate` | store-time day the next order is placed and charged. |
+| `ordered_item` | jsonb |  | `schema:orderedItem` | the lines every order repeats: [{variant_id, product_id, name, size, color, quantity, price: {value, currency}, discount: {value, currency}}], price per unit and discount per line. |
+| `order_delivery` | jsonb |  | `schema:orderDelivery` | where every order goes: {address_id (NULL for an address given for this subscription only), delivery_address: {name, street_address, address_locality, address_region, postal_code, address_country}, address_label}. |
+| `payment_method` | text |  | `schema:paymentMethod` | how every order is paid; a saved card (order.yml payment.subscription_card_only). values: payment_method Values: `credit_card` · `bank_transfer` · `virtual_account` · `loyalty_points` · `store_credit`. |
+| `card_last4` | text | ✓ | `acom:cardLast4` | last four digits of the card charged; NULL for other methods. |
+| `total_payment_due_value` | numeric(12,2) |  | `schema:totalPaymentDue` | what each order comes to: subtotal − subscription discounts + shipping, in major units of the currency. |
+| `total_payment_due_currency` | char(3) |  | `schema:totalPaymentDue` | ISO 4217 code of total_payment_due_value. |
+| `preview_id` | text | ✓ | `acom:previewId` | prepare_subscription preview the shopper confirmed (pv_ id); NULL for subscriptions made before previews. → `platform.preview` |
+| `paused_at` | timestamptz | ✓ | `acom:pausedAt` | when it was last paused; NULL when it never was. |
+| `cancelled_at` | timestamptz | ✓ | `acom:cancelledAt` | when it was cancelled; NULL while it runs or is paused. |
+| `cancel_reason_text` | text | ✓ | `acom:cancelReasonText` | why the shopper cancelled, in their words; NULL when not given. |
+| `created_at` | timestamptz |  | `-` | when the subscription started. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ## `search`
+
+### `search.lexicon`
+
+`schema:DefinedTermSet/acom:Lexicon` — one version of the store's search dictionary for one language: synonyms, new words and boost or exclude rules; a version takes effect when a reindex uses it. id prefix lex_. · id `lex_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix lex_; the same value the API, logs and events use. |
+| `in_language` | text |  | `schema:inLanguage` | language the dictionary is for, as a two- or three-letter code, for example en. |
+| `analyzer_version` | text |  | `acom:analyzerVersion` | version of the dictionary, v1 being the store policy's default; it goes up by one with every change. |
+| `synonyms` | jsonb |  | `acom:synonyms` | the whole synonym set, as [{terms, bidirectional}]; a one-way entry widens its first term to the others. |
+| `neologisms` | jsonb |  | `acom:neologisms` | new words and what they mean in common words, as [{surface, normalize}]. |
+| `boost_rules` | jsonb |  | `acom:boostRules` | words that raise products in the ranking or exclude them, as [{term, effect}]; an excluded word finds nothing. |
+| `agent_id` | text |  | `schema:agent` | who saved this version (adm_ or sys_ id). |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `search.reindex_job`
+
+`schema:UpdateAction/acom:ReindexJob` — one rebuild of the store's search documents, whole or only what changed, with the dictionary version it used; the documents switch over when it commits. id prefix rij_. · id `rij_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix rij_; the same value the API, logs and events use. |
+| `reindex_mode` | text |  | `acom:reindexMode` | full rebuilds every document; incremental only the products named, changed since a time, or out of date. values: reindex_mode Values: `full` · `incremental`. |
+| `in_language` | text |  | `schema:inLanguage` | language of the index, for example en. |
+| `analyzer_version` | text |  | `acom:analyzerVersion` | dictionary version the index uses from this job on (search.lexicon, or v1 for the policy default). |
+| `name` | text |  | `schema:name` | name of the index, after search.yml index.naming, for example products-store_northwind-en-v3. |
+| `product_group_ids` | text[] | ✓ | `schema:object` | products an incremental job was limited to (prd_ ids; API product_ids); NULL when not limited to a list. |
+| `changed_since` | timestamptz | ✓ | `acom:changedSince` | an incremental job rebuilt the products changed at or after this time; NULL when not limited by time. |
+| `action_status` | text |  | `schema:actionStatus` | active while it runs, then completed or failed. values: action_status Values: `potential` · `active` · `completed` · `failed`. |
+| `document_count` | integer |  | `acom:documentCount` | search documents written. |
+| `result` | jsonb | ✓ | `schema:result` | what the job reports besides the counts, for example that no embedding model is connected. |
+| `error` | jsonb | ✓ | `schema:error` | why the job failed, as {code, message}; NULL unless action_status is failed. |
+| `agent_id` | text |  | `schema:agent` | who ran it (adm_ or sys_ id). |
+| `start_time` | timestamptz |  | `schema:startTime` | when the job started. |
+| `end_time` | timestamptz | ✓ | `schema:endTime` | when it finished; NULL while it runs. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
 ### `search.search_document`
 

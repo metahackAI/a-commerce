@@ -18,10 +18,12 @@ acom-policy.workspace = true
 acom-promotion.workspace = true
 acom-store.workspace = true
 chrono.workspace = true
+rand = { workspace = true, features = ["std", "std_rng", "thread_rng"] }
 rust_decimal.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 sqlx.workspace = true
 tracing.workspace = true
 

@@ -1,13 +1,15 @@
 //! Readers that domains depending on `sales` install at start-up, so order reads can show their
 //! data without a dependency cycle. Fulfillment installs the delivery reader (`get_order` shows
-//! the parcel) and the claim reader (`get_order` shows cancel, return and exchange requests). A
-//! read whose reader is missing falls back to what the order recorded.
+//! the parcel), the claim reader (`get_order` shows cancel, return and exchange requests) and the
+//! area reader (`change_shipping_address` checks the new address's surcharge). A read whose
+//! reader is missing falls back to what the order recorded, or to the policy's default zone.
 
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::OnceLock;
 
 use acom_contract::ToolError;
+use acom_core::Money;
 use acom_store::TxCx;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
@@ -68,4 +70,29 @@ pub fn provide_claims(f: ClaimReader) {
 
 pub(crate) fn claims() -> Option<ClaimReader> {
     CLAIMS.get().copied()
+}
+
+/// The delivery area (shipping zone) an address is in, as `change_shipping_address` checks it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AreaFacts {
+    /// The zone's name ("Alaska and Hawaii").
+    pub name: String,
+    /// What the area adds to every parcel sent there.
+    pub surcharge: Money,
+}
+
+/// The area of an address in `country` (ISO 3166-1 alpha-2) and, when known, `region` (a state
+/// code); `None` when the store has saved no zone that covers it.
+pub type AreaReader =
+    for<'a> fn(&'a mut TxCx, &'a str, Option<&'a str>) -> Reading<'a, Option<AreaFacts>>;
+
+static AREAS: OnceLock<AreaReader> = OnceLock::new();
+
+/// Fulfillment installs this when it registers.
+pub fn provide_areas(f: AreaReader) {
+    let _ = AREAS.set(f);
+}
+
+pub(crate) fn areas() -> Option<AreaReader> {
+    AREAS.get().copied()
 }

@@ -25,7 +25,7 @@ pub fn tokens(query: &str) -> Vec<String> {
 
 /// A rough English stem, only to match a query word to a synonym group (`trips` → `trip`).
 /// The database's own stemmer does the real matching.
-fn stem(w: &str) -> &str {
+pub(crate) fn stem(w: &str) -> &str {
     for suffix in ["ing", "es", "s"] {
         if let Some(s) = w.strip_suffix(suffix)
             && s.len() >= 3

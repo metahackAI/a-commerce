@@ -202,8 +202,13 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `merchandising.category_mapping` | schema:Intangible/acom:CategoryMapping | `map` | 표준 → 전시 카테고리 |
 | `merchandising.display_slot` | schema:WebPageElement | `slot` | `slot_type`, 페이지 |
 | `merchandising.banner` | schema:CreativeWork/acom:Banner | `bnr` | `headline`, `alternative_headline`, `image`, `url` |
-| `merchandising.display_booking` | schema:Schedule/acom:DisplayBooking | `dsp` | 슬롯 × 대상 × 기간 |
+| `merchandising.display_booking` | schema:Schedule/acom:DisplayBooking | `dsp` | 슬롯 × 대상 × 기간. 슬롯 구성 예약은 `item_list_element` 사본과 `sales_channel` |
+| `merchandising.collection_page` | schema:CollectionPage | `col` | 기획전. 섹션은 `has_part`(jsonb), 상태 `display_status` |
+| `merchandising.popup` | schema:WebPageElement/acom:Popup | `pop` | `popup_type`, 페이지, 순위, "그만 보기" 일수, 기간 |
+| `merchandising.cache_invalidation` | schema:Action/acom:CacheInvalidation | `cin` | 전시 캐시 비우기 요청 기록(캐시가 아직 없어 기록만) |
 | `search.search_document` | - | — | §10 |
+| `search.lexicon` | schema:DefinedTermSet/acom:Lexicon | `lex` | 언어별 검색 사전의 버전(동의어·신조어·부스트/제외). `v1`은 정책 기본값, 재색인이 쓰면 적용 |
+| `search.reindex_job` | schema:UpdateAction/acom:ReindexJob | `rij` | 검색 문서 재작성 한 번(`full`/`incremental`), 쓴 사전 버전, 문서 수 |
 | `promotion.promotion` | schema:OfferCatalog/acom:Promotion | `promo` | 상태, 기간, 대상 등급 |
 | `promotion.unit_price_specification` | schema:UnitPriceSpecification | `ups` | 회원가·기간가 |
 | `promotion.coupon` | schema:Offer/acom:Coupon | `cpn` | `code`, 적용 방식, 중복 규칙 |
@@ -225,6 +230,9 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `sales.order_item` | schema:OrderItem | `oln` | `order_item_status`, `order_quantity`, `acom:fulfillment_stage` |
 | `sales.payment` | schema:PayAction | `pay` | `payment_method`, `payment_status` |
 | `sales.order_event` | schema:Action | — | |
+| `sales.subscription` | schema:Order/acom:Subscription | `sub` | 정기 주문: `subscription_status`, `billing_cycle`, `next_charge_date`, 줄(`ordered_item`)과 배송지(`order_delivery`)는 jsonb |
+| `sales.receipt` | schema:Invoice/acom:Receipt | `rct` | `receipt_type`, `tax_id`, 주문·종류마다 취소되지 않은 것 하나 |
+| `sales.guest_lookup` | - | — | `verify_guest`의 주문 번호별 틀린 시도·잠금·토큰 해시 |
 | `fulfillment.parcel_delivery` | schema:ParcelDelivery | `dlv` | `delivery_state`, `expected_arrival_until`, `tracking_number` |
 | `fulfillment.claim` | schema:ReturnAction/acom:Claim (취소는 CancelAction) | `clm` | `claim_type`, `claim_status`, `claim_reason`, `liability` |
 | `fulfillment.claim_item` | schema:OrderItem | — | 클레임 하나가 여러 주문 품목을 담을 때(#20377) 품목별 수량·사유·환불 예상액 |
@@ -232,11 +240,12 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `fulfillment.inspection` | schema:CheckAction | `ins` | `inspection_condition` |
 | `fulfillment.refund` | schema:MoneyTransfer/acom:Refund | `rfd` | `refund_status`, `refund_method`, `amount_value`·`amount_currency` |
 | `messaging.message` | schema:Message | `msg` | `recipient_id`, `text`, `message_channel`, `about_id` |
-| `messaging.campaign` | schema:CreativeWork/acom:Campaign | `cmp` | `campaign_status`(`failed` 포함), `scheduled_time`, `date_sent`, `error`. 주문은 `sales_order.campaign_id`로 자기를 데려온 캠페인을 가리킴 |
+| `messaging.campaign` | schema:CreativeWork/acom:Campaign | `cmp` | `campaign_status`(`failed` 포함), `scheduled_time`, `date_sent`, `error`, 대상(`valid_for_member_tier`·`segment_id`·`recipient_ids`), `variable_values`. 고객별 메시지는 `messaging.message.campaign_id`(`message_kind: campaign`). 주문은 `sales_order.campaign_id`로 자기를 데려온 캠페인을 가리킴 |
 | `analytics.daily_sales` | - (뷰) | — | 일별 매출·주문 수 |
 | `analytics.order_summary`, `analytics.order_line_summary` | - (뷰) | — | 주문·주문 줄 하나에 한 행: 날짜, 상태, 등급, 캠페인, 금액. 누가 샀는지는 없음 |
 | `analytics.variant_stock_out`, `analytics.campaign_send` | - (뷰) | — | 지금 품절인 변형과 품절 시각, 캠페인 발송 여부·실패 이유 |
 | `analytics.member_tier_count`, `analytics.daily_new_members` | - (뷰) | — | 등급별 회원 수, 일별 신규 가입 수 |
+| `analytics.inquiry_summary` | - (뷰) | — | 고객 문의 하나에 한 행: 들어온 날, 종류, 상태, 첫 답 시각, 해결 시각. 누가 무엇을 물었는지는 없음 |
 | `partner.seller` | schema:Organization/acom:Seller | `slr` | `legal_name`, `tax_id`(운영자에게 가림), `seller_status`, `seller_type`, 판매사 조직 `organization_id` |
 | `partner.seller_event` | schema:Action | — | 상태 전이와 사유. 나중으로 예약한 전이는 `potential`로 기다림 |
 | `partner.seller_product_group` | acom:SellerProduct | — | 판매자 ↔ 상품, 정지로 숨긴 시각 `hidden_at` |

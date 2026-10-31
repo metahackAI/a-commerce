@@ -773,6 +773,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 |---|---|---|
 | `promotion.start`, `promotion.end` | promotion | `payload {promotion_id}`. 상태는 읽을 때마다 기간과 스토어 시계로 계산되므로 동작은 바뀌지 않습니다. 그 시각에 읽기가 보여 주는 상태(`running`, `ended`)를 `promotion_status`에 기록하고, 바뀌었으면 outbox에 `promotion.started`·`promotion.ended`(`{promotion_id, status, at}`)를 남깁니다. 멈춘·초안·끝난 프로모션은 그대로 둡니다 |
 | `watcher.returns_over_refund_threshold` | fulfillment | [task](#task)의 감시 작업. `claim_status`가 `requested`이고 금액이 `approval.thresholds.refund`를 넘는 반품 요청 |
+| `subscription.renew` | sales | `payload {subscription_id, charge_date}`. 결제일 0시(스토어 시간대)에 정기 주문의 회차 주문을 만들고 저장된 카드로 결제한 뒤 다음 결제일(`order.yml` `subscription.cycle_length`)의 작업을 예약합니다. 멈춘·해지된 구독, 날짜가 바뀐 구독은 건너뜁니다([sales.md](sales.md#예약-작업-subscriptionrenew)) |
 | `watcher.stock_out_forecast` | sales(재고는 catalog) | 오늘을 뺀 최근 `lookback_days`일(스토어 날짜)의 판매량(취소 줄 제외)으로 `재고 × 일수 ≤ days_until_stockout_lte × 판매량`인 상품 |
 | `watcher.price_below_cost` | catalog | 정가 < 원가인 변형. 고침은 `price_floor`까지 `set_price` |
 

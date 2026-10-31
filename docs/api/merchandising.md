@@ -143,11 +143,12 @@
 - 논리주소/REST: `merchandising.display_slot.arrange` · `PUT /v1/merchandising/display-slots/{slot_id}/items`
 - 요약: 슬롯 구성(`item_list_element`)을 더하고 빼고 순서를 바꿉니다. 기간과 대상은 건드리지 않습니다(그것은 `schedule_display`). 공개를 바꾸지 않으므로 `W`.
 - consumes → produces: `slot_id`, `product_id[]` → `slot_id`
-- 입력: `slot_id`, `item_list_element`(`{position, item_id}` 배열, `item_id`는 `prd_`·`bnr_`·`col_`), `slot_type?`(`hero` | `banner_board` | `product_grid` | `brand_strip` | `collection_feed`)
+- 입력: `slot_id`, `item_list_element`(`{position, item_id}` 배열, `item_id`는 `prd_`·`bnr_`·`col_`, 브랜드 띠는 `brn_`. 빠진 항목은 슬롯에서 뺌), `slot_type?`(`hero` | `banner_board` | `product_grid` | `brand_strip` | `collection_feed`. 호출자가 기대하는 슬롯 종류이고, 슬롯이 다른 종류면 아무것도 바꾸지 않고 `slot_type_mismatch`. 슬롯 종류를 바꾸지 않음)
+- 슬롯 종류마다 담을 수 있는 항목은 [merchandising.yml](../../policies/merchandising.yml) `display.slot_items`(예 `product_grid`는 상품만, `brand_strip`은 브랜드만)이고, 어기면 `slot_type_mismatch`입니다.
 - 출력: 프리뷰 형식 → 실행 `{ok, id, undo}`
-- 프리뷰: `changes`=`update` `display_slot`. checks `display.max_items_per_slot`, `display.exclude_discontinued`. `needs_approval: false`.
-- 정책: [merchandising.yml](../../policies/merchandising.yml) `display.max_items_per_slot`, `display.exclude_discontinued`
-- 에러: `item_discontinued` → `search_products` · `duplicate_position` → `arrange_display_slot` · `slot_type_mismatch` → `get_display_slot`
+- 프리뷰: `changes`=`update` `display_slot`(`to.hidden_items`: 지금 품절·판매 불가로 숨겨질 상품). checks `display.max_items_per_slot`, `display.exclude_discontinued`. `needs_approval: false`.
+- 정책: [merchandising.yml](../../policies/merchandising.yml) `display.max_items_per_slot`, `display.exclude_discontinued`, `display.slot_items`
+- 에러: `item_discontinued` → `search_products` · `duplicate_position` → `arrange_display_slot` · `slot_type_mismatch` → `get_display_slot` · `slot_not_found` → `list_display_slots` · `not_found`(`detail.entity`: `product`·`banner`·`collection_page`·`brand`) → `search_products`
 - 멱등성: `Idempotency-Key`. 같은 구성은 다시 적용해도 변경 없음
 
 ### `schedule_display` — Kind: W$
@@ -163,9 +164,10 @@
   | valid_through | DateTime | ✓ | 포함, 분 단위. 예 `"2026-11-20T23:59:00-05:00"` |
   | channels | enum[] | | 판매 채널 `web` \| `mobile_web` \| `app`. 기본 전부 |
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "dsp_denim_bundle", undo: {by: "person", target: "cs_1047", until: "2026-11-21T23:59:00-05:00"}}`
-- 프리뷰: `changes`=`schedule` `display_booking`(`id: null`). checks `slot_free`, `display.start_not_in_past`, `display.exclude_discontinued`; `detail`에 숨겨질 품절 항목 수. 항상 `needs_approval: true`, 예 `approval_reason: "Shows on the main page to everyone"`.
+- 프리뷰: `changes`=`schedule` `display_booking`(`id: null`, `to.item_list_element`는 예약할 슬롯 구성). checks `slot_free`, `display.start_not_in_past`, `display.exclude_discontinued`; `detail`에 숨겨질 품절 항목 수. 항상 `needs_approval: true`, 예 `approval_reason: "Shows on the main page to everyone"`.
+- 예약은 그때의 슬롯 구성을 복사해 둡니다(`display_booking.item_list_element`). 그래서 나중에 `arrange_display_slot`으로 슬롯을 바꿔도 승인된 예약이 보여 주는 것은 바뀌지 않고, `get_display_slot`·`list_display_slots`의 예약에 `item_list_element`와 `channels`가 붙습니다.
 - 정책: [merchandising.yml](../../policies/merchandising.yml) `slot_free`, `display.start_not_in_past`, `display.exclude_discontinued`, `reaches_customers`; [approval.yml](../../policies/approval.yml) `thresholds.display_schedule`
-- 에러: `slot_taken`(policy_violation, `detail.rule: slot_free`) → `list_display_slots` · `valid_from_in_past` → `schedule_display` · `empty_slot` → `arrange_display_slot` · `tier_not_found` → `list_tiers`
+- 에러: `slot_taken`(policy_violation, `detail.rule: slot_free`) → `list_display_slots` · `valid_from_in_past` → `schedule_display` · `invalid_period` → `schedule_display` · `empty_slot` → `arrange_display_slot` · `item_discontinued`(실행 때 단종된 상품) → `arrange_display_slot` · `slot_not_found` → `list_display_slots` · `tier_not_found` → `list_tiers`
 - 멱등성: `Idempotency-Key = hash(slot_id + audience + valid_from + valid_through)`
 
 ---
@@ -247,8 +249,9 @@
 - 논리주소/REST: `merchandising.popup.list` · `GET /v1/merchandising/popups`
 - 요약: 팝업 목록(종류·대상 화면·우선순위·기간).
 - consumes → produces: → `popup_id[]`
-- 입력: `popup_type?`(`image` | `notice` | `event` | `consent`), `page?`, `as_of?`(DateTime), `limit?`(기본 20), `cursor?`
-- 출력: `{items: [{id: "pop_holiday_hours", popup_type: "notice", pages: ["main"], priority: 1, suppress_days: 1, valid_from: "2026-12-20T00:00:00-05:00", valid_through: "2026-12-26T23:59:00-05:00"}], total: 2}`
+- 입력: `popup_type?`(`image` | `notice` | `event` | `consent`), `page?`, `as_of?`(DateTime, 그 시각에 열리는 것만. 운영자만), `limit?`(기본 20), `cursor?`
+- 출력: `{items: [{id: "pop_holiday_hours", name: "Holiday hours", popup_type: "notice", pages: ["main"], priority: 1, suppress_days: 1, valid_from: "2026-12-20T00:00:00-05:00", valid_through: "2026-12-26T23:59:00-05:00", status: "scheduled", content: {text: "…", image_url: null, url: null}}], total: 2}`. `status`는 기간으로 계산한 `acom:display_status`.
+- 쇼퍼(비회원 포함)가 부르면 지금 열리는 팝업만 돌려줍니다. `as_of`는 운영자만 씁니다(쇼퍼가 보내면 `forbidden`).
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음
 - 에러: `invalid_popup_type` → `list_popups`
@@ -258,11 +261,11 @@
 - 논리주소/REST: `merchandising.popup.set` · `PUT /v1/merchandising/popups/{popup_id}`
 - 요약: 팝업(`acom:Popup`, `WebPageElement`의 하위 타입, `pop_`)을 등록·수정합니다. "오늘 그만 보기" 일수를 정할 수 있습니다.
 - consumes → produces: → `popup_id`
-- 입력: `popup_id?`, `popup_type`(`image` | `notice` | `event` | `consent`), `content`(ImageObject | Text), `pages[]`, `priority?`, `suppress_days?`(최대 `popup.suppress_days_max`), `valid_from`, `valid_through`
+- 입력: `popup_id?`(없으면 새로 만들고 id는 `name`에서, 예 `pop_holiday_hours`), `name?`(운영자용 이름. 새 팝업에 없으면 문구 앞부분), `popup_type`(`image` | `notice` | `event` | `consent`), `content`(닫힌 객체 `{text?, image_url?, url?}`: `image`는 `image_url` 필수, 나머지는 `text` 필수, `url`은 누르면 열 스토어 경로), `pages[]`, `priority?`(기본: 지금 값, 새 팝업은 그 페이지·기간에서 비어 있는 첫 순위), `suppress_days?`(최대 `popup.suppress_days_max`), `valid_from`, `valid_through`
 - 출력: 프리뷰 형식 → 실행 `{ok, id: "pop_holiday_hours", undo: {by: "person", target: "cs_1049", until: "2026-12-27T23:59:00-05:00"}}`
-- 프리뷰: `changes`=`create`/`update` `popup`. checks `popup.max_concurrent_per_page`, `display.priority_unique`, `display.start_not_in_past`. 쇼퍼에게 닿으므로 `needs_approval: true`([approval.yml](../../policies/approval.yml) `thresholds.display_schedule`).
+- 프리뷰: `changes`=`create`/`update` `popup`. checks `popup.max_concurrent_per_page`(페이지마다 같은 순간에 열리는 팝업 수), `display.priority_unique`(같은 페이지·겹치는 기간의 팝업과 순위가 겹치지 않음), `display.start_not_in_past`(시작을 옮길 때만). 쇼퍼에게 닿으므로 `needs_approval: true`([approval.yml](../../policies/approval.yml) `thresholds.display_schedule`), 예 `approval_reason: "Opens on the main page for every shopper Dec 20–26"`. 되돌리기: 새 팝업은 열리기 전이면 지우고, 열린 뒤면 그 시각에 닫음.
 - 정책: [merchandising.yml](../../policies/merchandising.yml) `popup`, `display.priority_unique`, `display.start_not_in_past`, `reaches_customers`
-- 에러: `too_many_popups` → `list_popups` · `priority_conflict` → `list_popups` · `valid_from_in_past` → `set_popup`
+- 에러: `too_many_popups` → `list_popups` · `priority_conflict` → `list_popups` · `valid_from_in_past` → `set_popup` · `invalid_period` → `set_popup`
 - 멱등성: `Idempotency-Key` + `popup_id`
 
 ---
@@ -276,10 +279,11 @@
 - 요약: 기획전 목록(상태·기간·대상).
 - consumes → produces: → `collection_page_id[]`
 - 입력: `status?`(`draft` | `scheduled` | `active` | `ended`), `audience?`(등급 id 또는 `everyone`), `as_of?`, `limit?`(기본 20), `cursor?`
-- 출력: `{items: [{id: "col_winter_edit", name: "Winter outerwear edit", status: "draft", audience: "everyone", valid_from: null, valid_through: null}], total: 3}`
+- 출력: `{items: [{id: "col_winter_edit", name: "Winter outerwear edit", status: "draft", audience: "everyone", valid_from: null, valid_through: null, channels: ["web", "mobile_web", "app"], section_count: 2, product_count: 3, banner_ids: [], keywords: ["winter coat"]}], total: 3}`
+- 쇼퍼(비회원 포함)는 지금 자기에게 보이는 기획전(`active`, 대상 `everyone` 또는 자기 등급)만 봅니다. `audience`·`as_of`는 운영자만 씁니다(쇼퍼가 보내면 `forbidden`). `get_curation`도 같아서, 쇼퍼에게 보이지 않는 기획전은 `collection_page_not_found`입니다.
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음
-- 에러: `invalid_status` → `list_curations`
+- 에러: `invalid_status` → `list_curations` · `tier_not_found` → `list_tiers`
 - 멱등성: 읽기(부작용 없음)
 
 ### `get_curation` — Kind: R
@@ -306,10 +310,10 @@
   | valid_from / valid_through | DateTime | | 공개 때 확정 |
   | banner_ids | Text[] | | 연결 배너(`bnr_`) |
   | keywords | Text[] | | 검색 키워드 |
-- 출력: 프리뷰 형식 → 실행 `{ok: true, id: "col_winter_edit", undo: {by: "person", target: "cs_1050", until: "2026-11-07T23:59:00-05:00"}}`
-- 프리뷰: `changes`=`create` `collection_page`(`id: null`), 섹션별 `create` `item_list`. checks `display.exclude_discontinued`, `curation.no_empty_section`. `needs_approval: false`.
+- 출력: 프리뷰 형식 → 실행 `{ok: true, id: "col_winter_edit", undo: {by: "person", target: "cs_1050", until: "2026-11-07T23:59:00-05:00"}}`. id는 `name`에서(`col_<이름>`, 이미 있으면 `_2`…).
+- 프리뷰: `changes`=`create` `collection_page`(`id: null`), 섹션별 `create` `item_list`. checks `display.exclude_discontinued`, `curation.no_empty_section`(빈 섹션이 있으면 실패, `fix_tool: create_curation`). `needs_approval: false`. 되돌리기는 초안을 지움(그 사이 공개됐으면 공개부터 되돌려야 함).
 - 정책: [merchandising.yml](../../policies/merchandising.yml) `curation`, `display.exclude_discontinued`
-- 에러: `product_discontinued` → `search_products` · `empty_section` → `update_curation` · `banner_not_found` → `list_banners`
+- 에러: `product_discontinued`(실행 때 단종된 상품) → `search_products` · `banner_not_found` → `list_banners` · `not_found`(`detail.entity: product`) → `search_products` · `tier_not_found` → `list_tiers` · `invalid_period` → `create_curation`. 빈 섹션은 체크 `curation.no_empty_section` 실패로 나타나고 실행되지 않습니다.
 - 멱등성: `Idempotency-Key`
 
 ### `update_curation` — Kind: W
@@ -318,9 +322,9 @@
 - consumes → produces: `collection_page_id` → `collection_page_id`
 - 입력: `collection_page_id`, `name?`, `has_part?`, `audience?`, `banner_ids?`, `keywords?`
 - 출력: 프리뷰 형식 → 실행 `{ok, id, undo}`
-- 프리뷰: `changes`=`update` `collection_page`. checks `display.exclude_discontinued`, `curation.no_empty_section`. `needs_approval: false`(이미 공개 중이면 `true`, [approval.yml](../../policies/approval.yml) `thresholds.display_schedule`).
-- 정책: [merchandising.yml](../../policies/merchandising.yml) `curation`, `display.exclude_discontinued`
-- 에러: `product_discontinued` → `search_products` · `already_ended` → `create_curation`
+- 프리뷰: `changes`=`update` `collection_page`. checks `display.exclude_discontinued`, `curation.no_empty_section`. `needs_approval: false`(이미 공개된 기획전(`scheduled`·`active`)이면 `true`: [merchandising.yml](../../policies/merchandising.yml) `reaches_customers`에 `update_curation`이 있고 [approval.yml](../../policies/approval.yml) `thresholds.display_schedule`이 그때 승인을 요구).
+- 정책: [merchandising.yml](../../policies/merchandising.yml) `curation`, `display.exclude_discontinued`, `reaches_customers`
+- 에러: `product_discontinued` → `search_products` · `already_ended` → `create_curation` · `collection_page_not_found` → `list_curations` · `banner_not_found` → `list_banners` · `tier_not_found` → `list_tiers`
 - 멱등성: `Idempotency-Key`
 
 ### `publish_curation` — Kind: W$
@@ -329,9 +333,9 @@
 - consumes → produces: `collection_page_id` → `collection_page_id`
 - 입력: `collection_page_id`, `valid_from`(과거 불가), `valid_through`, `audience?`, `channels?[]`(`web` | `mobile_web` | `app`)
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "col_winter_edit", undo: {by: "person", target: "cs_1051", until: "2026-12-01T23:59:00-05:00"}}` (입력 예 `valid_through: "2026-11-30T23:59:00-05:00"`, 기간 끝 + 1일)
-- 프리뷰: `changes`=`update` `collection_page` `status` `draft` → `scheduled`. checks `display.start_not_in_past`, `curation.no_empty_section`, `display.exclude_discontinued`; `detail`에 섹션 수·상품 수·품절로 숨겨질 수. 항상 `needs_approval: true`, 예 `approval_reason: "Publishes a page with 86 products to everyone"`.
+- 프리뷰: `changes`=`update` `collection_page` `status` `draft` → `scheduled`. checks `display.start_not_in_past`, `curation.no_empty_section`, `display.exclude_discontinued`; `detail`에 섹션 수·상품 수·품절로 숨겨질 수. 항상 `needs_approval: true`, 예 `approval_reason: "Publishes a page with 86 products to everyone"`. 되돌리기: 시작 전이면 초안으로, 시작 뒤면 그 시각에 내림(`ended`).
 - 정책: [merchandising.yml](../../policies/merchandising.yml) `curation.publish_reaches_customers`, `display.start_not_in_past`; [approval.yml](../../policies/approval.yml) `thresholds.display_schedule`
-- 에러: `valid_from_in_past` → `update_curation` · `empty_curation` → `update_curation` · `already_published` → `get_curation` · `tier_not_found` → `list_tiers`
+- 에러: `valid_from_in_past` → `publish_curation` · `invalid_period` → `publish_curation` · `empty_curation`(상품이 하나도 없음) → `update_curation` · `already_published`(초안이 아님) → `get_curation` · `product_discontinued`(실행 때 단종된 상품) → `update_curation` · `collection_page_not_found` → `list_curations` · `tier_not_found` → `list_tiers`
 - 멱등성: `Idempotency-Key = hash(collection_page_id + valid_from + valid_through + audience)`
 
 ---
@@ -342,9 +346,10 @@
 - 논리주소/REST: `merchandising.cache.invalidate` · `POST /v1/merchandising/cache/invalidate`
 - 요약: 전시 캐시를 명시적으로 비웁니다. 카테고리 매핑·슬롯·배너·팝업·기획전 변경은 이 호출 뒤에 쇼퍼 화면에 반영됩니다. 범위를 좁혀 불필요한 재조회를 줄입니다. 승인된 변경셋의 실행기는 실행 끝에 자동으로 부릅니다.
 - consumes → produces: `slot_id?`, `category_id?`, `collection_page_id?` → `cache_invalidation_id`
-- 입력: `resource_type`(`category` | `display_slot` | `banner` | `popup` | `collection_page` | `all`), `resource_id?`, `pages?[]`, `reason?`
+- 입력: `resource_type`(`category` | `display_slot` | `banner` | `popup` | `collection_page` | `all`), `resource_id?`(그 종류의 id 하나, `all`에는 쓰지 않음), `pages?[]`, `reason?`
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "cin_5521", undo: null}`
-- 프리뷰: `changes`=`create` `cache_invalidation`(`to`에 비울 키 수). checks `cache_invalidation.allowed_resource_types`, `cache_invalidation.all_scope_max_per_hour`(`all` 남용 방지). `needs_approval: false`.
+- 프리뷰: `changes`=`create` `cache_invalidation`(`to.keys`에 비울 키 수, `to.cache_keys`에 키 목록. 예 `display_slot:slot_home_hero`, `page:main`). checks `cache_invalidation.allowed_resource_types`, `cache_invalidation.all_scope_max_per_hour`(`all` 남용 방지). `needs_approval: false`.
+- **지금 스토어에는 전시 캐시가 없습니다**(페이지는 물을 때마다 슬롯·배너·팝업을 읽음, `display.schedule_compute: on_demand`). 그래서 이 툴은 결정적인 대역입니다: 비울 키를 계산하고 요청을 `merchandising.cache_invalidation`(`cin_`)에 기록하며(`all`의 시간당 한도를 세는 데 씀), 실제로 비운 것은 없다고 `changes[].note`와 `to.keys_cleared: 0`으로 말합니다. 되돌릴 것이 없으므로 변경셋 되돌리기에서는 아무것도 하지 않습니다(기록은 남음). 실제 캐시가 생기면 같은 툴 뒤에 붙입니다.
 - 정책: [merchandising.yml](../../policies/merchandising.yml) `cache_invalidation`
-- 에러: `invalid_resource_type` → `invalidate_display_cache` · `rate_limited`(`all`을 한 시간에 너무 자주) → `invalidate_display_cache`
+- 에러: `invalid_resource_type` → `invalidate_display_cache` · `rate_limited`(`all`을 한 시간에 너무 자주) → `invalidate_display_cache` · `not_found`(`resource_id`가 없음) → 그 종류의 목록 툴
 - 멱등성: 같은 범위를 다시 비워도 무해

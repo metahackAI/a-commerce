@@ -1,11 +1,11 @@
 //! `get_member`.
 
 use super::{customer_not_found, record_unmask};
-use crate::access::{only_fields, staff_only};
+use crate::access::staff_only;
 use crate::wording::mask_name;
 use crate::{ACCESS_REASON_REQUIRED, CUSTOMER_NOT_FOUND, UNMASK_FORBIDDEN, repo};
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_store::Cx;
 use schemars::JsonSchema;
@@ -95,7 +95,7 @@ impl ReadOp<Cx> for GetMember {
         let member = json!({"id": person.id, "name": name, "type": person.member_type,
             "member_of": member_of, "state": person.member_state,
             "acom:business_verification": business, "consent": consent});
-        Ok(only_fields(member, &input.fields.unwrap_or_default()))
+        fields::keep(member, &input.fields.unwrap_or_default())
     }
 }
 

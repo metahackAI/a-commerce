@@ -1,6 +1,9 @@
 # Merchandising: the 24 standard categories and 3 display categories, where the named products sit,
 # the four main-page slots, and the hero bookings: the October edit (ended Fri 09:59) and Fall layers
 # for everyone from Fri Nov 6 10:00 (change set #1039). The VIP booking for Nov 7-8 is made in scene B1.
+# Curated pages: a draft winter edit, Travel light (showing until Nov 30) and the denim bundle page
+# (scheduled with promo_denim_bundle, Nov 13-20). Popups: free shipping (November) and holiday hours
+# (Dec 20-26). No row books the home hero, so it stays free for every tier.
 tables:
   merchandising.defined_term:
     - {tenant_id: store_northwind, id: cat_outerwear, name: Outerwear, term_code: outerwear, in_defined_term_set: standard, position: 1, is_active: true}
@@ -121,3 +124,48 @@ tables:
       valid_through: null
       display_status: active
       change_set_id: cs_1039
+  merchandising.collection_page:
+    - tenant_id: store_northwind
+      id: col_winter_edit
+      name: Winter outerwear edit
+      has_part: [{name: Coats, item_list_element: [prd_wool_overcoat, prd_chore_coat]}, {name: Knits, item_list_element: [prd_cashmere_sweater]}]
+      display_status: draft
+      keywords: [winter coat]
+    - tenant_id: store_northwind
+      id: col_travel_light
+      name: Travel light
+      has_part: [{name: Jackets, item_list_element: [prd_windbreaker, prd_field_jacket, prd_rain_parka]}, {name: Layers, item_list_element: [prd_merino_tee, prd_fleece_half_zip, prd_camp_overshirt]}]
+      valid_from: "2026-10-15T00:00:00-04:00"
+      valid_through: "2026-11-30T23:59:00-05:00"
+      display_status: active
+      keywords: [travel, packable]
+    - tenant_id: store_northwind
+      id: col_denim_bundle
+      name: Denim bundle
+      has_part: [{name: Denim, item_list_element: [prd_denim_jacket]}, {name: Pair it with, item_list_element: [prd_breton_tee, prd_canvas_tote]}]
+      valid_from: "2026-11-13T00:00:00-05:00"
+      valid_through: "2026-11-20T23:59:00-05:00"
+      display_status: scheduled
+      keywords: [denim]
+  merchandising.popup:
+    - tenant_id: store_northwind
+      id: pop_free_shipping
+      name: Free shipping over $80
+      popup_type: event
+      text: "Free shipping on every order over $80 through November."
+      url: "/pages/shipping"
+      page: [main, product]
+      priority: 1
+      suppress_days: 7
+      valid_from: "2026-11-01T00:00:00-04:00"
+      valid_through: "2026-11-30T23:59:00-05:00"
+    - tenant_id: store_northwind
+      id: pop_holiday_hours
+      name: Holiday hours
+      popup_type: notice
+      text: "We close at 3 pm on Dec 24 and reopen Dec 26; orders placed in between ship Dec 28."
+      page: [main]
+      priority: 1
+      suppress_days: 1
+      valid_from: "2026-12-20T00:00:00-05:00"
+      valid_through: "2026-12-26T23:59:00-05:00"

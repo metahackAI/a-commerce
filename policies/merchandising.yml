@@ -28,6 +28,12 @@ display:
   max_items_per_slot: 24                 # check: display.max_items_per_slot
   exclude_discontinued: true             # check: display.exclude_discontinued. 단종 상품은 담을 수 없음, 품절 상품은 노출 시 숨김
   priority_unique: per_page              # check: display.priority_unique. 같은 페이지의 배너·팝업 우선순위는 겹치지 않음
+  slot_items:                            # check: slot_type_mismatch (arrange_display_slot). 슬롯 종류마다 담을 수 있는 항목(접두 prd_·bnr_·col_·brn_)
+    hero: [banner, collection_page]
+    banner_board: [banner, collection_page]
+    product_grid: [product]
+    brand_strip: [brand]
+    collection_feed: [collection_page]
 
 banner:
   image_spec:                            # check: banner.image_spec (set_banner)
@@ -54,4 +60,4 @@ cache_invalidation:                      # invalidate_display_cache
   allowed_resource_types: [category, display_slot, banner, popup, collection_page, all]   # check: cache_invalidation.allowed_resource_types
   all_scope_max_per_hour: 2              # check: cache_invalidation.all_scope_max_per_hour. all 남용 방지
 
-reaches_customers: [schedule_banner, schedule_display, publish_curation, set_banner, set_popup]   # approval.yml display_schedule
+reaches_customers: [schedule_banner, schedule_display, publish_curation, set_banner, set_popup, update_curation]   # approval.yml display_schedule. set_banner·update_curation은 지금 보이는 것을 바꿀 때만

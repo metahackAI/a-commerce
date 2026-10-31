@@ -1,7 +1,7 @@
 //! `get_claim`: one claim with its items, evidence, inspection, refund and history.
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_store::Cx;
 use schemars::JsonSchema;
@@ -11,7 +11,6 @@ use serde_json::{Value, json};
 use super::visible_claim;
 use crate::errors::CLAIM_NOT_FOUND;
 use crate::repo;
-use crate::select;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -111,6 +110,6 @@ impl ReadOp<Cx> for GetClaim {
             "closed_at": c.end_time.map(|t| cx.time.format(t)),
             "status_history": history,
         });
-        Ok(select(out, &input.fields.unwrap_or_default()))
+        fields::keep(out, &input.fields.unwrap_or_default())
     }
 }

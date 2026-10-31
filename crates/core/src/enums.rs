@@ -342,6 +342,19 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:popupType, what a store popup is for.
+    PopupType = "popup_type" { Image = "image", Notice = "notice", Event = "event", Consent = "consent" }
+}
+
+word_enum! {
+    /// acom:resourceType of a display cache clear: the kind of display content that changed, or all.
+    CacheResourceType = "cache_resource_type" {
+        Category = "category", DisplaySlot = "display_slot", Banner = "banner", Popup = "popup",
+        CollectionPage = "collection_page", All = "all",
+    }
+}
+
+word_enum! {
     /// acom:memberState of a person.
     MemberState = "member_state" {
         Active = "active", Dormant = "dormant", Blocked = "blocked", PendingWithdrawal = "pending_withdrawal",
@@ -360,9 +373,10 @@ word_enum! {
 }
 
 word_enum! {
-    /// acom:messageKind of a customer message.
+    /// acom:messageKind of a customer message; `campaign` is one shopper's copy of a campaign.
     MessageKind = "message_kind" {
         AskForPhotos = "ask_for_photos", Decline = "decline", RefundDone = "refund_done", Custom = "custom",
+        Campaign = "campaign",
     }
 }
 
@@ -376,6 +390,11 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:reindexMode of a search reindex job: every document, or only what changed.
+    ReindexMode = "reindex_mode" { Full = "full", Incremental = "incremental" }
+}
+
+word_enum! {
     /// acom:salesChannel.
     SalesChannel = "sales_channel" { Web = "web", MobileWeb = "mobile_web", App = "app", Agent = "agent" }
 }
@@ -386,6 +405,22 @@ word_enum! {
         CreditCard = "credit_card", BankTransfer = "bank_transfer", VirtualAccount = "virtual_account",
         LoyaltyPoints = "loyalty_points", StoreCredit = "store_credit",
     }
+}
+
+word_enum! {
+    /// acom:billingCycle, how often a subscription orders again.
+    BillingCycle = "billing_cycle" { EveryWeek = "every_week", Every2Weeks = "every_2_weeks", EveryMonth = "every_month" }
+}
+
+word_enum! {
+    /// acom:subscriptionStatus: ordering every cycle, skipping cycles until resumed, or ended.
+    SubscriptionStatus = "subscription_status" { Active = "active", Paused = "paused", Cancelled = "cancelled" }
+}
+
+word_enum! {
+    /// acom:receiptType, which document a receipt is: for income deduction, proof of expense, or
+    /// a tax invoice made out to a business tax id.
+    ReceiptType = "receipt_type" { Deduction = "deduction", Proof = "proof", TaxInvoice = "tax_invoice" }
 }
 
 word_enum! {
@@ -682,13 +717,19 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (DisplayStatus::LIST, DisplayStatus::WORDS),
     (SlotType::LIST, SlotType::WORDS),
     (TermSet::LIST, TermSet::WORDS),
+    (PopupType::LIST, PopupType::WORDS),
+    (CacheResourceType::LIST, CacheResourceType::WORDS),
     (MemberState::LIST, MemberState::WORDS),
     (MemberType::LIST, MemberType::WORDS),
     (MessageChannel::LIST, MessageChannel::WORDS),
     (MessageKind::LIST, MessageKind::WORDS),
     (CampaignStatus::LIST, CampaignStatus::WORDS),
+    (ReindexMode::LIST, ReindexMode::WORDS),
     (SalesChannel::LIST, SalesChannel::WORDS),
     (PaymentMethod::LIST, PaymentMethod::WORDS),
+    (BillingCycle::LIST, BillingCycle::WORDS),
+    (SubscriptionStatus::LIST, SubscriptionStatus::WORDS),
+    (ReceiptType::LIST, ReceiptType::WORDS),
     (ReturnFees::LIST, ReturnFees::WORDS),
     (TaskState::LIST, TaskState::WORDS),
     (TaskOrigin::LIST, TaskOrigin::WORDS),
@@ -773,7 +814,8 @@ mod tests {
         for (_, words) in LISTS {
             for w in *words {
                 assert!(
-                    w.bytes().all(|b| b.is_ascii_lowercase() || b == b'_'),
+                    w.bytes()
+                        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_'),
                     "{w}"
                 );
             }

@@ -35,6 +35,7 @@ boost_exclude:
   exclude_means: zero_result             # 제외어는 부재(억제 아님)
 
 lexicon:                                 # update_lexicon
+  languages: [en]                        # 기본값. 검색이 분석하는 언어(첫 값이 스토어 색인의 언어). 그 밖의 언어는 unsupported_language
   replace_whole_set: true                # 사전은 통째로 교체(부분 수정 없음)
   no_circular_synonym: true              # check: lexicon.no_circular_synonym
   no_self_reference: true                # check: lexicon.no_self_reference
