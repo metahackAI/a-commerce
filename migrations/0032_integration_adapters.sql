@@ -1,4 +1,4 @@
--- 0031_integration_adapters.sql
+-- 0032_integration_adapters.sql
 -- The integration domain: outside channels (marketplaces, carriers, payment providers,
 -- fulfillment services) with their status mappings and hashed secrets; the copies of the orders
 -- and claims a channel holds; product imports from outside feeds with one result per row; and
