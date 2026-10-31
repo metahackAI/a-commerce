@@ -179,6 +179,52 @@ pub(crate) fn about_someone_else(value: &str) -> bool {
     names_someone || third_person || lower.contains(" gift for ")
 }
 
+/// Whether `s` has the shape of an email address (`name@domain.tld`), the format check of
+/// sign-up, availability and recovery.
+pub(crate) fn looks_like_email(s: &str) -> bool {
+    let s = s.trim();
+    let Some((local, domain)) = s.split_once('@') else {
+        return false;
+    };
+    !local.is_empty()
+        && !s.chars().any(char::is_whitespace)
+        && domain.contains('.')
+        && !domain.starts_with('.')
+        && !domain.ends_with('.')
+        && !domain.contains('@')
+}
+
+/// Whether `s` has the shape of a phone number: digits with an optional leading `+` and
+/// spaces, dashes, dots or parentheses, 7 to 15 digits.
+pub(crate) fn looks_like_phone(s: &str) -> bool {
+    let s = s.trim();
+    let digits = s.chars().filter(char::is_ascii_digit).count();
+    (7..=15).contains(&digits)
+        && s.chars()
+            .enumerate()
+            .all(|(i, c)| c.is_ascii_digit() || " -.()".contains(c) || (c == '+' && i == 0))
+}
+
+/// Whether `s` has the shape of a sign-in id: 3 to 40 lowercase letters, digits, dots,
+/// dashes or underscores, starting with a letter or digit.
+pub(crate) fn looks_like_login_id(s: &str) -> bool {
+    let n = s.chars().count();
+    (3..=40).contains(&n)
+        && s.chars().next().is_some_and(|c| c.is_ascii_alphanumeric())
+        && s.chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "._-".contains(c))
+}
+
+/// `jamie.rivera` → `ja***a`: a sign-in id shown after the person proved the contact.
+pub(crate) fn mask_login_id(id: &str) -> String {
+    let chars: Vec<char> = id.chars().collect();
+    match chars.len() {
+        0 => String::new(),
+        1..=3 => format!("{}***", chars[0]),
+        n => format!("{}{}***{}", chars[0], chars[1], chars[n - 1]),
+    }
+}
+
 /// Whether a postal code has the shape the country uses. Countries we do not know only need
 /// letters, digits, spaces or dashes.
 pub(crate) fn postal_code_ok(country: &str, code: &str) -> bool {
@@ -217,6 +263,18 @@ pub(crate) fn postal_code_ok(country: &str, code: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tells_emails_phones_and_sign_in_ids() {
+        assert!(looks_like_email("alex.kim@example.com"));
+        assert!(!looks_like_email("alex.kim@example"));
+        assert!(!looks_like_email("alex kim@example.com"));
+        assert!(looks_like_phone("+1 718 555 0142"));
+        assert!(!looks_like_phone("12-34"));
+        assert!(looks_like_login_id("jamie.rivera"));
+        assert!(!looks_like_login_id("Jamie Rivera"));
+        assert_eq!(mask_login_id("jamie.rivera"), "ja***a");
+    }
 
     #[test]
     fn masks_names_emails_and_streets() {

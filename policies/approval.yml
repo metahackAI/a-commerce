@@ -14,7 +14,7 @@ change_set:
   undo_window_after_run_days: 1          # 기간이 없는 변경은 실행한 날 + 1일 23:59까지 되돌릴 수 있다
   approve_requires_latest_version: true  # 최신 버전이 아니면 승인 거부(version_out_of_date)
   revalidate_on_approve: true            # 승인 때 모든 항목을 다시 프리뷰하고, changes가 다르면 estimate_changed로 drafting에 되돌린다
-  irreversible: [refund_return, retry_refund, send_customer_message, send_bulk, revoke_api_key]   # check: irreversible. 이런 항목이 있으면 checks에 irreversible 표시, 셋 되돌리기 불가
+  irreversible: [refund_return, retry_refund, send_customer_message, send_bulk, revoke_api_key, respond_inquiry, send_password_reset, pay_remedy]   # check: irreversible. 이런 항목이 있으면 checks에 irreversible 표시, 셋 되돌리기 불가
 
 # 임계 형식: 항목마다 { applies_to, when, requires, approver_role }
 #   when: always | reaches_customers | 조건 | { all: [조건...] } | { any: [조건...] }
