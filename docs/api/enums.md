@@ -89,6 +89,8 @@
 | 판매 방식 `acom:sale_type` | `always`, `pre_order`, `subscription`, `gift_card` |
 | 초안 진행 `acom:draft_status` (공급사 시트에서 만든 초안) | `ready`(시트의 필수 필드가 다 있음), `needs_you`(필수 필드가 없거나 불분명해 사람이 채워야 함), `working`(가져오기가 아직 채우는 중) |
 | 가져오기 방식 `acom:import_mode` (`batch_import`) | `create`(새 초안만), `upsert`(앞선 가져오기가 만든 초안도 시트 값으로 고침) |
+| 생성 문구 종류 `acom:copy_type` (`generate_copy`) | `title`(상품명), `summary`(한 줄 요약), `description`(상세 설명: 스토어 어조의 본문 + 관리 한 줄), `seo`(검색 결과에 보일 설명) |
+| 생성 이미지 연출 `acom:image_style` (`generate_image`) | `studio`(무지 배경), `lifestyle`(입은 모습·장면), `flat_lay`(바닥에 펼쳐 놓음) |
 
 ### 1.11 프로모션·쿠폰·이벤트
 
@@ -138,6 +140,7 @@
 | 공지 | `draft`, `published` |
 | 게시글 | `published`, `held_for_review`, `blinded`, `deleted` |
 | 리뷰 노출 `review_status` (schema:creativeWorkStatus) | `visible`, `hidden`, `reported` |
+| 상품 문의 노출 `question_status` (schema:creativeWorkStatus) | `visible`, `hidden`(운영자가 숨김, 또는 `question.profanity_filter: hold_for_review`로 보류. 문의와 답이 함께 숨음) |
 | 리뷰의 사이즈 평가 `acom:fit_vote` | `true_to_size`, `runs_small`, `runs_large` |
 | 실측 항목 `acom:measurement_name` | `chest`, `shoulder`, `sleeve`, `length`, `waist`, `hip`, `inseam`, `rise`, `foot_length` |
 | 판매자 | `applied`, `under_review`, `approved`, `active`, `suspended`, `terminated` |

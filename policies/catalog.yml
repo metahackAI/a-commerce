@@ -102,6 +102,8 @@ bundle:                                  # 묶음 상품 (create_bundle)
   same_seller: true                      # check: bundle.same_seller. 구성품은 같은 판매자
   same_age_restriction: true             # check: bundle.same_age_restriction. 구성품은 같은 min_age
   components_must_be_active: true        # check: bundle.components_must_be_active. 판매 중인 구성품만
+  min_components: 2                      # 묶음은 구성품 변형이 이만큼 이상 (이보다 적으면 invalid_input)
+  max_discount: 0.30                     # 묶음 할인 상한(비율). 넘으면 invalid_input. 하한은 price_floor가 따로 막음
 
 gift_card:                               # 디지털 상품권 (acom:sale_type gift_card)
   disallow: [pre_order, subscription, exchange]   # check: gift_card.disallow
@@ -114,8 +116,12 @@ content:                                 # 생성 이미지·문구 (generate_im
     sentences: 2                         # 본문 두 문장
     care_line: true                      # 끝에 관리 방법 한 줄
     source: supplier_text                # 가져오기는 공급사 설명을 초안에 남기고, 설명은 이 어조로 사람이나 에이전트가 씀(update_product_group)
+    title_max_chars: 70                  # generate_copy title(상품명)의 글자 수 상한
+    seo_max_chars: 155                   # generate_copy seo(검색 결과 설명)의 글자 수 상한
+  generator: placeholder                 # 연결된 생성 모델이 없음: 문구는 상품 자신의 자료와 위 어조 규칙으로 짓고, 이미지는 자리표시 이미지(결정적)
   ai_content_disclosure: required        # check: content.ai_content_disclosure. 생성물에 acom:ai_generated: true 표기
   brand_guideline: enforced              # check: content.brand_guideline. 로고·색·금지 연출 검사
+  prompt_blocked_words: []               # [default] content.brand_guideline이 막는 프롬프트 단어(소문자, 단어 단위). 다른 브랜드 이름·로고 등 스토어가 정함
   max_images_per_request: 4
 
 review:                                  # 상품 리뷰 (create_review, report_review, moderate_review)
@@ -125,13 +131,22 @@ review:                                  # 상품 리뷰 (create_review, report_
   blocked_words: []                      # [default] 스토어가 막는 단어(소문자, 단어 단위로 비교). 비어 있으면 막는 단어 없음
   moderation: post_review                # 바로 보이고 사후 심사(moderate_review)
   report_reasons: [spam, abuse, obscene, advertisement, fake, irrelevant, other]   # enums.md §2.4 acom:report_reason
+  report_holds_review: true              # 신고가 들어오면 보이는 리뷰를 reported(심사 대기)로. 쇼퍼에게는 계속 보이고 moderate_review가 숨기거나 되살림
 
-question:                                # 상품 문의 (ask_question, answer_question)
-  profanity_filter: block                # check: question.profanity_filter
-  private_allowed: true                  # 쇼퍼가 비공개 문의를 남길 수 있음
-  edit_until: answered                   # 답이 달리기 전까지만 수정
+question:                                # 상품 문의 (ask_question, update_question, answer_question)
+  profanity_filter: block                # check: question.profanity_filter. block | hold_for_review(hidden으로 저장, moderate_question으로 공개)
+  blocked_words: []                      # [default] 문의·답에서 막는 단어(소문자, 단어 단위로 비교). 비어 있으면 막는 단어 없음
+  private_allowed: true                  # check: question.private_allowed. 쇼퍼가 비공개 문의를 남길 수 있음(작성자와 운영자만 봄)
+  edit_until: answered                   # check: question.edit_until. 답이 달리기 전까지만 수정
+  answered_by: [operator]                # check: question.answered_by. 누가 답할 수 있는가: operator(스토어 운영자·운영 에이전트) | shopper(문의한 사람이 아닌 로그인 쇼퍼). 문의 하나에 답 하나
 
-restock_alert:                           # 재입고 알림 (subscribe_restock)
-  channels: [email, sms, push, in_app]   # enums.md §3 acom:message_channel
+author_masking:                          # 쇼퍼가 쓴 리뷰·문의·답에 남는 이름. 쓸 때 정해 저장(author_name). 운영자의 답은 스토어 이름으로 보임
+  enabled: true                          # false면 쇼퍼의 표시 이름 그대로
+  visible_chars: 2                       # 앞에서 보이는 글자 수 (Jamie → Ja***)
+  mask_char: "*"
+
+restock_alert:                           # 재입고 알림 (subscribe_restock). 보내는 때는 inventory.auto_restore.notify_restock_alerts
+  channels: [email, sms, push, in_app]   # check: restock_alert.channels. enums.md §3 acom:message_channel
+  subscribable_availability: [out_of_stock, back_order]   # 이 상태의 변형만 신청 가능. in_stock이면 already_in_stock, 단종이면 invalid_state
   message_kind: transactional            # 마케팅 동의와 무관한 거래성 알림
   expires_after_days: 90                 # 알림이 안 가면 신청은 90일 뒤 만료

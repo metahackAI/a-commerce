@@ -201,5 +201,10 @@ pub async fn move_stock(
     .execute(&mut *tx.tx)
     .await
     .map_err(db)?;
+    // A returned unit can bring a sold-out size back: the shoppers waiting for it hear
+    // (`inventory.auto_restore.notify_restock_alerts`).
+    if from == 0 && to > 0 {
+        crate::restock_alert::notify_back_in_stock(tx, variant_id).await?;
+    }
     Ok(Some(StockMove { from, to }))
 }
