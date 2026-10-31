@@ -187,7 +187,7 @@ pub(crate) fn generate(spec: &Spec, named: &Named, dice: &mut Dice) -> Result<Ve
     Ok(members)
 }
 
-/// Rows in load order: people, addresses, memberships, then Gold tier coupons.
+/// Rows in load order: people, addresses, memberships, marketing consent, then Gold tier coupons.
 pub(crate) fn rows(spec: &Spec, named: &Named, members: &[Member], out: &mut crate::SeedRows) {
     let tenant = &spec.store;
     for m in members {
@@ -236,6 +236,27 @@ pub(crate) fn rows(spec: &Spec, named: &Named, members: &[Member], out: &mut cra
                 "tier_id": m.tier,
                 "membership_number": format!("NW-1{:05}", m.number),
                 "tier_since": rfc3339(&m.tier_since),
+            }),
+        ));
+    }
+    // Marketing consent given at sign-up (`consent.marketing_gate`): in each tier, in member
+    // order, every 15th from the 8th declines. Counted, not drawn, so the dice stay as they were.
+    let mut seen: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
+    for m in members {
+        let k = seen.entry(m.tier.as_str()).or_default();
+        let granted = *k % prose::DECLINE_EVERY != prose::DECLINE_FROM;
+        *k += 1;
+        out.push((
+            "customer.consent_record".to_owned(),
+            json!({
+                "tenant_id": tenant,
+                "id": format!("cns_m{:06}", m.number),
+                "customer_id": m.id,
+                "consent_type": prose::CONSENT_TYPE,
+                "granted": granted,
+                "recorded_at": rfc3339(&m.registered),
+                "agent_id": m.id,
+                "instrument": "register_member",
             }),
         ));
     }
