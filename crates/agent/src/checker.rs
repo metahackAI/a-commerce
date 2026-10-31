@@ -7,6 +7,7 @@ use std::str::FromStr;
 
 use acom_contract::{ChangeOp, Preview};
 use acom_core::StoreTime;
+use chrono::Timelike;
 use rust_decimal::Decimal;
 use serde_json::Value;
 
@@ -152,7 +153,14 @@ fn collect(v: &Value, into: &mut BTreeSet<String>) {
                 }
             }
         }
-        Value::String(s) => into.extend(numbers_in(s)),
+        Value::String(s) => {
+            into.extend(numbers_in(s));
+            // A time is said on the 12-hour clock ("by 8 PM" for 20:00), as the reply prompt
+            // asks; timestamps carry the store's offset, so the hour is already local.
+            if let Ok(t) = chrono::DateTime::parse_from_rfc3339(s) {
+                into.insert(t.hour12().1.to_string());
+            }
+        }
         Value::Array(a) => a.iter().for_each(|x| collect(x, into)),
         Value::Object(o) => o.values().for_each(|x| collect(x, into)),
         _ => {}
@@ -175,6 +183,18 @@ pub fn unsupported_numbers(reply: &str, sources: &[&Value], texts: &[&str]) -> V
         .collect();
     out.dedup();
     out
+}
+
+/// Where `reply` starts copying the instructions it was written from (a small model sometimes
+/// carries on with its prompt after the answer), if it does: the first sentence of the prompt,
+/// long enough not to be a common phrase, found in the reply.
+pub fn echo_start(reply: &str, prompt: &str) -> Option<usize> {
+    prompt
+        .split(['\n', '.', ';'])
+        .map(|s| s.trim().trim_start_matches("- ").trim())
+        .filter(|s| s.len() >= 20)
+        .filter_map(|s| reply.find(s))
+        .min()
 }
 
 #[cfg(test)]
@@ -249,5 +269,26 @@ mod tests {
             unsupported_numbers("It fell 30%.", &[&explained], &[]),
             ["30"]
         );
+    }
+
+    #[test]
+    fn a_time_is_said_on_the_twelve_hour_clock() {
+        let order = json!({"expected_arrival_until": "2026-11-06T20:00:00-05:00",
+                           "scans": [{"at": "2026-11-02T12:43:00-05:00"}]});
+        let reply = "UPS picked it up Mon Nov 2 at 12:43 PM; it is due today by 8 PM.";
+        assert!(unsupported_numbers(reply, &[&order], &[]).is_empty());
+        assert_eq!(
+            unsupported_numbers("It is due by 9 PM.", &[&order], &[]),
+            ["9"]
+        );
+    }
+
+    #[test]
+    fn a_reply_that_copies_its_instructions_is_cut_there() {
+        let prompt = "You write the short answer.\n\n- Two or three plain sentences. The blocks show the details; do not repeat tables.\n- Say only what the results say.";
+        let reply =
+            "One task needs you. The blocks show the details; do not repeat tables. Say only";
+        assert_eq!(echo_start(reply, prompt), Some(20));
+        assert_eq!(echo_start("One task needs you: the reorder.", prompt), None);
     }
 }
