@@ -171,6 +171,11 @@ impl ReadOp<Cx> for GetOrder {
                 )
             }
         };
+        // Where it goes now: an address changed after ordering, or the one a gift's recipient
+        // gave, else what checkout recorded.
+        let delivery_now = repo::latest_delivery(&mut tx, &o.id)
+            .await?
+            .unwrap_or_else(|| record["delivery"].clone());
         tx.commit().await.map_err(ToolError::from)?;
 
         let delivered_at = (o.order_status == "delivered")
@@ -185,7 +190,7 @@ impl ReadOp<Cx> for GetOrder {
             }),
             // Without fulfillment's reader: what the order recorded at checkout.
             None => {
-                let d = &record["delivery"];
+                let d = &delivery_now;
                 json!({
                     "id": null,
                     "delivery_address": d.get("delivery_address").cloned().unwrap_or(Value::Null),

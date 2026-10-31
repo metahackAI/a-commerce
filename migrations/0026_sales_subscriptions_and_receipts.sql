@@ -195,3 +195,6 @@ ALTER TABLE sales.guest_lookup FORCE ROW LEVEL SECURITY;
 CREATE POLICY guest_lookup_tenant_isolation ON sales.guest_lookup
   USING (tenant_id = current_setting('app.tenant_id', true))
   WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
+
+-- A guest lookup is a technical row (wrong tries and a token hash), so old ones may be removed.
+GRANT DELETE ON sales.guest_lookup TO acom_app;

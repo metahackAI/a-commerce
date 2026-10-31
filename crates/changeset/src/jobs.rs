@@ -265,6 +265,18 @@ async fn lock_kind(tx: &mut TxCx, kind: &str) -> Result<(), ToolError> {
     Ok(())
 }
 
+/// Schedules one job of `kind` at `run_at` in the caller's transaction, for an operation that
+/// sets up later work in its own domain (a subscription's next order); the handler is that
+/// domain's registered `Job`. Returns the job id.
+pub async fn schedule(
+    tx: &mut TxCx,
+    kind: &str,
+    run_at: DateTime<Utc>,
+    payload: &Value,
+) -> Result<String, ToolError> {
+    insert_job(tx, kind, run_at, payload).await
+}
+
 async fn insert_job(
     tx: &mut TxCx,
     kind: &str,

@@ -8,4 +8,5 @@ pub mod for_merchandising;
 pub mod for_messaging;
 pub mod for_promotion;
 pub mod for_sales;
+pub mod for_sales_guest;
 pub mod providers;

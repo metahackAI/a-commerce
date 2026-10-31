@@ -216,7 +216,7 @@ impl PersonOp<Cx> for PlaceOrder {
                 discount: b.discount_total,
                 shipping: b.shipping,
                 total,
-                preview_id: &claimed.id,
+                preview_id: Some(&claimed.id),
                 is_gift: gift.is_some(),
                 gift_options: gift_options.as_ref(),
                 gift_wrap: gift.as_ref().and_then(|g| g.gift_wrap),

@@ -3,17 +3,20 @@
 //! they share lives here: delivery choices, the prepared order, the checkout view, and how an
 //! order and its items read.
 
+pub mod change_shipping_address;
 pub mod get_my_orders;
 pub mod get_order;
 pub mod place_order;
 pub mod prepare_order;
 pub mod search_orders;
+pub mod verify_guest;
 
 use std::collections::HashMap;
 
 use acom_catalog::service::for_sales as catalog;
 use acom_contract::{Change, ChangeOp, ErrorCode, ToolError};
 use acom_core::Money;
+use acom_core::enums::FulfillmentStage;
 use acom_promotion::service::for_sales as promotion;
 use acom_store::{Cx, TxCx};
 use rust_decimal::Decimal;
@@ -27,7 +30,7 @@ use crate::pricing::{self, CartView, Carts, DeliveryChoice};
 use crate::repo::{self, OrderRow};
 use crate::rules;
 use crate::{
-    ADDRESS_NOT_DELIVERABLE, ADDRESS_NOT_FOUND, MIXED_ORDER_TYPE, ORDER_NOT_FOUND,
+    ADDRESS_NOT_DELIVERABLE, ADDRESS_NOT_FOUND, ALREADY_SHIPPED, MIXED_ORDER_TYPE, ORDER_NOT_FOUND,
     address_not_found, cart_empty, not_signed_in,
 };
 
@@ -274,6 +277,85 @@ pub(crate) async fn visible_order(cx: &Cx, tx: &mut TxCx, id: &str) -> Result<Or
                 .detail(json!({"reason": "owner"}))
                 .next("get_my_orders"),
         ),
+    }
+}
+
+/// Whether an order can still change before it ships (`order.change.allowed_before`): by its
+/// state, the warehouse step of each item, and its parcel when fulfillment has made one (a
+/// parcel past `packed` has shipped). `Ok` says how far it got, for the check's detail;
+/// `already_shipped` or `invalid_state` (cancelled, a problem) otherwise, pointing at `next`.
+pub(crate) async fn before_shipping(
+    tx: &mut TxCx,
+    o: &OrderRow,
+    next: &'static str,
+) -> Result<String, ToolError> {
+    let before = rules::change_allowed_before(&tx.policy)?;
+    let rank = |s: FulfillmentStage| {
+        FulfillmentStage::ALL
+            .iter()
+            .position(|x| *x == s)
+            .unwrap_or(0)
+    };
+    let shipped = |stage: &str| {
+        ToolError::new(
+            ALREADY_SHIPPED,
+            format!(
+                "Order #{} has left the warehouse ({stage}); it can no longer change.",
+                o.order_number
+            ),
+        )
+        .detail(
+            json!({"order_id": o.id, "stage": stage, "allowed_before": before,
+                       "policy_key": "order.change.allowed_before"}),
+        )
+        .next(next)
+    };
+    match o.order_status.as_str() {
+        "in_transit" | "delivered" | "returned" => return Err(shipped(&o.order_status)),
+        "cancelled" | "problem" => {
+            return Err(ToolError::new(
+                ErrorCode::INVALID_STATE,
+                format!(
+                    "Order #{} is {}; it can no longer change.",
+                    o.order_number,
+                    o.order_status.replace('_', " ")
+                ),
+            )
+            .detail(json!({"entity": "order", "from": o.order_status, "allowed_to": []}))
+            .next(next));
+        }
+        _ => {}
+    }
+    let mut furthest: Option<FulfillmentStage> = None;
+    let mut reached = |s: FulfillmentStage| {
+        if furthest.is_none_or(|f| rank(s) > rank(f)) {
+            furthest = Some(s);
+        }
+    };
+    for stage in repo::item_stages(tx, &o.id).await?.iter().flatten() {
+        if let Ok(s) = stage.parse::<FulfillmentStage>() {
+            reached(s);
+        }
+    }
+    if let Some(read) = crate::service::providers::deliveries()
+        && let Some(p) = read(tx, &o.id).await?
+        && p.delivery_state != "cancelled"
+    {
+        // `awaiting_stock`, `ship_instructed` and `packed` are warehouse steps; every carrier
+        // state after them means the parcel has shipped.
+        reached(
+            p.delivery_state
+                .parse::<FulfillmentStage>()
+                .unwrap_or(FulfillmentStage::Shipped),
+        );
+    }
+    match furthest {
+        Some(f) if rank(f) >= rank(before) => Err(shipped(f.as_str())),
+        Some(f) => Ok(format!(
+            "Not shipped yet ({})",
+            f.as_str().replace('_', " ")
+        )),
+        None => Ok("Not shipped yet".to_owned()),
     }
 }
 

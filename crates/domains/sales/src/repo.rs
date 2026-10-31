@@ -3,7 +3,7 @@
 use acom_contract::{ErrorCode, ToolError};
 use acom_core::{Currency, Money};
 use acom_store::{StoreError, TxCx};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use serde_json::Value;
 
@@ -328,6 +328,7 @@ pub(crate) struct OrderRow {
     pub gift_wrap_currency: Option<String>,
     /// `{card_message, gift_receipt, …, recipient, recipient_mode}` of a gift; `None` otherwise.
     pub gift_options: Option<Value>,
+    pub version: i32,
 }
 
 const ORDER_COLUMNS: &str = "id, order_number, order_date, order_status, customer_id,
@@ -335,7 +336,7 @@ const ORDER_COLUMNS: &str = "id, order_number, order_date, order_status, custome
     subtotal_currency::text AS subtotal_currency, shipping_value,
     shipping_currency::text AS shipping_currency, total_payment_due_value,
     total_payment_due_currency::text AS total_payment_due_currency, gift_wrap_value,
-    gift_wrap_currency::text AS gift_wrap_currency, gift_options";
+    gift_wrap_currency::text AS gift_wrap_currency, gift_options, version";
 
 pub(crate) async fn order(tx: &mut TxCx, id: &str) -> Result<Option<OrderRow>, ToolError> {
     sqlx::query_as::<_, OrderRow>(sqlx::AssertSqlSafe(format!(
@@ -493,6 +494,7 @@ pub(crate) struct PaymentRow {
     pub amount_currency: String,
     pub card_last4: Option<String>,
     pub installment_months: i32,
+    pub version: i32,
 }
 
 /// The order's payment (the first one, should there be several).
@@ -502,7 +504,7 @@ pub(crate) async fn payment(
 ) -> Result<Option<PaymentRow>, ToolError> {
     sqlx::query_as::<_, PaymentRow>(
         "SELECT id, order_id, payment_method, payment_status, amount_value,
-                amount_currency::text AS amount_currency, card_last4, installment_months
+                amount_currency::text AS amount_currency, card_last4, installment_months, version
          FROM sales.payment WHERE tenant_id = $1 AND order_id = $2
          ORDER BY created_at, id LIMIT 1",
     )
@@ -547,7 +549,8 @@ pub(crate) struct NewOrder<'a> {
     pub discount: Money,
     pub shipping: Money,
     pub total: Money,
-    pub preview_id: &'a str,
+    /// The preview the shopper confirmed; `None` for an order a subscription placed on its own.
+    pub preview_id: Option<&'a str>,
     pub is_gift: bool,
     /// `{card_message, gift_receipt, receipt_hides_prices, exchange_until, recipient}` of a gift.
     pub gift_options: Option<&'a Value>,
@@ -886,6 +889,511 @@ pub(crate) async fn complete_payment(
     .bind(tx.tenant.as_str())
     .bind(payment_id)
     .bind(paid_at)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------- after the order
+
+/// The order, locked for a change.
+pub(crate) async fn order_for_update(
+    tx: &mut TxCx,
+    id: &str,
+) -> Result<Option<OrderRow>, ToolError> {
+    sqlx::query_as::<_, OrderRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {ORDER_COLUMNS} FROM sales.sales_order WHERE tenant_id = $1 AND id = $2 FOR UPDATE"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// The order people call by this number (`20402`).
+pub(crate) async fn order_by_number(
+    tx: &mut TxCx,
+    order_number: &str,
+) -> Result<Option<OrderRow>, ToolError> {
+    sqlx::query_as::<_, OrderRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {ORDER_COLUMNS} FROM sales.sales_order WHERE tenant_id = $1 AND order_number = $2"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(order_number)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// Marks an order changed (its version moves on) without changing its state.
+pub(crate) async fn touch_order(tx: &mut TxCx, id: &str) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE sales.sales_order SET updated_at = now(), version = version + 1
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// Where the order goes now: the delivery the latest event recorded (placing it, a recipient
+/// accepting a gift, or a changed address); `None` when no event recorded one.
+pub(crate) async fn latest_delivery(
+    tx: &mut TxCx,
+    order_id: &str,
+) -> Result<Option<Value>, ToolError> {
+    let v: Option<Option<Value>> = sqlx::query_scalar(
+        "SELECT result -> 'delivery' FROM sales.order_event
+         WHERE tenant_id = $1 AND order_id = $2
+           AND jsonb_typeof(result -> 'delivery') = 'object'
+         ORDER BY position DESC LIMIT 1",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(order_id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(v.flatten())
+}
+
+/// The warehouse step of each item of the order (`None` before it reached the warehouse).
+pub(crate) async fn item_stages(
+    tx: &mut TxCx,
+    order_id: &str,
+) -> Result<Vec<Option<String>>, ToolError> {
+    sqlx::query_scalar(
+        "SELECT fulfillment_stage FROM sales.order_item
+         WHERE tenant_id = $1 AND order_id = $2 ORDER BY position",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(order_id)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// Sets the card installments of a payment.
+pub(crate) async fn set_installment_months(
+    tx: &mut TxCx,
+    payment_id: &str,
+    months: u32,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE sales.payment SET installment_months = $3, updated_at = now(),
+           version = version + 1
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(payment_id)
+    .bind(i32::try_from(months).unwrap_or(i32::MAX))
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------- subscriptions
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub(crate) struct SubscriptionRow {
+    pub id: String,
+    pub customer_id: String,
+    pub subscription_status: String,
+    pub billing_cycle: String,
+    pub next_charge_date: NaiveDate,
+    /// `[{variant_id, product_id, name, size, color, quantity, price, discount}]`.
+    pub ordered_item: Value,
+    /// `{address_id, delivery_address, address_label}`.
+    pub order_delivery: Value,
+    pub payment_method: String,
+    pub card_last4: Option<String>,
+    pub total_payment_due_value: Decimal,
+    pub total_payment_due_currency: String,
+    pub preview_id: Option<String>,
+    pub paused_at: Option<DateTime<Utc>>,
+    pub cancelled_at: Option<DateTime<Utc>>,
+    pub cancel_reason_text: Option<String>,
+    pub version: i32,
+}
+
+const SUBSCRIPTION_COLUMNS: &str = "id, customer_id, subscription_status, billing_cycle,
+    next_charge_date, ordered_item, order_delivery, payment_method, card_last4,
+    total_payment_due_value, total_payment_due_currency::text AS total_payment_due_currency,
+    preview_id, paused_at, cancelled_at, cancel_reason_text, version";
+
+pub(crate) async fn subscription(
+    tx: &mut TxCx,
+    id: &str,
+) -> Result<Option<SubscriptionRow>, ToolError> {
+    sqlx::query_as::<_, SubscriptionRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {SUBSCRIPTION_COLUMNS} FROM sales.subscription WHERE tenant_id = $1 AND id = $2"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// The subscription, locked for a change (or an order of it).
+pub(crate) async fn subscription_for_update(
+    tx: &mut TxCx,
+    id: &str,
+) -> Result<Option<SubscriptionRow>, ToolError> {
+    sqlx::query_as::<_, SubscriptionRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {SUBSCRIPTION_COLUMNS} FROM sales.subscription
+         WHERE tenant_id = $1 AND id = $2 FOR UPDATE"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// One page of subscriptions, newest first, and how many match.
+pub(crate) async fn subscriptions(
+    tx: &mut TxCx,
+    customer_id: Option<&str>,
+    statuses: &[String],
+    limit: i64,
+    offset: i64,
+) -> Result<(Vec<SubscriptionRow>, i64), ToolError> {
+    const FILTER: &str = "tenant_id = $1 AND ($2::text IS NULL OR customer_id = $2)
+        AND (cardinality($3::text[]) = 0 OR subscription_status = ANY($3))";
+    let total: i64 = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
+        "SELECT count(*) FROM sales.subscription WHERE {FILTER}"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(customer_id)
+    .bind(statuses)
+    .fetch_one(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    let rows = sqlx::query_as::<_, SubscriptionRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {SUBSCRIPTION_COLUMNS} FROM sales.subscription WHERE {FILTER}
+         ORDER BY created_at DESC, id DESC LIMIT $4 OFFSET $5"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(customer_id)
+    .bind(statuses)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok((rows, total))
+}
+
+/// A new subscription row.
+#[derive(Debug, Clone)]
+pub(crate) struct NewSubscription<'a> {
+    pub id: &'a str,
+    pub customer_id: &'a str,
+    pub billing_cycle: &'a str,
+    pub next_charge_date: NaiveDate,
+    pub ordered_item: &'a Value,
+    pub order_delivery: &'a Value,
+    pub card_last4: Option<&'a str>,
+    pub total: Money,
+    pub preview_id: &'a str,
+}
+
+/// Starts a subscription (charged to a saved card); one that exists already is left as it is.
+pub(crate) async fn insert_subscription(
+    tx: &mut TxCx,
+    s: &NewSubscription<'_>,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "INSERT INTO sales.subscription (tenant_id, id, customer_id, billing_cycle,
+           next_charge_date, ordered_item, order_delivery, payment_method, card_last4,
+           total_payment_due_value, total_payment_due_currency, preview_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'credit_card',$8,$9,$10,$11)
+         ON CONFLICT (tenant_id, id) DO NOTHING",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(s.id)
+    .bind(s.customer_id)
+    .bind(s.billing_cycle)
+    .bind(s.next_charge_date)
+    .bind(s.ordered_item)
+    .bind(s.order_delivery)
+    .bind(s.card_last4)
+    .bind(s.total.value)
+    .bind(s.total.currency.as_str())
+    .bind(s.preview_id)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// The state of a subscription and the dates that go with it.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct SubscriptionState {
+    pub status: String,
+    pub next_charge_date: NaiveDate,
+    pub paused_at: Option<DateTime<Utc>>,
+    pub cancelled_at: Option<DateTime<Utc>>,
+    pub cancel_reason_text: Option<String>,
+}
+
+impl From<&SubscriptionRow> for SubscriptionState {
+    fn from(r: &SubscriptionRow) -> Self {
+        Self {
+            status: r.subscription_status.clone(),
+            next_charge_date: r.next_charge_date,
+            paused_at: r.paused_at,
+            cancelled_at: r.cancelled_at,
+            cancel_reason_text: r.cancel_reason_text.clone(),
+        }
+    }
+}
+
+pub(crate) async fn set_subscription_state(
+    tx: &mut TxCx,
+    id: &str,
+    s: &SubscriptionState,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE sales.subscription SET subscription_status = $3, next_charge_date = $4,
+           paused_at = $5, cancelled_at = $6, cancel_reason_text = $7, updated_at = now(),
+           version = version + 1
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(&s.status)
+    .bind(s.next_charge_date)
+    .bind(s.paused_at)
+    .bind(s.cancelled_at)
+    .bind(s.cancel_reason_text.as_deref())
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// The schedule of a subscription: what `update_schedule` changes.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct Schedule {
+    pub billing_cycle: String,
+    pub next_charge_date: NaiveDate,
+    pub ordered_item: Value,
+    pub order_delivery: Value,
+    pub total: Money,
+}
+
+impl Schedule {
+    pub fn of(r: &SubscriptionRow) -> Result<Self, ToolError> {
+        Ok(Self {
+            billing_cycle: r.billing_cycle.clone(),
+            next_charge_date: r.next_charge_date,
+            ordered_item: r.ordered_item.clone(),
+            order_delivery: r.order_delivery.clone(),
+            total: money(r.total_payment_due_value, &r.total_payment_due_currency)?,
+        })
+    }
+}
+
+pub(crate) async fn set_schedule(tx: &mut TxCx, id: &str, s: &Schedule) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE sales.subscription SET billing_cycle = $3, next_charge_date = $4,
+           ordered_item = $5, order_delivery = $6, total_payment_due_value = $7,
+           total_payment_due_currency = $8, updated_at = now(), version = version + 1
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(&s.billing_cycle)
+    .bind(s.next_charge_date)
+    .bind(&s.ordered_item)
+    .bind(&s.order_delivery)
+    .bind(s.total.value)
+    .bind(s.total.currency.as_str())
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------- receipts
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub(crate) struct ReceiptRow {
+    pub id: String,
+    pub order_id: String,
+    pub receipt_type: String,
+    pub tax_id: Option<String>,
+    pub total_payment_due_value: Decimal,
+    pub total_payment_due_currency: String,
+    pub issued_at: DateTime<Utc>,
+    pub cancelled_at: Option<DateTime<Utc>>,
+    pub version: i32,
+}
+
+const RECEIPT_COLUMNS: &str = "id, order_id, receipt_type, tax_id, total_payment_due_value,
+    total_payment_due_currency::text AS total_payment_due_currency, issued_at, cancelled_at,
+    version";
+
+/// The receipts of an order that stand (not cancelled), newest first.
+pub(crate) async fn receipts(tx: &mut TxCx, order_id: &str) -> Result<Vec<ReceiptRow>, ToolError> {
+    sqlx::query_as::<_, ReceiptRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {RECEIPT_COLUMNS} FROM sales.receipt
+         WHERE tenant_id = $1 AND order_id = $2 AND cancelled_at IS NULL
+         ORDER BY issued_at DESC, id DESC"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(order_id)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// One receipt, cancelled or not.
+pub(crate) async fn receipt(tx: &mut TxCx, id: &str) -> Result<Option<ReceiptRow>, ToolError> {
+    sqlx::query_as::<_, ReceiptRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {RECEIPT_COLUMNS} FROM sales.receipt WHERE tenant_id = $1 AND id = $2"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// Issues a receipt; the same id twice is the same receipt.
+pub(crate) async fn insert_receipt(
+    tx: &mut TxCx,
+    id: &str,
+    order_id: &str,
+    receipt_type: &str,
+    tax_id: Option<&str>,
+    amount: Money,
+    issued_at: DateTime<Utc>,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "INSERT INTO sales.receipt (tenant_id, id, order_id, receipt_type, tax_id,
+           total_payment_due_value, total_payment_due_currency, issued_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (tenant_id, id) DO NOTHING",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(order_id)
+    .bind(receipt_type)
+    .bind(tax_id)
+    .bind(amount.value)
+    .bind(amount.currency.as_str())
+    .bind(issued_at)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// Cancels a receipt so it can be issued again for a changed amount.
+pub(crate) async fn cancel_receipt(
+    tx: &mut TxCx,
+    id: &str,
+    at: DateTime<Utc>,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE sales.receipt SET cancelled_at = $3, updated_at = now(), version = version + 1
+         WHERE tenant_id = $1 AND id = $2 AND cancelled_at IS NULL",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(at)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------- guest lookups
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub(crate) struct GuestLookupRow {
+    pub failed_attempt_count: i32,
+    pub first_failed_at: Option<DateTime<Utc>>,
+    pub locked_until: Option<DateTime<Utc>>,
+    pub order_id: Option<String>,
+    pub token_expires_at: Option<DateTime<Utc>>,
+}
+
+/// The tries on an order number, if there were any.
+pub(crate) async fn guest_lookup(
+    tx: &mut TxCx,
+    order_number: &str,
+) -> Result<Option<GuestLookupRow>, ToolError> {
+    sqlx::query_as::<_, GuestLookupRow>(
+        "SELECT failed_attempt_count, first_failed_at, locked_until, order_id, token_expires_at
+         FROM sales.guest_lookup WHERE tenant_id = $1 AND order_number = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(order_number)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// Records the wrong tries counted so far on an order number, and the lock once they reach it.
+pub(crate) async fn record_guest_failure(
+    tx: &mut TxCx,
+    order_number: &str,
+    count: u32,
+    first_failed_at: DateTime<Utc>,
+    locked_until: Option<DateTime<Utc>>,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "INSERT INTO sales.guest_lookup (tenant_id, order_number, failed_attempt_count,
+           first_failed_at, locked_until)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (tenant_id, order_number) DO UPDATE
+           SET failed_attempt_count = EXCLUDED.failed_attempt_count,
+               first_failed_at = EXCLUDED.first_failed_at,
+               locked_until = EXCLUDED.locked_until, updated_at = now(),
+               version = sales.guest_lookup.version + 1",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(order_number)
+    .bind(i32::try_from(count).unwrap_or(i32::MAX))
+    .bind(first_failed_at)
+    .bind(locked_until)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// Hands out a token for the order (kept as a hash) and clears the wrong tries.
+pub(crate) async fn grant_guest_token(
+    tx: &mut TxCx,
+    order_number: &str,
+    order_id: &str,
+    token_hash: &str,
+    expires_at: DateTime<Utc>,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "INSERT INTO sales.guest_lookup (tenant_id, order_number, order_id, token_hash,
+           token_expires_at)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (tenant_id, order_number) DO UPDATE
+           SET failed_attempt_count = 0, first_failed_at = NULL, locked_until = NULL,
+               order_id = EXCLUDED.order_id, token_hash = EXCLUDED.token_hash,
+               token_expires_at = EXCLUDED.token_expires_at, updated_at = now(),
+               version = sales.guest_lookup.version + 1",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(order_number)
+    .bind(order_id)
+    .bind(token_hash)
+    .bind(expires_at)
     .execute(&mut *tx.tx)
     .await
     .map_err(db)?;
