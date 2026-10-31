@@ -11,7 +11,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use super::{open_post, post_entity};
-use crate::{POST_NOT_FOUND, SECRET_POST, Viewer, project};
+use crate::{POST_NOT_FOUND, SECRET_POST, Viewer};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -19,7 +19,8 @@ pub struct GetPostInput {
     /// The post (`list_posts`).
     #[schemars(regex(pattern = r"^post_[a-z0-9_]+$"), example = &"post_8812")]
     pub post_id: String,
-    /// Only these top-level fields of the post; all of them when left out.
+    /// Only these top-level fields of the post (`id` always comes back); all of them when left
+    /// out.
     #[schemars(example = ["headline", "article_body", "comment_count"])]
     pub fields: Option<Vec<String>>,
 }
@@ -55,10 +56,10 @@ impl ReadOp<Cx> for GetPost {
         let mut tx = cx.read().await.map_err(ToolError::from)?;
         let p = open_post(&mut tx, &viewer, &input.post_id).await?;
         tx.commit().await.map_err(ToolError::from)?;
-        Ok(project(
+        acom_contract::fields::keep(
             post_entity(&p, &viewer, &cx.time),
-            input.fields.as_deref().unwrap_or_default(),
-        ))
+            &input.fields.unwrap_or_default(),
+        )
     }
 }
 
@@ -109,7 +110,19 @@ mod tests {
             .await
             .unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(own["acom:is_secret"], json!(true));
-        assert_eq!(own.as_object().map(|o| o.len()), Some(2));
+        // `id` always comes back with the fields asked for.
+        assert_eq!(own.as_object().map(|o| o.len()), Some(3));
+        let e = GetPost
+            .read(
+                &elena,
+                GetPostInput {
+                    post_id: "post_8810".into(),
+                    fields: Some(vec!["title".into()]),
+                },
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(e.code, "invalid_input");
         let store = testing::on_db(testing::operator()).await;
         let seen = GetPost
             .read(
