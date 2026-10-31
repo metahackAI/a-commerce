@@ -598,6 +598,30 @@ word_enum! {
     RecoveryKind = "recovery_kind" { PasswordReset = "password_reset", LoginId = "login_id" }
 }
 
+// ── community (docs/api/enums.md §1.14) ──────────────────────────────────────────────────
+
+word_enum! {
+    /// acom:boardType, what a community board is for.
+    BoardType = "board_type" { Free = "free", Review = "review", Question = "question", Event = "event" }
+}
+
+word_enum! {
+    /// acom:writePermission, who may write posts on a board.
+    WritePermission = "write_permission" { Everyone = "everyone", Member = "member", Staff = "staff" }
+}
+
+word_enum! {
+    /// acom:moderationMode of a board: review before posts show, after, or not at all.
+    ModerationMode = "moderation_mode" { PreReview = "pre_review", PostReview = "post_review", None = "none" }
+}
+
+word_enum! {
+    /// acom:moderationStatus of a post or a reply.
+    ModerationStatus = "moderation_status" {
+        Published = "published", HeldForReview = "held_for_review", Blinded = "blinded", Deleted = "deleted",
+    }
+}
+
 /// Every word list, by name. `cargo xtask check-schema` compares database `CHECK` lists with these.
 pub const LISTS: &[(&str, &[&str])] = &[
     (OrderStatus::LIST, OrderStatus::WORDS),
@@ -676,6 +700,10 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (TierChangeCause::LIST, TierChangeCause::WORDS),
     (DiscountLimitPeriod::LIST, DiscountLimitPeriod::WORDS),
     (RecoveryKind::LIST, RecoveryKind::WORDS),
+    (BoardType::LIST, BoardType::WORDS),
+    (WritePermission::LIST, WritePermission::WORDS),
+    (ModerationMode::LIST, ModerationMode::WORDS),
+    (ModerationStatus::LIST, ModerationStatus::WORDS),
 ];
 
 /// The words of one list, by name.

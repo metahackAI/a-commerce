@@ -144,7 +144,10 @@
 | 구독 | `active`, `paused`, `cancelled` |
 | 캠페인 `acom:campaign_status` | `draft`, `scheduled`, `sending`, `sent`, `failed`(발송이 메시지 하나 나가기 전에 멈춤, 예: 수신자 목록 가져오기 실패), `cancelled` |
 | 공지 `acom:notice_status` | `draft`, `published` |
-| 게시글 | `published`, `held_for_review`, `blinded`, `deleted` |
+| 게시글·댓글 모더레이션 `acom:moderation_status` | `published`, `held_for_review`, `blinded`, `deleted` |
+| 게시판 종류 `acom:board_type` | `free`, `review`, `question`, `event` |
+| 게시판 쓰기 권한 `acom:write_permission` | `everyone`(게스트 포함), `member`(로그인한 회원), `staff`(운영자) |
+| 게시판 모더레이션 방식 `acom:moderation_mode` | `pre_review`(검수 뒤 공개), `post_review`(공개 뒤 검수), `none`(검수 대기열 없음) |
 | 리뷰 노출 `review_status` (schema:creativeWorkStatus) | `visible`, `hidden`, `reported` |
 | 상품 문의 노출 `question_status` (schema:creativeWorkStatus) | `visible`, `hidden`(운영자가 숨김, 또는 `question.profanity_filter: hold_for_review`로 보류. 문의와 답이 함께 숨음) |
 | 리뷰의 사이즈 평가 `acom:fit_vote` | `true_to_size`, `runs_small`, `runs_large` |
