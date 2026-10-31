@@ -7,7 +7,7 @@ use std::str::FromStr;
 
 use acom_contract::{ChangeOp, Preview};
 use acom_core::StoreTime;
-use chrono::Timelike;
+use chrono::{Datelike, NaiveDate, Timelike, Weekday};
 use rust_decimal::Decimal;
 use serde_json::Value;
 
@@ -197,6 +197,108 @@ pub fn echo_start(reply: &str, prompt: &str) -> Option<usize> {
         .min()
 }
 
+/// The reply with every date said as weekday, month and day ("Sun Nov 2", "Monday, November 2")
+/// given the weekday that date falls on, in the year nearest `today`. A small model names the
+/// weekday of a date wrong now and then; the calendar does not.
+pub fn fix_weekdays(reply: &str, today: NaiveDate) -> String {
+    let mut words: Vec<(usize, usize)> = Vec::new();
+    let mut start = None;
+    for (i, c) in reply
+        .char_indices()
+        .chain(std::iter::once((reply.len(), ' ')))
+    {
+        match (c.is_alphanumeric(), start) {
+            (true, None) => start = Some(i),
+            (false, Some(s)) => {
+                words.push((s, i));
+                start = None;
+            }
+            _ => {}
+        }
+    }
+    let gap = |a: usize, b: usize| reply[a..b].chars().all(|c| matches!(c, ' ' | ',' | '.'));
+    let mut fixes: Vec<(usize, usize, &str)> = Vec::new();
+    for w in words.windows(3) {
+        let [(a0, a1), (b0, b1), (c0, c1)] = [w[0], w[1], w[2]];
+        let Some((said, long)) = weekday_word(&reply[a0..a1]) else {
+            continue;
+        };
+        let (Some(month), Ok(day)) = (month_word(&reply[b0..b1]), reply[c0..c1].parse::<u32>())
+        else {
+            continue;
+        };
+        if !gap(a1, b0) || !gap(b1, c0) {
+            continue;
+        }
+        let nearest = (today.year() - 1..=today.year() + 1)
+            .filter_map(|y| NaiveDate::from_ymd_opt(y, month, day))
+            .min_by_key(|d| (*d - today).num_days().abs());
+        if let Some(date) = nearest
+            && date.weekday() != said
+        {
+            fixes.push((a0, a1, weekday_name(date.weekday(), long)));
+        }
+    }
+    let mut out = reply.to_owned();
+    for (a, b, name) in fixes.into_iter().rev() {
+        out.replace_range(a..b, name);
+    }
+    out
+}
+
+fn weekday_word(w: &str) -> Option<(Weekday, bool)> {
+    let day = match w.to_ascii_lowercase().as_str() {
+        "mon" | "monday" => Weekday::Mon,
+        "tue" | "tues" | "tuesday" => Weekday::Tue,
+        "wed" | "wednesday" => Weekday::Wed,
+        "thu" | "thur" | "thurs" | "thursday" => Weekday::Thu,
+        "fri" | "friday" => Weekday::Fri,
+        "sat" | "saturday" => Weekday::Sat,
+        "sun" | "sunday" => Weekday::Sun,
+        _ => return None,
+    };
+    // Every full name is longer than every short one ("Thurs").
+    Some((day, w.len() > 5))
+}
+
+fn weekday_name(d: Weekday, long: bool) -> &'static str {
+    match (d, long) {
+        (Weekday::Mon, false) => "Mon",
+        (Weekday::Tue, false) => "Tue",
+        (Weekday::Wed, false) => "Wed",
+        (Weekday::Thu, false) => "Thu",
+        (Weekday::Fri, false) => "Fri",
+        (Weekday::Sat, false) => "Sat",
+        (Weekday::Sun, false) => "Sun",
+        (Weekday::Mon, true) => "Monday",
+        (Weekday::Tue, true) => "Tuesday",
+        (Weekday::Wed, true) => "Wednesday",
+        (Weekday::Thu, true) => "Thursday",
+        (Weekday::Fri, true) => "Friday",
+        (Weekday::Sat, true) => "Saturday",
+        (Weekday::Sun, true) => "Sunday",
+    }
+}
+
+fn month_word(w: &str) -> Option<u32> {
+    let m = match w.to_ascii_lowercase().as_str() {
+        "jan" | "january" => 1,
+        "feb" | "february" => 2,
+        "mar" | "march" => 3,
+        "apr" | "april" => 4,
+        "may" => 5,
+        "jun" | "june" => 6,
+        "jul" | "july" => 7,
+        "aug" | "august" => 8,
+        "sep" | "sept" | "september" => 9,
+        "oct" | "october" => 10,
+        "nov" | "november" => 11,
+        "dec" | "december" => 12,
+        _ => return None,
+    };
+    Some(m)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -290,5 +392,26 @@ mod tests {
             "One task needs you. The blocks show the details; do not repeat tables. Say only";
         assert_eq!(echo_start(reply, prompt), Some(20));
         assert_eq!(echo_start("One task needs you: the reorder.", prompt), None);
+    }
+
+    #[test]
+    fn a_weekday_is_the_one_the_date_falls_on() {
+        let today = NaiveDate::from_ymd_opt(2026, 11, 6).unwrap();
+        assert_eq!(
+            fix_weekdays(
+                "The only scan is Sun Nov 2 at 12:43 PM; it is due Fri Nov 6.",
+                today
+            ),
+            "The only scan is Mon Nov 2 at 12:43 PM; it is due Fri Nov 6."
+        );
+        assert_eq!(
+            fix_weekdays(
+                "Undo until Tuesday, November 7. Order on sale Sat, Jan 2.",
+                today
+            ),
+            "Undo until Saturday, November 7. Order on sale Sat, Jan 2."
+        );
+        let said = "since Monday, 3 orders";
+        assert_eq!(fix_weekdays(said, today), said);
     }
 }
