@@ -69,6 +69,8 @@ pub async fn preview(
         .is_none()
         .then(|| now + Duration::minutes(ttl));
     let id = PreviewId::generate();
+    // Secrets the input carries (fields marked `writeOnly`) are not kept.
+    let stored = crate::storable_input(op.input_schema(), &input);
 
     let mut tx = cx.begin().await.map_err(ToolError::from)?;
     sqlx::query(
@@ -81,8 +83,8 @@ pub async fn preview(
     .bind(id.as_str())
     .bind(meta.address)
     .bind(meta.tool)
-    .bind(&input)
-    .bind(input_hash(&input))
+    .bind(&stored)
+    .bind(input_hash(&stored))
     .bind(&planned.plan)
     .bind(json!(planned.inner.changes))
     .bind(json!(planned.inner.checks))
@@ -99,7 +101,7 @@ pub async fn preview(
     .await
     .map_err(db_err)?;
     if let Some(cs) = change_set_id {
-        change_set::attach(&mut tx, cs, id.as_str(), &input, None).await?;
+        change_set::attach(&mut tx, cs, id.as_str(), &stored, None).await?;
     }
     // Preparing again (an order, a subscription) replaces the caller's earlier preparation:
     // only the newest one can be run.
@@ -421,7 +423,8 @@ pub async fn commit(
     }
     still_right(registry, cx, &mut tx, &p).await?;
     tx.preview_id = Some(p.id.clone());
-    let done = op.commit(&mut tx, &p.plan).await?;
+    let mut done = op.commit(&mut tx, &p.plan).await?;
+    let once = crate::take_shown_once(&mut done);
     mark_committed(&mut tx, preview_id, &p.plan, &done).await?;
     log_action(
         &mut tx,
@@ -434,7 +437,9 @@ pub async fn commit(
     )
     .await?;
     tx.commit().await.map_err(ToolError::from)?;
-    Ok(run_result(done))
+    let mut out = run_result(done);
+    out.produced.extend(once.unwrap_or_default());
+    Ok(out)
 }
 
 /// The answer to a run: the main id, an `undo` the write offers (a remembered preference names

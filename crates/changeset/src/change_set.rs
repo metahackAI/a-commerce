@@ -1204,10 +1204,20 @@ async fn run(
 ) -> Result<Value, ToolError> {
     let mut produced: BTreeMap<i32, Map<String, Value>> = BTreeMap::new();
     let mut done: Vec<(&Item, Value, Committed)> = Vec::new();
+    // What items show once (a new API key's secret): answered to the approver, never stored.
+    let mut shown_once: Vec<Value> = Vec::new();
     for item in list {
         match run_item(registry, runner, cs, item, &produced).await {
-            Ok((plan, c)) => {
+            Ok((plan, c, once)) => {
                 produced.insert(item.position, c.produced.clone());
+                if let Some(once) = once {
+                    let mut entry = Map::new();
+                    entry.insert("preview_id".into(), json!(item.preview_id));
+                    entry.insert("tool".into(), json!(item.instrument));
+                    entry.insert("result_id".into(), json!(c.id));
+                    entry.extend(once);
+                    shown_once.push(Value::Object(entry));
+                }
                 done.push((item, plan, c));
             }
             Err(e) => {
@@ -1324,7 +1334,11 @@ async fn run(
     )
     .await?;
     tx.commit().await.map_err(ToolError::from)?;
-    Ok(json!({"state": end.as_str(), "verification": verification}))
+    let mut out = json!({"state": end.as_str(), "verification": verification});
+    if !shown_once.is_empty() {
+        out[crate::SHOWN_ONCE] = Value::Array(shown_once);
+    }
+    Ok(out)
 }
 
 /// Commits one item in its own transaction. Running it again returns the first result.
@@ -1334,18 +1348,19 @@ async fn run_item(
     cs: &str,
     item: &Item,
     produced: &BTreeMap<i32, Map<String, Value>>,
-) -> Result<(Value, Committed), ToolError> {
+) -> Result<(Value, Committed, Option<Map<String, Value>>), ToolError> {
     let o = op(registry, &item.instrument)?;
     let mut tx = runner.begin().await.map_err(ToolError::from)?;
     let p = preview::load(&mut tx, &item.preview_id).await?;
     if p.preview_state == PreviewState::Committed.as_str() {
-        return Ok((p.plan.clone(), first_result(&p)?));
+        return Ok((p.plan.clone(), first_result(&p)?, None));
     }
     tx.preview_id = Some(item.preview_id.clone());
     tx.change_set_id = Some(cs.to_owned());
     let plan = bind::bind(&item.plan, produced)
         .map_err(|e| ToolError::new(ErrorCode::INTERNAL, format!("cannot bind the plan: {e}")))?;
-    let done = o.commit(&mut tx, &plan).await?;
+    let mut done = o.commit(&mut tx, &plan).await?;
+    let once = crate::take_shown_once(&mut done);
     mark_committed(&mut tx, &item.preview_id, &plan, &done).await?;
     sqlx::query(
         "UPDATE platform.change_set_item SET result_id = $4, updated_at = now()
@@ -1374,7 +1389,7 @@ async fn run_item(
     )
     .await?;
     tx.commit().await.map_err(ToolError::from)?;
-    Ok((plan, done))
+    Ok((plan, done, once))
 }
 
 /// `POST /v1/platform/change-sets/{id}/undo`: every item, in reverse order, before the deadline.
