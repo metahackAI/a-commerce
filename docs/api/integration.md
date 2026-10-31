@@ -42,7 +42,7 @@
 - 처리: 새 상품은 카탈로그의 초안 경로(`batch_import`의 공급사 시트 규칙: 카테고리 맞춤, SKU 유일, 초안 이름, 미해결 필드)로 초안이 되고(쇼퍼에게 보이지 않음, 게시는 `approve_product`), 판매가는 피드의 가격을 쓰되 가격 하한을 검사합니다. 이미 있는 상품(같은 피드의 이전 가져오기가 받은 코드, 또는 카탈로그의 변형 SKU)은 카탈로그의 가격 하한·재고·판매 상태 규칙으로 바뀝니다. 거부된 행은 프리뷰 `changes`에 `exclude`로 사유와 함께 나옵니다. 되돌리기는 가격·재고·판매 상태를 되돌리고 초안을 지우며, 이미 제출·게시된 초안이나 단종(`discontinued`)은 되돌리지 않습니다
 - 정책: [integration.yml](../../policies/integration.yml) `import.max_items_per_batch`, `import.partial_success`, `import.required_fields`, `import.category_mapping`, [catalog.yml](../../policies/catalog.yml) `price_floor`, [approval.yml](../../policies/approval.yml) `thresholds.bulk_catalog_change`
 - 에러: `seller_not_active` → `set_seller_status` · `category_unmapped` → `list_categories`(찾은 `cat_…`을 `acom:category_mapping`에 넣어 다시 가져옴. `map_category`는 표준 → 전시 매핑이라 외부 단어를 맞추지 못함) · `below_price_floor` → `set_price` · `batch_too_large`(행을 나눠 다시 보냄) → `import_products`. 행별 거부는 같은 코드와 `missing_required_field`·`duplicate_sku`로 `get_import_status`의 `rows[].error`에 남습니다. 모든 행이 거부되거나 `import.partial_success: all_or_nothing`에서 한 행이라도 거부되면 첫 행의 에러로 실패합니다
-- 판매자 상태: `partner`와 `integration`은 서로 의존하지 않으므로, `partner`가 읽기 함수를 내놓으면 레지스트리가 `integration::service::for_partner::provide_seller_status`로 넣습니다. 넣기 전에는 판매자 상태를 확인하지 않고, 프리뷰가 그렇다고 말합니다
+- 판매자 상태: `partner`와 `integration`은 서로 의존하지 않으므로, 레지스트리가 `partner::service::for_integration::seller_status`를 `integration::service::for_partner::provide_seller_status`로 넣습니다. 판매자가 `active`가 아니거나 없으면 `seller_not_active`. 읽기 함수가 없으면(partner 없이 만든 레지스트리) 판매자 상태를 확인하지 않고, 프리뷰가 그렇다고 말합니다
 - 멱등성: 같은 `preview_id` 재실행은 첫 결과. 같은 `external_id`의 행은 상품을 중복 생성하지 않고 갱신합니다.
 
 ### `get_import_status` — Kind: R

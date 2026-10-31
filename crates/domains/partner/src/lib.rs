@@ -11,6 +11,7 @@
 
 pub mod model;
 pub mod rules;
+pub mod service;
 
 mod activity;
 mod jobs;

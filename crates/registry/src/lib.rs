@@ -32,6 +32,11 @@ pub fn build() -> Result<Registry<Cx>, Vec<String>> {
     // Messaging sends campaigns to promotion's segments; it does not depend on promotion, so
     // the reader is handed over here.
     acom_messaging::service::providers::provide_segment_members(segment_members);
+    // Integration imports a seller's feed only while the seller is active; partner and
+    // integration are peers, so partner's reader is handed over here.
+    acom_integration::service::for_partner::provide_seller_status(
+        acom_partner::service::for_integration::seller_status,
+    );
     b.build()
 }
 
