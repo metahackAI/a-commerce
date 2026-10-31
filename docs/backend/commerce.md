@@ -211,7 +211,7 @@ drafting ──submit──▶ waiting_for_approval ──approve(version)──
 
 ### 5.1 스키마와 테이블
 
-- PostgreSQL 스키마는 도메인별(`catalog`, `merchandising`, `search`, `promotion`, `customer`, `sales`, `fulfillment`, `messaging`, `platform`) + 에이전트용 `agent`.
+- PostgreSQL 스키마는 도메인별(`catalog`, `merchandising`, `search`, `promotion`, `customer`, `sales`, `fulfillment`, `messaging`, `community`, `platform`) + 에이전트용 `agent`.
 - 테이블·컬럼 이름은 [../api/data-model.md](../api/data-model.md) §DB 명명을 따릅니다. 모든 스토어 범위 테이블에 `tenant_id`와 RLS 정책.
 - 앱 접속 역할(`acom_app`)은 RLS를 우회하지 못합니다. 마이그레이션 역할만 소유자입니다.
 

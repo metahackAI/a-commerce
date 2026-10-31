@@ -3101,6 +3101,485 @@
     ]
   },
   {
+    "schema": "community",
+    "table": "board",
+    "kind": "table",
+    "term": "schema:CreativeWork/acom:Board",
+    "description": "a community board shoppers write posts on, with who may write and how it is moderated. id prefix brd_.",
+    "id_prefix": "brd",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix brd_; the same value the API, logs and events use (API board_id)."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "the board's name shown to shoppers; one board per name in a store (community.yml board.name_unique)."
+      },
+      {
+        "name": "board_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:boardType",
+        "description": "what the board is for. values: board_type",
+        "values": [
+          "free",
+          "review",
+          "question",
+          "event"
+        ],
+        "values_list": "board_type"
+      },
+      {
+        "name": "write_permission",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:writePermission",
+        "description": "who may write posts: everyone (guests too), member (signed-in members) or staff (the store). values: write_permission",
+        "values": [
+          "everyone",
+          "member",
+          "staff"
+        ],
+        "values_list": "write_permission"
+      },
+      {
+        "name": "allow_secret",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:allowSecret",
+        "description": "true when a post may be secret (only its writer and the store read it)."
+      },
+      {
+        "name": "allow_attachment",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:allowAttachment",
+        "description": "true when posts may carry uploaded images (community.yml attachment)."
+      },
+      {
+        "name": "moderation_mode",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:moderationMode",
+        "description": "pre_review holds new posts until the store looks; post_review shows them at once and reports hold them; none keeps no queue. values: moderation_mode",
+        "values": [
+          "pre_review",
+          "post_review",
+          "none"
+        ],
+        "values_list": "moderation_mode"
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "community",
+    "table": "comment",
+    "kind": "table",
+    "term": "schema:Comment",
+    "description": "a reply to a post, or to another reply up to community.yml reply.max_depth. id prefix rpl_. API: reply.",
+    "id_prefix": "rpl",
+    "api_name": "reply",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix rpl_; the same value the API, logs and events use (API reply_id)."
+      },
+      {
+        "name": "discussion_forum_posting_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:about",
+        "description": "the post the reply belongs to (post_ id, API post_id).",
+        "references": "community.discussion_forum_posting"
+      },
+      {
+        "name": "parent_item_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:parentItem",
+        "description": "the reply this one answers (rpl_ id); NULL for a reply to the post itself.",
+        "references": "community.comment"
+      },
+      {
+        "name": "reply_depth",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:replyDepth",
+        "description": "1 for a reply to the post, 2 for a reply to a reply, and so on."
+      },
+      {
+        "name": "author_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:author",
+        "description": "who wrote it: a shopper (cus_), a guest's browser session (ses_) or an operator of the store (adm_); only they may edit it."
+      },
+      {
+        "name": "author_name",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:author",
+        "description": "the name shown with the reply, masked as community.yml moderation.author_masking said when it was written; NULL for the store and for guests."
+      },
+      {
+        "name": "text",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:text",
+        "description": "the reply as its writer wrote it."
+      },
+      {
+        "name": "is_secret",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:isSecret",
+        "description": "true when only its writer, the post's writer and the store may read it."
+      },
+      {
+        "name": "moderation_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:moderationStatus",
+        "description": "published, held_for_review, blinded by the store, or deleted by its writer. values: moderation_status",
+        "values": [
+          "published",
+          "held_for_review",
+          "blinded",
+          "deleted"
+        ],
+        "values_list": "moderation_status"
+      },
+      {
+        "name": "moderation_reason",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:moderationReason",
+        "description": "why the store blinded it, or why it is held; NULL for a published reply."
+      },
+      {
+        "name": "date_created",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:dateCreated",
+        "description": "when it was written (store clock)."
+      },
+      {
+        "name": "date_modified",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:dateModified",
+        "description": "when its writer last changed it; NULL when never changed."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "community",
+    "table": "content_report",
+    "kind": "table",
+    "term": "schema:Action/acom:ContentReport",
+    "description": "a shopper's report that a post is inappropriate; enough reports from different shoppers hold or blind it (community.yml moderation.report_threshold). id prefix rpt_.",
+    "id_prefix": "rpt",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix rpt_; the same value the API, logs and events use (API report_id)."
+      },
+      {
+        "name": "discussion_forum_posting_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:object",
+        "description": "the post reported (post_ id, API post_id).",
+        "references": "community.discussion_forum_posting"
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "the shopper who reported it (cus_ id); one report per shopper and post.",
+        "references": "customer.person"
+      },
+      {
+        "name": "report_reason",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:reportReason",
+        "description": "why it was reported (community.yml moderation.report_reasons). values: report_reason",
+        "values": [
+          "spam",
+          "abuse",
+          "obscene",
+          "advertisement",
+          "fake",
+          "irrelevant",
+          "other"
+        ],
+        "values_list": "report_reason"
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:description",
+        "description": "the reporter's own words; NULL when they gave none."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the report was made (store clock)."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "community",
+    "table": "discussion_forum_posting",
+    "kind": "table",
+    "term": "schema:DiscussionForumPosting",
+    "description": "a post on a community board. id prefix post_. API: post.",
+    "id_prefix": "post",
+    "api_name": "post",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix post_; the same value the API, logs and events use (API post_id)."
+      },
+      {
+        "name": "board_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:isPartOf",
+        "description": "the board the post is on (brd_ id).",
+        "references": "community.board"
+      },
+      {
+        "name": "author_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:author",
+        "description": "who wrote it: a shopper (cus_), a guest's browser session (ses_) or an operator of the store (adm_); only they may edit it."
+      },
+      {
+        "name": "author_name",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:author",
+        "description": "the name shown with the post, masked as community.yml moderation.author_masking said when it was written (Ja***); NULL for the store and for guests."
+      },
+      {
+        "name": "headline",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:headline",
+        "description": "the post's title."
+      },
+      {
+        "name": "article_body",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:articleBody",
+        "description": "the post's text."
+      },
+      {
+        "name": "associated_media",
+        "type": "text[]",
+        "nullable": false,
+        "term": "schema:associatedMedia",
+        "description": "uploaded images attached to the post (upl_ ids); empty when none."
+      },
+      {
+        "name": "is_secret",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:isSecret",
+        "description": "true when only the writer and the store may read it (board allow_secret)."
+      },
+      {
+        "name": "in_language",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:inLanguage",
+        "description": "the language it is written in (BCP 47, for example en); NULL when not given."
+      },
+      {
+        "name": "moderation_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:moderationStatus",
+        "description": "published; held_for_review (board pre_review, a filter hold, or enough reports); blinded by the store; deleted by its writer or the store. values: moderation_status",
+        "values": [
+          "published",
+          "held_for_review",
+          "blinded",
+          "deleted"
+        ],
+        "values_list": "moderation_status"
+      },
+      {
+        "name": "moderation_reason",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:moderationReason",
+        "description": "why the store blinded or deleted it, or why it is held (report_threshold, profanity_filter, spam, pre_review); NULL for a published post."
+      },
+      {
+        "name": "like_count",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:likeCount",
+        "description": "how many shoppers liked the post; 0 or more."
+      },
+      {
+        "name": "date_published",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:datePublished",
+        "description": "when it was written (store clock)."
+      },
+      {
+        "name": "date_modified",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:dateModified",
+        "description": "when its writer last changed it; NULL when never changed."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
     "schema": "customer",
     "table": "comment",
     "kind": "table",
@@ -8860,6 +9339,655 @@
         "nullable": false,
         "term": "acom:templateStatus",
         "description": "draft until a campaign uses the template."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "partner",
+    "table": "seller",
+    "kind": "table",
+    "term": "schema:Organization/acom:Seller",
+    "description": "a business that sells in the store under a contract, from application to termination; products and orders name it by the same id. id prefix slr_. API: seller.",
+    "id_prefix": "slr",
+    "api_name": "seller",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "seller id (slr_), API seller_id."
+      },
+      {
+        "name": "legal_name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:legalName",
+        "description": "the registered name of the business, for example Harbor Goods LLC."
+      },
+      {
+        "name": "tax_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:taxID",
+        "description": "business registration (tax) number as the seller gave it; sensitive, so operators see it masked (partner.yml privacy)."
+      },
+      {
+        "name": "seller_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:sellerStatus",
+        "description": "where the seller is between application and termination; transitions follow partner.yml lifecycle.allowed_transitions. values: seller_status",
+        "values": [
+          "applied",
+          "under_review",
+          "approved",
+          "active",
+          "suspended",
+          "terminated"
+        ],
+        "values_list": "seller_status"
+      },
+      {
+        "name": "seller_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:sellerType",
+        "description": "how the seller sells in the store. values: seller_type",
+        "values": [
+          "marketplace",
+          "consignment",
+          "direct_supply"
+        ],
+        "values_list": "seller_type"
+      },
+      {
+        "name": "address",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "schema:address",
+        "description": "business address: {street_address, address_locality, address_region, postal_code, address_country}."
+      },
+      {
+        "name": "contact_point",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "schema:contactPoint",
+        "description": "people to reach: [{contact_type (settlement, customer_service, product), name, email, telephone}]."
+      },
+      {
+        "name": "business_category",
+        "type": "text[]",
+        "nullable": false,
+        "term": "acom:businessCategory",
+        "description": "standard categories (cat_ ids) the seller sells in; checked against partner.yml onboarding.prohibited_categories."
+      },
+      {
+        "name": "documents",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:documents",
+        "description": "papers attached to the application: [{document_type, upload_id, name}]; document_type is a seller_document_type word."
+      },
+      {
+        "name": "organization_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:vendorOrganization",
+        "description": "the vendor organization (org_ id) whose operator accounts act for this seller; NULL when the seller has no back-office accounts.",
+        "references": "platform.organization"
+      },
+      {
+        "name": "applied_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:appliedAt",
+        "description": "when the seller applied to sell in the store."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "partner",
+    "table": "seller_contract",
+    "kind": "table",
+    "term": "schema:Intangible/acom:SellerContract",
+    "description": "the agreement between the store and one seller; its terms are numbered versions in seller_contract_version, which are only added. id prefix ctr_. API: contract.",
+    "id_prefix": "ctr",
+    "api_name": "contract",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "contract id (ctr_), API contract_id; it stays the same across versions."
+      },
+      {
+        "name": "seller_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:sellerId",
+        "description": "the seller (slr_ id) the contract is with; one contract per seller.",
+        "references": "partner.seller"
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change (each new contract version); previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "partner",
+    "table": "seller_contract_version",
+    "kind": "table",
+    "term": "schema:Intangible/acom:SellerContractTerms",
+    "description": "one numbered version of a seller contract: commission, settlement and payout terms for a period; versions of one contract never overlap (contract.no_period_overlap).",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "seller_contract_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:sellerContractId",
+        "description": "the contract (ctr_ id) this version belongs to.",
+        "references": "partner.seller_contract"
+      },
+      {
+        "name": "version_number",
+        "type": "integer",
+        "nullable": false,
+        "term": "schema:version",
+        "description": "1-based number of this version within its contract (API version)."
+      },
+      {
+        "name": "default_commission_rate",
+        "type": "numeric(5,4)",
+        "nullable": false,
+        "term": "acom:defaultCommissionRate",
+        "description": "the store's commission on a sale in a category without its own rate, 0-1 within partner.yml commission."
+      },
+      {
+        "name": "commission_rate",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:commissionRate",
+        "description": "commission rates by category: [{category_id, rate}], rate 0-1; categories not listed use the default rate."
+      },
+      {
+        "name": "settlement_cycle",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:settlementCycle",
+        "description": "how often the seller is paid out. values: settlement_cycle",
+        "values": [
+          "weekly",
+          "biweekly",
+          "monthly"
+        ],
+        "values_list": "settlement_cycle"
+      },
+      {
+        "name": "settlement_method",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:settlementMethod",
+        "description": "when a sale becomes payable to the seller. values: settlement_method",
+        "values": [
+          "on_delivery",
+          "on_confirmation"
+        ],
+        "values_list": "settlement_method"
+      },
+      {
+        "name": "payout_account_ref",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:payoutAccountRef",
+        "description": "the payout provider's reference for the seller's verified bank account, never the account number; operators see it masked."
+      },
+      {
+        "name": "valid_from",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:validFrom",
+        "description": "first moment the terms apply."
+      },
+      {
+        "name": "valid_through",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:validThrough",
+        "description": "last moment the terms apply."
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:agent",
+        "description": "person or system that set the version (adm_ or sys_ id); NULL for seed rows."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "partner",
+    "table": "seller_event",
+    "kind": "table",
+    "term": "schema:Action",
+    "description": "one state change of a seller, with the reason in result; a change booked for later waits as potential until its time. Rows are only added.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "seller_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:sellerId",
+        "description": "the seller that changed (slr_ id), the object of the event.",
+        "references": "partner.seller"
+      },
+      {
+        "name": "position",
+        "type": "integer",
+        "nullable": false,
+        "term": "schema:position",
+        "description": "1-based order of this event within its seller."
+      },
+      {
+        "name": "action_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:actionType",
+        "description": "the schema.org Action subtype (@type), for example CreateAction or UpdateAction."
+      },
+      {
+        "name": "action_status",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:actionStatus",
+        "description": "lifecycle of the action; potential while a booked change waits for its time. values: action_status",
+        "values": [
+          "potential",
+          "active",
+          "completed",
+          "failed"
+        ],
+        "values_list": "action_status"
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:agent",
+        "description": "person or system that acted (adm_ or sys_ id); NULL when only a model acted."
+      },
+      {
+        "name": "agent_name",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:agent",
+        "description": "name of the software agent (model) that acted; NULL for people."
+      },
+      {
+        "name": "instrument",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:instrument",
+        "description": "tool name or scheduled job that caused the event."
+      },
+      {
+        "name": "from_state",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:fromState",
+        "description": "status before the event; NULL for the creating event. values: seller_status",
+        "values": [
+          "applied",
+          "under_review",
+          "approved",
+          "active",
+          "suspended",
+          "terminated"
+        ],
+        "values_list": "seller_status"
+      },
+      {
+        "name": "to_state",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:toState",
+        "description": "status after the event. values: seller_status",
+        "values": [
+          "applied",
+          "under_review",
+          "approved",
+          "active",
+          "suspended",
+          "terminated"
+        ],
+        "values_list": "seller_status"
+      },
+      {
+        "name": "result",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "schema:result",
+        "description": "what the action recorded, as JSON: {reason, products_hidden[], products_restored[]}."
+      },
+      {
+        "name": "error",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "schema:error",
+        "description": "why a booked change did not happen, as {code, class, message}; NULL otherwise."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the change takes (or took) effect."
+      },
+      {
+        "name": "end_time",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:endTime",
+        "description": "when the change was applied; NULL while it waits."
+      },
+      {
+        "name": "request_id",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "request trace id (req_) from the gateway; joins agent turns and the action log."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "partner",
+    "table": "seller_grade",
+    "kind": "table",
+    "term": "schema:Intangible/acom:SellerGrade",
+    "description": "a seller grade a person confirmed or adjusted for a period, with the computed metrics it was based on; the latest one covering a moment is the grade then.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "seller_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:sellerId",
+        "description": "the graded seller (slr_ id).",
+        "references": "partner.seller"
+      },
+      {
+        "name": "position",
+        "type": "integer",
+        "nullable": false,
+        "term": "schema:position",
+        "description": "1-based order of this grade within its seller."
+      },
+      {
+        "name": "grade_level",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:gradeLevel",
+        "description": "the grade that applies in the period. values: grade_level",
+        "values": [
+          "platinum",
+          "gold",
+          "silver",
+          "bronze",
+          "watch"
+        ],
+        "values_list": "grade_level"
+      },
+      {
+        "name": "computed_grade_level",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:computedGradeLevel",
+        "description": "the grade the metrics gave at the time; NULL when the review period had no orders. values: grade_level",
+        "values": [
+          "platinum",
+          "gold",
+          "silver",
+          "bronze",
+          "watch"
+        ],
+        "values_list": "grade_level"
+      },
+      {
+        "name": "adjustment_reason",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:adjustmentReason",
+        "description": "why the grade differs from the computed one (grade.override_requires_reason); NULL when it was confirmed as computed."
+      },
+      {
+        "name": "metrics",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:gradeMetrics",
+        "description": "the computed rates behind the grade: {shipping_compliance_rate, order_fulfillment_rate, claim_rate, service_score, review_period}, rates 0-1."
+      },
+      {
+        "name": "valid_from",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:validFrom",
+        "description": "first moment the grade applies."
+      },
+      {
+        "name": "valid_through",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:validThrough",
+        "description": "last moment the grade applies."
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:agent",
+        "description": "person or system that set the grade (adm_ or sys_ id); NULL for seed rows."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "partner",
+    "table": "seller_product_group",
+    "kind": "table",
+    "term": "acom:SellerProduct",
+    "description": "a product (ProductGroup) that a seller sells in the store (schema:offeredBy); one seller per product.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "product_group_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:productGroupId",
+        "description": "the product (prd_ id; API product_id).",
+        "references": "catalog.product_group"
+      },
+      {
+        "name": "seller_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:offeredBy",
+        "description": "the seller (slr_ id) that sells the product.",
+        "references": "partner.seller"
+      },
+      {
+        "name": "hidden_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:hiddenAt",
+        "description": "when the seller's suspension took the product off sale; NULL while it is not hidden for the seller."
       },
       {
         "name": "created_at",

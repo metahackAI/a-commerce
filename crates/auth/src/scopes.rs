@@ -59,8 +59,8 @@ fn set(items: &[&str]) -> BTreeSet<String> {
 }
 
 /// A signed-in shopper: browse, keep a cart, prepare and place orders, ask for returns, review
-/// products, manage their own profile and remembered preferences, and read the messages the store
-/// sent them. Which tools of a domain a
+/// products, manage their own profile and remembered preferences, read the messages the store
+/// sent them, and read and write on community boards. Which tools of a domain a
 /// shopper reaches is decided by each tool's audience (acom-http), not by these scopes alone.
 pub fn shopper() -> BTreeSet<String> {
     set(&[
@@ -75,6 +75,8 @@ pub fn shopper() -> BTreeSet<String> {
         "tools:write:customer",
         "tools:read:fulfillment",
         "tools:read:messaging",
+        "tools:read:community",
+        "tools:write:community",
         "human:order",
         "human:cancel",
         "human:return",
@@ -85,7 +87,8 @@ pub fn shopper() -> BTreeSet<String> {
     ])
 }
 
-/// A guest: browse and keep a cart tied to the browser session. Signing in is needed to order.
+/// A guest: browse, keep a cart tied to the browser session, and read community boards (writing
+/// only where a board lets everyone write). Signing in is needed to order.
 /// `human:account` lets a person who cannot sign in ask for a password reset or their sign-in id
 /// (docs/api/customer.md, person-only endpoints); agents never get it.
 pub fn guest() -> BTreeSet<String> {
@@ -98,6 +101,8 @@ pub fn guest() -> BTreeSet<String> {
         "tools:write:sales",
         "tools:read:customer",
         "tools:write:customer",
+        "tools:read:community",
+        "tools:write:community",
         "human:account",
     ])
 }

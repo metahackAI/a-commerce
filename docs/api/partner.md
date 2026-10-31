@@ -25,7 +25,7 @@
   | `limit` / `cursor` | Integer / Text | | 기본 20, 최대 100 / 이전 응답의 `next_cursor` |
 - 출력: `{"items": [{"id": "slr_harbor_goods", "legal_name": "Harbor Goods LLC", "tax_id": "***-**-4410", "acom:seller_status": "active", "acom:seller_type": "marketplace", "acom:grade_level": "gold"}], "total": 1}`
 - 프리뷰: 해당 없음(읽기)
-- 정책: 없음(읽기). `tax_id`는 기본 가림
+- 정책: 없음(읽기). `tax_id`는 기본 가림([partner.yml](../../policies/partner.yml) `privacy`: 스토어 운영자에게는 끝 네 자리만, 판매사 조직에 속한 판매자 본인 직원에게는 그대로). 판매자 직원은 자기 판매자만 봅니다
 - 에러: `invalid_filter` → `search_sellers`
 - 멱등성: 읽기(부작용 없음)
 
@@ -84,7 +84,7 @@
   | `valid_from` | DateTime | | 예약 전이 시각. 없으면 실행 즉시 |
 - 출력(프리뷰): `changes`에 `update` `seller`(`from`/`to` 상태)와 영향(숨겨질 상품 수, 진행 중 주문 수, 미정산 금액 `{value, currency}`), checks `lifecycle.allowed_transitions`, `suspend.hide_products`, `needs_approval: true`, `approval_reason: "Suspends a seller with 18 open orders"`
 - 출력(실행): `{"ok": true, "id": "slr_harbor_goods", "undo": {"by": "person", "target": "cs_1046", "until": "2026-11-07T23:59:00-05:00"}}` — 해지(`terminated`)는 끝 상태라 되돌리기 대상이 아닙니다.
-- 정책: [partner.yml](../../policies/partner.yml) `lifecycle.allowed_transitions`, `suspend.hide_products`
+- 정책: [partner.yml](../../policies/partner.yml) `lifecycle.allowed_transitions`, `suspend.hide_products`. 숨김은 상품을 판매 중지(`active` → `draft`)로 옮기고 활성화 때 그 상품만 되돌립니다. 해지도 상품을 숨기며, 진행 중 주문이 있거나(`open_orders_exist`) 미정산 금액이 남으면(`pending_settlement`) 거부합니다. 정산 금액은 외부 지급 시스템 대신 계약 조건으로 계산한 추정치입니다. `valid_from`이 미래면 변경을 예약하고(`changes[].op: schedule`) 그 시각에 작업 `partner.change_seller_status`가 실행합니다
 - 에러: `invalid_state` → `get_seller` · `open_orders_exist` → `search_orders` · `pending_settlement` → `get_seller_overview`
 - 멱등성: 같은 목표 상태로의 재시도는 성공으로 처리.
 
@@ -99,7 +99,7 @@
 - 입력: `seller_id`(✓), `version?`(Integer, 없으면 현재 버전), `fields?[]`
 - 출력: `acom:SellerContract {id: "ctr_harbor_goods", version: 2, acom:commission_rate[{category_id, rate}], acom:settlement_cycle, acom:settlement_method, acom:payout_account(마스킹), valid_from, valid_through, acom:contract_status}`
 - 프리뷰: 해당 없음(읽기)
-- 정책: 없음(읽기). 정산 계좌는 가림
+- 정책: 없음(읽기). 정산 계좌는 가림(`privacy`, `tax_id`와 같은 규칙). 출력의 `acom:commission_rate`는 기본 수수료율(`category_id: null`)을 먼저 두고, `acom:versions[]`에 모든 버전의 기간과 상태를 붙입니다
 - 에러: `contract_not_found` → `set_contract` · `seller_not_found` → `search_sellers`
 - 멱등성: 읽기(부작용 없음)
 
@@ -111,7 +111,7 @@
   | 필드 | 타입 | 필수 | 설명 · 예 |
   |---|---|:--:|---|
   | `seller_id` | Text | ✓ | `"slr_harbor_goods"` |
-  | `acom:commission_rate` | object[] | ✓ | 기본과 카테고리별 수수료율(0–1). 예 `[{"category_id": "cat_outerwear", "rate": 0.12}]` |
+  | `acom:commission_rate` | object[] | ✓ | 기본과 카테고리별 수수료율(0–1). `category_id`가 없는 항목이 기본 수수료율(하나만)이고, 개정에서 빼면 현재 버전의 기본을 이어 씁니다(첫 계약은 필수). 예 `[{"category_id": "cat_outerwear", "rate": 0.12}]` |
   | `acom:settlement_cycle` | enum | ✓ | `weekly` \| `biweekly` \| `monthly` |
   | `acom:settlement_method` | enum | ✓ | `on_delivery` \| `on_confirmation` |
   | `acom:payout_account_ref` | Text | ✓ | 저장된 정산 계좌 참조(계좌 번호 원문은 받지 않음) |
@@ -150,7 +150,7 @@
   | `valid_from` / `valid_through` | DateTime | ✓ | 적용 기간 |
 - 출력(프리뷰): `changes`(`update` `seller_grade`, 수수료 구간·노출 가중치 영향), `checks: [{"rule": "grade.override_requires_reason", "passed": true, "detail": "Reason given for moving gold → platinum", "fix_tool": null}]`, `needs_approval: false`
 - 출력(실행): `{"ok": true, "id": "slr_harbor_goods", "undo": {"by": "person", "target": "cs_1046", "until": "2026-11-07T23:59:00-05:00"}}`
-- 정책: [partner.yml](../../policies/partner.yml) `grade.computed_metrics`, `grade.override_requires_reason`, `grade.benefits`
+- 정책: [partner.yml](../../policies/partner.yml) `grade.computed_metrics`, `grade.override_requires_reason`, `grade.benefits`. 계산 등급은 적용 기간이 시작하는 달의 앞 달 실적(`grade.levels`)이고, 어느 시점의 등급은 그 시점을 덮는 가장 최근에 확정한 등급입니다
 - 에러: `override_not_allowed` → `get_seller_grade` · `invalid_level` → `set_seller_grade`
 - 멱등성: 같은 `preview_id` 재실행은 첫 결과.
 
@@ -177,6 +177,6 @@
   }
   ```
 - 프리뷰: 해당 없음(읽기)
-- 정책: [partner.yml](../../policies/partner.yml) `dashboard.visible_metrics_by_role`
+- 정책: [partner.yml](../../policies/partner.yml) `dashboard.visible_metrics_by_role`. 역할은 판매사 조직의 운영자면 `seller`, 스토어 운영자면 `operator`. `fields`는 구역 이름(`sales` … `tasks`). `tasks.waiting_for_approval`은 판매자 상품 중 검수(`pending_review`)를 기다리는 수, `unanswered_inquiries`는 답이 없는 상품 문의 수입니다(partner는 catalog·sales·fulfillment만 읽음). 정산 구역은 외부 지급 시스템 대신 계약 조건으로 계산한 추정치이고 그렇게 적습니다
 - 에러: `seller_not_found` → `search_sellers` · `forbidden`(역할 밖의 지표를 요청) → `get_seller_overview`
 - 멱등성: 읽기(부작용 없음)

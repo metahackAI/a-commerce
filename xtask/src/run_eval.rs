@@ -10,8 +10,10 @@
 //! - the expected change set is there: its state (`drafting` also matches a set waiting for
 //!   approval: neither is decided by a person yet), an item per expected item (tool, and every
 //!   expected argument equal), and every expected failed check among its failed checks;
-//! - every fact whose numbers can be checked shows them in the last turn's reply or blocks
-//!   (`1,284` and `1284.00` match `1284`). Facts without numbers are listed for a person to judge.
+//! - every fact whose numbers can be checked shows them in the last turn's reply or in the values
+//!   of its blocks, each as a whole word (`1,284` and `1284.00` match `1284`, `07` matches `7`;
+//!   the `7` inside `17` or inside a block id does not). Facts without numbers are listed for a
+//!   person to judge.
 //!
 //! Tool precision is the share of calls to `required` or `allowed` tools; recall the share of
 //! `required` tools reached. With `--repeat N`, pass^N is the share of tasks done in every run.
@@ -25,7 +27,7 @@
 //! `--reset` loads the demo store again (`POST /v1/platform/demo/reset`) before each task that
 //! writes, so every run starts from the same store; it ends every session on that stack.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::Path;
 use std::process::ExitCode;
@@ -281,34 +283,6 @@ impl Client {
     }
 }
 
-/// `1,284.00` → `1284`; words lowercased.
-fn normalized(s: &str) -> String {
-    let lower = s.to_lowercase().replace(',', "");
-    let mut out = String::new();
-    let mut rest = lower.as_str();
-    while !rest.is_empty() {
-        let digits: String = rest
-            .chars()
-            .take_while(|c| c.is_ascii_digit() || *c == '.')
-            .collect();
-        if digits.is_empty() {
-            let c = rest.chars().next().unwrap_or(' ');
-            out.push(c);
-            rest = &rest[c.len_utf8()..];
-        } else {
-            let n = digits.trim_end_matches('.');
-            let n = if n.contains('.') {
-                n.trim_end_matches('0').trim_end_matches('.')
-            } else {
-                n
-            };
-            out.push_str(n);
-            rest = &rest[digits.len()..];
-        }
-    }
-    out
-}
-
 async fn run_task(c: &mut Client, task: &Task, tool_set: &str, reset: bool) -> Run {
     let mut run = Run {
         task: task.id.clone(),
@@ -412,27 +386,89 @@ async fn run_task(c: &mut Client, task: &Task, tool_set: &str, reset: bool) -> R
     run
 }
 
-/// Numbers in a sentence, normalized (`$2,463.00` → `2463`, `4.6` stays).
+/// The numbers in a text, each a whole word, as a person reads them: `$2,463.00` → `2463`,
+/// `4.60` → `4.6`, `08:31` → `8` and `31`, `x2` → `2`. A word with more than one run of digits
+/// is an identifier (`1ZNW271840001`, a block id) and stays one word, so the digits inside an id
+/// are not numbers, and neither is the `7` inside `17`.
 fn numbers(text: &str) -> Vec<String> {
-    let t = text.replace(',', "");
+    let chars: Vec<char> = text.to_lowercase().chars().collect();
+    let digit = |j: Option<usize>| {
+        j.and_then(|j| chars.get(j))
+            .is_some_and(char::is_ascii_digit)
+    };
     let mut out = Vec::new();
-    let chars: Vec<char> = t.chars().collect();
-    let mut i = 0;
-    while i < chars.len() {
-        if !chars[i].is_ascii_digit() {
-            i += 1;
-            continue;
+    let mut word = String::new();
+    for (i, &c) in chars.iter().enumerate() {
+        let between_digits = digit(i.checked_sub(1)) && digit(Some(i + 1));
+        let thousands = c == ','
+            && between_digits
+            && (1..=3).all(|k| digit(Some(i + k)))
+            && !digit(Some(i + 4));
+        if c.is_ascii_alphanumeric() || (c == '.' && between_digits) {
+            word.push(c);
+        } else if !thousands {
+            push_number(&mut out, &std::mem::take(&mut word));
         }
-        let start = i;
-        while i < chars.len()
-            && (chars[i].is_ascii_digit()
-                || (chars[i] == '.' && chars.get(i + 1).is_some_and(char::is_ascii_digit)))
-        {
-            i += 1;
-        }
-        out.push(normalized(&chars[start..i].iter().collect::<String>()));
     }
+    push_number(&mut out, &word);
     out
+}
+
+fn push_number(out: &mut Vec<String>, word: &str) {
+    let runs = word
+        .split(|c: char| !(c.is_ascii_digit() || c == '.'))
+        .filter(|r| !r.is_empty())
+        .count();
+    match runs {
+        0 => {}
+        1 => {
+            let n: String = word
+                .chars()
+                .filter(|c| c.is_ascii_digit() || *c == '.')
+                .collect();
+            let n = if n.contains('.') {
+                n.trim_end_matches('0').trim_end_matches('.')
+            } else {
+                n.as_str()
+            };
+            let n = n.trim_start_matches('0');
+            out.push(if n.is_empty() || n.starts_with('.') {
+                format!("0{n}")
+            } else {
+                n.to_owned()
+            });
+        }
+        _ => out.push(word.to_owned()),
+    }
+}
+
+/// The numbers a person sees in a turn: in the reply, and in the values of its blocks (not their
+/// keys). A timestamp in a block reads as its date and time of day; its UTC offset (`-05:00`) is
+/// not a number anyone reads.
+fn shown(reply: &str, blocks: &[Value]) -> BTreeSet<String> {
+    fn values(v: &Value, text: &mut String) {
+        match v {
+            Value::String(s) => {
+                text.push(' ');
+                match chrono::DateTime::parse_from_rfc3339(s) {
+                    Ok(t) => text.push_str(&t.format("%Y-%m-%d %H:%M:%S").to_string()),
+                    Err(_) => text.push_str(s),
+                }
+            }
+            Value::Number(n) => {
+                text.push(' ');
+                text.push_str(&n.to_string());
+            }
+            Value::Array(xs) => xs.iter().for_each(|x| values(x, text)),
+            Value::Object(m) => m.values().for_each(|x| values(x, text)),
+            Value::Bool(_) | Value::Null => {}
+        }
+    }
+    let mut text = reply.to_owned();
+    for b in blocks {
+        values(b, &mut text);
+    }
+    numbers(&text).into_iter().collect()
 }
 
 fn score(
@@ -518,14 +554,14 @@ fn score(
             run.missing.push(format!("called {t}"));
         }
     }
-    let shown = normalized(&format!("{reply} {}", Value::Array(blocks.to_vec())));
+    let shown = shown(reply, blocks);
     for fact in &task.expect.facts {
         let ns = numbers(fact);
         if ns.is_empty() {
             run.unchecked += 1;
             continue;
         }
-        let absent: Vec<&String> = ns.iter().filter(|n| !shown.contains(n.as_str())).collect();
+        let absent: Vec<&String> = ns.iter().filter(|n| !shown.contains(*n)).collect();
         if !absent.is_empty() {
             run.missing.push(format!(
                 "fact \"{}\" ({} not shown)",
@@ -783,14 +819,51 @@ mod tests {
 
     #[test]
     fn numbers_in_facts_are_found_as_people_write_them() {
-        assert_eq!(numbers("41 reviews, average 4.6"), ["41", "4.6"]);
+        assert_eq!(numbers("41 reviews, average 4.6."), ["41", "4.6"]);
         assert_eq!(numbers("refund $2,463.00 for 9"), ["2463", "9"]);
-        let shown = normalized("Here are 41 reviews (4.6 stars) and $2,463.00 for 9 refunds");
-        assert!(
-            numbers("41 reviews, average 4.6")
-                .iter()
-                .all(|n| shown.contains(n.as_str()))
+        assert_eq!(
+            numbers("#20366, #20409 and 4,5"),
+            ["20366", "20409", "4", "5"]
         );
+        assert_eq!(
+            numbers("cus_4431 at 08:31 on Nov 07, parka x2"),
+            ["4431", "8", "31", "7", "2"]
+        );
+        assert_eq!(numbers("UPS 1ZNW271840001"), ["1znw271840001"]);
+        let shown = shown(
+            "Here are 41 reviews (4.6 stars) and $2,463.00 for 9 refunds",
+            &[],
+        );
+        assert!(
+            numbers("41 reviews, average 4.60; $2463 back")
+                .iter()
+                .all(|n| shown.contains(n))
+        );
+    }
+
+    #[test]
+    fn a_number_inside_an_id_a_bigger_number_or_a_utc_offset_is_not_shown() {
+        let blocks = [
+            json!({"ui": "product_table", "block_id": "blk_01m68d4gm4xs1z0x67n8drh2fn",
+            "data": {"rows": [{"id": "promo_autumn_knit", "stock": 17,
+                "valid_from": "2026-11-01T00:00:00-04:00"}]}}),
+        ];
+        let seen = shown("Four promotions run this weekend.", &blocks);
+        for n in ["7", "4", "8"] {
+            assert!(!seen.contains(n), "{n} in {seen:?}");
+        }
+        assert!(["17", "2026", "11", "1"].iter().all(|n| seen.contains(*n)));
+
+        let blocks = [json!({"data": {"rows": [{"stock": 4,
+            "valid_until": "2026-11-07T23:59:30-05:00"}]}})];
+        let seen = shown("", &blocks);
+        assert!(
+            ["4", "7", "23", "59", "30"]
+                .iter()
+                .all(|n| seen.contains(*n)),
+            "{seen:?}"
+        );
+        assert!(!seen.contains("5"), "{seen:?}");
     }
 
     #[test]

@@ -554,6 +554,53 @@ word_enum! {
     ImageStyle = "image_style" { Studio = "studio", Lifestyle = "lifestyle", FlatLay = "flat_lay" }
 }
 
+// ── partner (docs/api/enums.md §1.16) ───────────────────────────────────────────────────
+
+word_enum! {
+    /// acom:sellerStatus of a marketplace seller, from application to termination.
+    SellerStatus = "seller_status" {
+        Applied = "applied", UnderReview = "under_review", Approved = "approved", Active = "active",
+        Suspended = "suspended", Terminated = "terminated",
+    }
+}
+
+word_enum! {
+    /// acom:sellerType, how a seller sells in the store.
+    SellerType = "seller_type" {
+        Marketplace = "marketplace", Consignment = "consignment", DirectSupply = "direct_supply",
+    }
+}
+
+word_enum! {
+    /// acom:gradeLevel of a seller, best first; `watch` is below every graded level.
+    GradeLevel = "grade_level" {
+        Platinum = "platinum", Gold = "gold", Silver = "silver", Bronze = "bronze", Watch = "watch",
+    }
+}
+
+word_enum! {
+    /// acom:settlementCycle, how often a seller is paid out.
+    SettlementCycle = "settlement_cycle" { Weekly = "weekly", Biweekly = "biweekly", Monthly = "monthly" }
+}
+
+word_enum! {
+    /// acom:settlementMethod, when a sale becomes payable to the seller.
+    SettlementMethod = "settlement_method" { OnDelivery = "on_delivery", OnConfirmation = "on_confirmation" }
+}
+
+word_enum! {
+    /// acom:contractStatus of a contract version, from its period and the store clock.
+    ContractStatus = "contract_status" { Scheduled = "scheduled", Active = "active", Ended = "ended" }
+}
+
+word_enum! {
+    /// acom:sellerDocumentType, which paper a seller attaches to an application.
+    SellerDocumentType = "seller_document_type" {
+        BusinessRegistration = "business_registration", PayoutAccountProof = "payout_account_proof",
+        Other = "other",
+    }
+}
+
 // ── customer (docs/api/enums.md §1.13, §2.4) ────────────────────────────────────────────
 
 word_enum! {
@@ -631,6 +678,30 @@ word_enum! {
 word_enum! {
     /// acom:recoveryKind of an account recovery request.
     RecoveryKind = "recovery_kind" { PasswordReset = "password_reset", LoginId = "login_id" }
+}
+
+// ── community (docs/api/enums.md §1.14) ──────────────────────────────────────────────────
+
+word_enum! {
+    /// acom:boardType, what a community board is for.
+    BoardType = "board_type" { Free = "free", Review = "review", Question = "question", Event = "event" }
+}
+
+word_enum! {
+    /// acom:writePermission, who may write posts on a board.
+    WritePermission = "write_permission" { Everyone = "everyone", Member = "member", Staff = "staff" }
+}
+
+word_enum! {
+    /// acom:moderationMode of a board: review before posts show, after, or not at all.
+    ModerationMode = "moderation_mode" { PreReview = "pre_review", PostReview = "post_review", None = "none" }
+}
+
+word_enum! {
+    /// acom:moderationStatus of a post or a reply.
+    ModerationStatus = "moderation_status" {
+        Published = "published", HeldForReview = "held_for_review", Blinded = "blinded", Deleted = "deleted",
+    }
 }
 
 // ── integration (docs/api/enums.md §1.17) ───────────────────────────────────────────────
@@ -754,6 +825,13 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (ReportReason::LIST, ReportReason::WORDS),
     (CopyType::LIST, CopyType::WORDS),
     (ImageStyle::LIST, ImageStyle::WORDS),
+    (SellerStatus::LIST, SellerStatus::WORDS),
+    (SellerType::LIST, SellerType::WORDS),
+    (GradeLevel::LIST, GradeLevel::WORDS),
+    (SettlementCycle::LIST, SettlementCycle::WORDS),
+    (SettlementMethod::LIST, SettlementMethod::WORDS),
+    (ContractStatus::LIST, ContractStatus::WORDS),
+    (SellerDocumentType::LIST, SellerDocumentType::WORDS),
     (BusinessVerification::LIST, BusinessVerification::WORDS),
     (ConsentType::LIST, ConsentType::WORDS),
     (InquiryType::LIST, InquiryType::WORDS),
@@ -766,6 +844,10 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (TierChangeCause::LIST, TierChangeCause::WORDS),
     (DiscountLimitPeriod::LIST, DiscountLimitPeriod::WORDS),
     (RecoveryKind::LIST, RecoveryKind::WORDS),
+    (BoardType::LIST, BoardType::WORDS),
+    (WritePermission::LIST, WritePermission::WORDS),
+    (ModerationMode::LIST, ModerationMode::WORDS),
+    (ModerationStatus::LIST, ModerationStatus::WORDS),
     (ChannelType::LIST, ChannelType::WORDS),
     (ConnectionStatus::LIST, ConnectionStatus::WORDS),
     (FeedImportMode::LIST, FeedImportMode::WORDS),

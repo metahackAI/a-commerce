@@ -13,10 +13,11 @@ board:                                   # configure_board. check: board.name_un
   name_unique: true                      # 고정. 같은 스토어 안에서 게시판 이름은 하나(duplicate_board_name)
 
 moderation:                              # 금칙어·신고·블라인드
-  default_mode: post_review              # 기본값. pre_review(검수 뒤 공개) | post_review(공개 뒤 검수) | none
+  default_mode: post_review              # 기본값. pre_review(검수 뒤 공개) | post_review(공개 뒤 검수) | none(검수 대기열 없음: 신고는 기록만 하고 글을 붙잡지 않음)
   profanity_filter:                      # check: moderation.profanity_filter (에러 profanity_blocked)
     enabled: true                        # 기본값
     word_list: store_defined             # 고정. 금칙어 목록은 스토어가 덮어쓰기로 관리한다
+    blocked_words: []                    # [default] 스토어가 막는 단어(소문자, 단어 단위로 비교). word_list: store_defined이므로 스토어가 덮어써서 채운다. 비어 있으면 막는 단어 없음
     on_match: block                      # 기본값. block(쓰기 거부) | hold_for_review(held_for_review로 저장)
   report_reasons: [spam, abuse, obscene, advertisement, fake, irrelevant, other]   # enums.md §2.4 acom:report_reason
   report_threshold: 5                    # 기본값. check: moderation.report_threshold. 서로 다른 신고자 수가 이만큼이면 자동 블라인드 후보

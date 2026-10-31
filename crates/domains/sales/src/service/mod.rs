@@ -8,6 +8,7 @@ pub mod for_customer;
 pub mod for_fulfillment;
 pub mod for_integration;
 pub mod for_messaging;
+pub mod for_partner;
 pub mod for_promotion;
 pub mod order_delivery;
 pub mod providers;

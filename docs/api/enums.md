@@ -146,12 +146,15 @@
 | 캠페인 `acom:campaign_status` | `draft`, `scheduled`, `sending`, `sent`, `failed`(발송이 메시지 하나 나가기 전에 멈춤, 예: 수신자 목록 가져오기 실패), `cancelled` |
 | 재색인 `acom:reindex_mode` | `full`(문서 전부), `incremental`(지정한 상품·시각 이후 바뀐 상품·낡은 문서만) |
 | 공지 `acom:notice_status` | `draft`, `published` |
-| 게시글 | `published`, `held_for_review`, `blinded`, `deleted` |
+| 게시글·댓글 모더레이션 `acom:moderation_status` | `published`, `held_for_review`, `blinded`, `deleted` |
+| 게시판 종류 `acom:board_type` | `free`, `review`, `question`, `event` |
+| 게시판 쓰기 권한 `acom:write_permission` | `everyone`(게스트 포함), `member`(로그인한 회원), `staff`(운영자) |
+| 게시판 모더레이션 방식 `acom:moderation_mode` | `pre_review`(검수 뒤 공개), `post_review`(공개 뒤 검수), `none`(검수 대기열 없음) |
 | 리뷰 노출 `review_status` (schema:creativeWorkStatus) | `visible`, `hidden`, `reported` |
 | 상품 문의 노출 `question_status` (schema:creativeWorkStatus) | `visible`, `hidden`(운영자가 숨김, 또는 `question.profanity_filter: hold_for_review`로 보류. 문의와 답이 함께 숨음) |
 | 리뷰의 사이즈 평가 `acom:fit_vote` | `true_to_size`, `runs_small`, `runs_large` |
 | 실측 항목 `acom:measurement_name` | `chest`, `shoulder`, `sleeve`, `length`, `waist`, `hip`, `inseam`, `rise`, `foot_length` |
-| 판매자 | `applied`, `under_review`, `approved`, `active`, `suspended`, `terminated` |
+| 판매자 `acom:seller_status` | §1.16 |
 | API 키 `acom:api_key_status` | `active`, `revoked` |
 | 채널 연결 `acom:connection_status` | `connected`, `degraded`, `disconnected` (§1.17) |
 | 할 일 `acom:task_state` | `needs_you`, `working`, `done`, `dismissed` |
@@ -171,6 +174,18 @@
 | 주소 용도 `acom:address_usage` | `shipping`, `billing`, `return` |
 | 기억 키 `acom:preference_key` | `size`, `fit_note`, `fabric_preference`, `compares_specs`, `layout_preference`, `travel_priority`, `other` |
 | 메시지 종류 `acom:message_kind` | `ask_for_photos`, `decline`, `refund_done`, `custom`, `campaign`(캠페인이 고객 한 명에게 남긴 메시지. `send_customer_message`의 `kind`로는 받지 않음) |
+
+### 1.16 입점 판매자 (partner)
+
+| 목록 | 값 |
+|---|---|
+| 판매자 상태 `acom:seller_status` | `applied`(신청), `under_review`(심사 중), `approved`(승인, 아직 판매 전), `active`(판매 중), `suspended`(정지: 상품이 숨겨짐), `terminated`(해지, 끝 상태). 전이는 `partner.yml` `lifecycle.allowed_transitions` |
+| 판매자 종류 `acom:seller_type` | `marketplace`(판매자가 직접 팔고 스토어는 수수료), `consignment`(위탁: 스토어가 맡아 팜), `direct_supply`(직매입 공급) |
+| 판매자 등급 `acom:grade_level` | `platinum`, `gold`, `silver`, `bronze`, `watch`(어느 등급 기준에도 못 미침). 좋은 순 |
+| 정산 주기 `acom:settlement_cycle` | `weekly`, `biweekly`, `monthly` |
+| 정산 기준 `acom:settlement_method` | `on_delivery`(배송 완료 때 정산 대상), `on_confirmation`(구매 확정 때 정산 대상) |
+| 계약 버전 상태 `acom:contract_status` (기간과 스토어 시계로 계산) | `scheduled`(시작 전), `active`(기간 안), `ended`(끝남) |
+| 판매자 서류 `acom:seller_document_type` | `business_registration`(사업자 등록증), `payout_account_proof`(정산 계좌 증빙), `other` |
 
 ### 1.17 연계 (integration)
 
