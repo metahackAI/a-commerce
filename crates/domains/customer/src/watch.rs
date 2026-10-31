@@ -194,17 +194,14 @@ async fn book(
         "job_evaluate_{}_{day}",
         program_id.trim_start_matches("prg_")
     );
-    sqlx::query(
-        "INSERT INTO platform.job (tenant_id, id, kind, run_at, payload)
-         VALUES ($1, $2, 'customer.evaluate_tiers', $3, $4) ON CONFLICT (tenant_id, id) DO NOTHING",
+    acom_changeset::jobs::book(
+        tx,
+        &id,
+        EvaluateTiers::META.kind,
+        at,
+        &json!({"program_id": program_id}),
     )
-    .bind(tx.tenant.as_str())
-    .bind(&id)
-    .bind(at)
-    .bind(json!({"program_id": program_id}))
-    .execute(&mut *tx.tx)
-    .await
-    .map_err(db)?;
+    .await?;
     Ok(())
 }
 

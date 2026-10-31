@@ -68,6 +68,8 @@ loyalty:                                 # 적립금 (원장에 이벤트로 쌓
     min_order: { value: 0.00, currency: USD }
     partial_allowed: true
   refund_restore: pro_rata               # 취소·반품 시 비례 복원
+  grant:                                 # grant_loyalty (수동 지급)
+    max_amount: { value: 500.00, currency: USD }   # check: loyalty.grant.max_amount. 한 번에 지급할 수 있는 상한(넘으면 over_limit). 올리려면 정책 덮어쓰기
 
 conditional_gift:                        # 구매 금액 조건 사은품
   trigger:                               # 사은품마다 기준 금액(acom:trigger_threshold)을 두고, 아래 값과 비교
@@ -89,6 +91,8 @@ event:                                   # 이벤트·보상 설정 스키마. [
       - check_in                         # 출석. 회차별 누적
       - code_redemption                  # 받은 코드를 입력해 응모
       - custom                           # 스토어 정의(entry_payload_schema 필수)
+    disabled: []                         # [default] 끈 기본 항목 id
+    store_defined: []                    # [default] 스토어가 더한 항목: { id, name, enabled, entry_payload_schema }
   selection_methods:                     # 당첨자를 정하는 방식
     registry: extensible
     builtin:                             # [default]
@@ -97,6 +101,8 @@ event:                                   # 이벤트·보상 설정 스키마. [
       - first_come                       # 선착순 수량까지
       - ranked                           # 점수·심사 순위(심사자·기준 기록)
       - everyone_qualifies               # 조건을 채운 응모자 전원
+    disabled: []                         # [default] 끈 기본 항목 id
+    store_defined: []                    # [default] 스토어가 더한 항목: { id, name, enabled }
     allowed_combinations: any            # [default] 스토어가 { mechanic: [method...] }로 좁힐 수 있음
     instant_win:
       odds_must_sum_at_most: 1.0         # 등수별 확률 합 ≤ 1 (나머지는 꽝)
@@ -111,6 +117,8 @@ event:                                   # 이벤트·보상 설정 스키마. [
       digital_code:    { fulfillment: email, has_value: true }    # 상품권·라이선스 코드
       experience:      { fulfillment: email, has_value: true }    # 초대·체험. 안내만 발송
       custom:          { fulfillment: manual, has_value: false }  # 스토어 정의
+    disabled: []                         # [default] 끈 기본 항목 id
+    store_defined: []                    # [default] 스토어가 더한 항목: { id, name, fulfillment, has_value, enabled }
     fulfillment_methods: [ship, issue, grant, email, manual]      # [default]
     value_required_when: compliance_applies  # 보상 가치(reward_value)는 선택, 컴플라이언스 규칙이 걸리면 필수
     ship_to: primary_shipping_address    # [default] 배송 보상의 기본 주소

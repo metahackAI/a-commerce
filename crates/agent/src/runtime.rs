@@ -111,6 +111,10 @@ pub struct TurnRequest {
     /// screen-shaped facade. The agent service accepts `facade` only in demo mode.
     #[serde(default, skip_serializing_if = "ToolSet::is_commerce")]
     pub tool_set: ToolSet,
+    /// The task this turn works on (`task_…`, from "Ask the agent to work on it" or a watcher):
+    /// a change set the turn drafts is linked to it (docs/api/chat.md §1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task_id: Option<String>,
 }
 
 /// The longest message a turn takes.
@@ -136,6 +140,20 @@ impl TurnRequest {
                 ToolError::invalid_input(format!("conversation_id: {e}"))
                     .detail(json!({"field": "conversation_id", "reason": "format"}))
             })?;
+        }
+        if let Some(id) = &self.task_id {
+            let ok = id.strip_prefix("task_").is_some_and(|rest| {
+                !rest.is_empty()
+                    && rest
+                        .chars()
+                        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+            });
+            if !ok {
+                return Err(
+                    ToolError::invalid_input("task_id: not a task id (`task_…`).")
+                        .detail(json!({"field": "task_id", "reason": "format"})),
+                );
+            }
         }
         Ok(())
     }
@@ -1859,6 +1877,10 @@ impl<'r> Turn<'r> {
             request_text: vec![self.text.clone()],
             interpretation: plan.interpretation_values(),
             conversation_id: Some(self.ctx.conversation_id.clone()),
+            // Tasks are the back office's; a storefront turn links nothing.
+            task_id: (self.surface == ChatSurface::Bo)
+                .then(|| self.request.task_id.clone())
+                .flatten(),
         };
         match self.tools.create_change_set(&new).await {
             Ok(head) => {
