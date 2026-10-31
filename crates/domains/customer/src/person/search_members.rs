@@ -1,11 +1,11 @@
 //! `search_members`.
 
 use super::record_unmask;
-use crate::access::{only_fields, parse_time, staff_only};
+use crate::access::{parse_time, staff_only};
 use crate::wording::{mask_email, mask_name};
 use crate::{ACCESS_REASON_REQUIRED, INVALID_FILTER, UNMASK_FORBIDDEN, repo};
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_core::enums::{MemberState, MemberType};
 use acom_store::{Cx, Page};
@@ -154,7 +154,7 @@ impl ReadOp<Cx> for SearchMembers {
                 } else {
                     (mask_name(&r.name), r.email.as_deref().map(mask_email))
                 };
-                only_fields(
+                fields::pick(
                     json!({"id": r.id, "name": name, "email": email, "tier_id": r.tier_id,
                            "state": r.member_state}),
                     &fields,

@@ -61,7 +61,7 @@ schema.org `MonetaryAmount` 형태입니다.
 
 - 응답: `{"items": [...], "total": 42, "next_cursor": "..."}`. `total`은 필터를 적용한 전체 개수, `next_cursor`는 다음 쪽이 있을 때만.
 - 페이지: `limit`(기본 20, 최대 100), `cursor`(이전 응답의 `next_cursor`). 쪽 번호·offset은 쓰지 않습니다.
-- `fields`: 반환할 필드 목록(`fields=product_id,name,price`). 모델에게 필요한 만큼만 돌려줘 문맥을 아낍니다.
+- `fields`: 반환할 최상위 필드 목록(`fields=product_id,name,price`). 모델에게 필요한 만큼만 돌려줘 문맥을 아낍니다. `id`는 항상 남습니다. 엔티티에 없는 이름이 섞이면 빈 객체 대신 `invalid_input`이고, 메시지와 `detail.fields`에 그 엔티티가 가진 필드를 담습니다(목록은 어느 항목이든 가진 이름이면 통과, 빈 목록은 거르지 않음). 추측한 이름이 "데이터 없음"으로 읽히지 않게 하려는 것입니다. 이름을 열거형으로 받는 툴은 스키마가 먼저 거릅니다. 구현은 `acom_contract::fields` 하나입니다.
 - 정렬: `sort`(`price`, `-price`). 허용 값은 오퍼레이션마다 enum으로 선언.
 - 하나를 가져오는 읽기(`get_*`)는 목록 봉투 없이 그 엔티티를 돌려줍니다. 없으면 `not_found`.
 

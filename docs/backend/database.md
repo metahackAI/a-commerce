@@ -202,7 +202,10 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `merchandising.category_mapping` | schema:Intangible/acom:CategoryMapping | `map` | 표준 → 전시 카테고리 |
 | `merchandising.display_slot` | schema:WebPageElement | `slot` | `slot_type`, 페이지 |
 | `merchandising.banner` | schema:CreativeWork/acom:Banner | `bnr` | `headline`, `alternative_headline`, `image`, `url` |
-| `merchandising.display_booking` | schema:Schedule/acom:DisplayBooking | `dsp` | 슬롯 × 대상 × 기간 |
+| `merchandising.display_booking` | schema:Schedule/acom:DisplayBooking | `dsp` | 슬롯 × 대상 × 기간. 슬롯 구성 예약은 `item_list_element` 사본과 `sales_channel` |
+| `merchandising.collection_page` | schema:CollectionPage | `col` | 기획전. 섹션은 `has_part`(jsonb), 상태 `display_status` |
+| `merchandising.popup` | schema:WebPageElement/acom:Popup | `pop` | `popup_type`, 페이지, 순위, "그만 보기" 일수, 기간 |
+| `merchandising.cache_invalidation` | schema:Action/acom:CacheInvalidation | `cin` | 전시 캐시 비우기 요청 기록(캐시가 아직 없어 기록만) |
 | `search.search_document` | - | — | §10 |
 | `promotion.promotion` | schema:OfferCatalog/acom:Promotion | `promo` | 상태, 기간, 대상 등급 |
 | `promotion.unit_price_specification` | schema:UnitPriceSpecification | `ups` | 회원가·기간가 |
@@ -225,6 +228,9 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `sales.order_item` | schema:OrderItem | `oln` | `order_item_status`, `order_quantity`, `acom:fulfillment_stage` |
 | `sales.payment` | schema:PayAction | `pay` | `payment_method`, `payment_status` |
 | `sales.order_event` | schema:Action | — | |
+| `sales.subscription` | schema:Order/acom:Subscription | `sub` | 정기 주문: `subscription_status`, `billing_cycle`, `next_charge_date`, 줄(`ordered_item`)과 배송지(`order_delivery`)는 jsonb |
+| `sales.receipt` | schema:Invoice/acom:Receipt | `rct` | `receipt_type`, `tax_id`, 주문·종류마다 취소되지 않은 것 하나 |
+| `sales.guest_lookup` | - | — | `verify_guest`의 주문 번호별 틀린 시도·잠금·토큰 해시 |
 | `fulfillment.parcel_delivery` | schema:ParcelDelivery | `dlv` | `delivery_state`, `expected_arrival_until`, `tracking_number` |
 | `fulfillment.claim` | schema:ReturnAction/acom:Claim (취소는 CancelAction) | `clm` | `claim_type`, `claim_status`, `claim_reason`, `liability` |
 | `fulfillment.claim_item` | schema:OrderItem | — | 클레임 하나가 여러 주문 품목을 담을 때(#20377) 품목별 수량·사유·환불 예상액 |

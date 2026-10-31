@@ -2,10 +2,11 @@
 //! (docs/api/platform.md#change_set). The platform domain wraps these as read tools.
 
 use acom_contract::ToolError;
+use acom_contract::fields;
 use acom_core::enums::ChangeSetState;
 use acom_store::Cx;
 use chrono::{DateTime, Utc};
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 
 use crate::change_set::undo_deadline;
 use crate::{CHANGE_SET_NOT_FOUND, CHANGE_SET_NOT_RUN, db_err};
@@ -213,22 +214,7 @@ pub async fn get(cx: &Cx, cs: &str, fields: &[String]) -> Result<Value, ToolErro
         "undone_at": time(cx, row.undone_at),
         "history": history,
     });
-    Ok(select(full, fields))
-}
-
-/// Keeps only the named top-level fields (all when `fields` is empty).
-fn select(v: Value, fields: &[String]) -> Value {
-    if fields.is_empty() {
-        return v;
-    }
-    match v {
-        Value::Object(o) => Value::Object(
-            o.into_iter()
-                .filter(|(k, _)| k == "id" || fields.iter().any(|f| f == k))
-                .collect::<Map<_, _>>(),
-        ),
-        other => other,
-    }
+    fields::keep(full, fields)
 }
 
 /// Filters for [`search`].

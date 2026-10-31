@@ -1,7 +1,7 @@
 //! `search_claims`: cancel, return and exchange claims by type, state, fault, order and date.
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_core::enums::{ClaimStatus, ClaimType, Liability};
 use acom_store::{Cx, Page};
@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 
 use crate::errors::INVALID_FILTER;
 use crate::repo::{self, ClaimFilter, ClaimOrder};
-use crate::{parse_time, select, shopper};
+use crate::{parse_time, shopper};
 
 /// How claims are ordered.
 #[derive(Debug, Clone, Copy, Deserialize, JsonSchema)]
@@ -137,15 +137,15 @@ impl ReadOp<Cx> for SearchClaims {
         let items = rows
             .iter()
             .map(|c| {
-                Ok(select(
+                Ok(
                     json!({"id": c.id, "claim_type": c.claim_type, "status": c.claim_status,
-                           "order_id": c.order_id, "customer_id": c.customer_id,
-                           "reason": c.reason(), "liability": c.liability,
-                           "amount": c.amount()?, "created_at": cx.time.format(c.start_time)}),
-                    &fields,
-                ))
+                          "order_id": c.order_id, "customer_id": c.customer_id,
+                          "reason": c.reason(), "liability": c.liability,
+                          "amount": c.amount()?, "created_at": cx.time.format(c.start_time)}),
+                )
             })
             .collect::<Result<Vec<_>, ToolError>>()?;
+        let items = fields::keep_each(items, &fields)?;
         let mut out = json!({"items": items, "total": total});
         if let Some(next) = page.next_cursor(rows.len(), total) {
             out["next_cursor"] = json!(next);

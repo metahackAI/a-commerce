@@ -1,20 +1,17 @@
-//! `get_payment`: how an order is paid.
+//! `get_payment` (`sales.payment.get`): how an order is paid.
 
 use acom_contract::{
-    ActionType, Audience, ErrorClass, ErrorCode, Group, Kind, Method, OpMeta, Operation, ReadOp,
-    Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
 };
 use acom_store::Cx;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+use super::PAYMENT_NOT_FOUND;
 use crate::checkout::payment_label;
 use crate::order::visible_order;
 use crate::{ORDER_NOT_FOUND, repo};
-
-pub(crate) const PAYMENT_NOT_FOUND: ErrorCode =
-    ErrorCode::new("payment_not_found", ErrorClass::NotFound);
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]

@@ -356,18 +356,6 @@ pub(crate) fn operator_only(field: &str) -> ToolError {
     .detail(json!({"reason": "scope", "field": field}))
 }
 
-/// Keeps only the named top-level fields of an object (all of them when `fields` is empty).
-pub fn project(v: Value, fields: &[String]) -> Value {
-    match v {
-        Value::Object(map) if !fields.is_empty() => Value::Object(
-            map.into_iter()
-                .filter(|(k, _)| fields.iter().any(|f| f == k))
-                .collect(),
-        ),
-        other => other,
-    }
-}
-
 /// A list envelope `{items, total, next_cursor?}`.
 pub(crate) fn list(items: Vec<Value>, total: i64, page: &acom_store::Page) -> Value {
     let returned = items.len();
@@ -478,14 +466,6 @@ mod tests {
             "wool_blend_overcoat_charcoal"
         );
         assert_eq!(slug("!!"), "x");
-    }
-
-    #[test]
-    fn keeps_only_the_named_fields() {
-        let v = json!({"id": "prd_windbreaker", "name": "Packable windbreaker", "price": 89.00});
-        let kept = project(v.clone(), &["id".into(), "price".into()]);
-        assert_eq!(kept, json!({"id": "prd_windbreaker", "price": 89.00}));
-        assert_eq!(project(v.clone(), &[]), v);
     }
 
     #[test]

@@ -1,9 +1,10 @@
-//! What sales reads from fulfillment: an order's parcel delivery and its claims, for `get_order`. Sales cannot
+//! What sales reads from fulfillment: an order's parcel delivery and its claims, for `get_order`,
+//! and the shipping zone of an address, for `change_shipping_address`. Sales cannot
 //! depend on fulfillment (fulfillment depends on sales), so fulfillment installs this reader into
 //! `acom_sales::service::providers` at start-up: call [`install`] from this crate's `register`.
 
 use acom_contract::ToolError;
-use acom_sales::service::providers::{self, ClaimFacts, DeliveryFacts, Reading};
+use acom_sales::service::providers::{self, AreaFacts, ClaimFacts, DeliveryFacts, Reading};
 use acom_store::{StoreError, TxCx};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
@@ -12,6 +13,29 @@ use serde_json::Value;
 pub fn install() {
     providers::provide_deliveries(order_delivery);
     providers::provide_claims(order_claims);
+    providers::provide_areas(address_area);
+}
+
+/// The saved shipping zone an address falls in (a zone naming its state wins over one naming its
+/// country); `None` when the store saved no zone for it, so sales uses the policy's default zone.
+pub fn address_area<'a>(
+    tx: &'a mut TxCx,
+    country: &'a str,
+    region: Option<&'a str>,
+) -> Reading<'a, Option<AreaFacts>> {
+    Box::pin(async move {
+        let zones = crate::repo::zones(tx)
+            .await?
+            .iter()
+            .map(crate::shipping_rate::zone_of)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(
+            crate::model::zone::zone_for(&zones, country, region).map(|z| AreaFacts {
+                name: z.name.clone(),
+                surcharge: z.surcharge,
+            }),
+        )
+    })
 }
 
 /// The claims of an order with the lines each covers, oldest first.

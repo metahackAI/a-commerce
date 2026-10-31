@@ -1,19 +1,25 @@
 //! The `merchandising` domain: categories, display slots, banners, popups, curated pages.
 //!
 //! Operations, inputs, outputs, checks, and errors are specified in `docs/api/merchandising.md`.
-//! Layout: `model` (rules as pure functions), one module per resource with one type per
-//! operation implementing `ReadOp`/`WriteOp`, `repo` (SQL). Other domains are reached only
-//! through the service functions they export, never through their tables.
+//! Layout: the folders follow the API hierarchy `merchandising.{resource}.{operation}`: one
+//! folder per resource (`category`, `display_slot`, `banner`, `popup`, `collection_page`,
+//! `cache`) and one file
+//! per operation, named after its tool (`banner/schedule_banner.rs`); what a resource's
+//! operations share is in its `mod.rs`. Domain-wide code: `model` (rules as pure functions and
+//! the policy values they use) and `repo` (SQL). Other domains are reached only through the
+//! service functions they export, never through their tables.
 
 pub mod service;
 
-mod banner;
-mod category;
-mod category_write;
-mod curation;
-mod display_slot;
 mod model;
 mod repo;
+
+mod banner;
+mod cache;
+mod category;
+mod collection_page;
+mod display_slot;
+mod popup;
 
 #[cfg(test)]
 mod b1;
@@ -21,6 +27,8 @@ mod b1;
 mod contract;
 #[cfg(test)]
 mod integration;
+#[cfg(test)]
+mod integration_writes;
 #[cfg(test)]
 mod testing;
 
@@ -37,19 +45,33 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
     acom_promotion::service::for_merchandising::provide_category_products(
         service::for_promotion::lookup,
     );
-    b.read(category::ListCategories)
-        .read(category::GetCategory)
-        .write(category_write::CreateCategory)
-        .write(category_write::UpdateCategory)
-        .write(category_write::MapCategory)
-        .write(category_write::UnmapCategory)
-        .read(display_slot::ListDisplaySlots)
-        .read(display_slot::GetDisplaySlot)
-        .write(banner::ScheduleBanner)
-        .read(banner::ListBanners)
-        .write(banner::SetBanner)
-        .read(curation::ListCurations)
-        .read(curation::GetCuration);
+    // category
+    b.read(category::list_categories::ListCategories)
+        .read(category::get_category::GetCategory)
+        .write(category::create_category::CreateCategory)
+        .write(category::update_category::UpdateCategory)
+        .write(category::map_category::MapCategory)
+        .write(category::unmap_category::UnmapCategory);
+    // display_slot
+    b.read(display_slot::list_display_slots::ListDisplaySlots)
+        .read(display_slot::get_display_slot::GetDisplaySlot)
+        .write(display_slot::arrange_display_slot::ArrangeDisplaySlot)
+        .write(display_slot::schedule_display::ScheduleDisplay);
+    // banner
+    b.write(banner::schedule_banner::ScheduleBanner)
+        .read(banner::list_banners::ListBanners)
+        .write(banner::set_banner::SetBanner);
+    // popup
+    b.read(popup::list_popups::ListPopups)
+        .write(popup::set_popup::SetPopup);
+    // collection_page
+    b.read(collection_page::list_curations::ListCurations)
+        .read(collection_page::get_curation::GetCuration)
+        .write(collection_page::create_curation::CreateCuration)
+        .write(collection_page::update_curation::UpdateCuration)
+        .write(collection_page::publish_curation::PublishCuration);
+    // cache
+    b.write(cache::invalidate_display_cache::InvalidateDisplayCache);
 }
 
 pub const TIER_NOT_FOUND: ErrorCode = ErrorCode::new("tier_not_found", ErrorClass::NotFound);
@@ -133,16 +155,4 @@ pub(crate) fn check_id_or_placeholder(
         return Ok(true);
     }
     check_id(field, prefix, s).map(|()| false)
-}
-
-/// Keeps only the asked fields (`fields` in an input); `id` always stays.
-pub(crate) fn pick(v: Value, fields: Option<&[String]>) -> Value {
-    match (v, fields) {
-        (Value::Object(o), Some(f)) if !f.is_empty() => Value::Object(
-            o.into_iter()
-                .filter(|(k, _)| k == "id" || f.iter().any(|x| x == k))
-                .collect(),
-        ),
-        (v, _) => v,
-    }
 }
