@@ -1,0 +1,119 @@
+# Community: the store's four boards (product reviews, style talk, questions to the store, store
+# news), posts and replies by named shoppers of 02_customer.yml and by SJ for the store, and the
+# reports on one post. Shoppers' names are stored masked as they were when written
+# (community.yml moderation.author_masking: two letters shown, Jamie → Ja***); the store's
+# posts and replies have no name and show as "The store". Everything is dated before the scene
+# clock (Fri Nov 6 2026 11:00).
+#
+# Facts the rows keep consistent with the other files:
+# - Jamie kept the windbreaker M Black (#20268, delivered Sep 11) and wrote about it on Sep 20.
+# - The merino tee shrinks in a warm wash (the store's answer to qst_315); Jamie bought one in M
+#   on Oct 24 (#20381) and wrote "Runs a bit small" on Thu Nov 5.
+# - The chore coat M and L are due back Thu Nov 12 (03_catalog.yml); Grace waits for the M
+#   (rsa_205) and asked here too.
+# - The Fall check-in week runs Nov 9–15 (evt_0311 in 04_promotion.yml).
+# - Noor's post links to another site; three shoppers reported it, two short of the
+#   moderation.report_threshold of 5, so it is still published (list_posts reported: true).
+# - Elena's question about a gift note is secret: only she and the store see it.
+#
+# The operator role also gets the community tools, so the store's operators (Mina, and the
+# administrator) can moderate; SJ's roles (merchandiser, catalog admin) do not include them.
+tables:
+  platform.role_scope:
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:community"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:write:community"}
+  community.board:
+    - {tenant_id: store_northwind, id: brd_reviews, name: Product reviews, board_type: review, write_permission: member, allow_secret: false, allow_attachment: true, moderation_mode: post_review}
+    - {tenant_id: store_northwind, id: brd_style, name: Style talk, board_type: free, write_permission: member, allow_secret: false, allow_attachment: true, moderation_mode: post_review}
+    - {tenant_id: store_northwind, id: brd_questions, name: Ask the store, board_type: question, write_permission: member, allow_secret: true, allow_attachment: false, moderation_mode: post_review}
+    - {tenant_id: store_northwind, id: brd_events, name: Store news and events, board_type: event, write_permission: staff, allow_secret: false, allow_attachment: true, moderation_mode: none}
+  community.discussion_forum_posting:
+    - tenant_id: store_northwind
+      id: post_8790
+      board_id: brd_reviews
+      author_id: cus_jamie
+      author_name: "Ja***"
+      headline: Packs into its own pocket
+      article_body: "Took the packable windbreaker on a weekend trip. It folds into its own pocket, about the size of a sandwich, and kept the wind off on the ferry."
+      in_language: en
+      moderation_status: published
+      like_count: 8
+      date_published: "2026-09-20T18:40:00-04:00"
+    - tenant_id: store_northwind
+      id: post_8800
+      board_id: brd_events
+      author_id: adm_sj
+      headline: Fall check-in week starts Mon Nov 9
+      article_body: "Check in once a day from Mon Nov 9 to Sun Nov 15 for a chance at a wool overcoat, or $5.00 in store points for a hundred of you."
+      in_language: en
+      moderation_status: published
+      like_count: 21
+      date_published: "2026-11-05T09:00:00-05:00"
+    - tenant_id: store_northwind
+      id: post_8805
+      board_id: brd_style
+      author_id: cus_theo
+      author_name: "Th**"
+      headline: Layering for a cold commute
+      article_body: "The fleece half-zip under the wool overcoat has been my go-to this week. Anyone wearing a merino tee under it too?"
+      in_language: en
+      moderation_status: published
+      like_count: 5
+      date_published: "2026-11-02T07:50:00-05:00"
+    - tenant_id: store_northwind
+      id: post_8809
+      board_id: brd_questions
+      author_id: cus_grace
+      author_name: "Gr***"
+      headline: When is the chore coat M back?
+      article_body: "I missed the M in the cotton chore coat. Will it come back before it gets cold?"
+      in_language: en
+      moderation_status: published
+      like_count: 4
+      date_published: "2026-11-05T10:40:00-05:00"
+    - tenant_id: store_northwind
+      id: post_8810
+      board_id: brd_questions
+      author_id: cus_elena
+      author_name: "El***"
+      headline: A note with a gift order
+      article_body: "Can a gift order carry a short note to the person who gets it, and does the packing slip show prices?"
+      is_secret: true
+      in_language: en
+      moderation_status: published
+      like_count: 0
+      date_published: "2026-11-04T16:20:00-05:00"
+    - tenant_id: store_northwind
+      id: post_8811
+      board_id: brd_style
+      author_id: cus_noor
+      author_name: "No**"
+      headline: My fall outfit board
+      article_body: "Put together a board of fall layers from here and a few other shops: https://outfits.example/noor-fall"
+      in_language: en
+      moderation_status: published
+      like_count: 1
+      date_published: "2026-11-04T20:10:00-05:00"
+    - tenant_id: store_northwind
+      id: post_8812
+      board_id: brd_reviews
+      author_id: cus_jamie
+      author_name: "Ja***"
+      headline: Runs a bit small
+      article_body: "My merino trail tee came out of a warm wash about half a size smaller. Wash it cool and dry it flat, or size up if you like it loose."
+      in_language: en
+      moderation_status: published
+      like_count: 12
+      date_published: "2026-11-05T19:12:00-05:00"
+  community.comment:
+    - {tenant_id: store_northwind, id: rpl_5480, discussion_forum_posting_id: post_8790, reply_depth: 1, author_id: cus_marcus, author_name: "Ma****", text: "Does it fit over a fleece?", moderation_status: published, date_created: "2026-09-21T08:15:00-04:00"}
+    - {tenant_id: store_northwind, id: rpl_5481, discussion_forum_posting_id: post_8790, parent_item_id: rpl_5480, reply_depth: 2, author_id: cus_jamie, author_name: "Ja***", text: "Over a light fleece, yes. I'm an M and kept my usual size.", moderation_status: published, date_created: "2026-09-21T09:02:00-04:00"}
+    - {tenant_id: store_northwind, id: rpl_5510, discussion_forum_posting_id: post_8805, reply_depth: 1, author_id: cus_riley, author_name: "Ri***", text: "Merino tee, the fleece half-zip and a shell works for me on the bike.", moderation_status: published, date_created: "2026-11-02T12:30:00-05:00"}
+    - {tenant_id: store_northwind, id: rpl_5515, discussion_forum_posting_id: post_8809, reply_depth: 1, author_id: adm_sj, text: "Yes. M and L are due back on Thu Nov 12; ask for a restock alert and we will tell you the day they land.", moderation_status: published, date_created: "2026-11-05T11:10:00-05:00"}
+    - {tenant_id: store_northwind, id: rpl_5521, discussion_forum_posting_id: post_8812, reply_depth: 1, author_id: cus_grace, author_name: "Gr***", text: "Same here, size up.", moderation_status: published, date_created: "2026-11-05T20:01:00-05:00"}
+    - {tenant_id: store_northwind, id: rpl_5523, discussion_forum_posting_id: post_8812, parent_item_id: rpl_5521, reply_depth: 2, author_id: cus_jamie, author_name: "Ja***", text: "Good to know it's not just mine.", moderation_status: published, date_created: "2026-11-05T21:30:00-05:00"}
+    - {tenant_id: store_northwind, id: rpl_5522, discussion_forum_posting_id: post_8812, reply_depth: 1, author_id: adm_sj, text: "A cool wash and a flat dry keep it true to size; the care label says the same.", moderation_status: published, date_created: "2026-11-06T09:05:00-05:00"}
+  community.content_report:
+    - {tenant_id: store_northwind, id: rpt_8811_1, discussion_forum_posting_id: post_8811, customer_id: cus_jamie, report_reason: advertisement, description: "Links to another shop.", start_time: "2026-11-05T08:02:00-05:00"}
+    - {tenant_id: store_northwind, id: rpt_8811_2, discussion_forum_posting_id: post_8811, customer_id: cus_grace, report_reason: spam, start_time: "2026-11-05T09:15:00-05:00"}
+    - {tenant_id: store_northwind, id: rpt_8811_3, discussion_forum_posting_id: post_8811, customer_id: cus_theo, report_reason: advertisement, start_time: "2026-11-06T07:40:00-05:00"}
