@@ -108,8 +108,10 @@ To show that the tool design matters, we build a **screen-shaped facade** over t
 
 | | Screen-shaped facade | A-Commerce tools |
 |---|---|---|
-| Muse Glimmer | ? | ? |
+| Muse Glimmer | 0% (0 of 36 runs) | 58% (21 of 36 runs) |
 | Muse Spark | ? | ? |
+
+The Glimmer row is the design set (12 tasks, 3 runs each) on Oct 31, commit 91970bc, every model call on Glimmer: pass^3 is 0% against 50%. Reports: [../eval/results](../eval/results) (`2026-10-31-glimmer-design-*`). Reruns of single tasks on the same commit moved by one or two runs out of three, so read the numbers as a gap, not a rate. Held-out numbers are not in yet.
 
 Metrics: task completion, tool selection accuracy, calls per task, cost per task, consistency over repeated runs. Tasks are split into a design set (used while building) and a held-out set (scored only at the end). Only held-out numbers go into the README.
 
