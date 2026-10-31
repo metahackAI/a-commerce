@@ -6760,6 +6760,744 @@
     ]
   },
   {
+    "schema": "integration",
+    "table": "channel",
+    "kind": "table",
+    "term": "schema:WebAPI/acom:Channel",
+    "description": "an outside system the store is connected to: a marketplace, a carrier, a payment provider or a fulfillment service. id prefix chn_.",
+    "id_prefix": "chn",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix chn_; the same value the API, logs and events use."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "the name people use for the channel, for example UPS; unique with its url."
+      },
+      {
+        "name": "channel_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:channelType",
+        "description": "what the channel is: marketplace, carrier, payment or fulfillment. values: channel_type",
+        "values": [
+          "marketplace",
+          "carrier",
+          "payment",
+          "fulfillment"
+        ],
+        "values_list": "channel_type"
+      },
+      {
+        "name": "url",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:url",
+        "description": "the address of the outside system's API."
+      },
+      {
+        "name": "connection_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:connectionStatus",
+        "description": "whether the store can reach the channel now. values: connection_status",
+        "values": [
+          "connected",
+          "degraded",
+          "disconnected"
+        ],
+        "values_list": "connection_status"
+      },
+      {
+        "name": "last_synced_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:lastSyncedAt",
+        "description": "when the store last received data from the channel; NULL if never."
+      },
+      {
+        "name": "seller_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:seller",
+        "description": "the marketplace seller (slr_ id) the channel belongs to; NULL for the store's own channels."
+      },
+      {
+        "name": "credential_hash",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "SHA-256 (hex) of the credential reference the channel is called with; the reference itself is never stored or returned."
+      },
+      {
+        "name": "signing_secret_hash",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "SHA-256 (hex) of the secret inbound events are signed with; the hash is the HMAC key the signatures are checked with, and the secret itself is never stored; NULL when the channel sends no events."
+      },
+      {
+        "name": "status_mapping",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:statusMapping",
+        "description": "the channel's status words mapped to ours, {order: {shipped: in_transit}, claim: {return_requested: requested}} (enums.md order_status and claim_status)."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "integration",
+    "table": "external_claim",
+    "kind": "table",
+    "term": "schema:ReturnAction/acom:ExternalClaim",
+    "description": "a cancel, return or exchange request as an outside channel holds it, the copy last received from the channel. Key: channel and the channel's claim reference.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "channel_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:channelId",
+        "description": "the channel that holds the request (chn_ id).",
+        "references": "integration.channel"
+      },
+      {
+        "name": "external_claim_ref",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:externalClaimRef",
+        "description": "the channel's own request number, for example MK-R-2210; never used as our id."
+      },
+      {
+        "name": "external_order_ref",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:externalOrderRef",
+        "description": "the channel's order the request is about."
+      },
+      {
+        "name": "claim_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:claimType",
+        "description": "cancel, return or exchange. values: claim_type",
+        "values": [
+          "cancel",
+          "return",
+          "exchange"
+        ],
+        "values_list": "claim_type"
+      },
+      {
+        "name": "claim_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:claimId",
+        "description": "the store's claim it maps to (clm_ id); NULL while the request is not in the store.",
+        "references": "fulfillment.claim"
+      },
+      {
+        "name": "external_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:externalStatus",
+        "description": "the request's status word on the channel; channel.status_mapping turns it into a claim_status."
+      },
+      {
+        "name": "ordered_item",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "schema:orderedItem",
+        "description": "the lines the request covers, [{external_id, order_quantity}]."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the shopper asked on the channel."
+      },
+      {
+        "name": "last_synced_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:lastSyncedAt",
+        "description": "when this copy was received from the channel or last sent to it."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "integration",
+    "table": "external_order",
+    "kind": "table",
+    "term": "schema:Order/acom:ExternalOrder",
+    "description": "an order as an outside channel holds it, the copy last received from the channel. Key: channel and the channel's order reference.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "channel_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:channelId",
+        "description": "the channel that holds the order (chn_ id).",
+        "references": "integration.channel"
+      },
+      {
+        "name": "external_order_ref",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:externalOrderRef",
+        "description": "the channel's own order number, for example MK-55102; never used as our id."
+      },
+      {
+        "name": "order_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:orderId",
+        "description": "the store's order it maps to (ord_ id); NULL while the order is not in the store.",
+        "references": "sales.sales_order"
+      },
+      {
+        "name": "external_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:externalStatus",
+        "description": "the order's status word on the channel, as the channel writes it; channel.status_mapping turns it into an order_status."
+      },
+      {
+        "name": "ordered_item",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "schema:orderedItem",
+        "description": "the lines on the channel, [{external_id, order_quantity}]."
+      },
+      {
+        "name": "order_date",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:orderDate",
+        "description": "when the shopper ordered on the channel."
+      },
+      {
+        "name": "last_synced_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:lastSyncedAt",
+        "description": "when this copy was received from the channel or last sent to it."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "integration",
+    "table": "product_import",
+    "kind": "table",
+    "term": "schema:CreateAction/acom:ProductImport",
+    "description": "one import_products run of an outside feed (a seller's or the store's own); the drafts it made are also in catalog.product_import under the same id. id prefix imp_. API: import_id.",
+    "id_prefix": "imp",
+    "api_name": "import_id",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix imp_; the same value the API, logs and events use."
+      },
+      {
+        "name": "seller_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:seller",
+        "description": "the marketplace seller (slr_ id) whose feed it was; NULL for the store's own feed."
+      },
+      {
+        "name": "import_mode",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:importMode",
+        "description": "upsert creates and updates products; price_only, stock_only and status_only change only that. values: feed_import_mode",
+        "values": [
+          "upsert",
+          "price_only",
+          "stock_only",
+          "status_only"
+        ],
+        "values_list": "feed_import_mode"
+      },
+      {
+        "name": "action_status",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:actionStatus",
+        "description": "whether the run finished. values: action_status",
+        "values": [
+          "potential",
+          "active",
+          "completed",
+          "failed"
+        ],
+        "values_list": "action_status"
+      },
+      {
+        "name": "category_mapping",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:categoryMapping",
+        "description": "the feed's category words mapped to standard categories in this run, {Trail tops: cat_tees}; later runs of the same feed start from it."
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "who ran the import: the change-set runner (sys_) or an operator (adm_)."
+      },
+      {
+        "name": "change_set_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:changeSetId",
+        "description": "the approved change set the import ran in (cs_ id); NULL when seeded.",
+        "references": "platform.change_set"
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the run started."
+      },
+      {
+        "name": "end_time",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:endTime",
+        "description": "when the run finished; NULL while it runs."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "integration",
+    "table": "product_import_item",
+    "kind": "table",
+    "term": "schema:DataFeedItem",
+    "description": "one row of an outside feed and what the import did with it. Key: import and row number.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "product_import_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:productImportId",
+        "description": "the import run that read the row (imp_ id).",
+        "references": "integration.product_import"
+      },
+      {
+        "name": "position",
+        "type": "integer",
+        "nullable": false,
+        "term": "schema:position",
+        "description": "row number in the feed, from 1."
+      },
+      {
+        "name": "external_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:externalId",
+        "description": "the feed's own code for the product, for example SKU-1182; never used as our id."
+      },
+      {
+        "name": "product_group_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:productGroupId",
+        "description": "the product the row created or changed (prd_ id; API product_id); NULL when the row was rejected."
+      },
+      {
+        "name": "item_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:itemStatus",
+        "description": "whether the row was taken. values: item_status",
+        "values": [
+          "accepted",
+          "rejected"
+        ],
+        "values_list": "item_status"
+      },
+      {
+        "name": "variant_mapping",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:variantMapping",
+        "description": "the feed's variant codes and the variants they are, [{external_id, variant_id}]; later runs of the same feed find the variants by it."
+      },
+      {
+        "name": "error",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "schema:error",
+        "description": "why the row was rejected, {code, message, next_tool}; NULL when it was taken."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "integration",
+    "table": "webhook_event",
+    "kind": "table",
+    "term": "schema:ReceiveAction/acom:WebhookEvent",
+    "description": "one event a carrier or a payment provider sent, checked and recorded once, and applied through the owning domain when its rules allow. id prefix whk_.",
+    "id_prefix": "whk",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix whk_; the same value the API, logs and events use."
+      },
+      {
+        "name": "channel_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:channelId",
+        "description": "the carrier or payment channel that sent the event (chn_ id).",
+        "references": "integration.channel"
+      },
+      {
+        "name": "carrier_event_type",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:carrierEventType",
+        "description": "what the carrier reported; NULL for a payment event. values: carrier_event_type",
+        "values": [
+          "label_created",
+          "picked_up",
+          "in_transit",
+          "delivered",
+          "delivery_failed"
+        ],
+        "values_list": "carrier_event_type"
+      },
+      {
+        "name": "payment_event_type",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:paymentEventType",
+        "description": "what the payment provider reported; NULL for a carrier event. values: payment_event_type",
+        "values": [
+          "authorized",
+          "deposit_confirmed",
+          "cancelled",
+          "refund_completed",
+          "refund_failed"
+        ],
+        "values_list": "payment_event_type"
+      },
+      {
+        "name": "event_key",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "channel, event type, tracking number or payment reference, and the time it happened, joined; unique, so a resent event is recognised and applied once."
+      },
+      {
+        "name": "external_order_ref",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:externalOrderRef",
+        "description": "the order reference the sender used: our order number, or a channel's order reference."
+      },
+      {
+        "name": "order_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:orderId",
+        "description": "the store's order the reference maps to (ord_ id).",
+        "references": "sales.sales_order"
+      },
+      {
+        "name": "tracking_number",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:trackingNumber",
+        "description": "the carrier's tracking number; NULL for a payment event."
+      },
+      {
+        "name": "payment_ref",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:paymentRef",
+        "description": "the payment provider's reference of the payment or refund; NULL for a carrier event."
+      },
+      {
+        "name": "amount_value",
+        "type": "numeric(12,2)",
+        "nullable": true,
+        "term": "schema:amount",
+        "description": "the amount the payment provider reported; NULL for a carrier event."
+      },
+      {
+        "name": "amount_currency",
+        "type": "char(3)",
+        "nullable": true,
+        "term": "schema:amount",
+        "description": "ISO 4217 code of amount_value."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when it happened at the outside system."
+      },
+      {
+        "name": "received_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:receivedAt",
+        "description": "when the store received it, by the store clock; events.replay_window counts from start_time to this."
+      },
+      {
+        "name": "action_status",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:actionStatus",
+        "description": "potential while it waits for its parcel, payment or refund to be recorded; completed once applied; failed when it is kept but not applied (too old, or a move the owning domain does not allow). values: action_status",
+        "values": [
+          "potential",
+          "active",
+          "completed",
+          "failed"
+        ],
+        "values_list": "action_status"
+      },
+      {
+        "name": "delivery_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:deliveryId",
+        "description": "the parcel a carrier event applied to (dlv_ id); NULL until it applies.",
+        "references": "fulfillment.parcel_delivery"
+      },
+      {
+        "name": "payment_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:paymentId",
+        "description": "the payment a payment event applied to (pay_ id); NULL for carrier and refund events.",
+        "references": "sales.payment"
+      },
+      {
+        "name": "refund_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:refundId",
+        "description": "the refund a refund event applied to (rfd_ id); NULL for other events.",
+        "references": "fulfillment.refund"
+      },
+      {
+        "name": "result",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "schema:result",
+        "description": "what applying the event changed, {entity, id, from, to}; NULL until it applies."
+      },
+      {
+        "name": "error",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "schema:error",
+        "description": "why the event was not applied, {code, message}; NULL when it applied or still waits."
+      },
+      {
+        "name": "end_time",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:endTime",
+        "description": "when the event was applied or given up; NULL while it waits."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
     "schema": "merchandising",
     "table": "banner",
     "kind": "table",

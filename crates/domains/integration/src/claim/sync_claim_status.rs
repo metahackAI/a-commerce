@@ -368,11 +368,11 @@ mod tests {
         assert_eq!(
             s["required"],
             json!([
-                "acom:direction",
-                "acom:external_status",
                 "channel_id",
+                "external_claim_ref",
                 "claim_type",
-                "external_claim_ref"
+                "acom:external_status",
+                "acom:direction"
             ])
         );
     }

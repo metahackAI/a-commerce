@@ -1229,6 +1229,136 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+## `integration`
+
+### `integration.channel`
+
+`schema:WebAPI/acom:Channel` — an outside system the store is connected to: a marketplace, a carrier, a payment provider or a fulfillment service. id prefix chn_. · id `chn_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix chn_; the same value the API, logs and events use. |
+| `name` | text |  | `schema:name` | the name people use for the channel, for example UPS; unique with its url. |
+| `channel_type` | text |  | `acom:channelType` | what the channel is: marketplace, carrier, payment or fulfillment. values: channel_type Values: `marketplace` · `carrier` · `payment` · `fulfillment`. |
+| `url` | text |  | `schema:url` | the address of the outside system's API. |
+| `connection_status` | text |  | `acom:connectionStatus` | whether the store can reach the channel now. values: connection_status Values: `connected` · `degraded` · `disconnected`. |
+| `last_synced_at` | timestamptz | ✓ | `acom:lastSyncedAt` | when the store last received data from the channel; NULL if never. |
+| `seller_id` | text | ✓ | `schema:seller` | the marketplace seller (slr_ id) the channel belongs to; NULL for the store's own channels. |
+| `credential_hash` | text |  | `-` | SHA-256 (hex) of the credential reference the channel is called with; the reference itself is never stored or returned. |
+| `signing_secret_hash` | text | ✓ | `-` | SHA-256 (hex) of the secret inbound events are signed with; the hash is the HMAC key the signatures are checked with, and the secret itself is never stored; NULL when the channel sends no events. |
+| `status_mapping` | jsonb |  | `acom:statusMapping` | the channel's status words mapped to ours, {order: {shipped: in_transit}, claim: {return_requested: requested}} (enums.md order_status and claim_status). |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `integration.external_claim`
+
+`schema:ReturnAction/acom:ExternalClaim` — a cancel, return or exchange request as an outside channel holds it, the copy last received from the channel. Key: channel and the channel's claim reference.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `channel_id` | text |  | `acom:channelId` | the channel that holds the request (chn_ id). → `integration.channel` |
+| `external_claim_ref` | text |  | `acom:externalClaimRef` | the channel's own request number, for example MK-R-2210; never used as our id. |
+| `external_order_ref` | text |  | `acom:externalOrderRef` | the channel's order the request is about. |
+| `claim_type` | text |  | `acom:claimType` | cancel, return or exchange. values: claim_type Values: `cancel` · `return` · `exchange`. |
+| `claim_id` | text | ✓ | `acom:claimId` | the store's claim it maps to (clm_ id); NULL while the request is not in the store. → `fulfillment.claim` |
+| `external_status` | text |  | `acom:externalStatus` | the request's status word on the channel; channel.status_mapping turns it into a claim_status. |
+| `ordered_item` | jsonb |  | `schema:orderedItem` | the lines the request covers, [{external_id, order_quantity}]. |
+| `start_time` | timestamptz |  | `schema:startTime` | when the shopper asked on the channel. |
+| `last_synced_at` | timestamptz |  | `acom:lastSyncedAt` | when this copy was received from the channel or last sent to it. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `integration.external_order`
+
+`schema:Order/acom:ExternalOrder` — an order as an outside channel holds it, the copy last received from the channel. Key: channel and the channel's order reference.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `channel_id` | text |  | `acom:channelId` | the channel that holds the order (chn_ id). → `integration.channel` |
+| `external_order_ref` | text |  | `acom:externalOrderRef` | the channel's own order number, for example MK-55102; never used as our id. |
+| `order_id` | text | ✓ | `acom:orderId` | the store's order it maps to (ord_ id); NULL while the order is not in the store. → `sales.sales_order` |
+| `external_status` | text |  | `acom:externalStatus` | the order's status word on the channel, as the channel writes it; channel.status_mapping turns it into an order_status. |
+| `ordered_item` | jsonb |  | `schema:orderedItem` | the lines on the channel, [{external_id, order_quantity}]. |
+| `order_date` | timestamptz |  | `schema:orderDate` | when the shopper ordered on the channel. |
+| `last_synced_at` | timestamptz |  | `acom:lastSyncedAt` | when this copy was received from the channel or last sent to it. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `integration.product_import`
+
+`schema:CreateAction/acom:ProductImport` — one import_products run of an outside feed (a seller's or the store's own); the drafts it made are also in catalog.product_import under the same id. id prefix imp_. API: import_id. · id `imp_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix imp_; the same value the API, logs and events use. |
+| `seller_id` | text | ✓ | `schema:seller` | the marketplace seller (slr_ id) whose feed it was; NULL for the store's own feed. |
+| `import_mode` | text |  | `acom:importMode` | upsert creates and updates products; price_only, stock_only and status_only change only that. values: feed_import_mode Values: `upsert` · `price_only` · `stock_only` · `status_only`. |
+| `action_status` | text |  | `schema:actionStatus` | whether the run finished. values: action_status Values: `potential` · `active` · `completed` · `failed`. |
+| `category_mapping` | jsonb |  | `acom:categoryMapping` | the feed's category words mapped to standard categories in this run, {Trail tops: cat_tees}; later runs of the same feed start from it. |
+| `agent_id` | text |  | `schema:agent` | who ran the import: the change-set runner (sys_) or an operator (adm_). |
+| `change_set_id` | text | ✓ | `acom:changeSetId` | the approved change set the import ran in (cs_ id); NULL when seeded. → `platform.change_set` |
+| `start_time` | timestamptz |  | `schema:startTime` | when the run started. |
+| `end_time` | timestamptz | ✓ | `schema:endTime` | when the run finished; NULL while it runs. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `integration.product_import_item`
+
+`schema:DataFeedItem` — one row of an outside feed and what the import did with it. Key: import and row number.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `product_import_id` | text |  | `acom:productImportId` | the import run that read the row (imp_ id). → `integration.product_import` |
+| `position` | integer |  | `schema:position` | row number in the feed, from 1. |
+| `external_id` | text |  | `acom:externalId` | the feed's own code for the product, for example SKU-1182; never used as our id. |
+| `product_group_id` | text | ✓ | `acom:productGroupId` | the product the row created or changed (prd_ id; API product_id); NULL when the row was rejected. |
+| `item_status` | text |  | `acom:itemStatus` | whether the row was taken. values: item_status Values: `accepted` · `rejected`. |
+| `variant_mapping` | jsonb |  | `acom:variantMapping` | the feed's variant codes and the variants they are, [{external_id, variant_id}]; later runs of the same feed find the variants by it. |
+| `error` | jsonb | ✓ | `schema:error` | why the row was rejected, {code, message, next_tool}; NULL when it was taken. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `integration.webhook_event`
+
+`schema:ReceiveAction/acom:WebhookEvent` — one event a carrier or a payment provider sent, checked and recorded once, and applied through the owning domain when its rules allow. id prefix whk_. · id `whk_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix whk_; the same value the API, logs and events use. |
+| `channel_id` | text |  | `acom:channelId` | the carrier or payment channel that sent the event (chn_ id). → `integration.channel` |
+| `carrier_event_type` | text | ✓ | `acom:carrierEventType` | what the carrier reported; NULL for a payment event. values: carrier_event_type Values: `label_created` · `picked_up` · `in_transit` · `delivered` · `delivery_failed`. |
+| `payment_event_type` | text | ✓ | `acom:paymentEventType` | what the payment provider reported; NULL for a carrier event. values: payment_event_type Values: `authorized` · `deposit_confirmed` · `cancelled` · `refund_completed` · `refund_failed`. |
+| `event_key` | text |  | `-` | channel, event type, tracking number or payment reference, and the time it happened, joined; unique, so a resent event is recognised and applied once. |
+| `external_order_ref` | text |  | `acom:externalOrderRef` | the order reference the sender used: our order number, or a channel's order reference. |
+| `order_id` | text |  | `acom:orderId` | the store's order the reference maps to (ord_ id). → `sales.sales_order` |
+| `tracking_number` | text | ✓ | `schema:trackingNumber` | the carrier's tracking number; NULL for a payment event. |
+| `payment_ref` | text | ✓ | `acom:paymentRef` | the payment provider's reference of the payment or refund; NULL for a carrier event. |
+| `amount_value` | numeric(12,2) | ✓ | `schema:amount` | the amount the payment provider reported; NULL for a carrier event. |
+| `amount_currency` | char(3) | ✓ | `schema:amount` | ISO 4217 code of amount_value. |
+| `start_time` | timestamptz |  | `schema:startTime` | when it happened at the outside system. |
+| `received_at` | timestamptz |  | `acom:receivedAt` | when the store received it, by the store clock; events.replay_window counts from start_time to this. |
+| `action_status` | text |  | `schema:actionStatus` | potential while it waits for its parcel, payment or refund to be recorded; completed once applied; failed when it is kept but not applied (too old, or a move the owning domain does not allow). values: action_status Values: `potential` · `active` · `completed` · `failed`. |
+| `delivery_id` | text | ✓ | `acom:deliveryId` | the parcel a carrier event applied to (dlv_ id); NULL until it applies. → `fulfillment.parcel_delivery` |
+| `payment_id` | text | ✓ | `acom:paymentId` | the payment a payment event applied to (pay_ id); NULL for carrier and refund events. → `sales.payment` |
+| `refund_id` | text | ✓ | `acom:refundId` | the refund a refund event applied to (rfd_ id); NULL for other events. → `fulfillment.refund` |
+| `result` | jsonb | ✓ | `schema:result` | what applying the event changed, {entity, id, from, to}; NULL until it applies. |
+| `error` | jsonb | ✓ | `schema:error` | why the event was not applied, {code, message}; NULL when it applied or still waits. |
+| `end_time` | timestamptz | ✓ | `schema:endTime` | when the event was applied or given up; NULL while it waits. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ## `merchandising`
 
 ### `merchandising.banner`
