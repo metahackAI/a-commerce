@@ -1,10 +1,12 @@
 //! The `customer` domain: members, tier programs, addresses, consent, preferences, inquiries, remedies.
 //!
 //! Operations, inputs, outputs, checks, and errors are specified in `docs/api/customer.md`.
-//! Layout: one module per resource (`person`, `membership`, `address`, `preference`,
-//! `wishlist`), each operation one type implementing `ReadOp`/`WriteOp`/`PersonOp`; `repo`
-//! holds the SQL; `wording` and `progress` are pure rules with unit tests. Other domains are
-//! reached only through `service::providers`, which they fill in at start-up.
+//! Layout follows the API hierarchy (docs/backend/README.md §2.2): one folder per resource
+//! (`person`, `membership`, `address`, `preference`, `wishlist`), one file per operation named
+//! after its tool, each operation one type implementing `ReadOp`/`WriteOp`/`PersonOp`. A
+//! resource's `mod.rs` holds what its operations share; `repo` holds the domain's SQL, and
+//! `wording` and `progress` are pure rules with unit tests. Other domains are reached only
+//! through `service::providers`, which they fill in at start-up.
 
 pub mod service;
 
