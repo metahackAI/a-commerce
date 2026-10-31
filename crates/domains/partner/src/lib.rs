@@ -28,7 +28,7 @@ mod tests;
 use acom_contract::{ErrorClass, ErrorCode, RegistryBuilder, ToolError};
 use acom_store::{Cx, StoreError};
 use chrono::{DateTime, Utc};
-use serde_json::{Value, json};
+use serde_json::json;
 
 /// No seller with that id in this store.
 pub const SELLER_NOT_FOUND: ErrorCode = ErrorCode::new("seller_not_found", ErrorClass::NotFound);
@@ -107,21 +107,6 @@ pub(crate) fn seller_not_found(id: &str) -> ToolError {
     ToolError::new(SELLER_NOT_FOUND, format!("No seller {id} in this store."))
         .detail(json!({"entity": "seller", "id": id}))
         .next("search_sellers")
-}
-
-/// Keeps only the asked top-level fields (and `id`, `seller_id`); all of them when none.
-pub(crate) fn select(v: Value, fields: &[String]) -> Value {
-    if fields.is_empty() {
-        return v;
-    }
-    match v {
-        Value::Object(m) => Value::Object(
-            m.into_iter()
-                .filter(|(k, _)| k == "id" || k == "seller_id" || fields.iter().any(|f| f == k))
-                .collect(),
-        ),
-        other => other,
-    }
 }
 
 /// A time input in store time (`2026-11-07T00:00`, a date, or RFC 3339).

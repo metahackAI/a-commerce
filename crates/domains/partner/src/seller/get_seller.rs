@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 use super::{profile_wire, tax_id_shown};
 use crate::rules::Rules;
 use crate::viewer;
-use crate::{SELLER_NOT_FOUND, activity, contract, repo, select, seller_not_found, store};
+use crate::{SELLER_NOT_FOUND, activity, contract, repo, seller_not_found, store};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -91,7 +91,7 @@ impl ReadOp<Cx> for GetSeller {
         if let (Some(o), Value::Object(p)) = (out.as_object_mut(), profile_wire(&s)) {
             o.extend(p);
         }
-        Ok(select(out, &input.fields.unwrap_or_default()))
+        acom_contract::fields::keep(out, &input.fields.unwrap_or_default())
     }
 }
 

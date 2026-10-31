@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 use super::{contract_not_found, current, version_wire};
 use crate::rules::Rules;
 use crate::viewer;
-use crate::{CONTRACT_NOT_FOUND, SELLER_NOT_FOUND, model, repo, select, seller_not_found, store};
+use crate::{CONTRACT_NOT_FOUND, SELLER_NOT_FOUND, model, repo, seller_not_found, store};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -88,7 +88,7 @@ impl ReadOp<Cx> for GetContract {
                 }))
                 .collect::<Vec<_>>()
         );
-        Ok(select(out, &input.fields.unwrap_or_default()))
+        acom_contract::fields::keep(out, &input.fields.unwrap_or_default())
     }
 }
 
