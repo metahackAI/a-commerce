@@ -86,6 +86,7 @@ catalog:
     prd_scarves_08: {name: Lambswool neckerchief}        # was Lambswool bandana: bandanas are cotton
     prd_underwear_06: {name: Bamboo rayon boxer briefs, material: Bamboo rayon}   # US fiber labeling: rayon made from bamboo
     prd_underwear_09: {name: Bamboo rayon bralette, material: Bamboo rayon}
+    prd_denim_06: {name: White straight jeans, material: White}           # was Black straight jeans: its only color is White
 
 members:                         # program_membership in prg_rewards; tier counts include the 13 named people (02_customer.yml)
   tiers:

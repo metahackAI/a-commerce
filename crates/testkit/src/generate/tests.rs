@@ -1004,7 +1004,7 @@ fn renames_change_only_the_renamed_products_names() {
         .as_object()
         .map(|m| m.keys().cloned().collect())
         .unwrap_or_default();
-    assert_eq!(renamed.len(), 6);
+    assert_eq!(renamed.len(), 7);
     spec["catalog"].as_object_mut().unwrap().remove("renames");
     let drawn = generate(&seed.named, &serde_norway::to_string(&spec).unwrap()).unwrap();
 

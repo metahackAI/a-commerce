@@ -1710,17 +1710,18 @@ products:
     attempts: 1
     rules: ['denim:Selvedge', carpenter jeans]
 - id: prd_denim_06
-  name_check: Black straight jeans
-  description: Made from black denim (420 g/m2), these straight-leg jeans are 100% cotton. They have a regular fit with a
-    zip fly with button and five pockets. Machine wash cold inside out and hang to dry.
-  summary: Black straight jeans in black denim, regular fit, zip fly with button, five pockets
+  name_check: White straight jeans
+  description: Made from white cotton denim (420 g/m2), these straight-leg jeans are 100% cotton. They have a regular fit
+    with a zip fly with button and five pockets, and they work for everyday wear. Machine wash cold inside out and hang to
+    dry.
+  summary: White straight-leg jeans in white cotton denim with regular fit and five pockets.
   keywords: [everyday, casual, machine-washable]
   additional_property:
   - {name: fiber_content, value: 100% cotton, unit_text: null}
   - {name: fit, value: regular, unit_text: null}
   - {name: weight, value: 740, unit_text: g, size: M}
   - {name: care, value: Machine wash cold inside out and hang to dry., unit_text: null}
-  - {name: fabric, value: black denim, unit_text: null}
+  - {name: fabric, value: white cotton denim, unit_text: null}
   - {name: fabric_weight, value: 420, unit_text: g/m2}
   - {name: closure, value: zip fly with button, unit_text: null}
   - name: features
@@ -1740,10 +1741,10 @@ products:
     to the hem.
   status: pass
   provenance:
-    run: 20261031-165220-v2
+    run: 20261031-232104-denim06-white
     model: muse-glimmer-30b
-    attempts: 2
-    rules: ['denim:Black', straight jeans]
+    attempts: 1
+    rules: ['denim:White', straight jeans]
 - id: prd_denim_07
   name_check: Rigid denim overshirt
   description: For everyday, this denim overshirt is a rigid denim (450 g/m2) in 100% cotton with a relaxed fit and point
