@@ -195,6 +195,7 @@ dependencies = [
  "acom-changeset",
  "acom-contract",
  "acom-core",
+ "acom-platform",
  "acom-policy",
  "acom-store",
  "chrono",

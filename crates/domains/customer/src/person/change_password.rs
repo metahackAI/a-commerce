@@ -119,7 +119,9 @@ impl PersonOp<Cx> for ChangePassword {
             _ => Some(tx.principal.session_id.clone()),
         };
         let revoked = match keep {
-            Some(k) => repo::revoke_sessions(tx, &a.id, k.as_deref()).await?,
+            Some(k) => {
+                acom_platform::service::for_customer::end_sessions(tx, &a.id, k.as_deref()).await?
+            }
             None => 0,
         };
         log_person(

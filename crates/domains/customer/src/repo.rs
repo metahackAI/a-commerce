@@ -828,29 +828,6 @@ pub(crate) async fn write_state(tx: &mut TxCx, id: &str, s: &StateFields) -> Res
     Ok(())
 }
 
-/// Ends a member's sessions (`password.on_reset`, `password.on_change`, withdrawal), all or all
-/// but `keep`. Sessions are the gateway's (`platform.session`); the commerce service has no
-/// other way to end them, so this one statement reaches into that table. Returns how many ended.
-pub(crate) async fn revoke_sessions(
-    tx: &mut TxCx,
-    customer_id: &str,
-    keep: Option<&str>,
-) -> Result<u64, ToolError> {
-    let done = sqlx::query(
-        "UPDATE platform.session SET revoked_at = now(), updated_at = now(),
-           version = version + 1
-         WHERE tenant_id = $1 AND subject_id = $2 AND revoked_at IS NULL
-           AND ($3::text IS NULL OR id <> $3)",
-    )
-    .bind(tx.tenant.as_str())
-    .bind(customer_id)
-    .bind(keep)
-    .execute(&mut *tx.tx)
-    .await
-    .map_err(db)?;
-    Ok(done.rows_affected())
-}
-
 /// One tier change to add to the history (append only).
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub(crate) struct TierChange {

@@ -12,6 +12,7 @@ acom-auth.workspace = true
 acom-changeset.workspace = true
 acom-contract.workspace = true
 acom-core.workspace = true
+acom-platform.workspace = true
 acom-policy.workspace = true
 acom-store.workspace = true
 chrono.workspace = true

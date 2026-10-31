@@ -197,7 +197,7 @@ impl PersonOp<Cx> for ConfirmPasswordReset {
             .and_then(Value::as_str)
             != Some("keep");
         let revoked = if all {
-            repo::revoke_sessions(tx, &a.id, None).await?
+            acom_platform::service::for_customer::end_sessions(tx, &a.id, None).await?
         } else {
             0
         };

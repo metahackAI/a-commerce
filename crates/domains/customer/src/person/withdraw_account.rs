@@ -545,7 +545,7 @@ impl PersonOp<Cx> for WithdrawAccount {
         .execute(&mut *tx.tx)
         .await
         .map_err(db)?;
-        let revoked = repo::revoke_sessions(tx, &a.id, None).await?;
+        let revoked = acom_platform::service::for_customer::end_sessions(tx, &a.id, None).await?;
         let notice = a
             .email
             .as_deref()
