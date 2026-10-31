@@ -6,6 +6,8 @@
 pub mod batch_import;
 pub mod create_product;
 pub mod discontinue_product;
+pub mod generate_copy;
+pub mod generate_image;
 pub mod get_delivery_policy;
 pub mod get_product;
 pub mod get_product_measurements;

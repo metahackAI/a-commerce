@@ -69,7 +69,6 @@ impl WriteOp<Cx> for SetVariantStock {
         let rules = StockRules::from_policy(&cx.policy)?;
         let mut tx = cx.read().await.map_err(ToolError::from)?;
         let state = repo::offer_state(&mut tx, &input.variant_id).await?;
-        tx.commit().await.map_err(ToolError::from)?;
         let s = state
             .ok_or_else(|| product_not_found("variant", &input.variant_id, "search_products"))?;
         let (plan, check) = plan_stock(
@@ -79,6 +78,15 @@ impl WriteOp<Cx> for SetVariantStock {
             input.managed,
             cx.clock.now(),
         )?;
+        // Shoppers waiting for the variant hear about it when this runs.
+        let alerts = crate::restock_alert::notify_preview(
+            &mut tx,
+            &plan.variant_id,
+            plan.restores(),
+            cx.clock.now(),
+        )
+        .await?;
+        tx.commit().await.map_err(ToolError::from)?;
         let managed_moves = plan.from.managed != plan.to.managed;
         let mut basis = vec![Basis {
             entity: "catalog.offer".into(),
@@ -94,7 +102,7 @@ impl WriteOp<Cx> for SetVariantStock {
         }
         let approval = cx.policy.approval_for(Self::META.tool, &json!({}));
         Ok(Planned {
-            changes: vec![Change {
+            changes: std::iter::once(Change {
                 op: ChangeOp::Update,
                 entity: "inventory_level".into(),
                 id: plan.variant_id.clone(),
@@ -104,7 +112,9 @@ impl WriteOp<Cx> for SetVariantStock {
                     .reason
                     .map(|r| r.trim().to_owned())
                     .filter(|r| !r.is_empty()),
-            }],
+            })
+            .chain(alerts)
+            .collect(),
             checks: check.into_iter().collect(),
             basis,
             approval: match approval.reason {
@@ -117,6 +127,9 @@ impl WriteOp<Cx> for SetVariantStock {
 
     async fn commit(&self, tx: &mut TxCx, plan: &StockPlan) -> Result<Committed, ToolError> {
         write(tx, plan, &plan.to).await?;
+        if plan.restores() {
+            crate::restock_alert::notify_back_in_stock(tx, &plan.variant_id).await?;
+        }
         let mut produced = Map::new();
         produced.insert("variant_id".into(), json!(plan.variant_id));
         Ok(Committed {
@@ -231,5 +244,60 @@ mod tests {
             .await
             .unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(planned.changes[0].to["availability"], "in_stock");
+    }
+
+    #[tokio::test]
+    #[ignore = "integration: needs a PostgreSQL database"]
+    async fn the_chore_coat_m_back_in_stock_tells_the_two_shoppers_waiting() {
+        let cx = testing::operator_db().await;
+        let planned = SetVariantStock
+            .preview(
+                &cx,
+                SetVariantStockInput {
+                    variant_id: "var_chore_coat_m_olive".into(),
+                    inventory_level: 12,
+                    managed: None,
+                    reason: None,
+                },
+            )
+            .await
+            .unwrap_or_else(|e| panic!("{e}"));
+        // rsa_204 (Jamie, email) and rsa_205 (Grace, push) wait for it.
+        let send = &planned.changes[1];
+        assert_eq!(send.entity, "restock_alert");
+        assert_eq!(send.to["shoppers"], 2);
+        assert_eq!(send.to["by_channel"], json!({"email": 1, "push": 1}));
+        // Run it in a transaction that is rolled back, so the store is left as it was.
+        let mut tx = cx.begin().await.unwrap_or_else(|e| panic!("{e}"));
+        SetVariantStock
+            .commit(&mut tx, &planned.plan)
+            .await
+            .unwrap_or_else(|e| panic!("{e}"));
+        let sent: Vec<(String, String)> = sqlx::query_as(
+            "SELECT object_id, payload->>'channel' FROM platform.outbox
+             WHERE tenant_id = $1 AND topic = 'restock_alert.notify' ORDER BY object_id",
+        )
+        .bind(tx.tenant.as_str())
+        .fetch_all(&mut *tx.tx)
+        .await
+        .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(
+            sent,
+            [
+                ("rsa_204".to_owned(), "email".to_owned()),
+                ("rsa_205".to_owned(), "push".to_owned())
+            ]
+        );
+        let waiting =
+            crate::restock_alert::waiting(&mut tx, "var_chore_coat_m_olive", cx.clock.now())
+                .await
+                .unwrap_or_else(|e| panic!("{e}"));
+        assert!(waiting.is_empty(), "{waiting:?}");
+        // Running the same plan again sends nothing more.
+        SetVariantStock
+            .commit(&mut tx, &planned.plan)
+            .await
+            .unwrap_or_else(|e| panic!("{e}"));
+        tx.tx.rollback().await.unwrap_or_else(|e| panic!("{e}"));
     }
 }

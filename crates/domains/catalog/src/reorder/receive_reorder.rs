@@ -161,6 +161,19 @@ impl WriteOp<Cx> for ReceiveReorder {
         let rules = StockRules::from_policy(&cx.policy)?;
         let mut tx = cx.read().await.map_err(ToolError::from)?;
         let (plan, checks, basis) = plan_receipt(&mut tx, &rules, &input.reorder_id).await?;
+        // Shoppers waiting for a size that comes back hear about it when this runs.
+        let mut alerts = Vec::new();
+        for p in &plan.stock {
+            alerts.extend(
+                crate::restock_alert::notify_preview(
+                    &mut tx,
+                    &p.variant_id,
+                    p.restores(),
+                    cx.clock.now(),
+                )
+                .await?,
+            );
+        }
         tx.commit().await.map_err(ToolError::from)?;
         let mut changes = vec![Change {
             op: ChangeOp::Update,
@@ -178,6 +191,7 @@ impl WriteOp<Cx> for ReceiveReorder {
             to: snapshot_json(&p.to, false),
             note: None,
         }));
+        changes.extend(alerts);
         Ok(Planned {
             changes,
             checks,
@@ -201,6 +215,9 @@ impl WriteOp<Cx> for ReceiveReorder {
         }
         for p in &plan.stock {
             write_stock(tx, p, &p.to).await?;
+            if p.restores() {
+                crate::restock_alert::notify_back_in_stock(tx, &p.variant_id).await?;
+            }
         }
         let mut produced = Map::new();
         produced.insert(

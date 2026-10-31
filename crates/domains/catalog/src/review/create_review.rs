@@ -212,11 +212,8 @@ impl WriteOp<Cx> for CreateReview {
             variant_id: bought.first().map(|i| i.variant_id.clone()),
             order_id: input.order_id,
             author_id: author,
-            author_name: cx
-                .principal
-                .name
-                .clone()
-                .unwrap_or_else(|| "A shopper".into()),
+            // The name shown with the review, masked as `author_masking` says.
+            author_name: crate::shown_author(cx)?,
             rating: i16::from(input.review_rating),
             keywords: model::mentions_in(&body, &known),
             body,
@@ -242,7 +239,7 @@ impl WriteOp<Cx> for CreateReview {
                 to: json!({"product_id": plan.product_id, "order_id": plan.order_id,
                            "review_rating": plan.rating, "review_body": plan.body,
                            "fit": plan.fit, "height_cm": plan.height_cm, "size_bought": size,
-                           "image": plan.image, "status": plan.status}),
+                           "image": plan.image, "status": plan.status, "author": plan.author_name}),
                 note: None,
             }],
             checks,

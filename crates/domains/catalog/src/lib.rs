@@ -23,11 +23,14 @@ mod write;
 
 mod approval;
 mod brand;
+mod bundle;
 mod inventory;
 mod offer;
 mod product;
 mod product_group;
+mod question;
 mod reorder;
+mod restock_alert;
 mod review;
 
 use acom_auth::Principal;
@@ -73,6 +76,34 @@ pub const INVALID_FILE_FORMAT: ErrorCode =
     ErrorCode::new("invalid_file_format", ErrorClass::InvalidInput);
 /// A SKU already used in the store.
 pub const DUPLICATE_SKU: ErrorCode = ErrorCode::new("duplicate_sku", ErrorClass::AlreadyExists);
+/// Only the shopper who wrote a review or a question may change or delete it.
+pub const NOT_AUTHOR: ErrorCode = ErrorCode::new("not_author", ErrorClass::Forbidden);
+/// The shopper already reported this review.
+pub const ALREADY_REPORTED: ErrorCode =
+    ErrorCode::new("already_reported", ErrorClass::AlreadyExists);
+/// The question has its answer already (one per question; the asker can no longer edit it).
+pub const ALREADY_ANSWERED: ErrorCode =
+    ErrorCode::new("already_answered", ErrorClass::InvalidState);
+/// The shopper already waits for this variant on this channel.
+pub const ALREADY_SUBSCRIBED: ErrorCode =
+    ErrorCode::new("already_subscribed", ErrorClass::AlreadyExists);
+/// The variant can be bought now; there is nothing to wait for.
+pub const ALREADY_IN_STOCK: ErrorCode =
+    ErrorCode::new("already_in_stock", ErrorClass::InvalidState);
+/// A bundle component that is not on sale (not active, discontinued, or without a price).
+pub const COMPONENT_INACTIVE: ErrorCode =
+    ErrorCode::new("component_inactive", ErrorClass::InvalidState);
+/// Bundle components sold by different sellers.
+pub const MIXED_SELLER: ErrorCode = ErrorCode::new("mixed_seller", ErrorClass::Domain);
+/// Bundle components with different minimum ages.
+pub const MIXED_AGE_RESTRICTION: ErrorCode =
+    ErrorCode::new("mixed_age_restriction", ErrorClass::Domain);
+/// The content generator could not make the draft.
+pub const GENERATION_FAILED: ErrorCode =
+    ErrorCode::new("generation_failed", ErrorClass::UpstreamUnavailable);
+/// A generation prompt the store's brand guideline does not allow.
+pub const BRAND_GUIDELINE_VIOLATION: ErrorCode =
+    ErrorCode::new("brand_guideline_violation", ErrorClass::Domain);
 
 /// Lowercase words joined by `_`, for ids made from names and codes:
 /// `FW26-OT-014-CHR` → `fw26_ot_014_chr`, `Wool blend overcoat` → `wool_blend_overcoat`.
@@ -107,7 +138,9 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .write(product::discontinue_product::DiscontinueProduct)
         .read(product::get_return_policy::GetReturnPolicy)
         .read(product::get_delivery_policy::GetDeliveryPolicy)
-        .write(product::batch_import::BatchImport);
+        .write(product::batch_import::BatchImport)
+        .write(product::generate_image::GenerateImage)
+        .write(product::generate_copy::GenerateCopy);
     // offer
     b.read(offer::get_price_breakdown::GetPriceBreakdown)
         .write(offer::set_price::SetPrice)
@@ -134,7 +167,22 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .read(review::list_reviews::ListReviews)
         .write(review::moderate_review::ModerateReview)
         .write(review::create_review::CreateReview)
-        .write(review::vote_review_helpful::VoteReviewHelpful);
+        .write(review::update_review::UpdateReview)
+        .write(review::delete_review::DeleteReview)
+        .write(review::vote_review_helpful::VoteReviewHelpful)
+        .write(review::report_review::ReportReview);
+    // question
+    b.read(question::list_questions::ListQuestions)
+        .write(question::answer_question::AnswerQuestion)
+        .write(question::moderate_question::ModerateQuestion)
+        .write(question::ask_question::AskQuestion)
+        .write(question::update_question::UpdateQuestion)
+        .write(question::delete_question::DeleteQuestion);
+    // bundle
+    b.write(bundle::create_bundle::CreateBundle);
+    // restock_alert
+    b.write(restock_alert::subscribe_restock::SubscribeRestock)
+        .read(restock_alert::list_restock_subscriptions::ListRestockSubscriptions);
     // Scheduled work (platform.job): the watcher over prices under cost.
     b.job(watch::PriceBelowCost);
 }
@@ -164,6 +212,84 @@ pub(crate) fn not_found(entity: &str, id: &str, next: &'static str) -> ToolError
         ),
     )
     .detail(json!({"entity": entity, "id": id}))
+    .next(next)
+}
+
+/// A `*.profanity_filter` check: passed without a blocked word; with one, failed when the store
+/// blocks such text (`block`) and passed with a note when it holds it for review.
+pub(crate) fn blocked_words_check(
+    rule: &str,
+    blocks: bool,
+    found: Option<&str>,
+    fix_tool: &str,
+) -> acom_contract::Check {
+    let refused = found.is_some() && blocks;
+    acom_contract::Check {
+        rule: rule.into(),
+        passed: !refused,
+        detail: Some(match found {
+            None => "No blocked words".into(),
+            Some(w) if blocks => format!("Uses a blocked word ({w})"),
+            Some(_) => "Uses a blocked word; it will be held for review".into(),
+        }),
+        fix_tool: refused.then(|| fix_tool.into()),
+    }
+}
+
+/// `profanity_blocked`: the text uses a word the store does not allow.
+pub(crate) fn profanity_blocked(rule: &str, word: &str, next: &'static str) -> ToolError {
+    ToolError::new(
+        PROFANITY_BLOCKED,
+        format!("The text uses a word this store does not allow ({word})."),
+    )
+    .detail(json!({"rule": rule, "word": word}))
+    .next(next)
+}
+
+/// The signed-in shopper making a shopper-only write; guests must sign in first.
+pub(crate) fn signed_in_shopper(cx: &Cx, what: &str) -> Result<String, ToolError> {
+    cx.principal
+        .customer_id()
+        .map(str::to_owned)
+        .ok_or_else(|| {
+            ToolError::new(ErrorCode::FORBIDDEN, format!("Sign in to {what}."))
+                .detail(json!({"reason": "owner"}))
+        })
+}
+
+/// The name shown with what a shopper writes, masked as `author_masking` says.
+pub(crate) fn shown_author(cx: &Cx) -> Result<String, ToolError> {
+    let masking = rules::AuthorMasking::from_policy(&cx.policy)?;
+    let name = cx.principal.name.as_deref().unwrap_or("").trim();
+    Ok(if name.is_empty() {
+        "A shopper".into()
+    } else {
+        masking.shown(name)
+    })
+}
+
+/// A write only the store may run (moderating questions, generating content): refused for shoppers.
+pub(crate) fn operators_only(cx: &Cx, what: &str) -> Result<(), ToolError> {
+    if is_operator(&cx.principal) {
+        Ok(())
+    } else {
+        Err(
+            ToolError::new(ErrorCode::FORBIDDEN, format!("Only the store can {what}."))
+                .detail(json!({"reason": "role"})),
+        )
+    }
+}
+
+/// `not_author`: someone other than the writer tries to change or delete it.
+pub(crate) fn not_author(entity: &str, id: &str, next: &'static str) -> ToolError {
+    ToolError::new(
+        NOT_AUTHOR,
+        format!(
+            "Only the shopper who wrote {id} can change or delete this {}.",
+            entity
+        ),
+    )
+    .detail(json!({"reason": "owner", "entity": entity, "id": id}))
     .next(next)
 }
 

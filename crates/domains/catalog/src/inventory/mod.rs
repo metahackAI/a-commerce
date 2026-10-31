@@ -116,6 +116,14 @@ pub(crate) fn plan_stock(
     Ok((plan, check))
 }
 
+impl StockPlan {
+    /// Whether the change brings a sold-out variant back on sale: the moment the shoppers
+    /// waiting for it hear (`inventory.auto_restore.notify_restock_alerts`).
+    pub fn restores(&self) -> bool {
+        self.from.availability != self.to.availability && self.to.availability == "in_stock"
+    }
+}
+
 pub(crate) fn snapshot_json(s: &StockSnapshot, with_managed: bool) -> Value {
     let mut v = json!({"inventory_level": s.inventory_level, "availability": s.availability});
     if with_managed {
