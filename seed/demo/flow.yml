@@ -1,0 +1,29 @@
+# What the demo store's shoppers do after the scene clock, for `cargo xtask sim` (README.md §Store activity).
+# Numbers the store's own history can give are measured from it when the simulator starts: orders per hour of
+# day, who orders, how many lines a basket has, which variants in what quantity. Only what history cannot
+# give is written here, each with its source. The return window comes from policy (return_window_days).
+version: 1
+
+members:
+  never_touch_from: generate.yml   # its never_touch.customers is the scene cast: the simulator never signs in as them
+
+orders:
+  lookback_days: 7                 # full store days before today that set orders per hour of day and who orders
+  basket_sample: 500               # orders of those days read in full: lines per order, variants, quantities
+
+returns:
+  # Share of US online apparel orders returned, 12 months to Mar 6, 2023: 24.4%.
+  # Coresight Research, "The True Cost of Apparel Returns" (Apr 4, 2023),
+  # https://coresight.com/research/the-true-cost-of-apparel-returns-alarming-return-rates-require-loss-minimization-solutions
+  # Return requests per day = rate x orders per day of the lookback, spread over the hours like orders.
+  # The order is one delivered inside the return window, drawn uniformly (no public source for the spread).
+  rate: 0.244
+  # The same survey's top return reasons, by share of the 100 retailers naming each: size/fit 53%, color 16%,
+  # damage 10%. Used here as the mix of reasons; the remaining 21% go to changed_mind.
+  reasons:
+    wrong_size: 0.53
+    different_option_wanted: 0.16  # color
+    defect: 0.10                   # damage; damaged_in_transit needs a photo upload, which the simulator does not do
+    changed_mind: 0.21
+  kind: refund                     # replacements are not played yet
+  send_back: drop_off              # pickup also needs the offered window; one method for now

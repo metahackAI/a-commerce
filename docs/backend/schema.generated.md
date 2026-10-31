@@ -1813,6 +1813,25 @@
 
 ## `promotion`
 
+### `promotion.conditional_gift`
+
+`schema:Offer/acom:ConditionalGift` — a gift added to an order whose subtotal before member benefits reaches a threshold, with one gift per threshold. id prefix cgf_. · id `cgf_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix cgf_; the same value the API, logs and events use. |
+| `name` | text |  | `schema:name` | name people read, for example Holiday gift over $120. |
+| `gift_tiers` | jsonb |  | `acom:giftTiers` | thresholds in ascending order, each with its gift: [{trigger_threshold: {value, currency}, gift_product_id}]. |
+| `valid_for_member_tier` | text | ✓ | `schema:validForMemberTier` | tier the gift is for; NULL means everyone (the reserved word everyone is never stored). → `customer.member_program_tier` |
+| `sales_channels` | text[] | ✓ | `acom:salesChannel` | channels where the gift applies; NULL means every channel. values: sales_channel |
+| `valid_from` | timestamptz |  | `schema:validFrom` | first moment the gift applies. |
+| `valid_through` | timestamptz |  | `schema:validThrough` | last moment it applies (inclusive, minute precision). |
+| `change_set_id` | text | ✓ | `acom:changeSetId` | change set that created it; NULL for seeded ones. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `promotion.coupon`
 
 `schema:Offer/acom:Coupon` — a coupon tied to a promotion; it records the promotion's benefit on the order and never adds a second discount. id prefix cpn_. · id `cpn_…`
@@ -1830,6 +1849,137 @@
 | `is_benefit_record_only` | boolean |  | `acom:recordsBenefitOnly` | true: the coupon records the promotion's benefit and adds no discount of its own. |
 | `valid_from` | timestamptz | ✓ | `schema:validFrom` | first moment the coupon can be used; NULL follows the promotion. |
 | `valid_through` | timestamptz | ✓ | `schema:validThrough` | last moment it can be used; NULL follows the promotion. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `promotion.draw_record`
+
+`schema:ChooseAction/acom:DrawRecord` — the audit record of one draw run: method, seed, entrant snapshot and result, so anyone can repeat it. Rows are only added. id prefix drw_. · id `drw_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix drw_; the same value the API, logs and events use. |
+| `event_id` | text |  | `schema:object` | event drawn (evt_ id). → `promotion.event` |
+| `draw_position` | integer |  | `acom:drawPosition` | which run of the event's draws this is, from 1; part of the shuffle key. |
+| `draw_mode` | text |  | `acom:drawMode` | what the run did, one of promotion.yml event.draw.modes: draw, redraw, cancel_winner, promote_waitlist, add_waitlist or manual_select. |
+| `rank` | integer | ✓ | `acom:rank` | the reward rank drawn; NULL for every rank. |
+| `method` | text |  | `acom:method` | how winners were chosen, from promotion.yml event.draw.fairness.method, for example seeded_shuffle. |
+| `seed_commitment` | text |  | `acom:seedCommitment` | sha256 of the seed, as published before entries closed. |
+| `seed` | text |  | `acom:seed` | the seed the shuffle used, revealed by the draw. |
+| `entrant_snapshot_digest` | text |  | `acom:entrantSnapshotDigest` | sha256 of the entry ids the draw chose from, in order. |
+| `entrant_count` | integer |  | `acom:entrantCount` | how many entries the draw chose from. |
+| `excluded` | jsonb |  | `acom:excluded` | entries left out and why: {previous_winners, invalid_entries}. |
+| `result` | jsonb |  | `schema:result` | [{rank, winners[], waitlist[], cancelled[]}] with entry ids. |
+| `reason` | text | ✓ | `acom:reason` | why a person redrew, cancelled a winner or chose by hand. |
+| `agent_id` | text |  | `schema:agent` | who asked for the draw (adm_ or sys_ id). |
+| `change_set_id` | text | ✓ | `acom:changeSetId` | change set whose approval ran the draw; its approver is the person who approved it. |
+| `start_time` | timestamptz |  | `schema:startTime` | when the draw ran, on the store clock. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version; draw records are never changed. |
+
+### `promotion.event`
+
+`schema:Event` — a promotion event: shoppers enter by an entry mechanic and winners are chosen by a selection method, with rewards by rank. id prefix evt_. · id `evt_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix evt_; the same value the API, logs and events use. |
+| `name` | text |  | `schema:name` | name people read, for example Fall check-in week. |
+| `event_status` | text |  | `acom:eventStatus` | stored status; scheduled and running follow the entry period and the store clock, closed after it ends. values: event_status Values: `draft` · `scheduled` · `running` · `paused` · `closed` · `drawing` · `announced` · `fulfilling` · `completed` · `cancelled`. |
+| `start_date` | timestamptz |  | `schema:startDate` | first moment entries are taken. |
+| `end_date` | timestamptz |  | `schema:endDate` | last moment entries are taken (inclusive, minute precision). |
+| `display_valid_from` | timestamptz | ✓ | `acom:displayValidFrom` | when shoppers start seeing the event; NULL means from start_date. |
+| `display_valid_through` | timestamptz | ✓ | `acom:displayValidThrough` | when shoppers stop seeing it; NULL means until end_date. |
+| `entry_mechanic` | text |  | `acom:entryMechanic` | how shoppers enter, an id of the store registry promotion.yml event.entry_mechanics, for example check_in. |
+| `selection_method` | text |  | `acom:selectionMethod` | how winners are chosen, an id of the store registry promotion.yml event.selection_methods, for example random_draw. |
+| `entry_payload_schema` | jsonb | ✓ | `acom:entryPayloadSchema` | fields an entry must send, {field: type}; NULL when an entry needs no data. |
+| `reward_tiers` | jsonb |  | `acom:rewardTiers` | rewards by rank: [{rank, reward_type, reward_ref, reward_value: {value, currency}, winner_count, waitlist_count, odds, round}]. |
+| `eligibility` | jsonb |  | `acom:eligibility` | who may enter: {valid_for_member_tier, segment_id, member_types[], purchase_condition: {min_subtotal, window, scope}, channels[]}. |
+| `valid_for_member_tier` | text | ✓ | `schema:validForMemberTier` | tier allowed to enter, the same as eligibility.valid_for_member_tier; NULL means everyone. → `customer.member_program_tier` |
+| `entry_limit` | jsonb |  | `acom:entryLimit` | entries one member may make: {count, period: day, week, event or unlimited}. |
+| `draw_at` | timestamptz | ✓ | `acom:drawAt` | when the draw is planned; NULL when not planned. |
+| `announce_at` | timestamptz | ✓ | `acom:announceAt` | when winners are announced; NULL when not planned. |
+| `dispatch_at` | timestamptz | ✓ | `acom:dispatchAt` | when rewards are sent; NULL when not planned. |
+| `compliance_jurisdictions` | text[] |  | `acom:complianceJurisdictions` | store-defined jurisdiction ids whose rules apply; empty means chosen by promotion.yml event.compliance.jurisdiction_from. |
+| `seed_commitment` | text |  | `acom:seedCommitment` | sha256 of the draw seed, published when the event is created so the draw can be checked afterwards. |
+| `draw_seed` | text |  | `acom:seed` | the secret draw seed; shown only in draw records once a draw ran. |
+| `change_set_id` | text | ✓ | `acom:changeSetId` | change set that created the event; NULL for seeded ones. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `promotion.event_entry`
+
+`schema:JoinAction/acom:EventEntry` — one entry of a member in an event, and whether it won. id prefix ent_. · id `ent_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix ent_; the same value the API, logs and events use. |
+| `event_id` | text |  | `schema:object` | event entered (evt_ id). → `promotion.event` |
+| `customer_id` | text |  | `schema:agent` | member who entered (cus_ id). → `customer.person` |
+| `entry_status` | text |  | `acom:entryStatus` | entered until a draw or an instant result decides it. values: entry_status Values: `entered` · `invalid` · `won` · `lost` · `waitlist` · `cancelled`. |
+| `entry_payload` | jsonb |  | `acom:entryPayload` | what the member sent, following the event's entry_payload_schema (answers, a caption, a code). |
+| `entry_consent` | jsonb |  | `acom:entryConsent` | consents given when entering, {consent type: true}. |
+| `order_id` | text | ✓ | `acom:orderId` | order the entry is based on for purchase_triggered events (ord_ id); NULL otherwise. |
+| `period_bucket` | text |  | `acom:periodBucket` | the entry-limit period the entry counts in: a store date for day, an ISO week for week, event or unlimited. |
+| `entry_number` | integer |  | `acom:entryNumber` | which entry of the member in that period it is, from 1. |
+| `rank` | integer | ✓ | `acom:rank` | reward rank won or waited for; NULL until decided. |
+| `waitlist_position` | integer | ✓ | `acom:waitlistPosition` | place on the waitlist of its rank, from 1; NULL when not waiting. |
+| `draw_record_id` | text | ✓ | `acom:drawRecordId` | draw that last decided the entry (drw_ id); NULL for instant results. |
+| `start_time` | timestamptz |  | `schema:startTime` | when the member entered, on the store clock. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `promotion.event_reward`
+
+`schema:Offer/acom:EventReward` — the reward of one winning entry and how it is sent. id prefix rwd_. · id `rwd_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix rwd_; the same value the API, logs and events use. |
+| `event_id` | text |  | `acom:eventId` | event the reward belongs to (evt_ id). → `promotion.event` |
+| `entry_id` | text |  | `acom:entryId` | winning entry (ent_ id). → `promotion.event_entry` |
+| `customer_id` | text |  | `schema:customer` | member who gets the reward (cus_ id). → `customer.person` |
+| `rank` | integer |  | `acom:rank` | reward rank won. |
+| `reward_type` | text |  | `acom:rewardType` | kind of reward, an id of the store registry promotion.yml event.reward_types, for example product. |
+| `reward_ref` | text | ✓ | `acom:rewardRef` | what is given: a product (prd_), a coupon (cpn_) or free text; NULL when the type needs none. |
+| `reward_value` | numeric(12,2) | ✓ | `acom:rewardValue` | value of the reward, in major units of the currency; NULL when the type has no value. |
+| `reward_currency` | char(3) | ✓ | `acom:rewardValue` | ISO 4217 code of reward_value. |
+| `fulfillment` | text |  | `acom:fulfillment` | how it is sent: ship, issue, grant, email or manual (promotion.yml event.reward_types.fulfillment_methods). |
+| `reward_status` | text |  | `acom:rewardStatus` | compliance_pending while a store rule waits for the winner. values: reward_status Values: `pending` · `compliance_pending` · `ready` · `dispatched` · `delivered` · `failed` · `forfeited`. |
+| `compliance_requirements` | text[] |  | `acom:complianceRequirements` | what the winner still has to provide (legal_name, address, tax_id); empty when nothing. |
+| `fulfillment_ref` | text | ✓ | `acom:fulfillmentRef` | what sending made: a member coupon (mcp_), a ledger entry (lyt_), or the reference of a stubbed shipment or email. |
+| `reward_batch_id` | text |  | `acom:rewardBatchId` | the dispatch run that made it (rwb_ id). |
+| `dispatched_at` | timestamptz | ✓ | `acom:dispatchedAt` | when it was sent; NULL while held or pending. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `promotion.loyalty_transaction`
+
+`schema:MoneyTransfer/acom:LoyaltyTransaction` — one entry of a member's store-point ledger; entries are only added and the balance is their sum. id prefix lyt_. · id `lyt_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix lyt_; the same value the API, logs and events use. |
+| `customer_id` | text |  | `schema:customer` | member whose points these are (cus_ id). → `customer.person` |
+| `transaction_type` | text |  | `acom:loyaltyTransactionType` | accrual, grant and restore add points; spend, expire and reversal take them away. values: loyalty_transaction_type Values: `accrual` · `spend` · `expire` · `grant` · `restore` · `reversal`. |
+| `amount_value` | numeric(12,2) |  | `schema:amount` | points as money, always positive (the type says which way), in major units of the currency. |
+| `amount_currency` | char(3) |  | `schema:amount` | ISO 4217 code of amount_value. |
+| `order_id` | text | ✓ | `acom:orderId` | order that earned, spent or gave back the points (ord_ id); NULL for grants and expiries. |
+| `source_transaction_id` | text | ✓ | `acom:sourceTransaction` | earlier entry this one expires or reverses (lyt_ id); NULL otherwise. → `promotion.loyalty_transaction` |
+| `expires` | date | ✓ | `schema:expires` | last day (store time) the points of an accrual, grant or restore can be spent; NULL for entries that take points away. |
+| `description` | text | ✓ | `schema:description` | why, in a sentence, for example the reason a person gave for a grant. |
+| `agent_id` | text | ✓ | `schema:agent` | who recorded it: an operator (adm_), a shopper (cus_) or the system (sys_). |
+| `start_time` | timestamptz |  | `schema:startTime` | when the entry happened on the store clock. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
@@ -1880,6 +2030,25 @@
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `promotion_type` | text | ✓ | `acom:promotionType` | kind of benefit a promotion made by create_promotion gives; NULL for member and sale prices (set_sale_prices). values: promotion_type Values: `bogo` · `bundle` · `threshold` · `amount_off`. |
+| `promotion_terms` | jsonb |  | `acom:promotionTerms` | parameters of the type: {threshold_benefit: amount_off or free_shipping, buy_quantity, get_quantity, bundle_price: {value, currency}, cost_share: {store, seller} rates 0-1}. |
+| `sales_channels` | text[] | ✓ | `acom:salesChannel` | channels where the promotion applies; NULL means every channel. values: sales_channel |
+
+### `promotion.segment`
+
+`schema:Audience/acom:Segment` — a group of customers defined by conditions, used to issue coupons, send messages and limit events; the row version is the segment version. id prefix seg_. · id `seg_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix seg_; the same value the API, logs and events use. |
+| `name` | text |  | `schema:name` | name people read, for example Lapsed knit buyers. |
+| `condition_rules` | jsonb |  | `acom:conditions` | who is in it: {member_tiers[], purchased_category_ids[], last_order_within_days, min_spend: {value, currency}, exclude_segment_ids[]}; every given condition must hold. |
+| `estimated_size` | integer |  | `acom:estimatedSize` | how many active members matched when the segment was last defined. |
+| `estimated_at` | timestamptz |  | `acom:estimatedAt` | store-clock time estimated_size was counted. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version and segment version, +1 on every change; previews record it in basis and execution compares it. |
 
 ### `promotion.unit_price_specification`
 

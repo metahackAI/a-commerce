@@ -72,6 +72,7 @@
 - **테넌트 결정:** 호스트 이름 → 스토어. 데모는 스토어 하나. 토큰의 `tenant`가 유일한 근거이고 클라이언트가 보낸 테넌트 헤더는 무시합니다.
 - **레이트 리밋:** governor로 주체·테넌트별. 채팅 턴, 쓰기, 읽기를 따로 셉니다. 한도는 설정 파일.
 - **관측성:** 요청 id를 만들어(`X-Request-Id`가 오면 이어받음) 내부 토큰과 로그에 싣습니다. 이 id가 에이전트 턴과 커머스 액션 로그를 잇습니다.
+- **할 일 맡기기:** 스토어가 `platform.yml` `task_pickup.enabled`를 켜면, 게이트웨이가 커머스 이벤트(`GET /v1/platform/events`)를 구독하다가 감시 작업이 **새로 만든** `agent_noticed` 할 일(`task.updated`의 `created: true`)의 요청 문장을 `POST /chat/bo/turns {message, task_id}`로 보냅니다. 토큰은 `task_pickup.acts_as` 운영자의 위임 토큰(§3, `human:*` 없음)이라 초안은 승인 대기에서 멈춥니다. 갱신된 할 일과 시드의 할 일은 맡지 않고, 턴은 하나씩 순서대로 돌립니다. 정책과 할 일을 읽는 요청은 `sys_task_pickup` 시스템 주체로 서명합니다. 코드: `services/gateway/src/pickup.rs`.
 - **타임아웃:** 일반 요청 30초, 채팅 SSE는 턴 상한(60초) + 여유. 업스트림 오류는 `{"error": {"code": "upstream_unavailable", ...}}`로 통일.
 
 ## 6. 로그인과 세션 API (`/api/auth/*`)

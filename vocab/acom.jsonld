@@ -27,15 +27,6 @@
       "rdfs:comment": "Content shown in a display slot: headline, image, link. Used as additionalType on a CreativeWork."
     },
     {
-      "@id": "acom:CacheInvalidation",
-      "@type": "rdfs:Class",
-      "rdfs:label": "CacheInvalidation",
-      "rdfs:subClassOf": {
-        "@id": "schema:Action"
-      },
-      "rdfs:comment": "a request to clear cached store pages after a display change; the store runs no display cache yet, so the request is recorded and clears nothing. id prefix cin_."
-    },
-    {
       "@id": "acom:Campaign",
       "@type": "rdfs:Class",
       "rdfs:label": "Campaign",
@@ -126,6 +117,15 @@
       "rdfs:comment": "A store-defined rule for prize reporting, withholding, or winner information in a jurisdiction."
     },
     {
+      "@id": "acom:ConditionalGift",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ConditionalGift",
+      "rdfs:subClassOf": {
+        "@id": "schema:Offer"
+      },
+      "rdfs:comment": "a gift added to an order whose subtotal before member benefits reaches a threshold, with one gift per threshold. id prefix cgf_."
+    },
+    {
       "@id": "acom:ConsentRecord",
       "@type": "rdfs:Class",
       "rdfs:label": "ConsentRecord",
@@ -198,6 +198,15 @@
       "rdfs:comment": "A reproducible record of a prize draw: method, seed commitment, entrants, result. Used as additionalType on a ChooseAction."
     },
     {
+      "@id": "acom:EventEntry",
+      "@type": "rdfs:Class",
+      "rdfs:label": "EventEntry",
+      "rdfs:subClassOf": {
+        "@id": "schema:JoinAction"
+      },
+      "rdfs:comment": "one entry of a member in an event, and whether it won. id prefix ent_."
+    },
+    {
       "@id": "acom:EventReward",
       "@type": "rdfs:Class",
       "rdfs:label": "EventReward",
@@ -223,6 +232,15 @@
         "@id": "schema:CheckAction"
       },
       "rdfs:comment": "one identity check by a method from customer.yml identity_verification (one-time code, link, registry lookup). id prefix ivf_."
+    },
+    {
+      "@id": "acom:LoyaltyTransaction",
+      "@type": "rdfs:Class",
+      "rdfs:label": "LoyaltyTransaction",
+      "rdfs:subClassOf": {
+        "@id": "schema:MoneyTransfer"
+      },
+      "rdfs:comment": "one entry of a member's store-point ledger; entries are only added and the balance is their sum. id prefix lyt_."
     },
     {
       "@id": "acom:MemberCoupon",
@@ -268,15 +286,6 @@
         "@id": "schema:Order"
       },
       "rdfs:comment": "one row per paid order with only what aggregates need (day, state, tier, campaign, amount, return request), never who placed it; orders still awaiting payment are left out."
-    },
-    {
-      "@id": "acom:Popup",
-      "@type": "rdfs:Class",
-      "rdfs:label": "Popup",
-      "rdfs:subClassOf": {
-        "@id": "schema:WebPageElement"
-      },
-      "rdfs:comment": "a window that opens over store pages for a period, with a do-not-show-again choice. id prefix pop_."
     },
     {
       "@id": "acom:Preference",
@@ -600,6 +609,22 @@
       "rdfs:comment": "ISO 4217 code of amount_off_value."
     },
     {
+      "@id": "acom:announceAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "announceAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when winners are announced; NULL when not planned."
+    },
+    {
       "@id": "acom:apiKeyStatus",
       "@type": "rdf:Property",
       "rdfs:label": "apiKeyStatus",
@@ -807,20 +832,14 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:DisplayBooking"
-        },
-        {
-          "@id": "schema:CollectionPage"
         }
       ],
       "schema:rangeIncludes": [
         {
           "@id": "acom:Banner"
-        },
-        {
-          "@id": "schema:Text"
         }
       ],
-      "rdfs:comment": "banners linked to the page (bnr_ ids), in order; empty when none."
+      "rdfs:comment": "banner shown (bnr_ id); NULL when the booking shows the slot's items."
     },
     {
       "@id": "acom:basis",
@@ -933,22 +952,6 @@
         }
       ],
       "rdfs:comment": "whether the business details were checked (verify_business); turns on business pricing and tax receipts. values: business_verification"
-    },
-    {
-      "@id": "acom:cacheKey",
-      "@type": "rdf:Property",
-      "rdfs:label": "cacheKey",
-      "schema:domainIncludes": [
-        {
-          "@id": "acom:CacheInvalidation"
-        }
-      ],
-      "schema:rangeIncludes": [
-        {
-          "@id": "schema:Text"
-        }
-      ],
-      "rdfs:comment": "the cache keys the request covers, for example display_slot:slot_home_hero and page:main."
     },
     {
       "@id": "acom:campaignId",
@@ -1092,7 +1095,13 @@
           "@id": "acom:Campaign"
         },
         {
+          "@id": "acom:ConditionalGift"
+        },
+        {
           "@id": "acom:DisplayBooking"
+        },
+        {
+          "@id": "acom:DrawRecord"
         },
         {
           "@id": "acom:ProductImport"
@@ -1108,6 +1117,9 @@
         },
         {
           "@id": "schema:Action"
+        },
+        {
+          "@id": "schema:Event"
         },
         {
           "@id": "schema:ListItem"
@@ -1310,6 +1322,54 @@
         }
       ],
       "rdfs:comment": "when the preview was executed."
+    },
+    {
+      "@id": "acom:complianceJurisdictions",
+      "@type": "rdf:Property",
+      "rdfs:label": "complianceJurisdictions",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "store-defined jurisdiction ids whose rules apply; empty means chosen by promotion.yml event.compliance.jurisdiction_from."
+    },
+    {
+      "@id": "acom:complianceRequirements",
+      "@type": "rdf:Property",
+      "rdfs:label": "complianceRequirements",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventReward"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "what the winner still has to provide (legal_name, address, tax_id); empty when nothing."
+    },
+    {
+      "@id": "acom:conditions",
+      "@type": "rdf:Property",
+      "rdfs:label": "conditions",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Segment"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "who is in it: {member_tiers[], purchased_category_ids[], last_order_within_days, min_spend: {value, currency}, exclude_segment_ids[]}; every given condition must hold."
     },
     {
       "@id": "acom:confirmedAt",
@@ -1723,6 +1783,38 @@
       "rdfs:comment": "the period the limit renews over. values: discount_limit_period"
     },
     {
+      "@id": "acom:dispatchAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "dispatchAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when rewards are sent; NULL when not planned."
+    },
+    {
+      "@id": "acom:dispatchedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "dispatchedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventReward"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when it was sent; NULL while held or pending."
+    },
+    {
       "@id": "acom:displayCategory",
       "@type": "rdf:Property",
       "rdfs:label": "displayCategory",
@@ -1745,9 +1837,6 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:DisplayBooking"
-        },
-        {
-          "@id": "schema:CollectionPage"
         }
       ],
       "schema:rangeIncludes": [
@@ -1756,6 +1845,38 @@
         }
       ],
       "rdfs:comment": "Where a display booking is in its life."
+    },
+    {
+      "@id": "acom:displayValidFrom",
+      "@type": "rdf:Property",
+      "rdfs:label": "displayValidFrom",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when shoppers start seeing the event; NULL means from start_date."
+    },
+    {
+      "@id": "acom:displayValidThrough",
+      "@type": "rdf:Property",
+      "rdfs:label": "displayValidThrough",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when shoppers stop seeing it; NULL means until end_date."
     },
     {
       "@id": "acom:draftNote",
@@ -1790,6 +1911,70 @@
       "rdfs:comment": "whether the draft is complete or waits for a person. values: draft_status"
     },
     {
+      "@id": "acom:drawAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "drawAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the draw is planned; NULL when not planned."
+    },
+    {
+      "@id": "acom:drawMode",
+      "@type": "rdf:Property",
+      "rdfs:label": "drawMode",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:DrawRecord"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "what the run did, one of promotion.yml event.draw.modes: draw, redraw, cancel_winner, promote_waitlist, add_waitlist or manual_select."
+    },
+    {
+      "@id": "acom:drawPosition",
+      "@type": "rdf:Property",
+      "rdfs:label": "drawPosition",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:DrawRecord"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "which run of the event's draws this is, from 1; part of the shuffle key."
+    },
+    {
+      "@id": "acom:drawRecordId",
+      "@type": "rdf:Property",
+      "rdfs:label": "drawRecordId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventEntry"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "draw that last decided the entry (drw_ id); NULL for instant results."
+    },
+    {
       "@id": "acom:dueAt",
       "@type": "rdf:Property",
       "rdfs:label": "dueAt",
@@ -1820,6 +2005,22 @@
         }
       ],
       "rdfs:comment": "when the withdrawal took effect (store clock)."
+    },
+    {
+      "@id": "acom:eligibility",
+      "@type": "rdf:Property",
+      "rdfs:label": "eligibility",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "who may enter: {valid_for_member_tier, segment_id, member_types[], purchase_condition: {min_subtotal, window, scope}, channels[]}."
     },
     {
       "@id": "acom:emailVerifiedAt",
@@ -1876,6 +2077,198 @@
       "rdfs:comment": "When the step, turn, or job ended."
     },
     {
+      "@id": "acom:entrantCount",
+      "@type": "rdf:Property",
+      "rdfs:label": "entrantCount",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:DrawRecord"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "how many entries the draw chose from."
+    },
+    {
+      "@id": "acom:entrantSnapshotDigest",
+      "@type": "rdf:Property",
+      "rdfs:label": "entrantSnapshotDigest",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:DrawRecord"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "sha256 of the entry ids the draw chose from, in order."
+    },
+    {
+      "@id": "acom:entryConsent",
+      "@type": "rdf:Property",
+      "rdfs:label": "entryConsent",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventEntry"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "consents given when entering, {consent type: true}."
+    },
+    {
+      "@id": "acom:entryId",
+      "@type": "rdf:Property",
+      "rdfs:label": "entryId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventReward"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:EventEntry"
+        }
+      ],
+      "rdfs:comment": "winning entry (ent_ id)."
+    },
+    {
+      "@id": "acom:entryLimit",
+      "@type": "rdf:Property",
+      "rdfs:label": "entryLimit",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "entries one member may make: {count, period: day, week, event or unlimited}."
+    },
+    {
+      "@id": "acom:entryMechanic",
+      "@type": "rdf:Property",
+      "rdfs:label": "entryMechanic",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "how shoppers enter, an id of the store registry promotion.yml event.entry_mechanics, for example check_in."
+    },
+    {
+      "@id": "acom:entryNumber",
+      "@type": "rdf:Property",
+      "rdfs:label": "entryNumber",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventEntry"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "which entry of the member in that period it is, from 1."
+    },
+    {
+      "@id": "acom:entryPayload",
+      "@type": "rdf:Property",
+      "rdfs:label": "entryPayload",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventEntry"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "what the member sent, following the event's entry_payload_schema (answers, a caption, a code)."
+    },
+    {
+      "@id": "acom:entryPayloadSchema",
+      "@type": "rdf:Property",
+      "rdfs:label": "entryPayloadSchema",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "fields an entry must send, {field: type}; NULL when an entry needs no data."
+    },
+    {
+      "@id": "acom:entryStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "entryStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventEntry"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:EntryStatus"
+        }
+      ],
+      "rdfs:comment": "entered until a draw or an instant result decides it. values: entry_status"
+    },
+    {
+      "@id": "acom:estimatedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "estimatedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Segment"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "store-clock time estimated_size was counted."
+    },
+    {
+      "@id": "acom:estimatedSize",
+      "@type": "rdf:Property",
+      "rdfs:label": "estimatedSize",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Segment"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "how many active members matched when the segment was last defined."
+    },
+    {
       "@id": "acom:evaluation",
       "@type": "rdf:Property",
       "rdfs:label": "evaluation",
@@ -1908,6 +2301,38 @@
       "rdfs:comment": "the evaluation run that made the change (tev_ id); NULL for other causes."
     },
     {
+      "@id": "acom:eventId",
+      "@type": "rdf:Property",
+      "rdfs:label": "eventId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventReward"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "rdfs:comment": "event the reward belongs to (evt_ id)."
+    },
+    {
+      "@id": "acom:eventStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "eventStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:EventStatus"
+        }
+      ],
+      "rdfs:comment": "stored status; scheduled and running follow the entry period and the store clock, closed after it ends. values: event_status"
+    },
+    {
       "@id": "acom:evidence",
       "@type": "rdf:Property",
       "rdfs:label": "evidence",
@@ -1922,6 +2347,22 @@
         }
       ],
       "rdfs:comment": "photos and documents attached: [{id, evidence_type, content_url}], evd_ ids."
+    },
+    {
+      "@id": "acom:excluded",
+      "@type": "rdf:Property",
+      "rdfs:label": "excluded",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:DrawRecord"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "entries left out and why: {previous_winners, invalid_entries}."
     },
     {
       "@id": "acom:expiresAt",
@@ -2080,6 +2521,38 @@
       "rdfs:comment": "the tier before; NULL when the member entered the program. Not a foreign key: history outlives deleted tiers."
     },
     {
+      "@id": "acom:fulfillment",
+      "@type": "rdf:Property",
+      "rdfs:label": "fulfillment",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventReward"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "how it is sent: ship, issue, grant, email or manual (promotion.yml event.reward_types.fulfillment_methods)."
+    },
+    {
+      "@id": "acom:fulfillmentRef",
+      "@type": "rdf:Property",
+      "rdfs:label": "fulfillmentRef",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventReward"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "what sending made: a member coupon (mcp_), a ledger entry (lyt_), or the reference of a stubbed shipment or email."
+    },
+    {
       "@id": "acom:fulfillmentStage",
       "@type": "rdf:Property",
       "rdfs:label": "fulfillmentStage",
@@ -2113,6 +2586,22 @@
         }
       ],
       "rdfs:comment": "{card_message, gift_receipt, exchange_until} for gift orders."
+    },
+    {
+      "@id": "acom:giftTiers",
+      "@type": "rdf:Property",
+      "rdfs:label": "giftTiers",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ConditionalGift"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "thresholds in ascending order, each with its gift: [{trigger_threshold: {value, currency}, gift_product_id}]."
     },
     {
       "@id": "acom:giftWrap",
@@ -2693,6 +3182,22 @@
       "rdfs:comment": "the id the member signs in with besides the email; NULL when they sign in with the email only."
     },
     {
+      "@id": "acom:loyaltyTransactionType",
+      "@type": "rdf:Property",
+      "rdfs:label": "loyaltyTransactionType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:LoyaltyTransaction"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:LoyaltyTransactionType"
+        }
+      ],
+      "rdfs:comment": "accrual, grant and restore add points; spend, expire and reversal take them away. values: loyalty_transaction_type"
+    },
+    {
       "@id": "acom:managed",
       "@type": "rdf:Property",
       "rdfs:label": "managed",
@@ -2824,6 +3329,22 @@
         }
       ],
       "rdfs:comment": "marketing (needs opt-in consent, held in quiet hours) or transactional (about an order or claim)."
+    },
+    {
+      "@id": "acom:method",
+      "@type": "rdf:Property",
+      "rdfs:label": "method",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:DrawRecord"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "how winners were chosen, from promotion.yml event.draw.fairness.method, for example seeded_shuffle."
     },
     {
       "@id": "acom:model",
@@ -3029,6 +3550,12 @@
           "@id": "acom:Claim"
         },
         {
+          "@id": "acom:EventEntry"
+        },
+        {
+          "@id": "acom:LoyaltyTransaction"
+        },
+        {
           "@id": "acom:MemberCoupon"
         },
         {
@@ -3133,12 +3660,6 @@
       "rdfs:label": "page",
       "schema:domainIncludes": [
         {
-          "@id": "acom:CacheInvalidation"
-        },
-        {
-          "@id": "acom:Popup"
-        },
-        {
           "@id": "schema:WebPageElement"
         }
       ],
@@ -3239,6 +3760,22 @@
       "rdfs:comment": "The requested discount behind a computed sale price, 0-100."
     },
     {
+      "@id": "acom:periodBucket",
+      "@type": "rdf:Property",
+      "rdfs:label": "periodBucket",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventEntry"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the entry-limit period the entry counts in: a store date for day, an ISO week for week, event or unlimited."
+    },
+    {
       "@id": "acom:pickupWindow",
       "@type": "rdf:Property",
       "rdfs:label": "pickupWindow",
@@ -3285,22 +3822,6 @@
         }
       ],
       "rdfs:comment": "policy snapshot hash used by checks."
-    },
-    {
-      "@id": "acom:popupType",
-      "@type": "rdf:Property",
-      "rdfs:label": "popupType",
-      "schema:domainIncludes": [
-        {
-          "@id": "acom:Popup"
-        }
-      ],
-      "schema:rangeIncludes": [
-        {
-          "@id": "acom:PopupType"
-        }
-      ],
-      "rdfs:comment": "what the popup is for. values: popup_type"
     },
     {
       "@id": "acom:preferenceKey",
@@ -3367,22 +3888,6 @@
         }
       ],
       "rdfs:comment": "open until committed, expired or superseded. values: preview_state"
-    },
-    {
-      "@id": "acom:priority",
-      "@type": "rdf:Property",
-      "rdfs:label": "priority",
-      "schema:domainIncludes": [
-        {
-          "@id": "acom:Popup"
-        }
-      ],
-      "schema:rangeIncludes": [
-        {
-          "@id": "schema:Integer"
-        }
-      ],
-      "rdfs:comment": "order among the popups of a page, 1 first; two popups that share a page and a moment never share a priority."
     },
     {
       "@id": "acom:productGroupId",
@@ -3464,6 +3969,38 @@
       "rdfs:comment": "Where a promotion is in its life."
     },
     {
+      "@id": "acom:promotionTerms",
+      "@type": "rdf:Property",
+      "rdfs:label": "promotionTerms",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Promotion"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "parameters of the type: {threshold_benefit: amount_off or free_shipping, buy_quantity, get_quantity, bundle_price: {value, currency}, cost_share: {store, seller} rates 0-1}."
+    },
+    {
+      "@id": "acom:promotionType",
+      "@type": "rdf:Property",
+      "rdfs:label": "promotionType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Promotion"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:PromotionType"
+        }
+      ],
+      "rdfs:comment": "kind of benefit a promotion made by create_promotion gives; NULL for member and sale prices (set_sale_prices). values: promotion_type"
+    },
+    {
       "@id": "acom:prompt",
       "@type": "rdf:Property",
       "rdfs:label": "prompt",
@@ -3504,6 +4041,15 @@
       "rdfs:label": "rank",
       "schema:domainIncludes": [
         {
+          "@id": "acom:DrawRecord"
+        },
+        {
+          "@id": "acom:EventEntry"
+        },
+        {
+          "@id": "acom:EventReward"
+        },
+        {
           "@id": "schema:MemberProgramTier"
         }
       ],
@@ -3520,7 +4066,7 @@
       "rdfs:label": "reason",
       "schema:domainIncludes": [
         {
-          "@id": "acom:CacheInvalidation"
+          "@id": "acom:DrawRecord"
         },
         {
           "@id": "acom:RecoveryRequest"
@@ -3942,38 +4488,6 @@
       "rdfs:comment": "when it was closed as resolved; NULL until then."
     },
     {
-      "@id": "acom:resourceId",
-      "@type": "rdf:Property",
-      "rdfs:label": "resourceId",
-      "schema:domainIncludes": [
-        {
-          "@id": "acom:CacheInvalidation"
-        }
-      ],
-      "schema:rangeIncludes": [
-        {
-          "@id": "schema:Text"
-        }
-      ],
-      "rdfs:comment": "the one item that changed (cat_, slot_, bnr_, pop_ or col_ id); NULL for every item of the kind."
-    },
-    {
-      "@id": "acom:resourceType",
-      "@type": "rdf:Property",
-      "rdfs:label": "resourceType",
-      "schema:domainIncludes": [
-        {
-          "@id": "acom:CacheInvalidation"
-        }
-      ],
-      "schema:rangeIncludes": [
-        {
-          "@id": "acom:CacheResourceType"
-        }
-      ],
-      "rdfs:comment": "what kind of display content changed; all clears every page. values: cache_resource_type"
-    },
-    {
       "@id": "acom:resultId",
       "@type": "rdf:Property",
       "rdfs:label": "resultId",
@@ -4044,6 +4558,102 @@
       "rdfs:comment": "when the key was revoked; NULL while active."
     },
     {
+      "@id": "acom:rewardBatchId",
+      "@type": "rdf:Property",
+      "rdfs:label": "rewardBatchId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventReward"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the dispatch run that made it (rwb_ id)."
+    },
+    {
+      "@id": "acom:rewardRef",
+      "@type": "rdf:Property",
+      "rdfs:label": "rewardRef",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventReward"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "what is given: a product (prd_), a coupon (cpn_) or free text; NULL when the type needs none."
+    },
+    {
+      "@id": "acom:rewardStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "rewardStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventReward"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:RewardStatus"
+        }
+      ],
+      "rdfs:comment": "compliance_pending while a store rule waits for the winner. values: reward_status"
+    },
+    {
+      "@id": "acom:rewardTiers",
+      "@type": "rdf:Property",
+      "rdfs:label": "rewardTiers",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "rewards by rank: [{rank, reward_type, reward_ref, reward_value: {value, currency}, winner_count, waitlist_count, odds, round}]."
+    },
+    {
+      "@id": "acom:rewardType",
+      "@type": "rdf:Property",
+      "rdfs:label": "rewardType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventReward"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "kind of reward, an id of the store registry promotion.yml event.reward_types, for example product."
+    },
+    {
+      "@id": "acom:rewardValue",
+      "@type": "rdf:Property",
+      "rdfs:label": "rewardValue",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventReward"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:MonetaryAmount"
+        }
+      ],
+      "rdfs:comment": "ISO 4217 code of reward_value."
+    },
+    {
       "@id": "acom:safetyStock",
       "@type": "rdf:Property",
       "rdfs:label": "safetyStock",
@@ -4084,10 +4694,10 @@
           "@id": "acom:Cart"
         },
         {
-          "@id": "acom:DisplayBooking"
+          "@id": "acom:ConditionalGift"
         },
         {
-          "@id": "schema:CollectionPage"
+          "@id": "acom:Promotion"
         },
         {
           "@id": "schema:Order"
@@ -4153,6 +4763,60 @@
         }
       ],
       "rdfs:comment": "the scopes a session of this key may get, for example {external:read,external:cart}."
+    },
+    {
+      "@id": "acom:seed",
+      "@type": "rdf:Property",
+      "rdfs:label": "seed",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:DrawRecord"
+        },
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the seed the shuffle used, revealed by the draw."
+    },
+    {
+      "@id": "acom:seedCommitment",
+      "@type": "rdf:Property",
+      "rdfs:label": "seedCommitment",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:DrawRecord"
+        },
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "sha256 of the seed, as published before entries closed."
+    },
+    {
+      "@id": "acom:selectionMethod",
+      "@type": "rdf:Property",
+      "rdfs:label": "selectionMethod",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Event"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "how winners are chosen, an id of the store registry promotion.yml event.selection_methods, for example random_draw."
     },
     {
       "@id": "acom:sendBackMethod",
@@ -4354,6 +5018,22 @@
         }
       ],
       "rdfs:comment": "how it was learned; words from customer.yml preference.sources."
+    },
+    {
+      "@id": "acom:sourceTransaction",
+      "@type": "rdf:Property",
+      "rdfs:label": "sourceTransaction",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:LoyaltyTransaction"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:LoyaltyTransaction"
+        }
+      ],
+      "rdfs:comment": "earlier entry this one expires or reverses (lyt_ id); NULL otherwise."
     },
     {
       "@id": "acom:stacking",
@@ -4580,22 +5260,6 @@
         }
       ],
       "rdfs:comment": "the supplier's description, kept so the store can write its own copy in its tone; NULL when the sheet had none."
-    },
-    {
-      "@id": "acom:suppressDays",
-      "@type": "rdf:Property",
-      "rdfs:label": "suppressDays",
-      "schema:domainIncludes": [
-        {
-          "@id": "acom:Popup"
-        }
-      ],
-      "schema:rangeIncludes": [
-        {
-          "@id": "schema:Integer"
-        }
-      ],
-      "rdfs:comment": "days a shopper who chose do-not-show-again does not see it; NULL offers no such choice."
     },
     {
       "@id": "acom:surface",
@@ -5046,6 +5710,22 @@
       "rdfs:comment": "when the check succeeded; NULL until then."
     },
     {
+      "@id": "acom:waitlistPosition",
+      "@type": "rdf:Property",
+      "rdfs:label": "waitlistPosition",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:EventEntry"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "place on the waitlist of its rank, from 1; NULL when not waiting."
+    },
+    {
       "@id": "acom:watcher",
       "@type": "rdf:Property",
       "rdfs:label": "watcher",
@@ -5194,16 +5874,6 @@
       },
       "rdfs:comment": "Values of the business_verification list (docs/api/enums.md).",
       "acom:wireList": "business_verification"
-    },
-    {
-      "@id": "acom:CacheResourceType",
-      "@type": "rdfs:Class",
-      "rdfs:label": "CacheResourceType",
-      "rdfs:subClassOf": {
-        "@id": "schema:Enumeration"
-      },
-      "rdfs:comment": "Values of the cache_resource_type list (docs/api/enums.md).",
-      "acom:wireList": "cache_resource_type"
     },
     {
       "@id": "acom:CampaignStatus",
@@ -5386,6 +6056,26 @@
       "acom:wireList": "draft_status"
     },
     {
+      "@id": "acom:EntryStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "EntryStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the entry_status list (docs/api/enums.md).",
+      "acom:wireList": "entry_status"
+    },
+    {
+      "@id": "acom:EventStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "EventStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the event_status list (docs/api/enums.md).",
+      "acom:wireList": "event_status"
+    },
+    {
       "@id": "acom:FitVote",
       "@type": "rdfs:Class",
       "rdfs:label": "FitVote",
@@ -5464,6 +6154,16 @@
       },
       "rdfs:comment": "Values of the liability list (docs/api/enums.md).",
       "acom:wireList": "liability"
+    },
+    {
+      "@id": "acom:LoyaltyTransactionType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "LoyaltyTransactionType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the loyalty_transaction_type list (docs/api/enums.md).",
+      "acom:wireList": "loyalty_transaction_type"
     },
     {
       "@id": "acom:MeasurementName",
@@ -5546,16 +6246,6 @@
       "acom:wireList": "payment_method"
     },
     {
-      "@id": "acom:PopupType",
-      "@type": "rdfs:Class",
-      "rdfs:label": "PopupType",
-      "rdfs:subClassOf": {
-        "@id": "schema:Enumeration"
-      },
-      "rdfs:comment": "Values of the popup_type list (docs/api/enums.md).",
-      "acom:wireList": "popup_type"
-    },
-    {
       "@id": "acom:PreferenceKey",
       "@type": "rdfs:Class",
       "rdfs:label": "PreferenceKey",
@@ -5584,6 +6274,16 @@
       },
       "rdfs:comment": "Values of the promotion_status list (docs/api/enums.md).",
       "acom:wireList": "promotion_status"
+    },
+    {
+      "@id": "acom:PromotionType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "PromotionType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the promotion_type list (docs/api/enums.md).",
+      "acom:wireList": "promotion_type"
     },
     {
       "@id": "acom:QuestionStatus",
@@ -5664,6 +6364,16 @@
       },
       "rdfs:comment": "Values of the review_status list (docs/api/enums.md).",
       "acom:wireList": "review_status"
+    },
+    {
+      "@id": "acom:RewardStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "RewardStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the reward_status list (docs/api/enums.md).",
+      "acom:wireList": "reward_status"
     },
     {
       "@id": "acom:SaleType",
@@ -5925,48 +6635,6 @@
       "rdfs:label": "Verified",
       "acom:wireWord": "verified",
       "schema:position": 2
-    },
-    {
-      "@id": "acom:CacheResourceTypeCategory",
-      "@type": "acom:CacheResourceType",
-      "rdfs:label": "Category",
-      "acom:wireWord": "category",
-      "schema:position": 1
-    },
-    {
-      "@id": "acom:CacheResourceTypeDisplaySlot",
-      "@type": "acom:CacheResourceType",
-      "rdfs:label": "DisplaySlot",
-      "acom:wireWord": "display_slot",
-      "schema:position": 2
-    },
-    {
-      "@id": "acom:CacheResourceTypeBanner",
-      "@type": "acom:CacheResourceType",
-      "rdfs:label": "Banner",
-      "acom:wireWord": "banner",
-      "schema:position": 3
-    },
-    {
-      "@id": "acom:CacheResourceTypePopup",
-      "@type": "acom:CacheResourceType",
-      "rdfs:label": "Popup",
-      "acom:wireWord": "popup",
-      "schema:position": 4
-    },
-    {
-      "@id": "acom:CacheResourceTypeCollectionPage",
-      "@type": "acom:CacheResourceType",
-      "rdfs:label": "CollectionPage",
-      "acom:wireWord": "collection_page",
-      "schema:position": 5
-    },
-    {
-      "@id": "acom:CacheResourceTypeAll",
-      "@type": "acom:CacheResourceType",
-      "rdfs:label": "All",
-      "acom:wireWord": "all",
-      "schema:position": 6
     },
     {
       "@id": "acom:CampaignStatusDraft",
@@ -6676,6 +7344,118 @@
       "schema:position": 3
     },
     {
+      "@id": "acom:EntryStatusEntered",
+      "@type": "acom:EntryStatus",
+      "rdfs:label": "Entered",
+      "acom:wireWord": "entered",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:EntryStatusInvalid",
+      "@type": "acom:EntryStatus",
+      "rdfs:label": "Invalid",
+      "acom:wireWord": "invalid",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:EntryStatusWon",
+      "@type": "acom:EntryStatus",
+      "rdfs:label": "Won",
+      "acom:wireWord": "won",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:EntryStatusLost",
+      "@type": "acom:EntryStatus",
+      "rdfs:label": "Lost",
+      "acom:wireWord": "lost",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:EntryStatusWaitlist",
+      "@type": "acom:EntryStatus",
+      "rdfs:label": "Waitlist",
+      "acom:wireWord": "waitlist",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:EntryStatusCancelled",
+      "@type": "acom:EntryStatus",
+      "rdfs:label": "Cancelled",
+      "acom:wireWord": "cancelled",
+      "schema:position": 6
+    },
+    {
+      "@id": "acom:EventStatusDraft",
+      "@type": "acom:EventStatus",
+      "rdfs:label": "Draft",
+      "acom:wireWord": "draft",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:EventStatusScheduled",
+      "@type": "acom:EventStatus",
+      "rdfs:label": "Scheduled",
+      "acom:wireWord": "scheduled",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:EventStatusRunning",
+      "@type": "acom:EventStatus",
+      "rdfs:label": "Running",
+      "acom:wireWord": "running",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:EventStatusPaused",
+      "@type": "acom:EventStatus",
+      "rdfs:label": "Paused",
+      "acom:wireWord": "paused",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:EventStatusClosed",
+      "@type": "acom:EventStatus",
+      "rdfs:label": "Closed",
+      "acom:wireWord": "closed",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:EventStatusDrawing",
+      "@type": "acom:EventStatus",
+      "rdfs:label": "Drawing",
+      "acom:wireWord": "drawing",
+      "schema:position": 6
+    },
+    {
+      "@id": "acom:EventStatusAnnounced",
+      "@type": "acom:EventStatus",
+      "rdfs:label": "Announced",
+      "acom:wireWord": "announced",
+      "schema:position": 7
+    },
+    {
+      "@id": "acom:EventStatusFulfilling",
+      "@type": "acom:EventStatus",
+      "rdfs:label": "Fulfilling",
+      "acom:wireWord": "fulfilling",
+      "schema:position": 8
+    },
+    {
+      "@id": "acom:EventStatusCompleted",
+      "@type": "acom:EventStatus",
+      "rdfs:label": "Completed",
+      "acom:wireWord": "completed",
+      "schema:position": 9
+    },
+    {
+      "@id": "acom:EventStatusCancelled",
+      "@type": "acom:EventStatus",
+      "rdfs:label": "Cancelled",
+      "acom:wireWord": "cancelled",
+      "schema:position": 10
+    },
+    {
       "@id": "acom:FitVoteTrueToSize",
       "@type": "acom:FitVote",
       "rdfs:label": "TrueToSize",
@@ -6877,6 +7657,48 @@
       "rdfs:label": "None",
       "acom:wireWord": "none",
       "schema:position": 5
+    },
+    {
+      "@id": "acom:LoyaltyTransactionTypeAccrual",
+      "@type": "acom:LoyaltyTransactionType",
+      "rdfs:label": "Accrual",
+      "acom:wireWord": "accrual",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:LoyaltyTransactionTypeSpend",
+      "@type": "acom:LoyaltyTransactionType",
+      "rdfs:label": "Spend",
+      "acom:wireWord": "spend",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:LoyaltyTransactionTypeExpire",
+      "@type": "acom:LoyaltyTransactionType",
+      "rdfs:label": "Expire",
+      "acom:wireWord": "expire",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:LoyaltyTransactionTypeGrant",
+      "@type": "acom:LoyaltyTransactionType",
+      "rdfs:label": "Grant",
+      "acom:wireWord": "grant",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:LoyaltyTransactionTypeRestore",
+      "@type": "acom:LoyaltyTransactionType",
+      "rdfs:label": "Restore",
+      "acom:wireWord": "restore",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:LoyaltyTransactionTypeReversal",
+      "@type": "acom:LoyaltyTransactionType",
+      "rdfs:label": "Reversal",
+      "acom:wireWord": "reversal",
+      "schema:position": 6
     },
     {
       "@id": "acom:MeasurementNameChest",
@@ -7117,34 +7939,6 @@
       "schema:position": 5
     },
     {
-      "@id": "acom:PopupTypeImage",
-      "@type": "acom:PopupType",
-      "rdfs:label": "Image",
-      "acom:wireWord": "image",
-      "schema:position": 1
-    },
-    {
-      "@id": "acom:PopupTypeNotice",
-      "@type": "acom:PopupType",
-      "rdfs:label": "Notice",
-      "acom:wireWord": "notice",
-      "schema:position": 2
-    },
-    {
-      "@id": "acom:PopupTypeEvent",
-      "@type": "acom:PopupType",
-      "rdfs:label": "Event",
-      "acom:wireWord": "event",
-      "schema:position": 3
-    },
-    {
-      "@id": "acom:PopupTypeConsent",
-      "@type": "acom:PopupType",
-      "rdfs:label": "Consent",
-      "acom:wireWord": "consent",
-      "schema:position": 4
-    },
-    {
       "@id": "acom:PreferenceKeySize",
       "@type": "acom:PreferenceKey",
       "rdfs:label": "Size",
@@ -7255,6 +8049,34 @@
       "rdfs:label": "Ended",
       "acom:wireWord": "ended",
       "schema:position": 5
+    },
+    {
+      "@id": "acom:PromotionTypeBogo",
+      "@type": "acom:PromotionType",
+      "rdfs:label": "Bogo",
+      "acom:wireWord": "bogo",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:PromotionTypeBundle",
+      "@type": "acom:PromotionType",
+      "rdfs:label": "Bundle",
+      "acom:wireWord": "bundle",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:PromotionTypeThreshold",
+      "@type": "acom:PromotionType",
+      "rdfs:label": "Threshold",
+      "acom:wireWord": "threshold",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:PromotionTypeAmountOff",
+      "@type": "acom:PromotionType",
+      "rdfs:label": "AmountOff",
+      "acom:wireWord": "amount_off",
+      "schema:position": 4
     },
     {
       "@id": "acom:QuestionStatusVisible",
@@ -7458,6 +8280,55 @@
       "rdfs:label": "Reported",
       "acom:wireWord": "reported",
       "schema:position": 3
+    },
+    {
+      "@id": "acom:RewardStatusPending",
+      "@type": "acom:RewardStatus",
+      "rdfs:label": "Pending",
+      "acom:wireWord": "pending",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:RewardStatusCompliancePending",
+      "@type": "acom:RewardStatus",
+      "rdfs:label": "CompliancePending",
+      "acom:wireWord": "compliance_pending",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:RewardStatusReady",
+      "@type": "acom:RewardStatus",
+      "rdfs:label": "Ready",
+      "acom:wireWord": "ready",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:RewardStatusDispatched",
+      "@type": "acom:RewardStatus",
+      "rdfs:label": "Dispatched",
+      "acom:wireWord": "dispatched",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:RewardStatusDelivered",
+      "@type": "acom:RewardStatus",
+      "rdfs:label": "Delivered",
+      "acom:wireWord": "delivered",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:RewardStatusFailed",
+      "@type": "acom:RewardStatus",
+      "rdfs:label": "Failed",
+      "acom:wireWord": "failed",
+      "schema:position": 6
+    },
+    {
+      "@id": "acom:RewardStatusForfeited",
+      "@type": "acom:RewardStatus",
+      "rdfs:label": "Forfeited",
+      "acom:wireWord": "forfeited",
+      "schema:position": 7
     },
     {
       "@id": "acom:SaleTypeAlways",

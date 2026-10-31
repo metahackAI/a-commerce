@@ -38,7 +38,7 @@ thresholds:
     requires: human_approval
     approver_role: merchandiser
   promotion_publish:
-    applies_to: [set_sale_prices, create_coupon, create_promotion, issue_coupon]
+    applies_to: [set_sale_prices, create_coupon, create_promotion, issue_coupon, dispatch_reward]
     when: always                         # 고객에게 닿는 가격·혜택
     requires: human_approval
     approver_role: merchandiser

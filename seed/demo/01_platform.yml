@@ -134,7 +134,7 @@ tables:
     - {tenant_id: store_northwind, admin_user_id: adm_jordan, role_id: rol_merchandiser}
   platform.policy_override:
     - {tenant_id: store_northwind, file: promotion, partial: {max_discount: {by_tier: {vip: 0.30}}}, policy_version: 3}
-    - {tenant_id: store_northwind, file: platform, partial: {watchers: {price_below_cost: {run_fix: standing_approval}}}, policy_version: 1}
+    - {tenant_id: store_northwind, file: platform, partial: {watchers: {price_below_cost: {run_fix: standing_approval}}, task_pickup: {enabled: true, acts_as: adm_sj}}, policy_version: 1}
   platform.demo_clock:
     - {tenant_id: store_northwind, now: "2026-11-06T11:00:00-05:00", is_running: false}
   platform.change_set:

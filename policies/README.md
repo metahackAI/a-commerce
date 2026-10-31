@@ -29,6 +29,7 @@
 | `thresholds.loyalty_grant` | `{value: 50.00, currency: USD}` 초과 | [approval.yml](approval.yml) |
 | `pricing_rule` | 원가 × 2.5, 가장 가까운 x9, 동률이면 위로 | [catalog.yml](catalog.yml) |
 | `watchers.*` | 반품 대기 30분마다, 품절 예측 5일, 원가 이하 판매 | [platform.yml](platform.yml) |
+| `task_pickup` | 꺼짐(데모 스토어는 켜고 `adm_sj`로). 감시 작업이 새로 연 할 일을 에이전트가 바로 맡음 | [platform.yml](platform.yml) |
 
 ## 2. 왜 데이터인가
 

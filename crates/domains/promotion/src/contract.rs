@@ -12,13 +12,16 @@ use acom_core::{FixedClock, StoreTime, TenantId};
 use acom_store::{Cx, Db};
 use serde_json::{Map, Value, json};
 
-use crate::coupon::{
-    CouponRun, CreateCouponInput, IssueCouponInput, ListMemberCouponsInput, SearchCouponsInput,
-    compare_coupon,
-};
-use crate::loyalty::{LoyaltyBalanceInput, LoyaltyTransactionsInput};
-use crate::offer::{PlannedPrice, SaleRun, SetSalePricesInput, compare_sale};
-use crate::promotion::{ListActivePromotionsInput, PromotionStateInput, SearchPromotionsInput};
+use crate::coupon::create_coupon::{CouponRun, CreateCouponInput, compare_coupon};
+use crate::coupon::issue_coupon::IssueCouponInput;
+use crate::coupon::list_member_coupons::ListMemberCouponsInput;
+use crate::coupon::search_coupons::SearchCouponsInput;
+use crate::loyalty::get_loyalty_balance::LoyaltyBalanceInput;
+use crate::loyalty::list_loyalty_transactions::LoyaltyTransactionsInput;
+use crate::offer::set_sale_prices::{PlannedPrice, SaleRun, SetSalePricesInput, compare_sale};
+use crate::promotion::PromotionStateInput;
+use crate::promotion::list_active_promotions::ListActivePromotionsInput;
+use crate::promotion::search_promotions::SearchPromotionsInput;
 use crate::repo::{CouponRow, PriceRow, PromotionRow};
 use crate::testing::{d, policies};
 
@@ -93,13 +96,28 @@ fn registers_every_operation_with_closed_schemas() {
 
 #[test]
 fn writes_that_reach_customers_always_need_approval() {
-    assert_eq!(crate::offer::SetSalePrices::META.kind, Kind::WriteApproval);
-    assert_eq!(crate::coupon::CreateCoupon::META.kind, Kind::WriteApproval);
-    assert_eq!(crate::coupon::IssueCoupon::META.kind, Kind::WriteApproval);
-    assert_eq!(crate::promotion::PausePromotion::META.kind, Kind::Write);
-    assert_eq!(crate::promotion::EndPromotion::META.kind, Kind::Write);
     assert_eq!(
-        crate::offer::SetSalePrices::META.produces[0].name,
+        crate::offer::set_sale_prices::SetSalePrices::META.kind,
+        Kind::WriteApproval
+    );
+    assert_eq!(
+        crate::coupon::create_coupon::CreateCoupon::META.kind,
+        Kind::WriteApproval
+    );
+    assert_eq!(
+        crate::coupon::issue_coupon::IssueCoupon::META.kind,
+        Kind::WriteApproval
+    );
+    assert_eq!(
+        crate::promotion::pause_promotion::PausePromotion::META.kind,
+        Kind::Write
+    );
+    assert_eq!(
+        crate::promotion::end_promotion::EndPromotion::META.kind,
+        Kind::Write
+    );
+    assert_eq!(
+        crate::offer::set_sale_prices::SetSalePrices::META.produces[0].name,
         "promotion_id"
     );
     // pause and end match no approval threshold: they run after their preview.

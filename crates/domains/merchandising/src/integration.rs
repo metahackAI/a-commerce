@@ -194,6 +194,7 @@ async fn b1_vip_weekend_sale_end_to_end() {
             request_text: vec!["Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.".into()],
             interpretation: vec![],
             conversation_id: None,
+            task_id: None,
         },
     )
     .await
