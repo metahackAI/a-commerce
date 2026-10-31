@@ -28,13 +28,15 @@ pub async fn shipments(tx: &mut TxCx, order_ids: &[String]) -> Result<Vec<Shipme
     if order_ids.is_empty() {
         return Ok(Vec::new());
     }
-    let rows: Vec<(
+    /// order_id, item_shipped, delivery_state, shipped_at, delivered_at
+    type Row = (
         String,
         Option<Value>,
         String,
         Option<DateTime<Utc>>,
         Option<DateTime<Utc>>,
-    )> = sqlx::query_as(
+    );
+    let rows: Vec<Row> = sqlx::query_as(
         "SELECT order_id, item_shipped, delivery_state, shipped_at, delivered_at
          FROM fulfillment.parcel_delivery
          WHERE tenant_id = $1 AND order_id = ANY($2) AND claim_id IS NULL
@@ -86,13 +88,15 @@ pub async fn claims(tx: &mut TxCx, order_item_ids: &[String]) -> Result<Vec<Clai
     if order_item_ids.is_empty() {
         return Ok(Vec::new());
     }
-    let rows: Vec<(String, String, String, String, String, i32, DateTime<Utc>)> = sqlx::query_as(
+    /// id, claim_type, claim_status, liability, order_item_id, order_quantity, start_time
+    type Row = (String, String, String, String, String, i32, DateTime<Utc>);
+    let rows: Vec<Row> = sqlx::query_as(
         "SELECT c.id, c.claim_type, c.claim_status, c.liability, ci.order_item_id,
-                    ci.order_quantity, c.start_time
-             FROM fulfillment.claim_item ci
-             JOIN fulfillment.claim c ON c.tenant_id = ci.tenant_id AND c.id = ci.claim_id
-             WHERE ci.tenant_id = $1 AND ci.order_item_id = ANY($2)
-             ORDER BY c.start_time, c.id, ci.order_item_id",
+                ci.order_quantity, c.start_time
+         FROM fulfillment.claim_item ci
+         JOIN fulfillment.claim c ON c.tenant_id = ci.tenant_id AND c.id = ci.claim_id
+         WHERE ci.tenant_id = $1 AND ci.order_item_id = ANY($2)
+         ORDER BY c.start_time, c.id, ci.order_item_id",
     )
     .bind(tx.tenant.as_str())
     .bind(order_item_ids)

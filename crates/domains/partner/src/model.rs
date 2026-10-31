@@ -218,7 +218,7 @@ impl Shipment {
             && self
                 .items
                 .as_ref()
-                .is_none_or(|i| i.iter().any(|x| *x == line.order_item_id))
+                .is_none_or(|i| i.contains(&line.order_item_id))
     }
 }
 
