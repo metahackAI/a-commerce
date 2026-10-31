@@ -110,12 +110,12 @@
 ## service
 
 ### `get_cs_overview` — Kind: R
-- 구현: 아직 없음. 고객 문의(`inq_`)를 담는 테이블이 없어 셀 데이터가 없습니다. `customer`의 inquiry 리소스가 생기면 같은 방식(뷰 + 집계)으로 붙입니다.
+- 구현: 읽기 모델 `analytics.inquiry_summary`(migration 0028, 문의 하나에 한 행: 들어온 스토어 날짜, 종류, 상태, 직원·에이전트의 첫 답 시각, 해결 시각. 누가 무엇을 물었는지는 없음)만 읽습니다.
 - 논리 주소 · REST: `analytics.service.get_cs_overview` · `POST /v1/analytics/service/overview`
 - 요약: 고객 상담 운영 지표(문의 수, 유형 분포, 첫 응답·처리 시간, 미처리 건수, 해결률).
 - consumes → produces: → metrics
 - 입력: `valid_from` / `valid_through`(✓), `acom:metrics?[]`(`inquiry_count` \| `unresolved_count` \| `average_response_time` \| `resolution_rate`), `acom:dimensions?[]`(`inquiry_type`, 값은 enums.md §1.13 문의 종류)
-- 출력: `{"items": [{"acom:metric": "inquiry_count", "value": 46, "acom:dimension": {"inquiry_type": "order_status"}}], "total": 4}` — 시간 지표는 분 단위 숫자
+- 출력: `{"items": [{"acom:metric": "inquiry_count", "value": 46, "acom:dimension": {"inquiry_type": "order_status"}}], "total": 4, "valid_from": "2026-10-07", "valid_through": "2026-11-06", "unit": {"average_response_time": "minutes"}}` — 기간에 들어온 문의를 셉니다. `unresolved_count`는 그중 아직 해결되지 않은 것, `average_response_time`은 들어와서 직원·에이전트가 처음 답하기까지의 평균 분(소수 첫째 자리, 답한 문의만, 없으면 null), `resolution_rate`는 해결된 것 / 들어온 것(0–1). 차원이 있으면 문의가 있는 종류마다 항목
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음(읽기)
 - 에러: `invalid_period` → `get_cs_overview`
