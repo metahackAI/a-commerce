@@ -14,7 +14,7 @@ change_set:
   undo_window_after_run_days: 1          # 기간이 없는 변경은 실행한 날 + 1일 23:59까지 되돌릴 수 있다
   approve_requires_latest_version: true  # 최신 버전이 아니면 승인 거부(version_out_of_date)
   revalidate_on_approve: true            # 승인 때 모든 항목을 다시 프리뷰하고, changes가 다르면 estimate_changed로 drafting에 되돌린다
-  irreversible: [refund_return, retry_refund, send_customer_message, send_bulk]   # check: irreversible. 이런 항목이 있으면 checks에 irreversible 표시, 셋 되돌리기 불가
+  irreversible: [refund_return, retry_refund, send_customer_message, send_bulk, revoke_api_key]   # check: irreversible. 이런 항목이 있으면 checks에 irreversible 표시, 셋 되돌리기 불가
 
 # 임계 형식: 항목마다 { applies_to, when, requires, approver_role }
 #   when: always | reaches_customers | 조건 | { all: [조건...] } | { any: [조건...] }
@@ -83,6 +83,11 @@ thresholds:
     when: always
     requires: human_approval
     approver_role: operator
+  access_change:
+    applies_to: [assign_role, create_admin_user, set_admin_status, issue_api_key, revoke_api_key]
+    when: always                         # 누가 무엇을 할 수 있는지가 바뀜(역할 배정, 계정, API 키). 플랫폼 관리자가 승인
+    requires: human_approval
+    approver_role: platform_admin
 
 no_approval:                             # 쇼퍼 본인의 쓰기. 어떤 임계에도 걸리지 않고 프리뷰 후 바로 실행
   - add_to_cart

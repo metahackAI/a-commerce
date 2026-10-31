@@ -1,7 +1,6 @@
-//! `get_change_set`, `search_change_sets`, `verify_change_set`: reading change sets. Making,
-//! approving, and undoing them are not tools (runtime and person-only endpoints in `acom-http`).
+//! `search_change_sets` (`platform.change_set.search`): change sets by state, creator and time.
 
-use acom_changeset::{CHANGE_SET_NOT_FOUND, CHANGE_SET_NOT_RUN, read};
+use acom_changeset::read;
 use acom_contract::{
     ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
 };
@@ -12,46 +11,6 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::parse_time;
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct GetChangeSetInput {
-    /// The change set.
-    #[schemars(regex(pattern = r"^cs_[a-z0-9_]+$"), example = &"cs_1042")]
-    pub change_set_id: String,
-    /// Top-level fields to return, for example only the state and version.
-    #[schemars(example = ["state", "version", "undo_until"])]
-    pub fields: Option<Vec<String>>,
-}
-
-pub struct GetChangeSet;
-
-impl Operation for GetChangeSet {
-    const META: OpMeta = OpMeta {
-        address: "platform.change_set.get",
-        tool: "get_change_set",
-        group: Group::Operate,
-        kind: Kind::Read,
-        method: Method::Get,
-        path: "/v1/platform/change-sets/{change_set_id}",
-        summary: "One change set expanded: state, version, request and interpretation, each item's changes, checks and approval need, what was left out, and the undo deadline. Read it before editing a set by talking.",
-        consumes: &[Slot::one("change_set_id")],
-        produces: &[Slot::many("preview_id")],
-        checks: &[],
-        errors: &[CHANGE_SET_NOT_FOUND],
-        audience: Audience::Operator,
-        action_type: ActionType::SEARCH,
-        person_scope: "",
-    };
-    type Input = GetChangeSetInput;
-    type Output = Value;
-}
-
-impl ReadOp<Cx> for GetChangeSet {
-    async fn read(&self, cx: &Cx, input: GetChangeSetInput) -> Result<Value, ToolError> {
-        read::get(cx, &input.change_set_id, &input.fields.unwrap_or_default()).await
-    }
-}
 
 /// How to order change sets.
 #[derive(Debug, Clone, Copy, Deserialize, JsonSchema)]
@@ -150,42 +109,5 @@ impl ReadOp<Cx> for SearchChangeSets {
             o.remove("next_cursor");
         }
         Ok(out)
-    }
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct VerifyChangeSetInput {
-    /// The change set whose read-back to show.
-    #[schemars(regex(pattern = r"^cs_[a-z0-9_]+$"), example = &"cs_1042")]
-    pub change_set_id: String,
-}
-
-pub struct VerifyChangeSet;
-
-impl Operation for VerifyChangeSet {
-    const META: OpMeta = OpMeta {
-        address: "platform.change_set.verify",
-        tool: "verify_change_set",
-        group: Group::Operate,
-        kind: Kind::Read,
-        method: Method::Get,
-        path: "/v1/platform/change-sets/{change_set_id}/verification",
-        summary: "What the runner found when it read every change back after running a set: matched or not, per item. Changes nothing; safe to call again.",
-        consumes: &[Slot::one("change_set_id")],
-        produces: &[],
-        checks: &[],
-        errors: &[CHANGE_SET_NOT_FOUND, CHANGE_SET_NOT_RUN],
-        audience: Audience::Operator,
-        action_type: ActionType::ASSESS,
-        person_scope: "",
-    };
-    type Input = VerifyChangeSetInput;
-    type Output = Value;
-}
-
-impl ReadOp<Cx> for VerifyChangeSet {
-    async fn read(&self, cx: &Cx, input: VerifyChangeSetInput) -> Result<Value, ToolError> {
-        read::verification(cx, &input.change_set_id).await
     }
 }

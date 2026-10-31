@@ -157,6 +157,8 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | 고객 `customer_id` (`cus_`) | `customer.person.id` | schema.org `Person` |
 | 운영자 `admin_id` (`adm_`) | `platform.admin_user.id` | `user`는 SQL 예약어 |
 | 스토어 `tenant` (`store_`) | `platform.online_store.id` | schema.org `OnlineStore` |
+| 조직 `org_id` (`org_`), `acom:org_type` | `platform.organization.id`, `organization_type` | schema.org `Organization`. 줄임말을 컬럼에 쓰지 않음 |
+| 메뉴 `menu_id` (`mnu_`), `path` | `platform.site_navigation_element.id`, `url` | schema.org `SiteNavigationElement`(schema.org `Menu`는 음식 메뉴) |
 | 카테고리 `category_id` (`cat_`) | `merchandising.defined_term.id` | schema.org `DefinedTerm`(묶음 `in_defined_term_set`) |
 | 기억 `memory_id` (`mem_`) | `customer.preference.id` | `acom:Preference` ⊂ `PropertyValue` |
 
@@ -169,7 +171,10 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `platform.online_store` | schema:OnlineStore | `store` | 스토어 = 테넌트. 통화, 시간대 |
 | `platform.admin_user` | schema:Person | `adm` | 운영자 |
 | `platform.role`, `platform.role_scope`, `platform.admin_user_role` | schema:Role, -, - | `rol` | 역할 → 스코프 |
-| `platform.session` | - | `ses` | 사람 세션 (게이트웨이) |
+| `platform.session` | - | `ses` | 사람 세션 (게이트웨이)과 API 클라이언트 세션(`login`, `actor_kind: external_agent`, 리프레시 토큰 해시·교체) |
+| `platform.organization` | schema:Organization | `org` | 부서·입점사·지점. 운영자는 `admin_user.organization_id`(schema:worksFor) |
+| `platform.site_navigation_element`, `platform.menu_favorite` | schema:SiteNavigationElement, - | `mnu` | 백오피스 메뉴(API: menu)와 운영자별 즐겨찾기 |
+| `platform.api_key` | schema:Intangible/acom:ApiKey | `key` | 외부 에이전트·연동 클라이언트의 키. 비밀 값은 SHA-256 해시만 |
 | `platform.policy_override` | - | — | 스토어별 정책 덮어쓰기(파일 이름, 부분 YAML, 버전) |
 | `platform.preview` | schema:Action (PotentialActionStatus) | `pv` | 프리뷰 저장소 |
 | `platform.change_set` | schema:ItemList/acom:ChangeSet | `cs` | |
