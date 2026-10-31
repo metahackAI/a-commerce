@@ -91,7 +91,7 @@ impl ProductCard {
     pub fn product_json(&self, viewer: &Viewer, time: &StoreTime) -> Value {
         let mut out = json!({"id": self.id, "@type": "ProductGroup", "name": self.name,
                              "description": self.description, "brand_id": self.brand_id,
-                             "category_id": self.category_id,
+                             "category_id": self.category_id, "keywords": self.keywords,
                              "approval_status": self.approval_status,
                              "varies_by": self.varies_by, "image": self.image});
         self.price_fields(viewer, time, &mut out);
@@ -161,4 +161,42 @@ pub async fn load(
         })
         .collect();
     Ok(ids.iter().filter_map(|id| by_id.remove(id)).collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{DateTime, Utc};
+
+    #[test]
+    fn the_product_entity_carries_its_tags() {
+        let at: DateTime<Utc> = "2026-11-06T16:00:00Z".parse().unwrap();
+        let card = ProductCard::new(
+            Group {
+                id: "prd_windbreaker".into(),
+                name: "Packable windbreaker".into(),
+                description: None,
+                brand_id: Some("brn_northwind".into()),
+                approval_status: "active".into(),
+                varies_by: vec!["color".into(), "size".into()],
+                material: Some("Recycled nylon".into()),
+                keywords: vec!["packable".into(), "travel".into()],
+                additional_property: json!([]),
+                image: None,
+                has_merchant_return_policy_id: None,
+                release_date: None,
+                version: 1,
+                updated_at: at,
+            },
+            Vec::new(),
+            &[],
+        );
+        let viewer = Viewer {
+            operator: false,
+            tier: None,
+            at,
+        };
+        let out = card.product_json(&viewer, &StoreTime::new(chrono_tz::America::New_York));
+        assert_eq!(out["keywords"], json!(["packable", "travel"]));
+    }
 }

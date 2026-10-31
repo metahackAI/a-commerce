@@ -121,5 +121,6 @@ mod tests {
         assert_eq!(out["cost"].to_string(), "36.00");
         assert_eq!(out["inventory_level"], json!(214));
         assert_eq!(out["member_price"], Value::Null);
+        assert_eq!(out["keywords"], json!(["packable", "travel"]));
     }
 }
