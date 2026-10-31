@@ -3,9 +3,11 @@
 //! 1. Scope: the agent's `tool_scope` ∩ the caller's manifest (already filtered by scopes).
 //! 2. Score: BM25 over each tool's name, summary, and field names and descriptions, plus a
 //!    share for the agent's home domains.
-//! 3. Graph: the top hits pull in, one hop away, the tools that produce what they consume (the
-//!    steps before) and that consume what they produce (the steps after).
-//! 4. Cut to `max_candidates`, filling up to `min_candidates` with the next best hits.
+//! 3. Anchors: the best hit, then the hits that best answer the words still open, so that a
+//!    request asking for two things gets a start on both.
+//! 4. Graph: the anchors pull in, one hop away, the tools that produce what they consume (the
+//!    steps before) and that consume what they produce (the steps after). They take turns.
+//! 5. Cut to `max_candidates`, filling up to `min_candidates` with the next best hits.
 //!
 //! No model call, and deterministic: the same request and manifest give the same list.
 //! Embedding similarity (pgvector) is the next layer; it is not built yet.
@@ -106,8 +108,9 @@ fn document(t: &ToolSpec) -> Vec<String> {
     tokens(&text)
 }
 
-/// BM25 scores of `query` against `docs` (k1 = 1.2, b = 0.75).
-fn bm25(query: &[String], docs: &[Vec<String>]) -> Vec<f64> {
+/// BM25 scores of each of `query`'s words against each of `docs` (k1 = 1.2, b = 0.75): one row
+/// per document, one column per word.
+fn bm25(query: &[String], docs: &[Vec<String>]) -> Vec<Vec<f64>> {
     let n = docs.len() as f64;
     let avg = docs.iter().map(Vec::len).sum::<usize>() as f64 / n.max(1.0);
     let mut df: BTreeMap<&str, f64> = BTreeMap::new();
@@ -117,24 +120,79 @@ fn bm25(query: &[String], docs: &[Vec<String>]) -> Vec<f64> {
             *df.entry(w).or_default() += 1.0;
         }
     }
-    let query: BTreeSet<&str> = query.iter().map(String::as_str).collect();
     docs.iter()
         .map(|d| {
             let len = d.len() as f64;
             query
                 .iter()
                 .map(|q| {
-                    let tf = d.iter().filter(|w| w.as_str() == *q).count() as f64;
+                    let tf = d.iter().filter(|w| *w == q).count() as f64;
                     if tf == 0.0 {
                         return 0.0;
                     }
-                    let df = df.get(q).copied().unwrap_or(0.0);
+                    let df = df.get(q.as_str()).copied().unwrap_or(0.0);
                     let idf = ((n - df + 0.5) / (df + 0.5) + 1.0).ln();
                     idf * tf * 2.2 / (tf + 1.2 * (0.25 + 0.75 * len / avg.max(1.0)))
                 })
-                .sum()
+                .collect()
         })
         .collect()
+}
+
+/// A tool scored against the request: `by_word` holds its share of `score` per query word.
+struct Hit<'a> {
+    tool: &'a ToolSpec,
+    score: f64,
+    by_word: Vec<f64>,
+}
+
+/// The hits the graph grows from: the best one, then each time the one that best answers what
+/// the others left open. A request can ask for several things ("a sale on outerwear, and put it
+/// on the main page"), and the strongest hits may all answer the same one: coverage-based
+/// diversification, as in xQuAD. A tool covers a word in proportion to its score on that word
+/// against the best tool's; pinned tools are candidates anyway, so their share is covered too.
+fn anchors<'h, 'a>(hits: &'h [Hit<'a>], pinned: &[String], count: usize) -> Vec<&'h Hit<'a>> {
+    let mut rest: Vec<&Hit> = hits
+        .iter()
+        .filter(|h| h.score > 0.0 && !pinned.contains(&h.tool.tool))
+        .collect();
+    if rest.is_empty() {
+        return Vec::new();
+    }
+    let words = rest[0].by_word.len();
+    let best: Vec<f64> = (0..words)
+        .map(|w| hits.iter().map(|h| h.by_word[w]).fold(0.0, f64::max))
+        .collect();
+    let mut open = vec![1.0; words];
+    let cover = |h: &Hit, open: &mut [f64]| {
+        for w in 0..words {
+            if best[w] > 0.0 {
+                open[w] *= 1.0 - h.by_word[w] / best[w];
+            }
+        }
+    };
+    for h in hits.iter().filter(|h| pinned.contains(&h.tool.tool)) {
+        cover(h, &mut open);
+    }
+    let first = rest.remove(0);
+    cover(first, &mut open);
+    let mut picked = vec![first];
+    while picked.len() < count {
+        let gain = |h: &Hit| -> f64 { (0..words).map(|w| open[w] * h.by_word[w]).sum() };
+        // `rest` is best first, so the first of equals wins and the choice stays deterministic.
+        let Some(next) = rest
+            .iter()
+            .copied()
+            .reduce(|a, b| if gain(b) > gain(a) { b } else { a })
+            .filter(|h| gain(h) > 0.0)
+        else {
+            break;
+        };
+        cover(next, &mut open);
+        rest.retain(|h| h.tool.tool != next.tool.tool);
+        picked.push(next);
+    }
+    picked
 }
 
 /// Candidates for one request, best first. `pinned` tools (the open change set's) always stay.
@@ -150,20 +208,31 @@ pub fn search(
         return Vec::new();
     }
     let docs: Vec<Vec<String>> = scoped.iter().map(|t| document(t)).collect();
-    let raw = bm25(&expanded(query, cfg), &docs);
-    let mut hits: Vec<(f64, &ToolSpec)> = scoped
+    let mut words = expanded(query, cfg);
+    words.sort();
+    words.dedup();
+    let mut hits: Vec<Hit> = scoped
         .iter()
-        .zip(raw)
-        .map(|(t, s)| {
-            let boost = if s > 0.0 && profile.is_home(t.domain()) {
+        .zip(bm25(&words, &docs))
+        .map(|(t, by_word)| {
+            let boost = if profile.is_home(t.domain()) {
                 1.0 + cfg.home_domain_boost
             } else {
                 1.0
             };
-            (s * boost, *t)
+            let by_word: Vec<f64> = by_word.into_iter().map(|s| s * boost).collect();
+            Hit {
+                tool: t,
+                score: by_word.iter().sum(),
+                by_word,
+            }
         })
         .collect();
-    hits.sort_by(|a, b| b.0.total_cmp(&a.0).then_with(|| a.1.tool.cmp(&b.1.tool)));
+    hits.sort_by(|a, b| {
+        b.score
+            .total_cmp(&a.score)
+            .then_with(|| a.tool.tool.cmp(&b.tool.tool))
+    });
 
     let mut out: Vec<Candidate> = Vec::new();
     let mut seen: BTreeSet<String> = BTreeSet::new();
@@ -186,46 +255,91 @@ pub fn search(
     }
     let limit = cfg.max_candidates + out.len();
 
-    // The strongest hits first, then their neighbours, then the remaining hits.
-    let matched: Vec<&(f64, &ToolSpec)> = hits.iter().filter(|(s, _)| *s > 0.0).collect();
-    let anchors = matched.len().min(3);
-    for (s, t) in matched.iter().take(anchors) {
+    // The anchors first, then their neighbours, then the remaining hits.
+    let pinned_tools: Vec<String> = out.iter().map(|c| c.tool.clone()).collect();
+    let mut picked = anchors(&hits, &pinned_tools, 3);
+    for h in &picked {
         push(
             Candidate {
-                tool: t.tool.clone(),
-                score: *s,
+                tool: h.tool.tool.clone(),
+                score: h.score,
                 via: Via::Match,
             },
             &mut out,
         );
     }
-    for (_, anchor) in matched.iter().take(anchors) {
-        for (neighbour, via) in neighbours(anchor, &scoped) {
+    // A plan is a chain of writes, so the graph follows the writes first: a write's neighbours
+    // are the plan's next steps, a read's only what can be done with what it lists.
+    picked.sort_by_key(|h| !h.tool.is_write());
+    let score_of = |tool: &str| {
+        hits.iter()
+            .find(|h| h.tool.tool == tool)
+            .map_or(0.0, |h| h.score)
+    };
+    let expanded: Vec<Vec<(&ToolSpec, Via)>> =
+        picked.iter().map(|h| neighbours(h.tool, &scoped)).collect();
+    // A tool next to several anchors joins them into one plan, so it comes first.
+    let links = |tool: &str| {
+        expanded
+            .iter()
+            .filter(|n| n.iter().any(|(t, _)| t.tool == tool))
+            .count()
+    };
+    let mut queues: Vec<_> = expanded
+        .iter()
+        .map(|n| {
+            let mut n = n.clone();
+            n.sort_by(|(a, via_a), (b, via_b)| {
+                let after = |via: &Via| matches!(via, Via::After { .. });
+                after(via_a)
+                    .cmp(&after(via_b))
+                    .then_with(|| links(&b.tool).cmp(&links(&a.tool)))
+                    .then_with(|| a.is_write().cmp(&b.is_write()).reverse())
+                    .then_with(|| score_of(&b.tool).total_cmp(&score_of(&a.tool)))
+                    .then_with(|| a.tool.cmp(&b.tool))
+            });
+            n.into_iter()
+        })
+        .collect();
+    // The anchors take turns, so one with many neighbours does not use up the room. A step before
+    // is only needed while nothing on the list produces its slot yet.
+    let mut any = true;
+    while any && out.len() < limit {
+        any = false;
+        for queue in &mut queues {
             if out.len() >= limit {
                 break;
             }
-            let score = hits
-                .iter()
-                .find(|(_, t)| t.tool == neighbour.tool)
-                .map_or(0.0, |(s, _)| *s);
-            push(
-                Candidate {
-                    tool: neighbour.tool.clone(),
-                    score,
-                    via,
-                },
-                &mut out,
-            );
+            let next = queue.find(|(n, via)| {
+                let listed = |tool: &str| out.iter().any(|c| c.tool == tool);
+                let supplied = |slot: &str| {
+                    scoped
+                        .iter()
+                        .any(|t| listed(&t.tool) && t.produces.iter().any(|p| p.name == slot))
+                };
+                !listed(&n.tool) && !matches!(via, Via::Before { slot, .. } if supplied(slot))
+            });
+            if let Some((neighbour, via)) = next {
+                any = true;
+                push(
+                    Candidate {
+                        tool: neighbour.tool.clone(),
+                        score: score_of(&neighbour.tool),
+                        via,
+                    },
+                    &mut out,
+                );
+            }
         }
     }
-    for (s, t) in &matched {
+    for h in hits.iter().filter(|h| h.score > 0.0) {
         if out.len() >= limit {
             break;
         }
         push(
             Candidate {
-                tool: t.tool.clone(),
-                score: *s,
+                tool: h.tool.tool.clone(),
+                score: h.score,
                 via: Via::Match,
             },
             &mut out,
@@ -236,8 +350,8 @@ pub fn search(
     let floor = cfg.min_candidates + out.iter().filter(|c| c.via == Via::Pinned).count();
     let mut unmatched: Vec<&ToolSpec> = hits
         .iter()
-        .filter(|(s, t)| *s == 0.0 && !t.is_write())
-        .map(|(_, t)| *t)
+        .filter(|h| h.score == 0.0 && !h.tool.is_write())
+        .map(|h| h.tool)
         .collect();
     unmatched.sort_by_key(|t| (!profile.is_home(t.domain()), t.tool.clone()));
     for t in unmatched {
@@ -257,7 +371,7 @@ pub fn search(
 }
 
 /// One hop in the tool graph: producers of what `t` consumes (reads first), and consumers of
-/// what it produces, each in name order.
+/// what it produces.
 fn neighbours<'a>(t: &ToolSpec, scoped: &[&'a ToolSpec]) -> Vec<(&'a ToolSpec, Via)> {
     let mut before: Vec<(&ToolSpec, Via)> = Vec::new();
     for slot in &t.consumes {
@@ -278,11 +392,9 @@ fn neighbours<'a>(t: &ToolSpec, scoped: &[&'a ToolSpec]) -> Vec<(&'a ToolSpec, V
     }
     let mut after: Vec<(&ToolSpec, Via)> = Vec::new();
     for slot in &t.produces {
-        let mut consumers: Vec<&&ToolSpec> = scoped
+        let consumers = scoped
             .iter()
-            .filter(|o| o.tool != t.tool && o.consumes.iter().any(|c| c.name == slot.name))
-            .collect();
-        consumers.sort_by_key(|o| o.tool.clone());
+            .filter(|o| o.tool != t.tool && o.consumes.iter().any(|c| c.name == slot.name));
         for c in consumers {
             after.push((
                 c,
@@ -301,6 +413,7 @@ mod tests {
     use super::*;
     use crate::profile::fixtures::repo;
     use crate::tools::fixtures::manifest;
+    use serde_json::json;
 
     fn names(c: &[Candidate]) -> Vec<&str> {
         c.iter().map(|c| c.tool.as_str()).collect()
@@ -333,6 +446,145 @@ mod tests {
                 of: "set_sale_prices".into(),
                 slot: "promotion_id".into()
             }
+        );
+    }
+
+    /// A manifest where three tools answer "the main page" far better than any other tool
+    /// answers anything, and the first has more neighbours than the search has room for.
+    fn two_things_manifest() -> Vec<ToolSpec> {
+        let read = |name: &str, summary: &str, consumes: Value, produces: Value| {
+            fixtures_tool(name, "read", summary, consumes, produces)
+        };
+        let write = |name: &str, summary: &str, consumes: Value, produces: Value| {
+            fixtures_tool(name, "write", summary, consumes, produces)
+        };
+        let slot = json!([{"name": "slot_id", "many": false}]);
+        let promotion = json!([{"name": "promotion_id", "many": false}]);
+        let mut tools = vec![
+            read(
+                "list_slots",
+                "Slots of the main page.",
+                json!([]),
+                slot.clone(),
+            ),
+            read(
+                "list_popups",
+                "Popups of the main page.",
+                json!([]),
+                json!([]),
+            ),
+            read(
+                "list_banners",
+                "Banners of the main page.",
+                json!([]),
+                json!([]),
+            ),
+            write(
+                "set_sale_prices",
+                "Set sale prices as one promotion.",
+                json!([{"name": "category_id", "many": false}]),
+                promotion.clone(),
+            ),
+            read(
+                "list_categories",
+                "The category tree.",
+                json!([]),
+                json!([{"name": "category_id", "many": true}]),
+            ),
+            read(
+                "list_wishlist",
+                "Saved items.",
+                json!([]),
+                json!([{"name": "category_id", "many": true}]),
+            ),
+            write("create_coupon", "Create a coupon.", promotion, json!([])),
+        ];
+        for name in [
+            "arrange_slot",
+            "book_slot",
+            "clear_slot",
+            "describe_slot",
+            "edit_slot",
+            "fill_slot",
+            "group_slot",
+            "hide_slot",
+        ] {
+            tools.push(write(
+                name,
+                "Change a slot during a sale.",
+                slot.clone(),
+                json!([]),
+            ));
+        }
+        tools
+    }
+
+    fn fixtures_tool(
+        name: &str,
+        kind: &str,
+        summary: &str,
+        consumes: Value,
+        produces: Value,
+    ) -> ToolSpec {
+        serde_json::from_value(crate::tools::fixtures::tool(
+            name,
+            &format!("promotion.x.{name}"),
+            kind,
+            summary,
+            consumes,
+            produces,
+            json!({}),
+            json!([]),
+        ))
+        .unwrap()
+    }
+
+    #[test]
+    fn a_request_for_two_things_gets_a_start_on_both() {
+        let p = repo();
+        let promotion = p.get("promotion").unwrap();
+        let found = search(
+            &two_things_manifest(),
+            promotion,
+            "A sale, and put it on the main page.",
+            &[],
+            &p.runtime.tool_search,
+        );
+        let n = names(&found);
+        // The sale ranks below all three main-page tools, and is an anchor anyway.
+        let score = |t: &str| found.iter().find(|c| c.tool == t).unwrap().score;
+        for t in ["list_slots", "list_popups", "list_banners"] {
+            assert!(score(t) > score("set_sale_prices"), "{found:#?}");
+        }
+        assert!(n[..3].contains(&"set_sale_prices"), "{found:#?}");
+        // The slot tools do not use up the room: the sale's next step is there too.
+        let coupon = found.iter().find(|c| c.tool == "create_coupon");
+        assert!(coupon.is_some(), "{found:#?}");
+        assert_eq!(
+            coupon.unwrap().via,
+            Via::After {
+                of: "set_sale_prices".into(),
+                slot: "promotion_id".into()
+            }
+        );
+    }
+
+    #[test]
+    fn a_step_before_is_skipped_when_the_list_already_produces_its_slot() {
+        let p = repo();
+        let promotion = p.get("promotion").unwrap();
+        let found = search(
+            &two_things_manifest(),
+            promotion,
+            "A sale, and put it on the main page.",
+            &["list_wishlist"],
+            &p.runtime.tool_search,
+        );
+        let n = names(&found);
+        assert!(n.contains(&"list_wishlist"), "{found:#?}");
+        assert!(
+            !n[..n.len().min(6)].contains(&"list_categories"),
+            "{found:#?}"
         );
     }
 

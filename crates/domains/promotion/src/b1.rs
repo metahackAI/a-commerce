@@ -142,7 +142,9 @@ fn v2_prices_40_of_42_and_passes_every_check() {
     assert!(stock.passed);
     assert_eq!(
         stock.detail.as_deref(),
-        Some("2 products under 10 units excluded: Cotton chore coat (7), Light rain parka (4)")
+        Some(
+            "2 of 42 products under 10 units excluded: Cotton chore coat (7), Light rain parka (4)"
+        )
     );
 }
 

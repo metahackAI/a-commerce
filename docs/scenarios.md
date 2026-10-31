@@ -167,7 +167,7 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 |---|---|---|
 | `max_discount` | Discount within the VIP limit | Highest is 20%; policy allows 30% |
 | `price_floor` | No price below the floor | Overshirt moved to 15% to stay at cost + 15% |
-| `promo_min_stock` | Enough stock | 2 products under 10 units excluded |
+| `promo_min_stock` | Enough stock | 2 of 42 products under 10 units excluded |
 | `promotion_overlap` | No overlap with running promotions | Checked 4 running promotions |
 | `member_benefits_per_order` | Coupon doesn't stack with tier coupons | One member benefit per order |
 | `slot_free` | Main page slot is free | Hero slot open Nov 7–8 for VIP |

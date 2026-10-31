@@ -553,6 +553,10 @@ struct Turn<'r> {
     usage: Vec<UsageRecord>,
     tool_calls: u32,
     revisions: u32,
+    /// Fields of the step about to run that binding could not choose a value for.
+    undecided: Vec<String>,
+    /// The tools of the plan's steps from the one that failed on, for the next plan.
+    unrun: Vec<String>,
     step_seq: i32,
     manifest: Vec<ToolSpec>,
     candidates: Vec<String>,
@@ -607,6 +611,8 @@ impl<'r> Turn<'r> {
             usage: Vec::new(),
             tool_calls: 0,
             revisions: 0,
+            undecided: Vec::new(),
+            unrun: Vec::new(),
             step_seq: 0,
             manifest: Vec::new(),
             candidates: Vec::new(),
@@ -1367,9 +1373,20 @@ impl<'r> Turn<'r> {
             .await;
         let planner_alias = self.planner_model().to_owned();
         let worker = self.worker().to_owned();
+        // What the failed plan did not get to is still asked for: a new plan that only deals with
+        // the failure would quietly drop it.
+        let unrun = std::mem::take(&mut self.unrun);
+        let asked = if unrun.is_empty() {
+            problem
+        } else {
+            format!(
+                "{problem} Not run yet from that plan, still to do unless this changes them: {}.",
+                unrun.join(", ")
+            )
+        };
         // After a failure the planner model takes over (§6).
         match self
-            .plan_once(&[&planner_alias, &worker], Some(problem), None)
+            .plan_once(&[&planner_alias, &worker], Some(asked), None)
             .await
         {
             Ok((plan, by)) => {
@@ -1413,6 +1430,13 @@ impl<'r> Turn<'r> {
                     return;
                 }
                 Flow::Revise(why) if self.revisions < self.limits.plan_revisions => {
+                    // The new plan usually repeats the writes it already drafted. That changes
+                    // those items; it does not ask for the same change a second time.
+                    if let Some(d) = self.draft.as_mut() {
+                        for item in &mut d.items {
+                            item.replaceable = true;
+                        }
+                    }
                     match self.revise(why).await {
                         Ok(p) => plan = p,
                         Err(Stop(why)) => {
@@ -1492,6 +1516,7 @@ impl<'r> Turn<'r> {
                     {
                         input = executor::merge(&base, &input);
                     }
+                    self.undecided = bound.undecided;
                     self.call(plan, &step.id, &tool, input, bound.notes)
                         .await
                         .map(Some)
@@ -1510,7 +1535,15 @@ impl<'r> Turn<'r> {
                     self.problems
                         .push(format!("I could not remember that: {why}"));
                 }
-                Err(flow) => return flow,
+                Err(flow) => {
+                    self.unrun = plan
+                        .steps
+                        .iter()
+                        .skip_while(|s| s.id != step.id)
+                        .map(|s| s.tool.clone())
+                        .collect();
+                    return flow;
+                }
             }
         }
         Flow::Done
@@ -1551,6 +1584,7 @@ impl<'r> Turn<'r> {
         notes: Vec<String>,
     ) -> Result<StepRecord, Flow> {
         let mut repaired = acom_llm::repair(&input, &tool.input_schema, &self.repair_env());
+        repaired.missing.append(&mut self.undecided);
         if !repaired.is_valid()
             && let Some(fixed) = self.ask_arguments(tool, &repaired).await
         {
@@ -1717,7 +1751,9 @@ impl<'r> Turn<'r> {
             .model_json("arguments", &[&worker], req, None)
             .await
             .ok()?;
-        let merged = executor::merge(&r.value, &v);
+        // It fills what is open. What the arguments already hold stays: a bound `$item[1]…` is
+        // not the model's to swap for a promotion it saw in a list.
+        let merged = executor::merge(&v, &r.value);
         Some(acom_llm::repair(
             &merged,
             &tool.input_schema,

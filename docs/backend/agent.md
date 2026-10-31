@@ -82,8 +82,11 @@ route_when_said: [weekend sale, coupon, banner, needs me]   # 모델 없이 이 
 
 1. **범위:** 에이전트의 `tool_scope`와 호출자 스코프·툴 `audience`로 이미 걸러진 매니페스트의 교집합. `tool_scope.always`의 툴은 말과 상관없이 늘 후보입니다(에이전트마다 대부분의 요청이 시작하는 읽기: 쇼퍼의 `search_products`·`get_my_profile`·`get_cart`·`get_my_orders`, 운영 에이전트의 `list_tasks` 등). 사람의 말("light jacket")은 툴 설명에 없는 말이라 BM25만으로는 상품 검색을 놓치기 때문입니다.
 2. **점수:** 이름·설명·필드 이름과 설명의 BM25(k1 1.2, b 0.75) + 홈 도메인 가중치(`runtime.yml` `tool_search.home_domain_boost`). 임베딩 유사도는 아직 없습니다. 사람이 쓰는 말과 툴이 쓰는 말이 다른 경우는 `runtime.yml`의 `tool_search.related_words`(데이터)가 검색어를 넓힙니다("fit" → measurements, reviews, orders; 이어서 따라감). 맞는 말이 하나도 없으면 홈 도메인의 읽기부터 채웁니다.
-3. **그래프 확장:** 상위 후보의 `consumes`를 생산하는 툴(앞 단계)과 `produces`를 소비하는 툴(뒤 단계)을 1홉 추가. 예: `set_sale_prices` → 앞에 `search_products`, `list_tiers`, 뒤에 `create_coupon`, `schedule_banner`.
-4. **자르기:** 5~8개(`min_candidates`·`max_candidates`). 열린 변경셋에 이미 든 툴은 고칠 수 있게 늘 후보에 둡니다. 결과는 결정적(같은 입력 → 같은 후보)이고 턴 로그에 남깁니다.
+3. **앵커:** 가장 점수가 높은 툴을 먼저 잡고, 그다음부터는 앞의 앵커가 답하지 못한 말에 가장 잘 답하는 툴을 잡습니다(3개, coverage 기반 다양화, xQuAD). 툴은 어떤 말에 대해 그 말의 최고 점수 대비 자기 점수만큼 그 말을 덮고, `always` 툴은 늘 후보이므로 처음부터 자기 몫을 덮습니다. "20% 세일을 메인 페이지에 걸어 줘"처럼 두 가지를 묻는 요청에서 상위권이 전부 "메인 페이지" 툴이어도 세일 툴이 앵커가 됩니다.
+4. **그래프 확장:** 앵커의 `consumes`를 생산하는 툴(앞 단계)과 `produces`를 소비하는 툴(뒤 단계)을 1홉 추가. 예: `set_sale_prices` → 앞에 `list_categories`, 뒤에 `create_coupon`, `schedule_banner`. 앵커가 돌아가며 하나씩 채워 한 앵커가 자리를 다 쓰지 못하게 하고, 쓰기 앵커부터 돕니다(계획은 쓰기의 연쇄입니다). 뒤 단계는 앵커 여럿에 이어진 툴 → 쓰기 → 점수 순이고, 앞 단계는 그 슬롯을 만드는 툴이 이미 후보에 있으면 건너뜁니다.
+5. **자르기:** 5~8개(`min_candidates`·`max_candidates`). 열린 변경셋에 이미 든 툴은 고칠 수 있게 늘 후보에 둡니다. 결과는 결정적(같은 입력 → 같은 후보)이고 턴 로그에 남깁니다.
+
+평가 세트의 요구 툴이 후보에 드는 비율은 `crates/agent/examples/toolsearch_eval.rs`로 잽니다(모델 호출 없음).
 
 툴 검색은 모델을 부르지 않습니다.
 
@@ -108,7 +111,7 @@ route_when_said: [weekend sale, coupon, banner, needs me]   # 모델 없이 이 
 }
 ```
 
-- **id는 모델이 옮기지 않습니다.** `uses`로 앞 단계를 가리키면 실행기가 툴 메타데이터의 `produces`/`consumes` 슬롯 이름(`product_id[]`, `tier_id`, `promotion_id`)으로 값을 채웁니다. 42개 상품 id를 모델이 베껴 쓰다 틀리는 일이 구조적으로 없습니다. `uses`를 적은 단계는 그 단계들(과 사람이 가리킨 것)에서만 id를 받고, 없으면 추측하지 않고 인자를 되묻습니다(F3: 주문을 읽은 뒤에 가진 windbreaker의 id를 채움).
+- **id는 모델이 옮기지 않습니다.** `uses`로 앞 단계를 가리키면 실행기가 툴 메타데이터의 `produces`/`consumes` 슬롯 이름(`product_id[]`, `tier_id`, `promotion_id`)으로 값을 채웁니다. 42개 상품 id를 모델이 베껴 쓰다 틀리는 일이 구조적으로 없습니다. `uses`를 적은 단계는 그 단계들(과 사람이 가리킨 것)에서만 id를 받고, 없으면 추측하지 않고 인자를 되묻습니다(F3: 주문을 읽은 뒤에 가진 windbreaker의 id를 채움). 값 하나를 받는 필드에 후보가 여럿이면 말로 검색한 결과(`query`, 잘 맞는 것부터 옴)에서만 첫 번째를 받습니다. 목록을 읽은 결과의 첫 번째는 요청과 상관없는 값이라(카테고리 24개 중 첫 번째) 채우지 않고 작업 모델에게 되묻습니다. 되물어도 이미 묶인 인자는 그대로 둡니다. 이번 계획의 쓰기를 `uses`로 가리킨 단계는 그 쓰기가 만들 값을 받고, 옆에 적힌 id보다 앞섭니다(이 세일의 쿠폰). 입력 객체 안의 필드도 슬롯 이름이나 `x-slot`으로 찾아 채웁니다(배너의 `content.image_product_id`).
 - **행마다 실행(`each`, `when`):** `"each": "s1"`은 그 단계 결과의 행마다 한 번씩 실행하고, 실행마다 그 행의 같은 이름 필드(`claim_id`, `customer_id`, `order_id`)로 슬롯을 채웁니다. `"when": {"suggested": "refund"}`는 값이 같은 행만 고릅니다. B2: 요청 12건 평가는 `evaluate_return_request` 한 단계, 환불 9건·메시지 3건은 세 단계.
 - **앞서 보인 블록을 단계처럼:** 대화 기록은 블록을 id와 함께 보여 줍니다(`[showed refund_review blk_31]`). `uses`·`each`에 `blk_…`를 쓰면 그 블록의 행(`requests`, `items`, `picks`)이 결과처럼 쓰여 다시 읽지 않습니다(B2의 변경셋, F4의 선물 고르기).
 - **블록 문구(`notes`)와 출처(`source`):** 모델은 블록 요소에 붙일 짧은 말(`{"element": "size:L", "text": "Over a hoodie"}`, 첫째가 추천)과 이해한 줄의 출처(`said`·`profile`·`his`·`hers`, 칩)를 냅니다. 둘 다 툴 결과나 사람의 말에 없는 숫자가 들면 쓰지 않습니다.
@@ -132,7 +135,7 @@ route_when_said: [weekend sale, coupon, banner, needs me]   # 모델 없이 이 
 
 - 에이전트는 **승인이 필요한 쓰기를 실행할 수 없습니다.** 승인 후 실행은 `commerce` 실행기의 일이고, 에이전트는 `GET /v1/platform/events`로 `running → verifying → live`를 받아 대화에 흘립니다.
 - 대화로 고치면("오버셔츠는 15%로") 해당 항목만 다시 프리뷰해 교체하고 변경셋 버전이 오릅니다(v1 → v2).
-- 툴 에러는 그대로 모델에 돌려주지 않습니다. `next_tool`이 이 에이전트가 쓸 수 있는 툴이면 후보에 더해 그 툴로 계획을 고치게 하고, 인자가 틀린 에러(`invalid_input`)면 에러 문장으로 계획을 고치게 하고, 그 밖은 사람에게 이유를 보여 줍니다.
+- 툴 에러는 그대로 모델에 돌려주지 않습니다. `next_tool`이 이 에이전트가 쓸 수 있는 툴이면 후보에 더해 그 툴로 계획을 고치게 하고, 인자가 틀린 에러(`invalid_input`)면 에러 문장으로 계획을 고치게 하고, 그 밖은 사람에게 이유를 보여 줍니다. 계획을 고칠 때 실패한 계획이 아직 실행하지 못한 단계를 함께 알려 주어, 실패만 처리하고 나머지를 조용히 빠뜨리지 않게 합니다. 새 계획이 이미 초안에 넣은 쓰기를 되풀이하면 그 항목을 제자리에서 바꿉니다. 항목을 더하지 않으므로 같은 세일이 변경셋에 두 번 들어가지 않습니다.
 
 ---
 

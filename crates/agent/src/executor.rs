@@ -155,9 +155,13 @@ fn is_stand_in(v: &Value, field: &str, slot: &str, schema: Option<&Value>) -> bo
                 return false;
             }
             let prefix = format!("{prefix}_");
-            // `$item[n].…` is the change set's own placeholder, filled when it runs.
-            return !t.starts_with("$item[")
-                && (!t.starts_with(&prefix) || t.len() == prefix.len());
+            // `$item[n].…` is the change set's own placeholder, filled when it runs. A step's id
+            // in place of `n` is not one: the runner would never fill it.
+            if let Some(rest) = t.strip_prefix("$item[") {
+                let n = rest.split_once("].").map_or("", |(n, _)| n);
+                return n.is_empty() || !n.bytes().all(|b| b.is_ascii_digit());
+            }
+            return !t.starts_with(&prefix) || t.len() == prefix.len();
         }
         false
     };
@@ -185,6 +189,9 @@ pub struct Bound {
     /// A required field taken from a used step's result that came back empty (`lines` of a
     /// reorder suggestion with nothing to order): the step has nothing to act on.
     pub empty: Option<String>,
+    /// Fields a result could fill with several values and nothing says which: the worker is
+    /// asked, as for a missing required field.
+    pub undecided: Vec<String>,
 }
 
 /// A value the plan wrote as a reference to a step it uses (`uses.suggest.lines`,
@@ -211,7 +218,8 @@ fn referenced(v: &Value, field: &str, used: &[&StepRecord]) -> Option<(String, V
 /// Sources, in order: the steps it `uses`, the ids the person pointed at, then (only for a step
 /// that names no `uses`) the latest earlier step that produced the slot. A step that names its
 /// sources gets nothing from elsewhere, so a missing id is asked for instead of guessed. A list
-/// field takes every value; a single field takes the first (search results come best first). A
+/// field takes every value; a single field takes the first only from a search by words (those
+/// results come best first), and is otherwise left undecided when there are several. A
 /// required field that is still missing takes a same-named field of a used step's result
 /// (`client_total` from a cart's `total`). A field the plan wrote as a reference to a used step
 /// (`uses.suggest.lines`) takes that value. A required list taken from a result that came back
@@ -228,6 +236,7 @@ pub fn bind(
         _ => Map::new(),
     };
     let mut notes = Vec::new();
+    let mut undecided = Vec::new();
     let used: Vec<&StepRecord> = step.uses.iter().filter_map(|u| done.get(u)).collect();
     let mut empty = None;
     let required = tool.required();
@@ -251,6 +260,23 @@ pub fn bind(
             continue;
         };
         let schema = tool.properties().and_then(|p| p.get(&field));
+        // A step that builds on a write of this plan takes what that write will produce: a coupon
+        // for this sale. An id written next to `uses` was copied from something the model read.
+        let own_write = used
+            .iter()
+            .find_map(|r| r.item.and_then(|_| r.slots.get(&slot.name)))
+            .filter(|_| !is_list)
+            .and_then(|v| v.first());
+        if let Some(v) = own_write
+            && input.get(&field).is_some_and(|w| w != v)
+        {
+            notes.push(format!(
+                "{field}: {} replaced by what this plan produces",
+                input[&field]
+            ));
+            input.insert(field, v.clone());
+            continue;
+        }
         let stand_in = input
             .get(&field)
             .is_some_and(|v| is_stand_in(v, &field, &slot.name, schema));
@@ -291,13 +317,18 @@ pub fn bind(
         if values.is_empty() {
             continue;
         }
-        // The model meant one of several (a tier among all tiers) but did not say which: leave it
-        // missing, so the plan is corrected rather than the first one guessed.
-        if stand_in && !is_list && values.len() > 1 {
+        // One of several, and nothing says which (a tier among all tiers, a category among all
+        // categories). Only a search by words puts what was meant first; a read that lists rows
+        // has no such order, so the first would be a wrong target nobody asked for.
+        let by_words = done
+            .get(&source)
+            .is_none_or(|r| !is_empty(r.input.get("query")));
+        if !is_list && values.len() > 1 && (stand_in || !by_words) {
             notes.push(format!(
                 "{field}: {source} has {} candidates; which one is not said",
                 values.len()
             ));
+            undecided.push(field);
             continue;
         }
         let value = if is_list {
@@ -311,6 +342,58 @@ pub fn bind(
             format!("{field}: the first of {} from {source}", values.len())
         });
         input.insert(field, value);
+    }
+
+    // A slot whose field sits inside an object (a banner's picture): the first value of the step
+    // it `uses`, else of the latest step that has one. A person sees which in the preview.
+    for slot in &tool.consumes {
+        if tool.field_for_slot(&slot.name).is_some() {
+            continue;
+        }
+        let Some((object, field)) = tool.nested_field_for_slot(&slot.name) else {
+            continue;
+        };
+        let schema = tool
+            .properties()
+            .and_then(|p| p.get(&object))
+            .and_then(|o| o.get("properties"))
+            .and_then(|p| p.get(&field));
+        let Some(fields) = input.get_mut(&object).and_then(Value::as_object_mut) else {
+            continue;
+        };
+        // Here a placeholder only counts if a step of this turn really produces it.
+        let produced = |v: &Value| {
+            done.values()
+                .any(|r| r.slots.get(&slot.name).is_some_and(|s| s.contains(v)))
+        };
+        let stand_in = fields.get(&field).is_some_and(|v| {
+            is_stand_in(v, &field, &slot.name, schema)
+                || (v.as_str().is_some_and(|s| s.starts_with("$item[")) && !produced(v))
+        });
+        if stand_in {
+            notes.push(format!(
+                "{object}.{field}: {} is a stand-in, not a value",
+                fields[&field]
+            ));
+            fields.remove(&field);
+        }
+        if !is_empty(fields.get(&field)) {
+            continue;
+        }
+        let found = used
+            .iter()
+            .copied()
+            .chain(order.iter().rev().filter_map(|id| done.get(id)))
+            .find_map(|r| {
+                let first = r.slots.get(&slot.name)?.first()?;
+                Some((r.step.clone(), first.clone(), r.slots[&slot.name].len()))
+            });
+        if let Some((source, value, count)) = found {
+            notes.push(format!(
+                "{object}.{field}: the first of {count} from {source}"
+            ));
+            fields.insert(field, value);
+        }
     }
 
     for field in tool.required() {
@@ -338,6 +421,7 @@ pub fn bind(
         input: Value::Object(input),
         notes,
         empty,
+        undecided,
     }
 }
 
@@ -463,7 +547,7 @@ pub fn bind_row(step: &PlanStep, tool: &ToolSpec, row: &Value) -> Bound {
     Bound {
         input: Value::Object(input),
         notes,
-        empty: None,
+        ..Bound::default()
     }
 }
 
@@ -800,6 +884,133 @@ mod tests {
         );
         assert_eq!(b.input["client_total"]["currency"], "USD");
         assert!(b.notes.iter().any(|n| n.contains("client_total")));
+    }
+
+    fn with_nested_slot() -> ToolSpec {
+        let m = manifest();
+        let mut banner = get(&m, "schedule_banner").clone();
+        banner.input_schema["properties"]["content"] = json!({"type": "object", "properties": {
+            "headline": {"type": "string"},
+            "image_product_id": {"type": "string", "pattern": "^prd_[a-z0-9_]+$", "x-slot": "product_id"}}});
+        banner.consumes =
+            vec![serde_json::from_value(json!({"name": "product_id", "many": false})).unwrap()];
+        banner
+    }
+
+    #[test]
+    fn a_slot_inside_an_object_is_filled_from_the_steps_results() {
+        let m = manifest();
+        let banner = with_nested_slot();
+        let search = record(
+            "s1",
+            get(&m, "search_products"),
+            json!({"items": [{"product_id": "prd_a"}, {"product_id": "prd_b"}]}),
+        );
+        let done = BTreeMap::from([("s1".to_owned(), search)]);
+        for written in [
+            json!({"headline": "Sale"}),
+            json!({"headline": "Sale", "image_product_id": "$item[1].product_id"}),
+        ] {
+            let b = bind(
+                &step(
+                    "s2",
+                    "schedule_banner",
+                    json!({"content": written}),
+                    &["s1"],
+                ),
+                &banner,
+                &done,
+                &["s1".into()],
+                &BTreeMap::new(),
+            );
+            assert_eq!(
+                b.input["content"]["image_product_id"], "prd_a",
+                "{:?}",
+                b.notes
+            );
+            assert_eq!(b.input["content"]["headline"], "Sale");
+        }
+        // What the model chose stays.
+        let b = bind(
+            &step(
+                "s2",
+                "schedule_banner",
+                json!({"content": {"image_product_id": "prd_b"}}),
+                &["s1"],
+            ),
+            &banner,
+            &done,
+            &["s1".into()],
+            &BTreeMap::new(),
+        );
+        assert_eq!(b.input["content"]["image_product_id"], "prd_b");
+    }
+
+    #[test]
+    fn one_of_several_is_only_taken_from_a_search_by_words() {
+        let m = manifest();
+        let rows = json!({"items": [{"product_id": "prd_a"}, {"product_id": "prd_b"}]});
+        let mut listed = record("s1", get(&m, "search_products"), rows);
+        let bound = |r: &StepRecord| {
+            bind(
+                &step("s2", "add_to_cart", json!({}), &["s1"]),
+                get(&m, "add_to_cart"),
+                &BTreeMap::from([("s1".to_owned(), r.clone())]),
+                &["s1".into()],
+                &BTreeMap::new(),
+            )
+        };
+        listed.input = json!({"category_id": "cat_outerwear"});
+        let b = bound(&listed);
+        assert!(b.input.get("product_id").is_none(), "{:?}", b.notes);
+        assert_eq!(b.undecided, ["product_id"]);
+        listed.input = json!({"query": "windbreaker"});
+        let b = bound(&listed);
+        assert_eq!(b.input["product_id"], "prd_a");
+        assert!(b.undecided.is_empty());
+    }
+
+    #[test]
+    fn a_step_on_a_write_of_this_plan_takes_what_it_produces() {
+        let m = manifest();
+        let sale = StepRecord {
+            step: "s1".into(),
+            tool: "set_sale_prices".into(),
+            kind: ToolKind::WriteApproval,
+            input: json!({}),
+            slots: slots_from_item(get(&m, "set_sale_prices"), 1),
+            output: None,
+            preview: None,
+            item: Some(1),
+        };
+        let b = bind(
+            &step(
+                "s2",
+                "create_coupon",
+                json!({"promotion_id": "promo_autumn_knit"}),
+                &["s1"],
+            ),
+            get(&m, "create_coupon"),
+            &BTreeMap::from([("s1".to_owned(), sale)]),
+            &["s1".into()],
+            &BTreeMap::new(),
+        );
+        assert_eq!(
+            b.input["promotion_id"], "$item[1].promotion_id",
+            "{:?}",
+            b.notes
+        );
+    }
+
+    #[test]
+    fn a_placeholder_needs_an_item_number() {
+        let schema = json!({"type": "string", "pattern": "^promo_[a-z0-9_]+$"});
+        let stand_in =
+            |v: &str| is_stand_in(&json!(v), "promotion_id", "promotion_id", Some(&schema));
+        assert!(!stand_in("$item[1].promotion_id"));
+        assert!(stand_in("$item[set_sale_prices_1].promotion_id"));
+        assert!(stand_in("promo_"));
+        assert!(!stand_in("promo_autumn_knit"));
     }
 
     #[test]
