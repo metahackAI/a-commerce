@@ -1144,13 +1144,17 @@ impl<'r> Turn<'r> {
             .collect()
     }
 
+    fn result_chars(&self) -> usize {
+        self.rt.profiles.runtime.context.result_chars
+    }
+
     fn done_summaries(&self) -> Vec<Value> {
         self.history
             .iter()
             .map(|r| {
                 let mut v = json!({"tool": r.tool, "args": r.input});
                 if let Some(o) = &r.output {
-                    v["result"] = compact(o);
+                    v["result"] = compact(o, self.result_chars());
                 }
                 if let Some(p) = &r.preview {
                     v["preview"] = json!({"changes": p.changes.len(),
@@ -2807,12 +2811,12 @@ impl<'r> Turn<'r> {
             .history
             .iter()
             .filter(|r| r.kind == ToolKind::Read)
-            .map(|r| json!({"tool": r.tool, "result": compact(r.output.as_ref().unwrap_or(&Value::Null))}))
+            .map(|r| json!({"tool": r.tool, "result": compact(r.output.as_ref().unwrap_or(&Value::Null), self.result_chars())}))
             .collect();
         // Writes that ran at once (the facade's saves) and what they answered.
         let saved: Vec<Value> = self
             .direct_writes()
-            .map(|r| json!({"tool": r.tool, "result": compact(r.output.as_ref().unwrap_or(&Value::Null))}))
+            .map(|r| json!({"tool": r.tool, "result": compact(r.output.as_ref().unwrap_or(&Value::Null), self.result_chars())}))
             .collect();
         // A block's summary (a review's counts and refund total) is what the reply may cite.
         let blocks: Vec<Value> = self
@@ -3155,27 +3159,91 @@ impl<'r> Turn<'r> {
     }
 }
 
-/// A result cut down for prompts: lists keep their first items and say how many there were.
-fn compact(v: &Value) -> Value {
-    match v {
-        Value::Object(o) => {
-            let mut out = serde_json::Map::new();
-            for (k, x) in o {
-                out.insert(k.clone(), compact(x));
+/// A tool result for a prompt (`agents/runtime.yml context.result_chars`): whole when its JSON
+/// fits `budget` characters. Otherwise the biggest part is halved until it fits: a list keeps
+/// its first half and says how many items it left out, a string keeps its first half and ends
+/// in `…`. Cutting the biggest part first keeps detail where the result is small: a 20-product
+/// search loses products before the first products lose their sizes.
+fn compact(v: &Value, budget: usize) -> Value {
+    let mut out = v.clone();
+    while json_chars(&out) > budget && halve_biggest(&mut out) {}
+    out
+}
+
+/// A cut list ends in this marker; the number is how many items it left out.
+fn left_out(v: &Value) -> Option<usize> {
+    v.as_str()?
+        .strip_prefix("… ")?
+        .strip_suffix(" more")?
+        .parse()
+        .ok()
+}
+
+fn json_chars(v: &Value) -> usize {
+    v.to_string().chars().count()
+}
+
+/// Halves the biggest list (of two items or more) or string (of 80 characters or more) inside
+/// `v`; false when nothing is left to halve.
+fn halve_biggest(v: &mut Value) -> bool {
+    fn biggest(v: &Value, path: &mut Vec<usize>, best: &mut Option<(usize, Vec<usize>)>) {
+        let cuttable = match v {
+            Value::Array(a) => a.iter().filter(|x| left_out(x).is_none()).count() >= 2,
+            Value::String(s) => s.chars().count() >= 80,
+            _ => false,
+        };
+        if cuttable {
+            let size = json_chars(v);
+            if best.as_ref().is_none_or(|(b, _)| size > *b) {
+                *best = Some((size, path.clone()));
             }
-            Value::Object(out)
         }
-        Value::Array(a) if a.len() > 5 => {
-            let mut kept: Vec<Value> = a.iter().take(5).map(compact).collect();
-            kept.push(json!(format!("… {} more", a.len() - 5)));
-            Value::Array(kept)
+        let children: Vec<&Value> = match v {
+            Value::Array(a) => a.iter().collect(),
+            Value::Object(o) => o.values().collect(),
+            _ => Vec::new(),
+        };
+        for (i, c) in children.into_iter().enumerate() {
+            path.push(i);
+            biggest(c, path, best);
+            path.pop();
         }
-        Value::Array(a) => Value::Array(a.iter().map(compact).collect()),
-        Value::String(s) if s.chars().count() > 200 => {
-            json!(format!("{}…", s.chars().take(200).collect::<String>()))
-        }
-        other => other.clone(),
     }
+    let mut best = None;
+    biggest(v, &mut Vec::new(), &mut best);
+    let Some((_, path)) = best else {
+        return false;
+    };
+    let mut node = v;
+    for i in path {
+        node = match node {
+            Value::Array(a) => &mut a[i],
+            Value::Object(o) => match o.values_mut().nth(i) {
+                Some(x) => x,
+                None => return false,
+            },
+            _ => return false,
+        };
+    }
+    match node {
+        Value::Array(a) => {
+            let before = a.last().and_then(left_out);
+            if before.is_some() {
+                a.pop();
+            }
+            let keep = a.len().div_ceil(2);
+            let dropped = a.len() - keep;
+            a.truncate(keep);
+            a.push(json!(format!("… {} more", before.unwrap_or(0) + dropped)));
+        }
+        Value::String(s) => {
+            let text = s.strip_suffix('…').unwrap_or(s);
+            let keep = text.chars().count() / 2;
+            *s = format!("{}…", text.chars().take(keep).collect::<String>());
+        }
+        _ => return false,
+    }
+    true
 }
 
 /// The reply in sentence-sized pieces for `message.delta`.
