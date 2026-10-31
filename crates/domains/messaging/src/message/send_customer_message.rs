@@ -6,7 +6,7 @@ use acom_contract::{
     ErrorCode, Group, Kind, Method, OpMeta, Operation, Planned, Slot, ToolError, UndoSupport,
     Verification, WriteOp,
 };
-use acom_core::enums::{MessageChannel, MessageKind};
+use acom_core::enums::MessageChannel;
 use acom_core::ids::MessageId;
 use acom_customer::service::for_messaging as customer;
 use acom_fulfillment::service::for_messaging as fulfillment;
@@ -25,6 +25,8 @@ pub const ORDER_NOT_FOUND: ErrorCode = ErrorCode::new("order_not_found", ErrorCl
 pub const ORDER_NOT_FOR_CUSTOMER: ErrorCode =
     ErrorCode::new("order_not_for_customer", ErrorClass::Forbidden);
 pub const ORDER_REQUIRED: ErrorCode = ErrorCode::new("order_required", ErrorClass::InvalidInput);
+pub const CUSTOMER_REQUIRED: ErrorCode =
+    ErrorCode::new("customer_required", ErrorClass::InvalidInput);
 pub const REFUND_NOT_FOUND: ErrorCode = ErrorCode::new("refund_not_found", ErrorClass::NotFound);
 pub const NO_VERIFIED_CONTACT: ErrorCode =
     ErrorCode::new("no_verified_contact", ErrorClass::Domain);
@@ -38,16 +40,17 @@ const MAX_TEXT: usize = 2000;
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SendCustomerMessageInput {
-    /// The shopper the message goes to.
+    /// The shopper the message goes to. Leave it out when order_id is given: the message goes to
+    /// the shopper who placed the order. Needed when there is no order_id.
     #[schemars(regex(pattern = r"^cus_[a-z0-9_]+$"), example = &"cus_riley")]
-    pub customer_id: String,
+    pub customer_id: Option<String>,
     /// The order the message is about. Required unless kind is custom.
     #[schemars(regex(pattern = r"^ord_[a-z0-9_]+$"), example = &"ord_20366")]
     pub order_id: Option<String>,
     /// ask_for_photos: ask for photos of damage; decline: a return or exchange is declined;
     /// refund_done: the refund went out; custom: any other note about an order.
     #[schemars(example = &"ask_for_photos")]
-    pub kind: MessageKind,
+    pub kind: CustomerMessageKind,
     /// email, sms, push or in_app. Default email; the shopper must be reachable on it.
     #[schemars(example = &"email")]
     pub channel: Option<MessageChannel>,
@@ -57,6 +60,28 @@ pub struct SendCustomerMessageInput {
     /// The message exactly as the shopper reads it, in plain sentences.
     #[schemars(length(max = 2000), example = &"Sorry your rain parkas arrived damaged. Could you reply with a photo or two of the damage? We'll take it from there.")]
     pub text: String,
+}
+
+/// What a customer message does: `acom:message_kind` without `campaign`, which only campaigns
+/// send.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum CustomerMessageKind {
+    AskForPhotos,
+    Decline,
+    RefundDone,
+    Custom,
+}
+
+impl CustomerMessageKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::AskForPhotos => "ask_for_photos",
+            Self::Decline => "decline",
+            Self::RefundDone => "refund_done",
+            Self::Custom => "custom",
+        }
+    }
 }
 
 /// The message as it will be sent, fixed at preview time.
@@ -96,6 +121,7 @@ impl Operation for SendCustomerMessage {
         ],
         errors: &[
             CUSTOMER_NOT_FOUND,
+            CUSTOMER_REQUIRED,
             ORDER_NOT_FOUND,
             ORDER_NOT_FOR_CUSTOMER,
             ORDER_REQUIRED,
@@ -138,17 +164,17 @@ impl WriteOp<Cx> for SendCustomerMessage {
         let kind = input.kind.as_str();
         let channel = input.channel.unwrap_or(MessageChannel::Email).as_str();
         let now = cx.clock.now();
-        let mut tx = cx.read().await.map_err(ToolError::from)?;
-        let person = customer::contact(&mut tx, &input.customer_id)
-            .await?
-            .ok_or_else(|| {
-                ToolError::new(
-                    CUSTOMER_NOT_FOUND,
-                    format!("There is no customer {}.", input.customer_id),
-                )
-                .detail(json!({"entity": "customer", "id": input.customer_id}))
-                .next("search_members")
-            })?;
+        let customer_required = || {
+            ToolError::new(
+                CUSTOMER_REQUIRED,
+                "Say which order the message is about (it goes to the order's customer), or which customer it goes to.",
+            )
+            .detail(json!({"field": "customer_id", "reason": "missing"}))
+            .next("send_customer_message")
+        };
+        if input.customer_id.is_none() && input.order_id.is_none() {
+            return Err(customer_required());
+        }
         if kind != "custom" && input.order_id.is_none() {
             return Err(
                 ToolError::new(ORDER_REQUIRED, "Say which order the message is about.")
@@ -156,25 +182,51 @@ impl WriteOp<Cx> for SendCustomerMessage {
                     .next("send_customer_message"),
             );
         }
+        let mut tx = cx.read().await.map_err(ToolError::from)?;
+        // The order comes first: without a customer_id the message goes to whoever placed it.
         let order = match &input.order_id {
-            Some(id) => {
-                let o = sales::order_owner(&mut tx, id).await?.ok_or_else(|| {
-                    ToolError::new(ORDER_NOT_FOUND, format!("There is no order {id}."))
-                        .detail(json!({"entity": "order", "id": id}))
-                        .next("get_order")
-                })?;
-                if o.customer_id.as_deref() != Some(person.id.as_str()) {
-                    return Err(ToolError::new(
-                        ORDER_NOT_FOR_CUSTOMER,
-                        format!("Order {} is not {}'s order.", o.order_number, person.name),
-                    )
-                    .detail(json!({"reason": "owner"}))
-                    .next("get_order"));
-                }
-                Some(o)
-            }
+            Some(id) => Some(sales::order_owner(&mut tx, id).await?.ok_or_else(|| {
+                ToolError::new(ORDER_NOT_FOUND, format!("There is no order {id}."))
+                    .detail(json!({"entity": "order", "id": id}))
+                    .next("get_order")
+            })?),
             None => None,
         };
+        let customer_id = match (&input.customer_id, &order) {
+            (Some(id), _) => id.clone(),
+            (None, Some(o)) => o.customer_id.clone().ok_or_else(|| {
+                ToolError::new(
+                    CUSTOMER_NOT_FOUND,
+                    format!(
+                        "Order {} was placed as a guest, so there is no customer account to write to.",
+                        o.order_number
+                    ),
+                )
+                .detail(json!({"entity": "customer", "order_id": o.id, "reason": "guest_order"}))
+                .next("get_order")
+            })?,
+            (None, None) => return Err(customer_required()),
+        };
+        let person = customer::contact(&mut tx, &customer_id)
+            .await?
+            .ok_or_else(|| {
+                ToolError::new(
+                    CUSTOMER_NOT_FOUND,
+                    format!("There is no customer {customer_id}."),
+                )
+                .detail(json!({"entity": "customer", "id": customer_id}))
+                .next("search_members")
+            })?;
+        if let Some(o) = &order
+            && o.customer_id.as_deref() != Some(person.id.as_str())
+        {
+            return Err(ToolError::new(
+                ORDER_NOT_FOR_CUSTOMER,
+                format!("Order {} is not {}'s order.", o.order_number, person.name),
+            )
+            .detail(json!({"reason": "owner"}))
+            .next("get_order"));
+        }
         if !reachable(
             channel,
             person.email.as_deref(),

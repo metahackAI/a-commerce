@@ -139,6 +139,21 @@
 | `revenue_currency` |  | ✓ | `acom:revenue` | ISO 4217 code of revenue_value. |
 | `order_count` |  | ✓ | `acom:orderCount` | number of orders placed that day that were paid and not cancelled. |
 
+### `analytics.inquiry_summary` (view)
+
+`schema:Observation/acom:InquirySummary` — one row per customer inquiry: the store day it came in, its type and state, when staff or the agent first answered and when it was resolved; never who asked or what they wrote.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` |  | ✓ | `-` | store (tenant) the inquiry belongs to. |
+| `inquiry_id` |  | ✓ | `acom:inquiryId` | the inquiry (inq_ id). |
+| `observation_date` |  | ✓ | `schema:observationDate` | calendar day in the store's time zone on which the inquiry came in. |
+| `inquiry_type` |  | ✓ | `acom:inquiryType` | what the inquiry is about. values: inquiry_type |
+| `inquiry_status` |  | ✓ | `acom:inquiryStatus` | where the inquiry is now. values: inquiry_status |
+| `date_received` |  | ✓ | `schema:dateReceived` | when the inquiry came in. |
+| `first_response_time` |  | ✓ | `acom:firstResponseTime` | when staff or the agent first wrote in the thread; NULL while nobody has. |
+| `resolved_at` |  | ✓ | `acom:resolvedAt` | when the inquiry was resolved; NULL while it is open. |
+
 ### `analytics.member_tier_count` (view)
 
 `schema:Observation/acom:TierCount` — members per tier now, leaving out blocked and withdrawn accounts.
@@ -1499,7 +1514,7 @@
 | `name` | text |  | `schema:name` | name operators know the campaign by, for example Weekly email. |
 | `message_channel` | text |  | `acom:messageChannel` | channel it is sent on; the template must be written for the same channel. values: message_channel Values: `email` · `sms` · `push` · `in_app`. |
 | `template_id` | text | ✓ | `acom:templateId` | template the message is made from (tpl_ id); campaigns of one template are the same recurring send. → `messaging.message_template` |
-| `valid_for_member_tier` | text | ✓ | `schema:validForMemberTier` | tier the campaign goes to; NULL means every member who agreed to marketing messages. → `customer.member_program_tier` |
+| `valid_for_member_tier` | text | ✓ | `schema:validForMemberTier` | tier the campaign goes to; NULL when it goes to a segment, a list of shoppers, or every member who agreed to marketing messages. → `customer.member_program_tier` |
 | `campaign_status` | text |  | `acom:campaignStatus` | where the campaign is; failed means the send stopped before any message went out. values: campaign_status Values: `draft` · `scheduled` · `sending` · `sent` · `failed` · `cancelled`. |
 | `scheduled_time` | timestamptz | ✓ | `acom:scheduledTime` | when the send is due, on the store clock; NULL while a draft has no time. |
 | `date_sent` | timestamptz | ✓ | `schema:dateSent` | when the messages went out; NULL while not sent, and for failed and cancelled campaigns. |
@@ -1509,10 +1524,13 @@
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `segment_id` | text | ✓ | `acom:segmentId` | segment the campaign goes to (seg_ id); NULL unless it was set up for a segment. |
+| `recipient_ids` | text[] | ✓ | `schema:recipient` | shoppers the campaign goes to when it was set up for a list (cus_ ids); NULL otherwise. |
+| `variable_values` | jsonb | ✓ | `acom:variableValues` | values of the template variables that are the same for every shopper, as [{name, value}]; per-shopper ones (customer_name) are filled at sending. |
 
 ### `messaging.message`
 
-`schema:Message` — a transactional message to one shopper about an order or claim; a sent message cannot be taken back. id prefix msg_. · id `msg_…`
+`schema:Message` — a message to one shopper: a transactional one about an order or claim, or one shopper's copy of a campaign; a sent message cannot be taken back. id prefix msg_. · id `msg_…`
 
 | column | type | null | term | description |
 |---|---|:--:|---|---|
@@ -1520,7 +1538,7 @@
 | `id` | text |  | `-` | id with prefix msg_; the same value the API, logs and events use. |
 | `recipient_id` | text |  | `schema:recipient` | shopper the message goes to (cus_ id). → `customer.person` |
 | `about_id` | text | ✓ | `schema:about` | order or claim the message is about (ord_ or clm_ id). |
-| `message_kind` | text |  | `acom:messageKind` | what the message does. values: message_kind Values: `ask_for_photos` · `decline` · `refund_done` · `custom`. |
+| `message_kind` | text |  | `acom:messageKind` | what the message does. values: message_kind Values: `ask_for_photos` · `decline` · `refund_done` · `custom` · `campaign`. |
 | `message_channel` | text |  | `acom:messageChannel` | channel it is sent on. values: message_channel Values: `email` · `sms` · `push` · `in_app`. |
 | `headline` | text | ✓ | `schema:headline` | subject line for email and push. |
 | `text` | text |  | `schema:text` | body exactly as the shopper reads it, up to 2,000 characters. |
@@ -1532,6 +1550,7 @@
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `campaign_id` | text | ✓ | `acom:campaignId` | campaign this message is one shopper's copy of (cmp_ id); NULL for a transactional message. → `messaging.campaign` |
 
 ### `messaging.message_template`
 
@@ -2455,6 +2474,49 @@
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
 ## `search`
+
+### `search.lexicon`
+
+`schema:DefinedTermSet/acom:Lexicon` — one version of the store's search dictionary for one language: synonyms, new words and boost or exclude rules; a version takes effect when a reindex uses it. id prefix lex_. · id `lex_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix lex_; the same value the API, logs and events use. |
+| `in_language` | text |  | `schema:inLanguage` | language the dictionary is for, as a two- or three-letter code, for example en. |
+| `analyzer_version` | text |  | `acom:analyzerVersion` | version of the dictionary, v1 being the store policy's default; it goes up by one with every change. |
+| `synonyms` | jsonb |  | `acom:synonyms` | the whole synonym set, as [{terms, bidirectional}]; a one-way entry widens its first term to the others. |
+| `neologisms` | jsonb |  | `acom:neologisms` | new words and what they mean in common words, as [{surface, normalize}]. |
+| `boost_rules` | jsonb |  | `acom:boostRules` | words that raise products in the ranking or exclude them, as [{term, effect}]; an excluded word finds nothing. |
+| `agent_id` | text |  | `schema:agent` | who saved this version (adm_ or sys_ id). |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `search.reindex_job`
+
+`schema:UpdateAction/acom:ReindexJob` — one rebuild of the store's search documents, whole or only what changed, with the dictionary version it used; the documents switch over when it commits. id prefix rij_. · id `rij_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix rij_; the same value the API, logs and events use. |
+| `reindex_mode` | text |  | `acom:reindexMode` | full rebuilds every document; incremental only the products named, changed since a time, or out of date. values: reindex_mode Values: `full` · `incremental`. |
+| `in_language` | text |  | `schema:inLanguage` | language of the index, for example en. |
+| `analyzer_version` | text |  | `acom:analyzerVersion` | dictionary version the index uses from this job on (search.lexicon, or v1 for the policy default). |
+| `name` | text |  | `schema:name` | name of the index, after search.yml index.naming, for example products-store_northwind-en-v3. |
+| `product_group_ids` | text[] | ✓ | `schema:object` | products an incremental job was limited to (prd_ ids; API product_ids); NULL when not limited to a list. |
+| `changed_since` | timestamptz | ✓ | `acom:changedSince` | an incremental job rebuilt the products changed at or after this time; NULL when not limited by time. |
+| `action_status` | text |  | `schema:actionStatus` | active while it runs, then completed or failed. values: action_status Values: `potential` · `active` · `completed` · `failed`. |
+| `document_count` | integer |  | `acom:documentCount` | search documents written. |
+| `result` | jsonb | ✓ | `schema:result` | what the job reports besides the counts, for example that no embedding model is connected. |
+| `error` | jsonb | ✓ | `schema:error` | why the job failed, as {code, message}; NULL unless action_status is failed. |
+| `agent_id` | text |  | `schema:agent` | who ran it (adm_ or sys_ id). |
+| `start_time` | timestamptz |  | `schema:startTime` | when the job started. |
+| `end_time` | timestamptz | ✓ | `schema:endTime` | when it finished; NULL while it runs. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
 ### `search.search_document`
 

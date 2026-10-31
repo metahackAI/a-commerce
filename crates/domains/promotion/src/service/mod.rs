@@ -5,4 +5,5 @@
 pub mod for_catalog;
 pub mod for_fulfillment;
 pub mod for_merchandising;
+pub mod for_messaging;
 pub mod for_sales;
