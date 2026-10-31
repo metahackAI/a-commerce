@@ -36,12 +36,12 @@ impl Operation for GetEvent {
         kind: Kind::Read,
         method: Method::Get,
         path: "/v1/promotion/events/{event_id}",
-        summary: "One event: entry mechanic, selection method, reward ranks, who may enter, entry limit, how many entered, its draw records and how its rewards stand.",
+        summary: "One event: entry mechanic, selection method, reward ranks, who may enter, entry limit, how many entered, its draw records and how its rewards stand. Shoppers see events that are not drafts.",
         consumes: &[Slot::one("event_id")],
         produces: &[Slot::many("draw_record_id")],
         checks: &[],
         errors: &[ErrorCode::NOT_FOUND],
-        audience: Audience::Operator,
+        audience: Audience::Both,
         action_type: ActionType::SEARCH,
         person_scope: "",
     };
@@ -54,6 +54,10 @@ impl ReadOp<Cx> for GetEvent {
         let now = cx.clock.now();
         let mut tx = cx.read().await.map_err(ToolError::from)?;
         let e = known_event(&mut tx, &input.event_id, "search_events").await?;
+        // Shoppers see events that are out (not drafts).
+        if e.event_status == "draft" && !acom_catalog::is_operator(&cx.principal) {
+            return Err(crate::not_found("event", &e.id, "list_my_entries"));
+        }
         let counts = entry_counts(&mut tx, &e.id).await?;
         let draws = draw_record_ids(&mut tx, &e.id).await?;
         let paid = rewards(&mut tx, Some(&e.id), None).await?;

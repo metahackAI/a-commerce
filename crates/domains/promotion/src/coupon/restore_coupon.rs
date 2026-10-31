@@ -122,20 +122,17 @@ impl WriteOp<Cx> for RestoreCoupon {
             id: m.id.clone(),
             version: i64::from(m.version),
         }];
-        let skip_plan = |note: &str| {
-            RestoreRun {
-                coupon_id: c.id.clone(),
-                member_coupon_id: m.id.clone(),
-                skip: true,
-                owned_through_before: m.owned_through,
-                owned_through_after: m.owned_through,
-            }
-            .with_note(note)
+        // Nothing to write: already restored, or an order coupon on a partial cancel.
+        let skip = RestoreRun {
+            coupon_id: c.id.clone(),
+            member_coupon_id: m.id.clone(),
+            skip: true,
+            owned_through_before: m.owned_through,
+            owned_through_after: m.owned_through,
         };
         if m.coupon_status == "restored" {
-            let (plan, _) = skip_plan("already restored");
             return Ok(Planned {
-                plan,
+                plan: skip,
                 changes: Vec::new(),
                 checks: Vec::new(),
                 basis,
@@ -157,16 +154,18 @@ impl WriteOp<Cx> for RestoreCoupon {
             && partial_rule == "product_coupon_only"
             && !is_product
         {
-            let (plan, note) = skip_plan("order coupon on a partial cancel");
             return Ok(Planned {
-                plan,
+                plan: skip,
                 changes: vec![Change {
                     op: ChangeOp::Exclude,
                     entity: "member_coupon".into(),
                     id: m.id.clone(),
                     from: Value::Null,
                     to: json!({"why": "coupon.restore_on_cancel"}),
-                    note: Some(format!("{}: {note}; it stays used", c.discount_code)),
+                    note: Some(format!(
+                        "{} is an order coupon; on a partial cancel it stays used",
+                        c.discount_code
+                    )),
                 }],
                 checks: Vec::new(),
                 basis,
@@ -277,12 +276,6 @@ impl WriteOp<Cx> for RestoreCoupon {
             .await?;
         }
         Ok(())
-    }
-}
-
-impl RestoreRun {
-    fn with_note(self, note: &str) -> (Self, String) {
-        (self, note.to_owned())
     }
 }
 

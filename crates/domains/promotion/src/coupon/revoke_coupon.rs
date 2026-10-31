@@ -11,8 +11,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use super::{ALREADY_USED, in_statuses, member_coupon, move_member_coupon};
+use super::{ALREADY_USED, in_statuses, member_coupon};
 use crate::model::count_text;
+use crate::repo::db;
 use crate::{check_id, not_found, repo};
 
 /// The statuses of a member coupon nobody used.
@@ -54,6 +55,40 @@ pub struct RevokeRun {
 }
 
 pub struct RevokeCoupon;
+
+/// The member coupons of a run grouped by the status they leave.
+fn by_status(items: &[(String, String)]) -> std::collections::BTreeMap<String, Vec<String>> {
+    let mut out: std::collections::BTreeMap<String, Vec<String>> =
+        std::collections::BTreeMap::new();
+    for (id, from) in items {
+        out.entry(from.clone()).or_default().push(id.clone());
+    }
+    out
+}
+
+/// Moves the given member coupons of a coupon from one status to another in one statement.
+async fn move_member_coupons(
+    tx: &mut TxCx,
+    coupon_id: &str,
+    ids: &[String],
+    from: &str,
+    to: &str,
+) -> Result<u64, ToolError> {
+    Ok(sqlx::query(
+        "UPDATE promotion.member_coupon SET coupon_status = $5, updated_at = now(),
+           version = version + 1
+         WHERE tenant_id = $1 AND coupon_id = $2 AND id = ANY($3) AND coupon_status = $4",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(coupon_id)
+    .bind(ids)
+    .bind(from)
+    .bind(to)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?
+    .rows_affected())
+}
 
 impl Operation for RevokeCoupon {
     const META: OpMeta = OpMeta {
@@ -179,11 +214,8 @@ impl WriteOp<Cx> for RevokeCoupon {
     }
 
     async fn commit(&self, tx: &mut TxCx, run: &RevokeRun) -> Result<Committed, ToolError> {
-        for (id, from) in &run.items {
-            let owned = member_coupon(tx, &run.coupon_id, id)
-                .await?
-                .and_then(|m| m.owned_through);
-            move_member_coupon(tx, id, from, "revoked", owned).await?;
+        for (from, ids) in by_status(&run.items) {
+            move_member_coupons(tx, &run.coupon_id, &ids, &from, "revoked").await?;
         }
         let ids: Vec<&String> = run.items.iter().map(|(id, _)| id).collect();
         Ok(Committed {
@@ -217,11 +249,8 @@ impl WriteOp<Cx> for RevokeCoupon {
     }
 
     async fn undo(&self, tx: &mut TxCx, run: &RevokeRun, _: &Committed) -> Result<(), ToolError> {
-        for (id, from) in &run.items {
-            let owned = member_coupon(tx, &run.coupon_id, id)
-                .await?
-                .and_then(|m| m.owned_through);
-            move_member_coupon(tx, id, "revoked", from, owned).await?;
+        for (from, ids) in by_status(&run.items) {
+            move_member_coupons(tx, &run.coupon_id, &ids, "revoked", &from).await?;
         }
         Ok(())
     }

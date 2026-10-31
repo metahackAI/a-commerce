@@ -63,7 +63,7 @@ impl Operation for CreateConditionalGift {
         method: Method::Post,
         path: "/v1/promotion/conditional-gifts",
         summary: "Add a gift product to orders whose subtotal before member benefits reaches a threshold, with a different gift per threshold if wanted, for a period.",
-        consumes: &[Slot::many("product_id"), Slot::one("tier_id")],
+        consumes: &[Slot::one("product_id")],
         produces: &[Slot::one("conditional_gift_id")],
         checks: &[
             "conditional_gift.trigger",
