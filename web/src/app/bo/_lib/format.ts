@@ -70,6 +70,20 @@ export function dateTime(s: string | null | undefined): string {
   return h ? `${day}, ${h}:${mi}` : day;
 }
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** A clock's face, the weekday first and no year: `2026-11-06T11:02:10-05:00` → `Fri Nov 6, 11:02`. */
+export function clockFace(s: string | null | undefined): string {
+  if (!s) return '—';
+  const m = STAMP.exec(s);
+  if (!m) return s;
+  const [, y, mo, d, h, mi] = m;
+  // The stamp's own calendar date, so the weekday doesn't move with the viewer's time zone.
+  const weekday = WEEKDAYS[new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d))).getUTCDay()];
+  const day = `${weekday} ${MONTHS[Number(mo) - 1]} ${Number(d)}`;
+  return h ? `${day}, ${h}:${mi}` : day;
+}
+
 /** The date part only: `Nov 6, 2026`. */
 export function date(s: string | null | undefined): string {
   if (!s) return '—';
