@@ -265,6 +265,37 @@ async fn lock_kind(tx: &mut TxCx, kind: &str) -> Result<(), ToolError> {
     Ok(())
 }
 
+/// Books one run of `kind` at `run_at` under a fixed `id`, so booking the same run again does
+/// nothing: a job that books its own next run (`loyalty.expire` tomorrow at midnight), or a
+/// domain scheduling follow-up work. The engine owns `platform.job`; domains schedule through
+/// this rather than writing the table. Returns whether the run was new.
+pub async fn book(
+    tx: &mut TxCx,
+    id: &str,
+    kind: &str,
+    run_at: DateTime<Utc>,
+    payload: &Value,
+) -> Result<bool, ToolError> {
+    let added = sqlx::query(
+        "INSERT INTO platform.job (tenant_id, id, kind, run_at, payload) VALUES ($1,$2,$3,$4,$5)
+         ON CONFLICT (tenant_id, id) DO NOTHING",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(kind)
+    .bind(run_at)
+    .bind(payload)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db_err)?
+    .rows_affected()
+        > 0;
+    if added {
+        job_event(tx, id, kind, JobState::Scheduled, run_at).await?;
+    }
+    Ok(added)
+}
+
 async fn insert_job(
     tx: &mut TxCx,
     kind: &str,

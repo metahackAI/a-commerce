@@ -20,7 +20,7 @@ use super::{
     LoyaltyTransactionType, NewEntry, insert, ledgers_with_expired_credit, offset_of, store_date,
     stored_money, to_expire,
 };
-use crate::repo::{self, db};
+use crate::repo;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -214,17 +214,14 @@ impl Job<Cx> for LoyaltyExpires {
             .time
             .parse(&format!("{next_day}T00:00"))
             .map_err(|e| ToolError::new(ErrorCode::INTERNAL, e.to_string()))?;
-        sqlx::query(
-            "INSERT INTO platform.job (tenant_id, id, kind, run_at, payload)
-             VALUES ($1, $2, $3, $4, '{}') ON CONFLICT (tenant_id, id) DO NOTHING",
+        acom_changeset::jobs::book(
+            tx,
+            &format!("job_loyalty_expire_{}", next_day.format("%Y%m%d")),
+            Self::META.kind,
+            next_at,
+            &json!({}),
         )
-        .bind(tx.tenant.as_str())
-        .bind(format!("job_loyalty_expire_{}", next_day.format("%Y%m%d")))
-        .bind(Self::META.kind)
-        .bind(next_at)
-        .execute(&mut *tx.tx)
-        .await
-        .map_err(db)?;
+        .await?;
         let events = if done.is_empty() {
             Vec::new()
         } else {
