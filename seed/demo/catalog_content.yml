@@ -106,8 +106,8 @@ products:
   summary: Cotton compact umbrella with auto open, strap closure, water-resistant canopy.
   keywords: [travel, city, rain, water-resistant]
   additional_property:
-  - {name: materials, value: 'canopy: cotton with a water-repellent finish; shaft: steel; ribs: fiberglass fiberglass; handle:
-      wood', unit_text: null}
+  - {name: materials, value: 'canopy: cotton with a water-repellent finish; shaft: steel; ribs: fiberglass; handle: wood',
+    unit_text: null}
   - name: dimensions
     value: [30, 6, 6]
     unit_text: cm
@@ -235,8 +235,8 @@ products:
   summary: Compact umbrella in cotton canvas with water-repellent finish canopy for city rain
   keywords: [city, rain, water-resistant]
   additional_property:
-  - {name: materials, value: 'canopy: cotton canvas with a water-repellent finish; shaft: steel; ribs: fiberglass fiberglass;
-      handle: wood', unit_text: null}
+  - {name: materials, value: 'canopy: cotton canvas with a water-repellent finish; shaft: steel; ribs: fiberglass; handle:
+      wood', unit_text: null}
   - name: dimensions
     value: [30, 6, 6]
     unit_text: cm
@@ -8146,7 +8146,7 @@ products:
   summary: Waxed leather hiking boots with leather lining and rubber lug outsole for hiking
   keywords: [hiking, outdoor, water-resistant]
   additional_property:
-  - {name: materials, value: 'upper: waxed full-grain leather; lining: leather; outsole: rubber lug lug', unit_text: null}
+  - {name: materials, value: 'upper: waxed full-grain leather; lining: leather; outsole: rubber lug', unit_text: null}
   - {name: weight, value: 1420, unit_text: g, size: '9'}
   - {name: closure, value: lace-up, unit_text: null}
   - {name: care, value: Wipe clean and condition the leather now and then., unit_text: null}
