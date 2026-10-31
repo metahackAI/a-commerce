@@ -17,6 +17,7 @@ members and sales history) under fixed counts and a fixed random seed.
 | `07_fulfillment.yml` | Deliveries of those orders, the 12 B2 return requests (`requested`), cus_4431's three completed returns with inspections and refunds, and the three delivery zones of `list_shipping_zones` (contiguous US with the policy's default values; Alaska and Hawaii, +$12.00; Puerto Rico and US territories, +$15.00) |
 | `08_messaging.yml` | Refund notices for cus_4431's completed returns; the weekly email template `tpl_weekly_email` and its sends: four sent Thursdays (Oct 8–29) and `cmp_weekly_1105`, failed Thu Nov 5 08:00 (list import failed) |
 | `09_supplier_sheet.yml` | Scene B4's supplier sheet `upl_fw26_supplier` (`fw26_supplier.xlsx`, 30 rows); the scene imports it |
+| `11_partner.yml` | Marketplace sellers (no scene uses them): Fieldstone Boot Co. `slr_fieldstone` (vendor organization `org_fieldstone`, sells the chelsea boots; contract `ctr_fieldstone` versions 1–2, monthly payouts, grade silver for October and gold for November) and Ridgeline Outdoor `slr_ridgeline` (fleece, merino tee, hiking socks; `ctr_ridgeline`, biweekly, kept at silver for November against a computed gold), both active; Harbor Goods LLC `slr_harbor_goods` under review since Nov 3; their status history |
 | `generate.yml` | Spec for the generator (not data) |
 | `flow.yml` | What shoppers do after the scene clock, for `cargo xtask sim` (not data; see below) |
 

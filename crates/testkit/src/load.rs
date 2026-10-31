@@ -26,6 +26,7 @@ pub const SCHEMAS: &[&str] = &[
     "sales",
     "fulfillment",
     "messaging",
+    "partner",
     "search",
     "analytics",
     "agent",
