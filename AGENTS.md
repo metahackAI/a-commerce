@@ -37,7 +37,7 @@ The whole server side is one Cargo workspace: `crates/` (libraries), `services/`
 - Business numbers come from `policies/*.yml` through `acom-policy`, never from constants in code or prompts.
 - `core`, `contract`, and `policy` do no I/O. Domain crates call each other only through exported service traits, never each other's tables. The agent crate never depends on a domain crate.
 - The agent can preview and draft change sets; it can never approve, run an approved change set, or call a person-only endpoint.
-- Before pushing: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`, `cargo xtask check-layout {domain}`.
+- Before pushing: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`, `cargo xtask check-layout`, `cargo xtask check-coverage` (CI runs all of them, with `check-schema` and `check-seed`).
 
 ## Database
 
