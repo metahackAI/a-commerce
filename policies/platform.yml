@@ -29,6 +29,12 @@ watchers:
     run_fix: ask                         # ask(사람 승인 대기) | standing_approval(미리 승인된 자동화로 바로 실행, 되돌리기 기한 적용)
     origin: automation
 
+# 할 일 맡기기: 감시 작업이 새로 연 agent_noticed 할 일을 사람이 열기 전에 운영 에이전트가 맡는다. docs/api/platform.md §task
+# 게이트웨이가 acts_as 운영자의 위임 토큰(human:* 스코프 없음)으로 할 일의 요청 문장을 턴으로 보낸다. 초안은 승인 대기에서 멈춘다.
+task_pickup:
+  enabled: false                         # 기본값. 스토어가 켠다
+  acts_as: null                          # 운영자 id(adm_…). 초안은 이 사람의 이름과 역할로 만들어진다
+
 roles:
   known_scopes: [tools, changeset, human, external, admin]   # check: roles.known_scopes. 스코프 앞부분(gateway.md §2). 이 밖의 스코프는 거부
   known_roles: [operator, merchandiser, catalog_admin, payout_approver, platform_admin]   # check: roles.known_roles. approval.yml approver_role 값 포함

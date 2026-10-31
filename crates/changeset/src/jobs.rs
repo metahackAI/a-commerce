@@ -616,7 +616,13 @@ async fn upsert_task(
     .execute(&mut *tx.tx)
     .await
     .map_err(db_err)?;
-    task_event(tx, &id, state.as_str(), None).await?;
+    // `created` and `origin` let a listener take up new work only (the gateway's task pickup).
+    notify(
+        tx,
+        "task.updated",
+        json!({"task_id": id, "state": state.as_str(), "created": true, "origin": origin.as_str()}),
+    )
+    .await?;
     Ok((
         TouchedTask {
             task_id: id,
