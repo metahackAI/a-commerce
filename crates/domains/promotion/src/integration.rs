@@ -11,12 +11,19 @@ use acom_contract::{ApprovalNeed, ChangeOp, ReadOp, ToolError, WriteOp};
 use acom_store::TxCx;
 use serde_json::{Value, json};
 
-use crate::coupon::{CreateCoupon, GetCoupon, IssueCoupon, ListMemberCoupons, SearchCoupons};
-use crate::loyalty::{GetLoyaltyBalance, ListLoyaltyTransactions};
-use crate::offer::SetSalePrices;
-use crate::promotion::{
-    EndPromotion, GetPromotion, ListActivePromotions, PausePromotion, SearchPromotions,
-};
+use crate::coupon::create_coupon::CreateCoupon;
+use crate::coupon::get_coupon::GetCoupon;
+use crate::coupon::issue_coupon::IssueCoupon;
+use crate::coupon::list_member_coupons::ListMemberCoupons;
+use crate::coupon::search_coupons::SearchCoupons;
+use crate::loyalty::get_loyalty_balance::GetLoyaltyBalance;
+use crate::loyalty::list_loyalty_transactions::ListLoyaltyTransactions;
+use crate::offer::set_sale_prices::SetSalePrices;
+use crate::promotion::end_promotion::EndPromotion;
+use crate::promotion::get_promotion::GetPromotion;
+use crate::promotion::list_active_promotions::ListActivePromotions;
+use crate::promotion::pause_promotion::PausePromotion;
+use crate::promotion::search_promotions::SearchPromotions;
 use crate::service::for_merchandising::{CategoryProducts, provide_category_products};
 use crate::testing::{operator_cx, shopper_cx};
 

@@ -1,9 +1,10 @@
 //! The `promotion` domain: promotions, member sale prices, coupons, benefits, loyalty, events, segments.
 //!
 //! Operations, inputs, outputs, checks, and errors are specified in `docs/api/promotion.md`.
-//! Layout: `model` (rules as pure functions), one module per resource with one type per
-//! operation implementing `ReadOp`/`WriteOp`, `repo` (SQL). Other domains are reached only
-//! through the service functions they export, never through their tables.
+//! Layout follows the API hierarchy (docs/backend/README.md §2.2): one folder per resource and
+//! one file per operation (`{resource}/{tool}.rs`), shared code of a resource in its `mod.rs`;
+//! `model` (rules as pure functions) and `repo` (SQL) serve the whole domain. Other domains are
+//! reached only through the service functions they export, never through their tables.
 
 pub mod benefit;
 pub mod service;
@@ -36,19 +37,19 @@ use serde_json::{Value, json};
 /// Adds every operation of this domain to the registry.
 pub fn register(b: &mut RegistryBuilder<Cx>) {
     benefit::register(b);
-    b.read(promotion::ListActivePromotions)
-        .read(promotion::SearchPromotions)
-        .read(promotion::GetPromotion)
-        .write(promotion::PausePromotion)
-        .write(promotion::EndPromotion)
-        .write(offer::SetSalePrices)
-        .write(coupon::CreateCoupon)
-        .write(coupon::IssueCoupon)
-        .read(coupon::SearchCoupons)
-        .read(coupon::GetCoupon)
-        .read(coupon::ListMemberCoupons)
-        .read(loyalty::GetLoyaltyBalance)
-        .read(loyalty::ListLoyaltyTransactions);
+    b.read(promotion::list_active_promotions::ListActivePromotions)
+        .read(promotion::search_promotions::SearchPromotions)
+        .read(promotion::get_promotion::GetPromotion)
+        .write(promotion::pause_promotion::PausePromotion)
+        .write(promotion::end_promotion::EndPromotion)
+        .write(offer::set_sale_prices::SetSalePrices)
+        .write(coupon::create_coupon::CreateCoupon)
+        .write(coupon::issue_coupon::IssueCoupon)
+        .read(coupon::search_coupons::SearchCoupons)
+        .read(coupon::get_coupon::GetCoupon)
+        .read(coupon::list_member_coupons::ListMemberCoupons)
+        .read(loyalty::get_loyalty_balance::GetLoyaltyBalance)
+        .read(loyalty::list_loyalty_transactions::ListLoyaltyTransactions);
     // Scheduled work (platform.job): starts and ends at the period's edges.
     b.job(schedule::PromotionStarts)
         .job(schedule::PromotionEnds);
