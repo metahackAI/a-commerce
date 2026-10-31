@@ -17,13 +17,15 @@ use acom_contract::{ErrorCode, ToolError};
 use acom_store::{Cx, TxCx};
 use serde_json::{Value, json};
 
-use crate::{model, repo};
+use crate::{index, lexicon, model, repo};
 
 /// The products a text query matches, with relevance, or `None` when there is no query. Synonyms
-/// widen what matches; the ranking counts how many of the shopper's words (each with its
-/// synonyms) a product covers, then the text rank, with the words they typed counting twice. Uses the search documents when the store has them, else the same
-/// weighted text built from the catalog (`query.expansion_fallback_keeps_ranking`: either way
-/// the ranking is `ts_rank` over the same weights).
+/// (from the dictionary of the index in use) widen what matches; the ranking counts how many of
+/// the shopper's words (each with its synonyms) and boosted words a product covers, then the text
+/// rank, with the words they typed counting twice. Uses the search documents that are up to date,
+/// and the same weighted text built from the catalog for the rest
+/// (`query.expansion_fallback_keeps_ranking`: either way the ranking is `ts_rank` over the same
+/// weights). A query with an excluded word finds nothing.
 pub(crate) async fn text_ranks(
     cx: &Cx,
     tx: &mut TxCx,
@@ -33,7 +35,21 @@ pub(crate) async fn text_ranks(
     let Some(query) = query.map(str::trim).filter(|q| !q.is_empty()) else {
         return Ok(None);
     };
-    let groups = model::synonyms(&cx.policy, "en");
+    // The dictionary of the index in use (`index.lexicon_change_requires_reindex`).
+    let language = lexicon::index_language(&cx.policy);
+    let dictionary = lexicon::in_use(tx, &cx.policy, &language).await?;
+    if dictionary
+        .as_ref()
+        .and_then(|d| d.excluded_in(query))
+        .is_some()
+    {
+        // `boost_exclude.exclude_means: zero_result`.
+        return Ok(Some(Vec::new()));
+    }
+    let groups = dictionary
+        .as_ref()
+        .map(|d| d.groups(query))
+        .unwrap_or_else(|| model::synonyms(&cx.policy, &language));
     let (Some(q), Some(own)) = (
         model::tsquery(&model::expand(query, &groups)),
         model::tsquery(&model::expand(query, &[])),
@@ -41,14 +57,29 @@ pub(crate) async fn text_ranks(
         // Only punctuation: nothing can match.
         return Ok(Some(Vec::new()));
     };
-    let concepts = model::concepts(query, &groups);
+    let mut concepts = model::concepts(query, &groups);
+    concepts.extend(dictionary.iter().flat_map(|d| d.boosts()));
     let rank = repo::Rank {
         query: &q,
         own: &own,
         concepts: &concepts,
     };
     if repo::has_documents(tx).await? {
-        return repo::rank_documents(tx, &rank, active_only).await.map(Some);
+        // Up-to-date documents rank from the index; the rest from the catalog text.
+        let facts = for_search::index_facts(tx, None).await?;
+        let versions = index::document_versions(tx).await?;
+        let stale = index::out_of_date(&facts, &versions);
+        let mut ranked = repo::rank_documents(tx, &rank, active_only, &stale).await?;
+        if !stale.is_empty() {
+            let texts: Vec<_> = for_search::product_texts(tx, active_only)
+                .await?
+                .into_iter()
+                .filter(|t| stale.contains(&t.id))
+                .collect();
+            let links = for_search::categories(tx, Some(&stale)).await?;
+            ranked.extend(repo::rank_texts(tx, &model::docs(&texts, &links), &rank).await?);
+        }
+        return Ok(Some(ranked));
     }
     let texts = for_search::product_texts(tx, active_only).await?;
     let links = for_search::categories(tx, None).await?;
