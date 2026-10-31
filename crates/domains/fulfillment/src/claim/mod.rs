@@ -1,37 +1,101 @@
-//! The shopper's choices before sending anything: `get_return_options` and
-//! `get_cancel_options`. They change nothing; the person-only endpoints in `person` compute the
-//! same thing again when the shopper presses the button.
+//! The `claim` resource (docs/api/fulfillment.md `## claim`): cancel, return and exchange
+//! claims. One file per operation; this module holds what they share: finding a claim the
+//! caller may see, loading a line as a return or a cancel sees it, the errors for lines that
+//! cannot be returned or cancelled, and the effects a cancel has besides the claim itself.
+
+pub(crate) mod approve_claim;
+pub(crate) mod cancel_my_order;
+pub(crate) mod evaluate_return_request;
+pub(crate) mod get_cancel_options;
+pub(crate) mod get_claim;
+pub(crate) mod get_return_options;
+pub(crate) mod reject_claim;
+pub(crate) mod search_claims;
+pub(crate) mod search_return_requests;
+pub(crate) mod send_return_request;
+pub(crate) mod withdraw_claim;
+
+pub use approve_claim::ApproveClaim;
+pub use cancel_my_order::CancelMyOrder;
+pub use evaluate_return_request::EvaluateReturnRequest;
+pub use get_cancel_options::GetCancelOptions;
+pub use get_claim::GetClaim;
+pub use get_return_options::GetReturnOptions;
+pub use reject_claim::RejectClaim;
+pub use search_claims::SearchClaims;
+pub use search_return_requests::SearchReturnRequests;
+pub use send_return_request::SendReturnRequest;
+pub use withdraw_claim::WithdrawClaim;
+
+use std::collections::BTreeMap;
 
 use acom_catalog::service::for_fulfillment as catalog;
-use acom_contract::{
-    ActionType, Audience, ErrorCode, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot,
-    ToolError,
-};
+use acom_contract::{Basis, Change, ChangeOp, ErrorCode, ToolError};
 use acom_core::Money;
-use acom_core::enums::{CancelReason, ClaimReason};
 use acom_promotion::service::for_fulfillment as promotion;
 use acom_sales::service::for_fulfillment as sales;
-use acom_store::{Cx, TxCx};
+use acom_store::TxCx;
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::errors::{
-    ALREADY_CANCELLED, ALREADY_SHIPPED, CLAIM_IN_PROGRESS, NOT_RETURNABLE, NOT_SHIPPED_YET,
-    NOT_YOUR_ORDER, ORDER_ITEM_NOT_FOUND, ORDER_NOT_FOUND, OUTSIDE_RETURN_WINDOW,
-    QUANTITY_OVER_CANCELLABLE, REASON_NOT_SELECTABLE, WHOLE_QUANTITY_ONLY,
-};
-use crate::model::cancel::{
-    CancelAsk, CancelBlock, CancelLine, CancelOrder, CouponLine, PaymentLine, cancel_outcome,
-};
+use crate::errors::*;
+use crate::model::cancel::{CancelBlock, CancelLine, CancelOrder, CouponLine, PaymentLine};
 use crate::model::delivery::{days_since, estimate, local_date, pickup_window};
 use crate::model::returns::{
     ClaimLine, OptionInputs, ReturnBlock, ReturnOption, ReturnableLine, Window, return_options,
     returnable,
 };
 use crate::model::{Rules, date_text};
-use crate::repo::{self, ClaimRow};
-use crate::{delivered_at, order_for, original_payment, payment_label, rules, shopper};
+use crate::repo::{self, ClaimRow, NewRefund};
+use crate::{delivered_at, order_for, original_payment, payment_label, shopper};
+
+pub(crate) fn claim_not_found(id: &str, next: &'static str) -> ToolError {
+    ToolError::new(CLAIM_NOT_FOUND, format!("There is no claim {id}."))
+        .detail(json!({"entity": "claim", "id": id}))
+        .next(next)
+}
+
+/// A claim the caller may see: shoppers only see their own (others look missing).
+pub(crate) async fn visible_claim(
+    tx: &mut TxCx,
+    claim_id: &str,
+    next: &'static str,
+) -> Result<ClaimRow, ToolError> {
+    let me = shopper(&tx.principal);
+    let claim = repo::claim(tx, claim_id)
+        .await?
+        .ok_or_else(|| claim_not_found(claim_id, next))?;
+    if me.as_deref().is_some_and(|m| m != claim.customer_id) {
+        return Err(claim_not_found(claim_id, next));
+    }
+    Ok(claim)
+}
+
+/// The order lines of each claim with what was paid for them, keyed by claim id.
+pub(crate) async fn claim_lines(
+    tx: &mut TxCx,
+    claim_ids: &[String],
+) -> Result<BTreeMap<String, Vec<ClaimLine>>, ToolError> {
+    let rows = repo::claim_items(tx, claim_ids).await?;
+    let item_ids: Vec<String> = rows.iter().map(|r| r.order_item_id.clone()).collect();
+    let items = sales::items(tx, &item_ids).await?;
+    let mut out: BTreeMap<String, Vec<ClaimLine>> = BTreeMap::new();
+    for r in rows {
+        let Some(i) = items.iter().find(|i| i.id == r.order_item_id) else {
+            continue;
+        };
+        out.entry(r.claim_id).or_default().push(ClaimLine {
+            order_item_id: i.id.clone(),
+            name: i.name.clone(),
+            unit_price: i.price,
+            ordered: i.order_quantity,
+            line_discount: i.discount,
+            quantity: r.order_quantity,
+        });
+    }
+    Ok(out)
+}
 
 /// Everything known about returning one line now.
 pub(crate) struct ReturnView {
@@ -223,86 +287,6 @@ pub(crate) fn options_for(
     Ok((q, return_options(rules, cx_policy, &line, &inputs)))
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct GetReturnOptionsInput {
-    /// The shopper's own order, from `get_my_orders`.
-    #[schemars(regex(pattern = r"^ord_[a-z0-9_]+$"), example = &"ord_20402")]
-    pub order_id: String,
-    /// The order line to return.
-    #[schemars(regex(pattern = r"^oln_[a-z0-9_]+$"), example = &"oln_20402_1")]
-    pub order_item_id: String,
-    /// Why. Store fault: defect, damaged_in_transit, not_as_described, wrong_item_sent,
-    /// wrong_option_sent, missing_parts. Shopper's choice: wrong_size,
-    /// different_option_wanted, changed_mind.
-    #[schemars(example = &"defect")]
-    pub reason: ClaimReason,
-    /// Units to return, 1 or more. Every unit of the line when left out.
-    #[schemars(range(min = 1), example = 1)]
-    pub quantity: Option<u32>,
-}
-
-pub struct GetReturnOptions;
-
-impl Operation for GetReturnOptions {
-    const META: OpMeta = OpMeta {
-        address: "fulfillment.claim.get_return_options",
-        tool: "get_return_options",
-        group: Group::Transact,
-        kind: Kind::Read,
-        method: Method::Get,
-        path: "/v1/fulfillment/orders/{order_id}/items/{order_item_id}/return-options",
-        summary: "The shopper's choices for returning one of their order lines: a replacement or a refund, each with when it happens, what they pay, who confirms it, and how the item goes back. Only the shopper's button sends the request.",
-        consumes: &[Slot::one("order_id"), Slot::one("order_item_id")],
-        produces: &[],
-        checks: &[],
-        errors: &[
-            ORDER_NOT_FOUND,
-            ORDER_ITEM_NOT_FOUND,
-            NOT_YOUR_ORDER,
-            OUTSIDE_RETURN_WINDOW,
-            NOT_RETURNABLE,
-            NOT_SHIPPED_YET,
-            CLAIM_IN_PROGRESS,
-        ],
-        audience: Audience::Shopper,
-        action_type: ActionType::SEARCH,
-        person_scope: "",
-    };
-    type Input = GetReturnOptionsInput;
-    type Output = Value;
-}
-
-impl ReadOp<Cx> for GetReturnOptions {
-    async fn read(&self, cx: &Cx, input: GetReturnOptionsInput) -> Result<Value, ToolError> {
-        let rules = rules(&cx.policy)?;
-        let now = cx.clock.now();
-        let quantity = input.quantity.map(|q| i32::try_from(q).unwrap_or(i32::MAX));
-        let mut tx = cx.read().await.map_err(ToolError::from)?;
-        let view = return_view(
-            &mut tx,
-            &input.order_id,
-            &input.order_item_id,
-            quantity,
-            now,
-            cx.time.zone,
-        )
-        .await?;
-        tx.commit().await.map_err(ToolError::from)?;
-        let (_, options) = options_for(
-            &rules,
-            &cx.policy,
-            &view,
-            input.reason.as_str(),
-            quantity,
-            now,
-            &cx.time,
-        )?;
-        let total = options.len();
-        Ok(json!({"items": options, "total": total}))
-    }
-}
-
 /// Loads an order as the cancel model sees it.
 /// `exclude` leaves one claim out (the request an operator is approving).
 pub(crate) async fn cancel_view(
@@ -440,21 +424,6 @@ pub struct CancelItemInput {
     pub quantity: u32,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct GetCancelOptionsInput {
-    /// The shopper's own order.
-    #[schemars(regex(pattern = r"^ord_[a-z0-9_]+$"), example = &"ord_20455")]
-    pub order_id: String,
-    /// Lines and units to try cancelling. The whole order when left out.
-    #[schemars(example = json!([{"order_item_id": "oln_1", "quantity": 1}]))]
-    pub items: Option<Vec<CancelItemInput>>,
-    /// Why; decides who is at fault and so shipping and restores. changed_mind (the most
-    /// careful estimate) when left out.
-    #[schemars(example = &"changed_mind")]
-    pub reason: Option<CancelReason>,
-}
-
 pub(crate) fn asked_items(items: &Option<Vec<CancelItemInput>>) -> Option<Vec<(String, i32)>> {
     items.as_ref().map(|l| {
         l.iter()
@@ -468,63 +437,274 @@ pub(crate) fn asked_items(items: &Option<Vec<CancelItemInput>>) -> Option<Vec<(S
     })
 }
 
-pub struct GetCancelOptions;
-
-impl Operation for GetCancelOptions {
-    const META: OpMeta = OpMeta {
-        address: "fulfillment.claim.get_cancel_options",
-        tool: "get_cancel_options",
-        group: Group::Transact,
-        kind: Kind::Read,
-        method: Method::Get,
-        path: "/v1/fulfillment/orders/{order_id}/cancel-options",
-        summary: "Prepare a cancel of the shopper's own order: which lines and units can be cancelled, the reasons they may pick, the refund estimate by payment method, restored coupons, any extra shipping charge, and who confirms. Only the shopper's button sends it.",
-        consumes: &[Slot::one("order_id")],
-        produces: &[],
-        checks: &[],
-        errors: &[
-            ORDER_NOT_FOUND,
-            NOT_YOUR_ORDER,
-            ORDER_ITEM_NOT_FOUND,
-            QUANTITY_OVER_CANCELLABLE,
-            WHOLE_QUANTITY_ONLY,
-            ALREADY_SHIPPED,
-            ALREADY_CANCELLED,
-            CLAIM_IN_PROGRESS,
-            REASON_NOT_SELECTABLE,
-        ],
-        audience: Audience::Shopper,
-        action_type: ActionType::CANCEL,
-        person_scope: "",
-    };
-    type Input = GetCancelOptionsInput;
-    type Output = Value;
+pub(crate) fn invalid_state(c: &ClaimRow, allowed: &[&str]) -> ToolError {
+    ToolError::new(
+        ErrorCode::INVALID_STATE,
+        format!(
+            "Claim {} is {}; this is not possible now.",
+            c.id,
+            c.claim_status.replace('_', " ")
+        ),
+    )
+    .detail(json!({"entity": "claim", "from": c.claim_status, "allowed_to": allowed}))
+    .next("get_claim")
 }
 
-impl ReadOp<Cx> for GetCancelOptions {
-    async fn read(&self, cx: &Cx, input: GetCancelOptionsInput) -> Result<Value, ToolError> {
-        let rules = rules(&cx.policy)?;
-        let me = shopper(&cx.principal);
-        let mut tx = cx.read().await.map_err(ToolError::from)?;
-        let order = order_for(&mut tx, &input.order_id, me.as_deref(), "get_my_orders").await?;
-        let view = cancel_view(&mut tx, &order, None).await?;
-        tx.commit().await.map_err(ToolError::from)?;
-        let asked = asked_items(&input.items);
-        let outcome = cancel_outcome(
-            &rules,
-            &view,
-            CancelAsk {
-                items: asked.as_deref(),
-                reason: input.reason.map(CancelReason::as_str),
-                ..CancelAsk::default()
+/// One claim's approval, fixed at preview time.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ApproveStep {
+    pub claim_id: String,
+    pub claim_type: String,
+    pub order_id: String,
+    pub from_status: String,
+    pub to_status: String,
+    /// The liability before and after, when the operator changed it.
+    pub liability_change: Option<(String, String)>,
+    /// `(order_item_id, status before)` for whole lines that become cancelled.
+    pub lines_cancelled: Vec<(String, String)>,
+    /// `(variant_id, units)` to put back in stock.
+    pub restock: Vec<(String, i32)>,
+    /// `(delivery_id, state before)` for parcels that are cancelled.
+    pub deliveries_cancelled: Vec<(String, String)>,
+    pub coupons_restored: Vec<String>,
+    /// The order's status before, when the whole order becomes cancelled.
+    pub order_cancelled_from: Option<String>,
+    pub refund: Option<PlannedRefund>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlannedRefund {
+    pub refund_id: String,
+    pub payment_id: Option<String>,
+    pub amount: Money,
+    pub refund_method: String,
+    pub refund_type: String,
+    pub to: String,
+}
+
+/// `Store fault: store pays both shipping legs`, from `liability.pays`.
+pub(crate) fn pays_sentence(rules: &crate::model::Rules, liability: &str) -> String {
+    let who = liability.replace('_', " ");
+    let mut who = who.chars();
+    let who: String = who
+        .next()
+        .map(|f| f.to_uppercase().chain(who).collect())
+        .unwrap_or_default();
+    let pays = rules
+        .liability_pays
+        .get(liability)
+        .map(|p| {
+            p.iter()
+                .map(|x| x.replace('_', " "))
+                .collect::<Vec<_>>()
+                .join(" and ")
+        })
+        .unwrap_or_default();
+    let payer = if liability == "customer_fault" {
+        "customer"
+    } else {
+        "store"
+    };
+    if pays.is_empty() {
+        format!("{who}: nobody pays shipping")
+    } else {
+        format!("{who}: {payer} pays {pays}")
+    }
+}
+
+/// What a cancel of `asked` lines does besides the claim: whole lines cancelled, stock put
+/// back, parcels stopped, with the preview changes and the rows read.
+pub(crate) struct CancelEffects {
+    pub lines_cancelled: Vec<(String, String)>,
+    pub restock: Vec<(String, i32)>,
+    pub deliveries_cancelled: Vec<(String, String)>,
+    pub stock_changes: Vec<Change>,
+    pub parcel_changes: Vec<Change>,
+    pub basis: Vec<Basis>,
+}
+
+pub(crate) async fn cancel_effects(
+    tx: &mut TxCx,
+    order_id: &str,
+    view: &crate::model::cancel::CancelOrder,
+    asked: &[(String, i32)],
+) -> Result<CancelEffects, ToolError> {
+    let lines = sales::order_items(tx, order_id).await?;
+    let mut fx = CancelEffects {
+        lines_cancelled: Vec::new(),
+        restock: Vec::new(),
+        deliveries_cancelled: Vec::new(),
+        stock_changes: Vec::new(),
+        parcel_changes: Vec::new(),
+        basis: Vec::new(),
+    };
+    for (id, units) in asked {
+        let Some(l) = lines.iter().find(|l| &l.id == id) else {
+            continue;
+        };
+        let left = view
+            .lines
+            .iter()
+            .find(|v| &v.order_item_id == id)
+            .map_or(0, |v| v.ordered - v.already_cancelled);
+        if *units >= left {
+            fx.lines_cancelled
+                .push((l.id.clone(), l.order_item_status.clone()));
+        }
+        if let Some(v) = catalog::variant(tx, &l.variant_id).await?
+            && v.is_managed
+            && let Some(s) = &v.stock
+        {
+            fx.stock_changes.push(Change {
+                op: ChangeOp::Update,
+                entity: "inventory_level".into(),
+                id: v.id.clone(),
+                from: json!(s.inventory_level),
+                to: json!(s.inventory_level + units),
+                note: None,
+            });
+            fx.restock.push((v.id.clone(), *units));
+        }
+    }
+    let deliveries = repo::deliveries_of_orders(tx, &[order_id.to_owned()]).await?;
+    for d in &deliveries {
+        let lines_in: Vec<String> = match &d.item_shipped {
+            Some(Value::Array(l)) => l
+                .iter()
+                .filter_map(|x| {
+                    x.get("order_item_id")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned)
+                })
+                .collect(),
+            _ => lines.iter().map(|l| l.id.clone()).collect(),
+        };
+        let all_gone = lines_in.iter().all(|id| {
+            fx.lines_cancelled.iter().any(|(x, _)| x == id)
+                || lines
+                    .iter()
+                    .any(|l| &l.id == id && l.order_item_status == "cancelled")
+        });
+        if all_gone && !matches!(d.delivery_state.as_str(), "cancelled" | "delivered") {
+            fx.parcel_changes.push(Change {
+                op: ChangeOp::Update,
+                entity: "parcel_delivery".into(),
+                id: d.id.clone(),
+                from: json!(d.delivery_state),
+                to: json!("cancelled"),
+                note: None,
+            });
+            fx.basis.push(Basis {
+                entity: "fulfillment.parcel_delivery".into(),
+                id: d.id.clone(),
+                version: i64::from(d.version),
+            });
+            fx.deliveries_cancelled
+                .push((d.id.clone(), d.delivery_state.clone()));
+        }
+    }
+    Ok(fx)
+}
+
+/// Applies a step's effects besides the claim's own status: liability, cancelled lines,
+/// stock, parcels, coupons, the order's status and the refund.
+pub(crate) async fn apply_effects(
+    tx: &mut TxCx,
+    s: &ApproveStep,
+    instrument: &str,
+) -> Result<(), ToolError> {
+    if let Some((_, to)) = &s.liability_change {
+        repo::set_liability(tx, &s.claim_id, to).await?;
+    }
+    for (line, _) in &s.lines_cancelled {
+        sales::set_item_status(tx, line, "cancelled").await?;
+    }
+    for (variant, units) in &s.restock {
+        catalog::move_stock(tx, variant, *units).await?;
+    }
+    for (delivery, _) in &s.deliveries_cancelled {
+        repo::set_delivery_state(tx, delivery, "cancelled").await?;
+    }
+    promotion::restore_coupons(tx, &s.coupons_restored).await?;
+    if s.order_cancelled_from.is_some() {
+        sales::set_order_status(tx, &s.order_id, "cancelled", "CancelAction", instrument).await?;
+    }
+    if let Some(r) = &s.refund {
+        repo::insert_refund(
+            tx,
+            &NewRefund {
+                id: &r.refund_id,
+                claim_id: &s.claim_id,
+                order_id: &s.order_id,
+                payment_id: r.payment_id.as_deref(),
+                amount: r.amount,
+                refund_method: &r.refund_method,
+                refund_type: &r.refund_type,
             },
-            cx.clock.now(),
         )
-        .map_err(cancel_block_error)?;
-        let total = outcome.items.len();
-        let mut out = serde_json::to_value(&outcome)
-            .map_err(|e| ToolError::new(ErrorCode::INTERNAL, e.to_string()))?;
-        out["total"] = json!(total);
-        Ok(out)
+        .await?;
+    }
+    Ok(())
+}
+
+pub(crate) fn not_yours() -> ToolError {
+    ToolError::new(
+        NOT_YOUR_ORDER,
+        "Only the shopper who placed the order can do this.",
+    )
+    .detail(json!({"reason": "owner"}))
+}
+
+pub(crate) fn changed(what: &str, new: Value) -> ToolError {
+    ToolError::new(
+        ErrorCode::ESTIMATE_CHANGED,
+        format!("The {what} changed since you looked; please check the new amount."),
+    )
+    .detail(json!({"new_preview": new}))
+}
+
+/// The pickup window the shopper picked.
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct WindowInput {
+    /// Start, RFC 3339.
+    #[schemars(example = &"2026-11-09T09:00:00-05:00")]
+    pub start: String,
+    /// End, RFC 3339.
+    #[schemars(example = &"2026-11-09T12:00:00-05:00")]
+    pub end: String,
+}
+
+/// Where money goes when the original payment can no longer be reversed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RefundDestination {
+    /// A bank account the shopper saved.
+    BankAccount,
+    /// Store credit on the shopper's account.
+    StoreCredit,
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RefundToInput {
+    /// bank_account or store_credit.
+    #[serde(rename = "type")]
+    #[schemars(example = &"store_credit")]
+    pub destination: RefundDestination,
+    /// The saved account reference (never the account number itself); none for store credit.
+    #[serde(rename = "ref")]
+    #[schemars(example = &"bank_1")]
+    pub reference: Option<String>,
+}
+
+impl RefundToInput {
+    /// As recorded on the claim's event: `{type, ref}`.
+    fn wire(&self) -> Value {
+        let kind = match self.destination {
+            RefundDestination::BankAccount => "bank_account",
+            RefundDestination::StoreCredit => "store_credit",
+        };
+        json!({"type": kind, "ref": self.reference})
     }
 }

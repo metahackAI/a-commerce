@@ -1,4 +1,4 @@
-//! Parcels: `get_delivery_dates` (when a product can arrive), `get_delivery`, `track_shipment`.
+//! `get_delivery_dates`: the earliest day a product can arrive at an address.
 
 use acom_catalog::service::for_fulfillment as catalog;
 use acom_contract::{
@@ -6,21 +6,16 @@ use acom_contract::{
 };
 use acom_core::Money;
 use acom_customer::service::for_fulfillment as customer;
-use acom_sales::service::for_fulfillment as sales;
-use acom_store::{Cx, Page, TxCx};
+use acom_store::Cx;
 use chrono::NaiveDate;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::errors::{
-    ADDRESS_NOT_DELIVERABLE, ADDRESS_NOT_FOUND, DELIVERY_NOT_FOUND, OUT_OF_STOCK,
-    PRODUCT_NOT_FOUND, TRACKING_NOT_FOUND,
-};
+use crate::errors::*;
 use crate::model::delivery::{estimate, local_date};
 use crate::model::money_text;
-use crate::repo::{self, DeliveryRow};
-use crate::{rules, select, shopper};
+use crate::{rules, shopper};
 
 /// Which address the estimate is for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
@@ -248,227 +243,4 @@ fn out_of_stock(product_id: &str) -> ToolError {
     ToolError::new(OUT_OF_STOCK, "That size and color is out of stock.")
         .detail(json!({"product_id": product_id}))
         .next("get_product")
-}
-
-/// A delivery the caller may see: shoppers only see parcels of their own orders.
-async fn visible_delivery(
-    tx: &mut TxCx,
-    d: Option<DeliveryRow>,
-) -> Result<Option<DeliveryRow>, ToolError> {
-    let Some(d) = d else {
-        return Ok(None);
-    };
-    if let Some(me) = shopper(&tx.principal) {
-        let owner = sales::order(tx, &d.order_id)
-            .await?
-            .and_then(|o| o.customer_id);
-        if owner.as_deref() != Some(me.as_str()) {
-            return Ok(None);
-        }
-    }
-    Ok(Some(d))
-}
-
-/// The parcel's history as carrier events: picked up when shipped, delivered when delivered,
-/// and the current state when no event explains it.
-fn events(cx: &Cx, d: &DeliveryRow) -> Vec<Value> {
-    let place = {
-        let a = &d.delivery_address;
-        match (
-            a.get("address_locality").and_then(Value::as_str),
-            a.get("address_region").and_then(Value::as_str),
-        ) {
-            (Some(city), Some(region)) => Some(format!("{city}, {region}")),
-            (Some(city), None) => Some(city.to_owned()),
-            _ => None,
-        }
-    };
-    let mut out = Vec::new();
-    if let Some(t) = d.shipped_at {
-        out.push(json!({"at": cx.time.format(t), "delivery_state": "picked_up", "location": null}));
-    }
-    if let Some(t) = d.delivered_at {
-        out.push(
-            json!({"at": cx.time.format(t), "delivery_state": "delivered", "location": place}),
-        );
-    }
-    // A parcel in transit has no scan of its own beyond the pickup: the pickup is its last event.
-    // Another state shows when the row last changed, but only when that time makes sense (after
-    // the pickup, not after now); a row's write time is not a carrier scan.
-    let covered = (d.delivery_state == "delivered" && d.delivered_at.is_some())
-        || (matches!(d.delivery_state.as_str(), "picked_up" | "in_transit")
-            && d.shipped_at.is_some());
-    let plausible =
-        d.shipped_at.is_none_or(|s| d.updated_at >= s) && d.updated_at <= cx.clock.now();
-    if !covered && plausible {
-        out.push(
-            json!({"at": cx.time.format(d.updated_at), "delivery_state": d.delivery_state,
-                        "location": null}),
-        );
-    }
-    out
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct GetDeliveryInput {
-    /// The parcel.
-    #[schemars(regex(pattern = r"^dlv_[a-z0-9_]+$"), example = &"dlv_20402")]
-    pub delivery_id: String,
-    /// Top-level fields to return, for example only the state.
-    #[schemars(example = ["delivery_state", "expected_arrival_until"])]
-    pub fields: Option<Vec<String>>,
-}
-
-pub struct GetDelivery;
-
-impl Operation for GetDelivery {
-    const META: OpMeta = OpMeta {
-        address: "fulfillment.parcel_delivery.get",
-        tool: "get_delivery",
-        group: Group::Transact,
-        kind: Kind::Read,
-        method: Method::Get,
-        path: "/v1/fulfillment/deliveries/{delivery_id}",
-        summary: "One parcel: where it goes, carrier and tracking number, its state and history, and when it is expected.",
-        consumes: &[Slot::one("delivery_id")],
-        produces: &[Slot::one("order_id")],
-        checks: &[],
-        errors: &[DELIVERY_NOT_FOUND],
-        audience: Audience::Both,
-        action_type: ActionType::SEARCH,
-        person_scope: "",
-    };
-    type Input = GetDeliveryInput;
-    type Output = Value;
-}
-
-impl ReadOp<Cx> for GetDelivery {
-    async fn read(&self, cx: &Cx, input: GetDeliveryInput) -> Result<Value, ToolError> {
-        let mut tx = cx.read().await.map_err(ToolError::from)?;
-        let row = repo::delivery(&mut tx, &input.delivery_id).await?;
-        let d = visible_delivery(&mut tx, row).await?.ok_or_else(|| {
-            ToolError::new(
-                DELIVERY_NOT_FOUND,
-                format!("There is no parcel {}.", input.delivery_id),
-            )
-            .detail(json!({"entity": "parcel_delivery", "id": input.delivery_id}))
-            .next("get_order")
-        })?;
-        tx.commit().await.map_err(ToolError::from)?;
-        let zone = cx.time.zone;
-        let out = json!({
-            "id": d.id,
-            "order_id": d.order_id,
-            "delivery_address": d.delivery_address.get("street_address"),
-            "tracking_number": d.tracking_number,
-            "tracking_url": d.tracking_url,
-            "carrier": d.carrier,
-            "has_delivery_method": d.has_delivery_method,
-            "delivery_state": d.delivery_state,
-            "expected_arrival_until": d.expected_arrival_until.map(|t| local_date(t, zone).to_string()),
-            "events": events(cx, &d),
-        });
-        Ok(select(out, &input.fields.unwrap_or_default()))
-    }
-}
-
-/// How to find the parcel.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum TrackBy {
-    /// By the parcel id (`delivery_id`).
-    Delivery,
-    /// By the carrier's tracking number (`tracking_number`).
-    TrackingNumber,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct TrackShipmentInput {
-    /// delivery: find it by delivery_id; tracking_number: by the carrier's number.
-    #[schemars(example = &"delivery")]
-    pub mode: TrackBy,
-    /// The parcel, when mode is delivery.
-    #[schemars(regex(pattern = r"^dlv_[a-z0-9_]+$"), example = &"dlv_20402")]
-    pub delivery_id: Option<String>,
-    /// The carrier's tracking number, when mode is tracking_number.
-    #[schemars(length(min = 1, max = 64), example = &"1ZNW204020001")]
-    pub tracking_number: Option<String>,
-    /// Page size, 1–100. Default 20.
-    #[schemars(range(min = 1, max = 100), example = 20)]
-    pub limit: Option<u32>,
-    /// `next_cursor` from the previous page.
-    #[schemars(example = &"o20")]
-    pub cursor: Option<String>,
-}
-
-pub struct TrackShipment;
-
-impl Operation for TrackShipment {
-    const META: OpMeta = OpMeta {
-        address: "fulfillment.parcel_delivery.track",
-        tool: "track_shipment",
-        group: Group::Transact,
-        kind: Kind::Read,
-        method: Method::Get,
-        path: "/v1/fulfillment/deliveries/{delivery_id}/tracking",
-        summary: "The carrier's tracking events for a parcel, found by parcel id or tracking number.",
-        consumes: &[Slot::one("delivery_id")],
-        produces: &[],
-        checks: &[],
-        errors: &[TRACKING_NOT_FOUND],
-        audience: Audience::Both,
-        action_type: ActionType::SEARCH,
-        person_scope: "",
-    };
-    type Input = TrackShipmentInput;
-    type Output = Value;
-}
-
-impl ReadOp<Cx> for TrackShipment {
-    async fn read(&self, cx: &Cx, input: TrackShipmentInput) -> Result<Value, ToolError> {
-        let page = Page::new(input.limit, input.cursor.as_deref())?;
-        let mut tx = cx.read().await.map_err(ToolError::from)?;
-        let row = match input.mode {
-            TrackBy::Delivery => match &input.delivery_id {
-                Some(id) => repo::delivery(&mut tx, id).await?,
-                None => {
-                    return Err(ToolError::invalid_input("mode delivery needs delivery_id.")
-                        .detail(json!({"field": "delivery_id", "reason": "missing"})));
-                }
-            },
-            TrackBy::TrackingNumber => match &input.tracking_number {
-                Some(n) => repo::delivery_by_tracking(&mut tx, n).await?,
-                None => {
-                    return Err(ToolError::invalid_input(
-                        "mode tracking_number needs tracking_number.",
-                    )
-                    .detail(json!({"field": "tracking_number", "reason": "missing"})));
-                }
-            },
-        };
-        let d = visible_delivery(&mut tx, row).await?.ok_or_else(|| {
-            ToolError::new(
-                TRACKING_NOT_FOUND,
-                "No parcel matches that tracking request.",
-            )
-            .detail(json!({"entity": "parcel_delivery"}))
-            .next("get_delivery")
-        })?;
-        tx.commit().await.map_err(ToolError::from)?;
-        let all = events(cx, &d);
-        let total = all.len() as i64;
-        let items: Vec<Value> = all
-            .into_iter()
-            .skip(usize::try_from(page.offset).unwrap_or(0))
-            .take(usize::try_from(page.limit).unwrap_or(0))
-            .collect();
-        let mut out = json!({"items": items, "total": total, "delivery_id": d.id,
-                             "carrier": d.carrier, "tracking_number": d.tracking_number});
-        if let Some(next) = page.next_cursor(items.len(), total) {
-            out["next_cursor"] = json!(next);
-        }
-        Ok(out)
-    }
 }

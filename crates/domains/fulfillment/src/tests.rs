@@ -17,12 +17,13 @@ use acom_core::{FixedClock, StoreTime, TenantId};
 use acom_store::{Cx, Db};
 use serde_json::{Value, json};
 
-use crate::claim::{EvaluateReturnRequest, GetClaim, SearchClaims, SearchReturnRequests};
-use crate::decide::{ApproveClaim, RejectClaim};
-use crate::delivery::{GetDelivery, GetDeliveryDates, TrackShipment};
+use crate::claim::{
+    ApproveClaim, CancelMyOrder, EvaluateReturnRequest, GetCancelOptions, GetClaim,
+    GetReturnOptions, RejectClaim, SearchClaims, SearchReturnRequests, SendReturnRequest,
+    WithdrawClaim,
+};
 use crate::model::tests::policy;
-use crate::options::{GetCancelOptions, GetReturnOptions};
-use crate::person::{CancelMyOrder, SendReturnRequest, WithdrawClaim};
+use crate::parcel_delivery::{GetDelivery, GetDeliveryDates, TrackShipment};
 use crate::refund::{GetRefund, RefundReturn};
 
 const NY: chrono_tz::Tz = chrono_tz::America::New_York;
@@ -168,23 +169,25 @@ async fn track_shipment_refuses_a_cursor_it_did_not_make() {
 #[test]
 fn inputs_reject_unknown_fields_and_bad_words() {
     assert!(
-        serde_json::from_value::<crate::refund::RefundReturnInput>(
+        serde_json::from_value::<crate::refund::refund_return::RefundReturnInput>(
             json!({"claim_id": "clm_20402", "amount": 1})
         )
         .is_err()
     );
     assert!(
-        serde_json::from_value::<crate::options::GetReturnOptionsInput>(
+        serde_json::from_value::<crate::claim::get_return_options::GetReturnOptionsInput>(
             json!({"order_id": "ord_20402", "order_item_id": "oln_20402_1", "reason": "broken"})
         )
         .is_err()
     );
     assert!(
-        serde_json::from_value::<crate::person::SendReturnRequestInput>(json!({
-            "order_id": "ord_20402", "items": [{"order_item_id": "oln_20402_1", "quantity": 1}],
-            "reason": "defect", "kind": "refund", "send_back_method": "pickup",
-            "refund_to": {"type": "store_credit", "ref": null}
-        }))
+        serde_json::from_value::<crate::claim::send_return_request::SendReturnRequestInput>(
+            json!({
+                "order_id": "ord_20402", "items": [{"order_item_id": "oln_20402_1", "quantity": 1}],
+                "reason": "defect", "kind": "refund", "send_back_method": "pickup",
+                "refund_to": {"type": "store_credit", "ref": null}
+            })
+        )
         .is_ok()
     );
 }
@@ -410,12 +413,12 @@ async fn f5_alex_sends_the_refund_request() {
     .await
     .unwrap();
     let now = cx.clock.now();
-    let view = crate::options::return_view(&mut tx, "ord_20402", "oln_20402_1", None, now, NY)
+    let view = crate::claim::return_view(&mut tx, "ord_20402", "oln_20402_1", None, now, NY)
         .await
         .unwrap();
     let rules = crate::rules(&cx.policy).unwrap();
     let (_, options) =
-        crate::options::options_for(&rules, &cx.policy, &view, "defect", None, now, &cx.time)
+        crate::claim::options_for(&rules, &cx.policy, &view, "defect", None, now, &cx.time)
             .unwrap();
     assert_eq!(
         options[0].facts,

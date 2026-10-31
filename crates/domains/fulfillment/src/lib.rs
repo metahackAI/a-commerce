@@ -1,20 +1,19 @@
 //! The `fulfillment` domain: claims (cancel, return, exchange), inspection, refunds, deliveries, shipping rates.
 //!
 //! Operations, inputs, outputs, checks, and errors are specified in `docs/api/fulfillment.md`.
-//! Layout: `model` (pure business rules, unit-tested against scenes B2 and F5), one module per
-//! resource with one type per operation (`claim`, `options`, `decide`, `refund`, `delivery`,
-//! and the person-only endpoints in `person`), `repo` (SQL). Other domains are reached only
-//! through their `service` modules, never through their tables.
+//! Layout follows the API hierarchy `fulfillment.{resource}.{operation}`: one folder per
+//! resource (`claim`, `inspection`, `refund`, `parcel_delivery`, `shipping_rate`) with one file
+//! per operation, named by its tool (person-only endpoints included), and the resource's shared
+//! code in its `mod.rs`. Domain-wide: `model` (pure business rules, unit-tested against scenes B2
+//! and F5), `repo` (SQL). Other domains are reached only through their `service` modules, never
+//! through their tables.
 
 pub mod errors;
 pub mod model;
 pub mod service;
 
 mod claim;
-mod decide;
-mod delivery;
-mod options;
-mod person;
+mod parcel_delivery;
 mod refund;
 mod repo;
 #[cfg(test)]
@@ -39,18 +38,18 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .read(claim::EvaluateReturnRequest)
         .read(claim::SearchClaims)
         .read(claim::GetClaim)
-        .read(options::GetReturnOptions)
-        .read(options::GetCancelOptions)
-        .write(decide::ApproveClaim)
-        .write(decide::RejectClaim)
+        .read(claim::GetReturnOptions)
+        .read(claim::GetCancelOptions)
+        .write(claim::ApproveClaim)
+        .write(claim::RejectClaim)
         .write(refund::RefundReturn)
         .read(refund::GetRefund)
-        .read(delivery::GetDeliveryDates)
-        .read(delivery::GetDelivery)
-        .read(delivery::TrackShipment)
-        .person(person::SendReturnRequest)
-        .person(person::CancelMyOrder)
-        .person(person::WithdrawClaim);
+        .read(parcel_delivery::GetDeliveryDates)
+        .read(parcel_delivery::GetDelivery)
+        .read(parcel_delivery::TrackShipment)
+        .person(claim::SendReturnRequest)
+        .person(claim::CancelMyOrder)
+        .person(claim::WithdrawClaim);
     // Scheduled work (platform.job): the watcher over waiting return requests.
     b.job(watch::ReturnsOverRefundThreshold);
 }
