@@ -108,6 +108,15 @@
       "rdfs:comment": "A versioned list of previewed actions that a person approves, runs, and can undo together. Used as additionalType on an ItemList."
     },
     {
+      "@id": "acom:Channel",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Channel",
+      "rdfs:subClassOf": {
+        "@id": "schema:WebAPI"
+      },
+      "rdfs:comment": "an outside system the store is connected to: a marketplace, a carrier, a payment provider or a fulfillment service. id prefix chn_."
+    },
+    {
       "@id": "acom:Claim",
       "@type": "rdfs:Class",
       "rdfs:label": "Claim",
@@ -232,6 +241,24 @@
         "@id": "schema:Offer"
       },
       "rdfs:comment": "A prize for one rank of an event. Used as additionalType on an Offer."
+    },
+    {
+      "@id": "acom:ExternalClaim",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ExternalClaim",
+      "rdfs:subClassOf": {
+        "@id": "schema:ReturnAction"
+      },
+      "rdfs:comment": "a cancel, return or exchange request as an outside channel holds it, the copy last received from the channel. Key: channel and the channel's claim reference."
+    },
+    {
+      "@id": "acom:ExternalOrder",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ExternalOrder",
+      "rdfs:subClassOf": {
+        "@id": "schema:Order"
+      },
+      "rdfs:comment": "an order as an outside channel holds it, the copy last received from the channel. Key: channel and the channel's order reference."
     },
     {
       "@id": "acom:GiftOrder",
@@ -565,6 +592,15 @@
         "@id": "schema:StructuredValue"
       },
       "rdfs:comment": "What a member must reach to hold a tier (spend, order count, points) over a window."
+    },
+    {
+      "@id": "acom:WebhookEvent",
+      "@type": "rdfs:Class",
+      "rdfs:label": "WebhookEvent",
+      "rdfs:subClassOf": {
+        "@id": "schema:ReceiveAction"
+      },
+      "rdfs:comment": "one event a carrier or a payment provider sent, checked and recorded once, and applied through the owning domain when its rules allow. id prefix whk_."
     },
     {
       "@id": "acom:WishlistItem",
@@ -1372,6 +1408,22 @@
       "rdfs:comment": "last four digits of the card; NULL for other methods."
     },
     {
+      "@id": "acom:carrierEventType",
+      "@type": "rdf:Property",
+      "rdfs:label": "carrierEventType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:WebhookEvent"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:CarrierEventType"
+        }
+      ],
+      "rdfs:comment": "what the carrier reported; NULL for a payment event. values: carrier_event_type"
+    },
+    {
       "@id": "acom:cartId",
       "@type": "rdf:Property",
       "rdfs:label": "cartId",
@@ -1405,6 +1457,22 @@
         }
       ],
       "rdfs:comment": "the FAQ section, a lowercase word the store chooses, for example returns."
+    },
+    {
+      "@id": "acom:categoryMapping",
+      "@type": "rdf:Property",
+      "rdfs:label": "categoryMapping",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ProductImport"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "the feed's category words mapped to standard categories in this run, {Trail tops: cat_tees}; later runs of the same feed start from it."
     },
     {
       "@id": "acom:cause",
@@ -1555,6 +1623,44 @@
       "rdfs:comment": "changes[] as returned to the caller: [{op, entity, id, from, to}]."
     },
     {
+      "@id": "acom:channelId",
+      "@type": "rdf:Property",
+      "rdfs:label": "channelId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ExternalClaim"
+        },
+        {
+          "@id": "acom:ExternalOrder"
+        },
+        {
+          "@id": "acom:WebhookEvent"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:Channel"
+        }
+      ],
+      "rdfs:comment": "the channel that holds the order (chn_ id)."
+    },
+    {
+      "@id": "acom:channelType",
+      "@type": "rdf:Property",
+      "rdfs:label": "channelType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Channel"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ChannelType"
+        }
+      ],
+      "rdfs:comment": "what the channel is: marketplace, carrier, payment or fulfillment. values: channel_type"
+    },
+    {
       "@id": "acom:charge",
       "@type": "rdf:Property",
       "rdfs:label": "charge",
@@ -1609,6 +1715,9 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:ClaimItem"
+        },
+        {
+          "@id": "acom:ExternalClaim"
         },
         {
           "@id": "acom:Refund"
@@ -1685,6 +1794,9 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:Claim"
+        },
+        {
+          "@id": "acom:ExternalClaim"
         }
       ],
       "schema:rangeIncludes": [
@@ -1808,6 +1920,22 @@
         }
       ],
       "rdfs:comment": "When the purchase was confirmed after delivery."
+    },
+    {
+      "@id": "acom:connectionStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "connectionStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Channel"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ConnectionStatus"
+        }
+      ],
+      "rdfs:comment": "whether the store can reach the channel now. values: connection_status"
     },
     {
       "@id": "acom:consentType",
@@ -2114,6 +2242,22 @@
         }
       ],
       "rdfs:comment": "saved address used for delivery estimates (adr_ id)."
+    },
+    {
+      "@id": "acom:deliveryId",
+      "@type": "rdf:Property",
+      "rdfs:label": "deliveryId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:WebhookEvent"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:ParcelDelivery"
+        }
+      ],
+      "rdfs:comment": "the parcel a carrier event applied to (dlv_ id); NULL until it applies."
     },
     {
       "@id": "acom:deliveryState",
@@ -2854,12 +2998,31 @@
       "rdfs:comment": "When this stops being valid (a preview, a session, an idempotency record)."
     },
     {
+      "@id": "acom:externalClaimRef",
+      "@type": "rdf:Property",
+      "rdfs:label": "externalClaimRef",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ExternalClaim"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the channel's own request number, for example MK-R-2210; never used as our id."
+    },
+    {
       "@id": "acom:externalId",
       "@type": "rdf:Property",
       "rdfs:label": "externalId",
       "schema:domainIncludes": [
         {
           "@id": "acom:Refund"
+        },
+        {
+          "@id": "schema:DataFeedItem"
         },
         {
           "@id": "schema:PayAction"
@@ -2871,6 +3034,47 @@
         }
       ],
       "rdfs:comment": "the payment provider's reference."
+    },
+    {
+      "@id": "acom:externalOrderRef",
+      "@type": "rdf:Property",
+      "rdfs:label": "externalOrderRef",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ExternalClaim"
+        },
+        {
+          "@id": "acom:ExternalOrder"
+        },
+        {
+          "@id": "acom:WebhookEvent"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the channel's order the request is about."
+    },
+    {
+      "@id": "acom:externalStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "externalStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ExternalClaim"
+        },
+        {
+          "@id": "acom:ExternalOrder"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the request's status word on the channel; channel.status_mapping turns it into a claim_status."
     },
     {
       "@id": "acom:eyebrow",
@@ -3285,6 +3489,9 @@
       ],
       "schema:rangeIncludes": [
         {
+          "@id": "acom:FeedImportMode"
+        },
+        {
           "@id": "acom:ImportMode"
         }
       ],
@@ -3626,6 +3833,22 @@
       "rdfs:comment": "when the receipt was issued."
     },
     {
+      "@id": "acom:itemStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "itemStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:DataFeedItem"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ItemStatus"
+        }
+      ],
+      "rdfs:comment": "whether the row was taken. values: item_status"
+    },
+    {
       "@id": "acom:keyPrefix",
       "@type": "rdf:Property",
       "rdfs:label": "keyPrefix",
@@ -3675,6 +3898,28 @@
         }
       ],
       "rdfs:comment": "last successful sign-in; NULL if never."
+    },
+    {
+      "@id": "acom:lastSyncedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "lastSyncedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Channel"
+        },
+        {
+          "@id": "acom:ExternalClaim"
+        },
+        {
+          "@id": "acom:ExternalOrder"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when this copy was received from the channel or last sent to it."
     },
     {
       "@id": "acom:lastTurnAt",
@@ -4271,6 +4516,9 @@
           "@id": "acom:EventEntry"
         },
         {
+          "@id": "acom:ExternalOrder"
+        },
+        {
           "@id": "acom:LoyaltyTransaction"
         },
         {
@@ -4284,6 +4532,9 @@
         },
         {
           "@id": "acom:Refund"
+        },
+        {
+          "@id": "acom:WebhookEvent"
         },
         {
           "@id": "schema:Action"
@@ -4462,12 +4713,31 @@
       "rdfs:comment": "when it was last paused; NULL when it never was."
     },
     {
+      "@id": "acom:paymentEventType",
+      "@type": "rdf:Property",
+      "rdfs:label": "paymentEventType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:WebhookEvent"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:PaymentEventType"
+        }
+      ],
+      "rdfs:comment": "what the payment provider reported; NULL for a carrier event. values: payment_event_type"
+    },
+    {
       "@id": "acom:paymentId",
       "@type": "rdf:Property",
       "rdfs:label": "paymentId",
       "schema:domainIncludes": [
         {
           "@id": "acom:Refund"
+        },
+        {
+          "@id": "acom:WebhookEvent"
         }
       ],
       "schema:rangeIncludes": [
@@ -4476,6 +4746,22 @@
         }
       ],
       "rdfs:comment": "payment the money goes back to (pay_ id); NULL for store credit."
+    },
+    {
+      "@id": "acom:paymentRef",
+      "@type": "rdf:Property",
+      "rdfs:label": "paymentRef",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:WebhookEvent"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the payment provider's reference of the payment or refund; NULL for a carrier event."
     },
     {
       "@id": "acom:payout",
@@ -4708,6 +4994,9 @@
           "@id": "acom:SellerProduct"
         },
         {
+          "@id": "schema:DataFeedItem"
+        },
+        {
           "@id": "schema:QuantitativeValue"
         },
         {
@@ -4717,6 +5006,9 @@
       "schema:rangeIncludes": [
         {
           "@id": "schema:ProductGroup"
+        },
+        {
+          "@id": "schema:Text"
         }
       ],
       "rdfs:comment": "product measured (prd_ id)."
@@ -4950,6 +5242,22 @@
       "rdfs:comment": "what kind of document: deduction (income deduction), proof (proof of expense) or tax_invoice (needs the buyer's tax id). values: receipt_type"
     },
     {
+      "@id": "acom:receivedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "receivedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:WebhookEvent"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the store received it, by the store clock; events.replay_window counts from start_time to this."
+    },
+    {
       "@id": "acom:recipientContact",
       "@type": "rdf:Property",
       "rdfs:label": "recipientContact",
@@ -5056,6 +5364,9 @@
       "@type": "rdf:Property",
       "rdfs:label": "refundId",
       "schema:domainIncludes": [
+        {
+          "@id": "acom:WebhookEvent"
+        },
         {
           "@id": "schema:Action"
         }
@@ -6132,6 +6443,22 @@
       "rdfs:comment": "When the step, turn, or job started."
     },
     {
+      "@id": "acom:statusMapping",
+      "@type": "rdf:Property",
+      "rdfs:label": "statusMapping",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Channel"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "the channel's status words mapped to ours, {order: {shipped: in_transit}, claim: {return_requested: requested}} (enums.md order_status and claim_status)."
+    },
+    {
       "@id": "acom:stepId",
       "@type": "rdf:Property",
       "rdfs:label": "stepId",
@@ -6816,6 +7143,22 @@
       "rdfs:comment": "variant the reviewer bought (var_ id); gives the size bought."
     },
     {
+      "@id": "acom:variantMapping",
+      "@type": "rdf:Property",
+      "rdfs:label": "variantMapping",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:DataFeedItem"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "the feed's variant codes and the variants they are, [{external_id, variant_id}]; later runs of the same feed find the variants by it."
+    },
+    {
       "@id": "acom:vendorOrganization",
       "@type": "rdf:Property",
       "rdfs:label": "vendorOrganization",
@@ -7118,6 +7461,16 @@
       "acom:wireList": "cancel_reason"
     },
     {
+      "@id": "acom:CarrierEventType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CarrierEventType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the carrier_event_type list (docs/api/enums.md).",
+      "acom:wireList": "carrier_event_type"
+    },
+    {
       "@id": "acom:ChangeSetState",
       "@type": "rdfs:Class",
       "rdfs:label": "ChangeSetState",
@@ -7126,6 +7479,16 @@
       },
       "rdfs:comment": "Values of the change_set_state list (docs/api/enums.md).",
       "acom:wireList": "change_set_state"
+    },
+    {
+      "@id": "acom:ChannelType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ChannelType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the channel_type list (docs/api/enums.md).",
+      "acom:wireList": "channel_type"
     },
     {
       "@id": "acom:ChatSurface",
@@ -7176,6 +7539,16 @@
       },
       "rdfs:comment": "Values of the claim_type list (docs/api/enums.md).",
       "acom:wireList": "claim_type"
+    },
+    {
+      "@id": "acom:ConnectionStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ConnectionStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the connection_status list (docs/api/enums.md).",
+      "acom:wireList": "connection_status"
     },
     {
       "@id": "acom:ConsentType",
@@ -7308,6 +7681,16 @@
       "acom:wireList": "event_status"
     },
     {
+      "@id": "acom:FeedImportMode",
+      "@type": "rdfs:Class",
+      "rdfs:label": "FeedImportMode",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the feed_import_mode list (docs/api/enums.md).",
+      "acom:wireList": "feed_import_mode"
+    },
+    {
       "@id": "acom:FitVote",
       "@type": "rdfs:Class",
       "rdfs:label": "FitVote",
@@ -7386,6 +7769,16 @@
       },
       "rdfs:comment": "Values of the inspection_condition list (docs/api/enums.md).",
       "acom:wireList": "inspection_condition"
+    },
+    {
+      "@id": "acom:ItemStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ItemStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the item_status list (docs/api/enums.md).",
+      "acom:wireList": "item_status"
     },
     {
       "@id": "acom:Liability",
@@ -7496,6 +7889,16 @@
       },
       "rdfs:comment": "Values of the organization_type list (docs/api/enums.md).",
       "acom:wireList": "organization_type"
+    },
+    {
+      "@id": "acom:PaymentEventType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "PaymentEventType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the payment_event_type list (docs/api/enums.md).",
+      "acom:wireList": "payment_event_type"
     },
     {
       "@id": "acom:PaymentMethod",
@@ -7786,6 +8189,16 @@
       },
       "rdfs:comment": "Values of the subscription_status list (docs/api/enums.md).",
       "acom:wireList": "subscription_status"
+    },
+    {
+      "@id": "acom:SyncDirection",
+      "@type": "rdfs:Class",
+      "rdfs:label": "SyncDirection",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the sync_direction list (docs/api/enums.md).",
+      "acom:wireList": "sync_direction"
     },
     {
       "@id": "acom:TaskOrigin",
@@ -8243,6 +8656,41 @@
       "schema:position": 13
     },
     {
+      "@id": "acom:CarrierEventTypeLabelCreated",
+      "@type": "acom:CarrierEventType",
+      "rdfs:label": "LabelCreated",
+      "acom:wireWord": "label_created",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:CarrierEventTypePickedUp",
+      "@type": "acom:CarrierEventType",
+      "rdfs:label": "PickedUp",
+      "acom:wireWord": "picked_up",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:CarrierEventTypeInTransit",
+      "@type": "acom:CarrierEventType",
+      "rdfs:label": "InTransit",
+      "acom:wireWord": "in_transit",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:CarrierEventTypeDelivered",
+      "@type": "acom:CarrierEventType",
+      "rdfs:label": "Delivered",
+      "acom:wireWord": "delivered",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:CarrierEventTypeDeliveryFailed",
+      "@type": "acom:CarrierEventType",
+      "rdfs:label": "DeliveryFailed",
+      "acom:wireWord": "delivery_failed",
+      "schema:position": 5
+    },
+    {
       "@id": "acom:ChangeSetStateDrafting",
       "@type": "acom:ChangeSetState",
       "rdfs:label": "Drafting",
@@ -8297,6 +8745,34 @@
       "rdfs:label": "Undone",
       "acom:wireWord": "undone",
       "schema:position": 8
+    },
+    {
+      "@id": "acom:ChannelTypeMarketplace",
+      "@type": "acom:ChannelType",
+      "rdfs:label": "Marketplace",
+      "acom:wireWord": "marketplace",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:ChannelTypeCarrier",
+      "@type": "acom:ChannelType",
+      "rdfs:label": "Carrier",
+      "acom:wireWord": "carrier",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:ChannelTypePayment",
+      "@type": "acom:ChannelType",
+      "rdfs:label": "Payment",
+      "acom:wireWord": "payment",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:ChannelTypeFulfillment",
+      "@type": "acom:ChannelType",
+      "rdfs:label": "Fulfillment",
+      "acom:wireWord": "fulfillment",
+      "schema:position": 4
     },
     {
       "@id": "acom:ChatSurfaceBo",
@@ -8499,6 +8975,27 @@
       "@type": "acom:ClaimType",
       "rdfs:label": "Exchange",
       "acom:wireWord": "exchange",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:ConnectionStatusConnected",
+      "@type": "acom:ConnectionStatus",
+      "rdfs:label": "Connected",
+      "acom:wireWord": "connected",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:ConnectionStatusDegraded",
+      "@type": "acom:ConnectionStatus",
+      "rdfs:label": "Degraded",
+      "acom:wireWord": "degraded",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:ConnectionStatusDisconnected",
+      "@type": "acom:ConnectionStatus",
+      "rdfs:label": "Disconnected",
+      "acom:wireWord": "disconnected",
       "schema:position": 3
     },
     {
@@ -8950,6 +9447,34 @@
       "schema:position": 10
     },
     {
+      "@id": "acom:FeedImportModeUpsert",
+      "@type": "acom:FeedImportMode",
+      "rdfs:label": "Upsert",
+      "acom:wireWord": "upsert",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:FeedImportModePriceOnly",
+      "@type": "acom:FeedImportMode",
+      "rdfs:label": "PriceOnly",
+      "acom:wireWord": "price_only",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:FeedImportModeStockOnly",
+      "@type": "acom:FeedImportMode",
+      "rdfs:label": "StockOnly",
+      "acom:wireWord": "stock_only",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:FeedImportModeStatusOnly",
+      "@type": "acom:FeedImportMode",
+      "rdfs:label": "StatusOnly",
+      "acom:wireWord": "status_only",
+      "schema:position": 4
+    },
+    {
       "@id": "acom:FitVoteTrueToSize",
       "@type": "acom:FitVote",
       "rdfs:label": "TrueToSize",
@@ -9151,6 +9676,20 @@
       "rdfs:label": "MissingParts",
       "acom:wireWord": "missing_parts",
       "schema:position": 3
+    },
+    {
+      "@id": "acom:ItemStatusAccepted",
+      "@type": "acom:ItemStatus",
+      "rdfs:label": "Accepted",
+      "acom:wireWord": "accepted",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:ItemStatusRejected",
+      "@type": "acom:ItemStatus",
+      "rdfs:label": "Rejected",
+      "acom:wireWord": "rejected",
+      "schema:position": 2
     },
     {
       "@id": "acom:LiabilityStoreFault",
@@ -9487,6 +10026,41 @@
       "rdfs:label": "Branch",
       "acom:wireWord": "branch",
       "schema:position": 3
+    },
+    {
+      "@id": "acom:PaymentEventTypeAuthorized",
+      "@type": "acom:PaymentEventType",
+      "rdfs:label": "Authorized",
+      "acom:wireWord": "authorized",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:PaymentEventTypeDepositConfirmed",
+      "@type": "acom:PaymentEventType",
+      "rdfs:label": "DepositConfirmed",
+      "acom:wireWord": "deposit_confirmed",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:PaymentEventTypeCancelled",
+      "@type": "acom:PaymentEventType",
+      "rdfs:label": "Cancelled",
+      "acom:wireWord": "cancelled",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:PaymentEventTypeRefundCompleted",
+      "@type": "acom:PaymentEventType",
+      "rdfs:label": "RefundCompleted",
+      "acom:wireWord": "refund_completed",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:PaymentEventTypeRefundFailed",
+      "@type": "acom:PaymentEventType",
+      "rdfs:label": "RefundFailed",
+      "acom:wireWord": "refund_failed",
+      "schema:position": 5
     },
     {
       "@id": "acom:PaymentMethodCreditCard",
@@ -10278,6 +10852,20 @@
       "rdfs:label": "Cancelled",
       "acom:wireWord": "cancelled",
       "schema:position": 3
+    },
+    {
+      "@id": "acom:SyncDirectionInbound",
+      "@type": "acom:SyncDirection",
+      "rdfs:label": "Inbound",
+      "acom:wireWord": "inbound",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:SyncDirectionOutbound",
+      "@type": "acom:SyncDirection",
+      "rdfs:label": "Outbound",
+      "acom:wireWord": "outbound",
+      "schema:position": 2
     },
     {
       "@id": "acom:TaskOriginYouAsked",
