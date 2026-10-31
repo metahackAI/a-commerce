@@ -2996,7 +2996,12 @@ impl<'r> Turn<'r> {
             }
         }
         if unsupported.is_empty() {
-            text
+            let today = self
+                .clock
+                .now()
+                .with_timezone(&self.settings.time.zone)
+                .date_naive();
+            checker::fix_weekdays(&text, today)
         } else {
             tracing::info!(numbers = ?unsupported, "reply used numbers not in the results; using the plain reply");
             self.log_rejected_reply(&text, &unsupported).await;
