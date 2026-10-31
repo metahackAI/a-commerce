@@ -16,7 +16,7 @@ Accept: text/event-stream
 {
   "conversation_id": "conv_01jc8...",     // 없으면 새 대화
   "message": "Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.",
-  "attachments": [{"kind": "image", "upload_id": "upl_..."}],   // 선택. 업로드는 POST /api/uploads
+  "attachments": [{"kind": "sheet", "upload_id": "upl_..."}],   // 선택. kind는 sheet | image. 스토어에 이미 있는 업로드(`upl_…`)를 가리킴. 파일을 올리는 엔드포인트는 없고, 데모의 공급처 시트(`upl_fw26_supplier`)는 시드에 있음
   "ui_event": null,                         // 블록 버튼이 보낸 의도일 때 (아래)
   "task_id": "task_linen_reorder"           // 선택. 이 턴이 맡은 할 일 (아래)
 }
@@ -60,11 +60,11 @@ SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(
 | `ui.block` | 블록(§3) | 블록 추가. 같은 `block_id`가 다시 오면 교체 |
 | `memory.saved` | `{memory_id, text}` | 기억이 생김. 웹은 한 줄과 되돌리기 버튼을 보여 줌 |
 | `ui.command` | `{command, target, note?}` | 에이전트가 화면을 가리킴. `command`: `highlight` · `scroll_to` · `open` · `focus_input`. `target`은 `element_ref`, 블록 id, 또는 경로. `person` 버튼은 대상이 될 수 없음 |
-| `change_set.updated` | `{change_set_id, version, state}` | 변경셋 상태 변화(승인 뒤 실행·검증 포함, 턴 밖에서도 대화 구독으로 옴) |
+| `change_set.updated` | `{change_set_id, version, state}` | 이 턴이 변경셋을 만들거나 고치거나 제출했을 때(`drafting`, `waiting_for_approval`) |
 | `error` | `{code, message}` | 턴을 끝내는 오류. 코드는 [errors.md](errors.md) |
 | `turn.done` | `{turn_id, usage: {model_calls, tool_calls, input_tokens, output_tokens, ms, cost_usd}, models: [...]}` | 턴 끝. 화면의 "9 tool calls · Muse Glimmer 30B · 3.8s" |
 
-턴 밖의 변화(승인 뒤 실행, 예약 작업)는 `GET /api/chat/{surface}/conversations/{id}/events`(SSE) 구독으로 받습니다.
+턴 밖의 변화(승인 뒤 실행·검증, 할 일, 예약 작업)는 채팅 스트림으로 오지 않습니다. 백오피스 화면은 스토어 이벤트 `GET /api/v1/platform/events`(SSE: `change_set.updated`, `task.updated`, `job.updated`, [platform.md](platform.md#내부-엔드포인트))를 구독해 읽기를 다시 합니다.
 
 ## 3. UI 블록
 
@@ -95,7 +95,7 @@ SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(
 | `person` | `action_id`, `label`, `method`, `path`, `body`, `confirm` | 웹이 **게이트웨이를 거쳐 commerce의 사람 전용 엔드포인트를 직접** 부름. 에이전트를 지나지 않음 |
 | `open` | `action_id`, `label`, `target` | 다른 블록이나 화면을 엶 (`block:blk_12`, `/bo/change-sets/cs_1042`) |
 
-`person` 버튼만 상태를 바꿉니다. 승인, 거절, 되돌리기, 주문하기, 반품·취소·교환 요청 보내기, 기억 되돌리기가 여기에 해당하고 목록은 [README.md](README.md) §2의 사람 전용 엔드포인트와 같습니다.
+`person` 버튼만 상태를 바꾸고, 대상은 [README.md](README.md) §2.1의 사람 전용 엔드포인트뿐입니다. 지금 블록이 내는 것은 승인·거절(`change_set`, `refund_review`, `product_drafts`), 주문하기(`checkout_card`), 반품 요청 보내기(`return_options`), 기억 되돌리기(`memory_note`, `profile_card`)입니다. 변경셋 되돌리기, 할 일 치우기, 주문 취소, 선물 수락은 블록이 아니라 웹 화면(변경셋·할 일·주문·선물 페이지)의 같은 `person` 버튼입니다.
 
 ### 3.3 블록 라이브러리
 
@@ -106,11 +106,11 @@ SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(
 | ui | 쓰는 곳 | data 요지 | 버튼 | design.md §6 |
 |---|---|---|---|---|
 | `change_set` | 쓰기 요청의 결과 | `change_set_id`, `version`, `state`, `request`(원문들), `understood{who, products, benefit, when, where}`, `checks[]`, `groups[]{op, label, summary, rows[], more}`, `left_out[]`, `preview{segments[], selected, content}`, `after_approval[]`, `undo{until}` | `person` 승인(`{version}`), `person` 거절, `say` 수정 요청, `open` 이전 버전 비교 | `promotion_preview` + `approval_card` |
-| `refund_review` | 반품·환불 일괄 판단 | `summary{waiting, refund{count, amount}, ask_photos, decline}`, `requests[]{claim_id, order_id, customer_id, order_number, item, amount, reason, evidence, day, suggested, because, rule, refund_amount, flags[]}`, `checks[]{rule, passed, detail, fix_tool, element}`, `messages[]{to, customer_id, order_number, kind, channel, text}`, `change_set_id`, `version`, `state`. 변경셋을 담으면 `change_set` 블록을 따로 보내지 않음 | 변경셋 전: `say` 초안("Draft 9 refunds and 3 messages"). 변경셋 후: `person` 승인("Approve 9 refunds and send 3 messages")·거절, `say` 메시지 수정, `open` 변경셋 | `order_detail` |
-| `product_drafts` | 상품 초안 작성 진행 | `progress{total, ready, needs_you, working}`, `drafts[]{name, source_code, cost, price, sizes, status, note}`, `rules[]`, `checks[]` | `say` 일시 정지, `person` 준비된 초안 저장 | `product_table` |
+| `refund_review` | 반품·환불 일괄 판단 | `summary{waiting, refund{count, amount}, ask_photos, decline}`, `requests[]{claim_id, order_id, customer_id, order_number, item, amount, reason, evidence, day, suggested, because, rule, refund_amount, flags[]}`, `checks[]{rule, passed, detail, fix_tool, element}`, `messages[]{to, customer_id, order_number, kind, channel, text}`, `change_set_id`, `version`, `state`. 변경셋을 담으면 `change_set` 블록을 따로 보내지 않음 | 변경셋 전: `say` 초안("Draft 9 refunds and 3 messages"). 변경셋 후(`waiting_for_approval`): `person` 승인("Approve 9 refunds and send 3 messages")·거절, `say` 메시지 수정 | `order_detail` |
+| `product_drafts` | 상품 초안 작성 진행 | `progress{total, ready, needs_you, working}`, `drafts[]{name, source_code, cost, price, sizes, status, note}`, `rules[]`, `checks[]` | `person` 초안 저장("Save 30 drafts", 변경셋 승인), `say` 손볼 초안 보기("Show the 4 that need me"), `open` 초안 페이지·변경셋 | `product_table` |
 | `sales_explainer` | 매출 질문(읽기만). `explain_sales_change` + `get_sales_trend` | `period{valid_from, valid_through, label}`, `summary{revenue, baseline, baseline_label, difference, change_rate, basis, basis_label, orders{count, baseline}}`, `series[]{date, revenue}`, `causes[]{cause, title, detail, evidence, estimated, ids[]}`(마지막 행은 `cause: unexplained`), `next[]{label, request, cause}` | `say` 다음 행동 각각(`args.request`가 그 문장이고, 런타임은 사람이 그 문장을 말한 것으로 받아 다시 라우팅) | — |
 | `task_list` | 운영자 홈(`list_tasks` 결과 그대로) | `groups[]{state: needs_you \| working \| done \| dismissed, items[]{task_id, title, origin, at, summary, tag, change_set_id?, watcher?, updated_at?}}`, `total`, `agents[]{name, stats}`(선택) | `open` 항목, `say` 더 보기. 치우기·되돌리기는 할 일·변경셋 화면의 `person` 버튼 | — |
-| `product_table` | 상품 목록 읽기 | `columns[]`, `rows[]`, `total` | `say` 더 보기·거르기 | `product_table` |
+| `product_table` | 목록 읽기(상품, 그리고 전용 블록이 없는 읽기 목록) | `columns[]{key, label}`, `rows[]`, `total` | `say` 더 보기(남은 행이 있을 때), 행마다 추천 말 "Tell me about this one" | `product_table` |
 | `action_log` | 감사 기록 | `entries[]{at, actor, action_type, tool, object, status, result}` | — | `action_log` |
 
 **스토어프론트**
@@ -118,19 +118,21 @@ SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(
 | ui | 쓰는 곳 | data 요지 | 버튼 | design.md §6 |
 |---|---|---|---|---|
 | `looking_for` | 대화에서 이해한 조건 칩 | `chips[]{label, source: said \| profile \| his \| hers, removable}`. 계획의 `interpretation`(`source`)에서 오고, 툴 결과나 사람의 말에 없는 숫자가 든 칩은 빠짐 | `say` 칩 제거 | — |
-| `compare_table` | 스펙 비교 | `products[]{product_id, name, color, material, badge?}`, `rows[]{label, values[]}`, `prices[]{price, list_price, label}`, `sorted_by` | `say` 담기(사이즈), `say` "show photos" | `product_compare` |
-| `look_gallery` | 사진 위주 | `items[]{product_id, name, price, list_price?, image, caption}` | `say` 자세히·비교 | `product_gallery` |
-| `product_list` | 글 위주 목록 | `items[]{product_id, name, price, facts[]}` | `say` 좁히기 | `product_table` |
+| `compare_table` | 스펙 비교 | `products[]{product_id, name, color, material, image, badge?}`, `rows[]{label, values[]}`, `prices[]{price, list_price, label}`, `sorted_by` | `say` "Show photos", 열마다 추천 말 "Tell me more about this one" | `product_compare` |
+| `look_gallery` | 사진 위주 | `items[]{product_id, name, price, list_price?, image, caption}` | `say` "Compare them", 카드마다 추천 말 "Tell me more about this one" | `product_gallery` |
+| `product_list` | 글 위주 목록 | `items[]{product_id, name, price, list_price?, image, facts[]}` | `say` "Compare them"·"Show photos", 카드마다 추천 말 "Tell me more about this one" | `product_table` |
 | `fit_check` | 사이즈 판단 | `product{product_id, name, image, facts[], price, list_price, note}`, `options[]{label, size, reason, price, recommended}`, `measurements{columns[], rows[]{label, values[]}, caption}`, `reviews{sample, fit[], mentions[]}`, `used[]{label, value}`, `not_used[]{label, value}`. 비교 대상은 쇼퍼가 사서 반품하지 않은 상품(`get_my_orders`)의 실측. `options`의 `label`과 순서는 계획의 `notes`(`size:L`), 첫째가 추천 | `say` 사이즈 담기(`args{product_id, size}`) | — |
 | `gift_picker` | 선물 | `picks[]{product_id, name, price, list_price?, price_label?, why, image, chosen_size?}`, `gift_options{wrap, card_message, receipt, exchange_until}`, `delivery{to, arrives, address_saved: false}`, `total`. 옵션·배송·합계는 `prepare_gift_order` 프리뷰에서. 아무것도 기억하지 않음 | `say` 고르기(`args{product_id}`), `open` 주문 확인(`block:<checkout_card>`, 주문하기는 그 카드의 `person` 버튼) | — |
-| `cart` | 장바구니 | `lines[]{product_id, name, color, size, quantity, note}`, `subtotal`, `discounts[]{label, amount}`, `shipping`, `total`, `delivery{address_label, arrives}`, `payment{label}` | `say` 수량·삭제, `open` 주문 확인 | `cart` |
-| `checkout_card` | 주문 확인(`prepare_order` 결과) | `preview_id`, `expires_at`, `lines[]`, `subtotal`, `discounts[]`, `shipping`, `total`, `delivery`, `payment`, `note: "Only you can place it."` | **`person` 주문하기** (`POST /v1/sales/orders {preview_id}`) | `checkout_card` |
+| `cart` | 장바구니 | `lines[]{product_id, name, color, size, quantity, note}`, `subtotal`, `discounts[]{label, amount}`, `shipping`, `total`, `delivery{address_label, arrives}`, `payment{label}` (`get_cart` 출력의 그 필드 그대로) | `say` 주문 준비("Check out"), 줄마다 추천 말 "Remove this" | `cart` |
+| `checkout_card` | 주문 확인(`prepare_order`·`prepare_gift_order` 프리뷰) | `preview_id`, `expires_at`, `checks[]`, `lines[]`, `subtotal`, `discounts[]`, `shipping`, `total`, `delivery`, `payment`, `note: "Only you can place it."`(선물이면 `gift_wrap`, `gift_options`, `recipient`도) | **`person` 주문하기** (`POST /v1/sales/orders {preview_id}`). 체크가 하나라도 실패하면 버튼 없이 `why`만 | `checkout_card` |
 | `return_options` | 반품·교환 선택 | `order{order_number, item, delivered_at, photos}`, `options[]{kind: replacement \| refund, facts[], send_back{pickup, drop_off}}`, `selected`, `steps[]` (`get_return_options` 출력과 같은 모양) | **`person` 요청 보내기** (`POST /v1/fulfillment/returns`) | `order_detail` |
 | `order_detail` | 주문 조회 | `order_number`, `status`, `lines[]`, `delivery`, `payment`, `totals` | `say` 반품·교환 문의 | `order_detail` |
 | `memory_note` | 기억 한 줄 | `memory_id`, `text` | **`person` 되돌리기** | — |
-| `profile_card` | "What Northwind knows about you" | `facts[]{key, value, source, memory_id}` (`get_my_profile`의 기억과 사이즈) | `say` 수정, `person` 삭제(기억마다 `POST /v1/customer/me/memories/{memory_id}/undo`) | — |
+| `profile_card` | "What we know about you"(블록 제목) | `facts[]{key, value, source, memory_id}` (`get_my_profile`의 기억과 사이즈) | `say` 수정, `person` 삭제(기억마다 `POST /v1/customer/me/memories/{memory_id}/undo`) | — |
 
-블록마다 Rust 타입(`acom-agent::blocks`)과 JSON Schema(`ui-blocks.schema.json`, `cargo xtask codegen`이 생성)가 있고, 웹 컴포넌트는 그 스키마에서 만든 TS 타입을 씁니다.
+블록은 `acom-agent`의 `blocks` 모듈(`crates/agent/src/blocks/`)이 툴 출력에서 만듭니다. `data`는 JSON이고, 에이전트 정의(`agents/*.yml`의 `blocks`)가 쓸 수 있는 이름은 위 19개(`KNOWN_BLOCKS`)뿐입니다. 웹은 이름마다 컴포넌트 하나로 그립니다(`web/src/components/blocks/bo`에 7개, `fo`에 12개, 모르는 이름은 제목과 `why`만 있는 카드). 블록 데이터의 JSON Schema나 생성된 TS 타입은 없고, 웹의 데이터 타입은 위 표를 보고 손으로 쓴 것입니다(`web/src/components/blocks/fo/data.ts`, `web/src/app/bo/_lib/blocks.ts`).
+
+툴마다 전용 블록이 있지는 않습니다. 운영 쓰기는 어느 툴이든 변경셋에 들어가 `change_set` 블록(반품 검토·초안 가져오기에서는 그 변경셋을 담은 `refund_review`·`product_drafts`)으로 보이고, 계획한 블록을 만들 수 없을 때 마지막으로 읽은 목록은 스토어프론트에서 `product_list`(상품일 때), 그 밖에는 `product_table`(열은 결과의 필드)로 보이며, 나머지는 답 텍스트입니다. 10월 31일에 더한 툴 대부분이 이 경우입니다.
 
 ### 3.4 형태 고르기
 
@@ -139,7 +141,7 @@ SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(
 | 신호 | 블록 |
 |---|---|
 | 프로필 `compares_specs`·`layout_preference=table`, 또는 "compare", "which is lighter" | `compare_table` |
-| 기록 없음(로그인하지 않은 첫 방문), 프로필 `layout_preference=photos`, 또는 "photos", "less text" | `look_gallery` |
+| 기록 없음(로그인하지 않은 첫 방문), 프로필 `prefers_photos`·`layout_preference=photos`, 또는 "photos", "less text" | `look_gallery` |
 | 프로필 `layout_preference=list`, "as a list", 그 밖 | `product_list` |
 
 순서는 지금 한 말 → 이 대화에서 전에 한 말 → 프로필 → 첫 방문입니다. 프로필 항목은 기억의 키(`compares_specs`) 또는 `키=말`(`layout_preference=photos`는 기억 `photos over details`와 맞음)입니다. 형태를 바꾼 이유는 `why`에 한 줄로 쓰고, 사람이 말로 언제든 바꿀 수 있습니다. 새로 읽지 않고 형태만 바꾸면 마지막에 보여 준 결과를 그대로(같은 가격으로) 다시 놓습니다(F6). 로그인한 쇼퍼의 형태 요청은 `layout_preference`로 기억되어 되돌리기 줄이 붙고, 게스트는 기억이 없어 이 대화 안에서만 유지됩니다.

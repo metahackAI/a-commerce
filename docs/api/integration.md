@@ -1,7 +1,7 @@
 # API 명세 — `integration` (외부 채널 연계·대량 가져오기·이벤트 수신)
 
 > 계층: `integration.{resource}.{operation}`. 공통 규약(응답 형식·프리뷰/실행·멱등성·헤더)은 [conventions.md](conventions.md)와 [README.md](README.md) §3, 에러는 [errors.md](errors.md), 값 목록은 [enums.md](enums.md), 데이터 타입은 [data-model.md](data-model.md), 정책은 [integration.yml](../../policies/integration.yml) · [approval.yml](../../policies/approval.yml).
-> **범위**: 데모 시나리오([../scenarios.md](../scenarios.md))는 외부 채널·택배사·결제사와 연결하지 않습니다. 이 도메인은 그 연결을 위한 명세입니다.
+> **범위**: 외부 채널·택배사·결제사와 잇는 어댑터입니다. 데모에서는 바깥 시스템에 실제로 연결하지 않습니다(설계상 결정적 스텁): 채널 셋(UPS, Marketplace A, 카드 결제)과 그들이 마지막으로 보낸 기록이 시드돼 있고(`seed/demo/12_integration.yml`), 바깥으로 보내야 하는 일은 스토어의 기록만 바꾸고 결과에 "not connected in this store"라고 적습니다. 받은 택배·결제 이벤트(`receive_carrier_event`, `receive_payment_event`)는 스토어의 배송·결제에 반영합니다. 데모 장면([../scenarios.md](../scenarios.md) §6)은 이 도메인을 쓰지 않습니다.
 > **설계 축**: ① 이 도메인은 어댑터입니다. 코어 도메인(`catalog`, `sales`, `fulfillment`)을 외부 시스템과 잇기만 하고, 비즈니스 규칙은 코어가 가집니다. ② 판매자에 속한 연계는 `seller_id`(`partner`)로 범위를 정합니다. ③ 대량 처리와 상태 동기화는 멱등이며, 부분 성공을 건별로 보고합니다. ④ 인바운드 이벤트는 서명을 검증하고, 같은 이벤트가 다시 와도 한 번만 반영합니다. ⑤ 쓰기는 모두 프리뷰 → 실행이고, 가격·노출·대량 변경과 외부 자격 등록은 W$입니다. ⑥ 외부 시스템의 id는 우리 id에 넣지 않고 `external_id`·`external_order_ref`에 둡니다(conventions.md §9).
 
 리소스: [product_import](#product_import) · [order](#order) · [claim](#claim) · [channel](#channel) · [event](#event)

@@ -29,15 +29,18 @@ Team members may have reference material about an existing commerce platform on 
 
 The whole server side is one Cargo workspace: `crates/` (libraries), `services/` (gateway, commerce, agent), `xtask/`. Details: `docs/backend/README.md`.
 
-- An operation exists in `docs/api/` first. Its tool name, address, kind, and REST path in code must match the spec; `cargo xtask check-docs` compares them.
+- An operation exists in `docs/api/` first. Its tool name, address, kind, and REST path in code must match the spec: the registry test `every_operation_matches_its_spec` (`cargo test -p acom-registry`) compares the code with the spec, and `cargo xtask check-docs` checks that the index in `docs/api/README.md` §4 and the domain files agree.
 - One operation is one type implementing `ReadOp` or `WriteOp` (`acom-contract`), in its domain crate, with at least one contract test.
 - The folders follow the API hierarchy: `domain.resource.operation` lives in `crates/domains/{domain}/src/{resource}/{tool}.rs` (one file per operation, one folder per resource; `docs/backend/README.md` §2.2). `cargo xtask check-layout` checks it; `cargo xtask check-coverage` checks that every specified tool and person-only endpoint is built.
 - Input types use `#[serde(deny_unknown_fields)]`, word enums, a doc comment on every field, and no data-carrying enums (they become `oneOf`; use a `mode` word field instead); the registry refuses schemas that are not closed.
 - Money is `acom_core::Money`, never a float. Time comes from the `Clock`, never `Utc::now()`. Ids use the prefixes in `docs/api/conventions.md` §9; state words come from `docs/api/enums.md`; error codes and classes from `docs/api/errors.md`.
 - Business numbers come from `policies/*.yml` through `acom-policy`, never from constants in code or prompts.
-- `core`, `contract`, and `policy` do no I/O. Domain crates call each other only through exported service traits, never each other's tables. The agent crate never depends on a domain crate.
+- `core`, `contract`, and `policy` do no I/O. The agent crate never depends on a domain crate.
+- A domain reads another only through that domain's `service/for_<caller>.rs`, never its tables. Where a direct dependency would make a cycle or tie two peers together, the reader is handed over at start-up instead: `acom-registry::build()` installs promotion's order history (read from sales), messaging's segment members (from promotion), and integration's seller status (from partner); fulfillment installs its delivery, claim, and area (shipping-zone) readers into `acom_sales::service::providers`.
+- Scheduled runs (`promotion.start`, `loyalty.expire`, `subscription.renew`, …) are booked with `acom_changeset::jobs::book`, which is idempotent by job id. A domain never inserts into `platform.job` itself.
 - The agent can preview and draft change sets; it can never approve, run an approved change set, or call a person-only endpoint.
-- Before pushing: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`, `cargo xtask check-layout`, `cargo xtask check-coverage` (CI runs all of them, with `check-schema` and `check-seed`).
+- Before pushing: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`, `cargo xtask check-layout`, `cargo xtask check-coverage` (CI runs all of them, with `check-schema` and `check-seed`; `make check-rust` runs the same list).
+- Build limits on a shared machine: when several agents build at once, set `CARGO_BUILD_JOBS=1` so the parallel builds do not run the machine out of memory. For the final checks before pushing, use a private target folder (`CARGO_TARGET_DIR=/tmp/<your-name>-target`) so you do not wait on another build's lock on `target/` or rebuild after it.
 
 ## Database
 
@@ -56,7 +59,7 @@ Rules: `docs/frontend-ui.md` (UI library and look) and `docs/frontend/README.md`
 
 - Components come from Meta Astryx (`@astryxdesign/*`). Read `docs/frontend-ui.md` first. Look up components and templates with `npm run astryx -- search "<query>"` before writing your own.
 - One UI block from `docs/api/chat.md` §3 is one component, built from Astryx parts. The look lives in our theme (CSS custom properties); no gradients, glows, decorative shadows, colored side bars, or sparkle icons.
-- Data types come from `web/src/contract/` (generated, do not edit).
+- Data types are written by hand from the specs in `docs/api/`: the chat contract in `web/src/ai/types.ts`, block data next to the blocks (`web/src/components/blocks/`), and page responses in `web/src/app/bo/_lib/types.ts` and `web/src/app/(storefront)/_lib/types.ts`. No types are generated from Rust yet.
 - Every meaningful element (row, price, check, chip, card, input) calls `useAiTarget` so people can ask about it and the agent can point at it.
 - Elements that the agent may change also show the block's `suggested_intents`.
 - State changes made by a person (approve, place order, send a return request, undo) go through `PersonButton` only. They are never reachable from `ui.command` or page tools.

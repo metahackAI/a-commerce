@@ -923,7 +923,8 @@ schema.org 대응: `member_price` → `TierBenefitLoyaltyPrice`, `points_multipl
 
 명세를 코드로 옮기며 고르거나 고친 것입니다.
 
-- **다른 도메인에 닿는 일은 스텁입니다.** customer는 의존 방향상 promotion·messaging·sales를 부를 수 없습니다([../backend/README.md](../backend/README.md) §2.1). 그래서 (1) 이메일·SMS(본인 확인 코드, 재설정 링크, 문의 답변, 해결 안내, 등급 알림, 탈퇴 완료 안내)는 기록만 하고 결과에 `delivered: false`와 이유를 적고, (2) 보상 지급의 포인트·쿠폰과 등급 진입 쿠폰은 promotion의 `grant_loyalty`·`issue_coupon`을 `next_tool`로 이름만 대며, (3) 현금 지급은 결제사 스텁(`reference: stub_…`)이 즉시 확정합니다. 탈퇴의 쿠폰 무효·구독 해지·연결 로그인 해제·적립금·충전금도 `settled[].connected: false`로 남습니다.
+- **바깥에 닿는 일은 설계상 결정적 스텁입니다.** 이메일·SMS(본인 확인 코드, 재설정 링크, 문의 답변, 해결 안내, 등급 알림, 탈퇴 완료 안내)는 기록만 하고 결과에 `delivered: false`와 이유를 적고, 현금 지급은 결제사 스텁(`reference: stub_…`)이 즉시 확정합니다.
+- **customer가 부를 수 없는 도메인의 일은 이름만 댑니다.** customer는 의존 방향상 promotion·messaging·sales를 부를 수 없습니다([../backend/README.md](../backend/README.md) §2.1). 그래서 보상 지급의 포인트·쿠폰과 등급 진입 쿠폰은 promotion의 `grant_loyalty`·`issue_coupon`을 `next_tool`로 이름만 대고(`issued: false`), 탈퇴의 쿠폰 무효·구독 해지·연결 로그인 해제·적립금·충전금도 `settled[].connected: false`로 남습니다. 읽기는 그 도메인들이 시작할 때 넘겨준 읽기(`service::providers`: sales의 주문·상품, promotion의 등급 참조, fulfillment의 반품)로 합니다.
 - **주문만 대상인 보상**(`request_remedy`의 `target: order`)은 주문이 sales에 있어 확인할 수 없습니다. 같은 주문의 문의가 있으면 그 고객을 쓰고, 없으면 고객 없이 기록합니다.
 - **탈퇴 자격**의 `pending_refund`, `loyalty_points`, `store_credit`은 읽을 길이 없어 `not_checked`에 이름을 올립니다(추측하지 않음). `open_order`·`open_claim`은 sales·fulfillment가 등록한 읽기로 봅니다. 정책이 `warn`인 항목은 `warnings`에 갑니다.
 - **등급 평가**는 회원마다 sales의 주문 읽기를 부릅니다. 주문 읽기가 연결되지 않은 곳에서는 아무도 움직이지 않고 결과가 그렇게 말합니다(`measured: false`). 초대(`invite`)·수동처럼 주문으로 잴 수 없는 요건이 `any`로 묶인 등급은 유지됩니다. `scope: segment`는 세그먼트가 promotion 소유라 아직 받지 않습니다(`invalid_input`).

@@ -1,6 +1,6 @@
 # A-Commerce 백엔드 (Rust)
 
-A-Commerce의 서버 측은 **전부 Rust**로 만듭니다. 게이트웨이, 커머스 백엔드(툴 레이어·정책 엔진·변경셋·저장소), 에이전트 런타임(하네스), 평가 러너까지 한 Cargo 워크스페이스에 있습니다. 프런트엔드는 Next.js이고 이 워크스페이스가 생성한 타입을 씁니다.
+A-Commerce의 서버 측은 **전부 Rust**로 만듭니다. 게이트웨이, 커머스 백엔드(툴 레이어·정책 엔진·변경셋·저장소), 에이전트 런타임(하네스), 평가 러너까지 한 Cargo 워크스페이스에 있습니다. 프런트엔드는 Next.js이고 게이트웨이를 거쳐 이 워크스페이스의 REST와 채팅 API를 부릅니다.
 
 이 폴더는 **백엔드 구현 설계**입니다. 무엇을 만드는지(오퍼레이션·입출력·정책)는 [../api/](../api/README.md), 왜 이렇게 만드는지는 [../design.md](../design.md)와 [../architecture.md](../architecture.md), 웹은 [../frontend/](../frontend/README.md)에 있습니다.
 
@@ -11,7 +11,7 @@ A-Commerce의 서버 측은 **전부 Rust**로 만듭니다. 게이트웨이, �
 | [schema.generated.md](schema.generated.md) | 마이그레이션에서 생성한 컬럼 사전 |
 | [commerce.md](commerce.md) | 오퍼레이션 트레이트, 프리뷰·실행·검증·되돌리기, 변경셋 엔진, 정책 엔진, 저장소·이벤트·작업 |
 | [agent.md](agent.md) | 에이전트 런타임: 라우터·특화 에이전트·툴 검색·플래너·실행기·체커·UI 블록·기억·모델 클라이언트 |
-| [gateway.md](gateway.md) | 인증·주체·스코프·내부 토큰·라우팅·레이트 리밋·SSE 중계 |
+| [gateway.md](gateway.md) | 인증·주체·스코프·내부 토큰·라우팅·SSE 중계·할 일 맡기기 |
 | [testing.md](testing.md) | 계약 테스트, 시나리오 재생, 평가(화면형 파사드 대조) |
 
 ---
@@ -22,17 +22,17 @@ A-Commerce의 서버 측은 **전부 Rust**로 만듭니다. 게이트웨이, �
 
 ```
             브라우저 (Next.js: /bo 운영자, /fo 쇼퍼)            외부 에이전트
-                         │ HTTPS (쿠키 세션)                     │ MCP (OAuth 토큰)
+                         │ HTTPS (쿠키 세션)                     │ MCP (아직 없음)
                          ▼                                       ▼
    ┌────────────────────────────── gateway ──────────────────────────────┐
    │ 세션·토큰 검증 → 주체(Principal)·테넌트 결정 → 내부 토큰 발급          │
-   │ 레이트 리밋 · 요청 id · 라우팅 · SSE 중계 · 정적 웹 프록시              │
+   │ CSRF · 요청 id · 라우팅 · SSE 중계 · 할 일 맡기기 · 웹 프록시           │
    └───────┬──────────────────────────────┬──────────────────────┬────────┘
-           │ /api/chat/* (SSE)            │ /api/v1/*, 사람 전용   │ /mcp
+           │ /api/chat/* (SSE)            │ /api/v1/*, 사람 전용   │ /mcp (아직 없음)
            ▼                              ▼                       ▼
    ┌──────────────── agent ───────┐   ┌──────────────── commerce ─────────────────┐
    │ 대화·턴 루프                  │   │ 오퍼레이션 레지스트리 (13 도메인)            │
-   │ 라우터 → 특화 에이전트        │──▶│ REST /v1 · MCP · 사람 전용 엔드포인트       │
+   │ 라우터 → 특화 에이전트        │──▶│ REST /v1 · 툴 매니페스트 · 사람 전용        │
    │ 툴 검색 · 플래너 · 실행기      │툴 │ 프리뷰 저장소 · 변경셋 엔진(승인·실행·검증)  │
    │ 체커 · UI 블록 · 기억          │호출│ 정책 엔진 · 혜택 계산                       │
    │ 모델 클라이언트(Glimmer/Spark) │   │ 이벤트·아웃박스·예약 작업 · 데모 시계        │
@@ -51,7 +51,7 @@ A-Commerce의 서버 측은 **전부 Rust**로 만듭니다. 게이트웨이, �
 
 나누는 기준은 **신뢰 경계**입니다. 에이전트(모델)는 커머스 규칙의 바깥에 있다고 보고, 승인·실행·정책 판정은 전부 `commerce`가 합니다. 에이전트가 고장 나거나 프롬프트가 조작돼도 `commerce`가 받지 않는 요청은 실행되지 않습니다.
 
-MCP는 별도 서비스가 아니라 `commerce`가 REST와 함께 내놓는 또 하나의 표면입니다(같은 레지스트리에서 생성). 모든 서비스는 로컬에서도 운영과 같은 구성(컨테이너, 같은 네트워크 경계, 같은 헬스 체크)으로 뜹니다.
+MCP는 별도 서비스가 아니라 `commerce`가 REST와 함께 같은 레지스트리에서 내놓을 표면으로 설계했지만, 아직 없습니다: `acom-mcp`는 빈 크레이트이고 `commerce`에 `/mcp` 경로가 없어서, 게이트웨이가 `/mcp`를 넘겨도 답할 곳이 없습니다. 모든 서비스는 로컬에서도 운영과 같은 구성(컨테이너, 같은 네트워크 경계, 같은 헬스 체크)으로 뜹니다.
 
 ---
 
@@ -60,14 +60,14 @@ MCP는 별도 서비스가 아니라 `commerce`가 REST와 함께 내놓는 또 
 ```
 a-commerce/
 ├── Cargo.toml                    # [workspace], 공통 의존성 버전, lints
-├── rust-toolchain.toml           # stable 고정
+├── rust-toolchain.toml           # 1.99 고정 (CI도 같은 버전)
 ├── crates/
 │   ├── core/          acom-core          id·Money·시간·schema.org enum·테넌트·시계. I/O 없음
-│   ├── contract/      acom-contract      오퍼레이션 메타·봉투·에러·JSON Schema(닫힌 형식)·레지스트리 트레이트
-│   ├── policy/        acom-policy        정책 YAML 타입·로드·검증·오버라이드·체크·혜택 계산. I/O 없음
-│   ├── store/         acom-store         sqlx 풀·마이그레이션·RLS 트랜잭션·이벤트·아웃박스·작업 큐·멱등
-│   ├── auth/          acom-auth          주체·스코프·내부 토큰 발급/검증 (세 서비스 공용)
-│   ├── changeset/     acom-changeset     프리뷰 저장소·변경셋 상태기계·실행기·검증·되돌리기
+│   ├── contract/      acom-contract      오퍼레이션 메타·트레이트(ReadOp·WriteOp·PersonOp)·봉투·에러·닫힌 JSON Schema·레지스트리·작업(Job) 트레이트
+│   ├── policy/        acom-policy        정책 YAML 로드·스토어 덮어쓰기 병합·버전 해시·승인 판정·감시 작업 설정. I/O 없음
+│   ├── store/         acom-store         sqlx 풀·내장 마이그레이션·요청/트랜잭션 문맥(Cx·TxCx, RLS)·스토어별 정책과 시계
+│   ├── auth/          acom-auth          주체·스코프·비밀번호 해시·내부 토큰 발급/검증 (세 서비스 공용)
+│   ├── changeset/     acom-changeset     프리뷰 저장소·변경셋 상태기계·실행기·검증·되돌리기·예약 작업 엔진(jobs)·데모 시계
 │   ├── domains/
 │   │   ├── catalog/   acom-catalog       ┐
 │   │   ├── search/    acom-search        │
@@ -83,23 +83,23 @@ a-commerce/
 │   │   ├── partner/   acom-partner       입점 판매자·계약·등급
 │   │   └── integration/ acom-integration 외부 채널·택배사·결제사 어댑터, 대량 가져오기, 이벤트 수신
 │   ├── registry/      acom-registry      모든 도메인 오퍼레이션을 하나의 Registry로 조립
-│   ├── http/          acom-http          Registry → axum 라우터, 에러→HTTP, 내부 토큰 추출기
-│   ├── mcp/           acom-mcp           Registry → MCP 서버(rmcp, streamable HTTP)
+│   ├── http/          acom-http          Registry → axum 라우터, 매니페스트, 변경셋·이벤트(SSE)·데모 시계 엔드포인트, 멱등 키, 에러→HTTP, 내부 토큰 추출기
+│   ├── mcp/           acom-mcp           MCP 표면 자리. 아직 빈 크레이트(문서 주석뿐)
 │   ├── llm/           acom-llm           모델 클라이언트(OpenAI 호환), 툴콜 파싱·인자 보정, 사용량
 │   ├── agent/         acom-agent         에이전트 런타임 전체 (agent.md)
 │   ├── facade/        acom-facade        평가용 화면형 API 파사드 (testing.md)
 │   ├── server/        acom-server        서비스 공통 런타임: 로그, /healthz·/readyz·/metrics, 요청 id, 종료 신호, 컨테이너 헬스 체크
-│   └── testkit/       acom-testkit       시드 로더·데모 시계·시나리오 재생 도우미
+│   └── testkit/       acom-testkit       데모 시드: 이름 붙은 행 로더, 이력 생성기(generate.yml), 상품 그림 주소
 ├── services/
 │   ├── gateway/       바이너리 acom-gateway
 │   ├── commerce/      바이너리 acom-commerce
-│   └── agent/         바이너리 acom-agent-svc
-├── xtask/                        # cargo xtask: codegen · seed · check-docs · eval
+│   └── agent/         패키지 acom-agent-svc, 바이너리 acom-agent
+├── xtask/                        # cargo xtask: check-docs · check-schema · check-seed · check-layout · check-coverage · check-eval · eval · sim · hash-password · dev-token
 ├── policies/                     # 정책 기본값 YAML (도메인별 + approval, acom-policy가 로드)
 ├── agents/                       # 특화 에이전트 정의(YAML) + 지침(md)
-├── seed/demo/                    # 데모 스토어 시드 (docs/scenarios.md에서 도출)
+├── seed/demo/                    # 데모 스토어 시드: 이름 붙은 파일 12개 + 생성기(generate.yml)와 상품 내용(catalog_content.yml)
 ├── eval/                         # 과업 세트(design/held_out)와 결과
-├── migrations/                   # sqlx 마이그레이션 (도메인 스키마별 파일)
+├── migrations/                   # sqlx 마이그레이션 0001–0032 (31개, 0015 없음). 추가만 함(database.md §13)
 ├── infra/                        # 이미지(docker/), Compose(compose/), Kubernetes(k8s/), DB 역할(postgres/) — infra/README.md
 ├── web/                          # Next.js (App Router)
 └── docs/
@@ -108,33 +108,39 @@ a-commerce/
 ### 2.1 의존 규칙
 
 ```
-core ◀── contract ◀── policy
-  ▲         ▲            ▲
-  │         │            │
-  └──── store ◀── changeset ◀── domains/* ◀── registry ◀── http, mcp ◀── services/commerce
-                                                 │
-auth ◀── (http, services/*)                      └──(tools.json 매니페스트만)──▶ agent
-llm ◀── agent ◀── services/agent
+core ◀── contract ◀── policy ◀── store ◀── changeset ◀── domains/* ◀── registry ◀── services/commerce
+  ▲                               ▲             ▲                                       │
+  │                               │             └── facade ◀── http ◀───────────────────┘
+  ├── auth ◀── store와 그 위 전부 └── agent ◀── services/agent   (store는 agent 스키마용)
+  └── llm ◀── agent
+server ◀── services/*   ·   mcp: 빈 크레이트   ·   agent → commerce는 HTTP만(GET /v1/tools, POST /v1/tools/{tool})
 ```
 
 1. **`core`·`contract`·`policy`는 I/O가 없습니다.** DB·네트워크·파일 시스템을 쓰지 않습니다(정책 YAML은 문자열로 받아 파싱). 단위 테스트만으로 검증됩니다.
-2. **도메인 크레이트는 서로를 DAG로만 참조합니다.** 다른 도메인의 테이블을 직접 읽지 않고, 그 도메인이 공개한 서비스 트레이트(`catalog::Prices`, `customer::Tiers` 등)를 씁니다.
+2. **도메인 크레이트는 서로를 DAG로만 참조합니다.** 다른 도메인의 테이블을 직접 읽지 않고, 그 도메인의 `service/for_{내 도메인}.rs` 함수만 부릅니다(예: `acom_sales::service::for_fulfillment`, `acom_platform::service::for_customer`).
+   - **의존이 순환이 될 곳은 시작할 때 reader를 넘겨 줍니다.** 아래쪽 도메인이 함수 자리(`OnceLock`)를 두고, 위쪽 도메인이나 `acom-registry`가 등록할 때 채웁니다. 채워지기 전에 무엇을 돌려주는지는 각 자리의 문서 주석에 있습니다.
+     - `acom-registry::build()`: promotion에 sales의 주문 이력(쿠폰 사용·구매 조건 응모·세그먼트), messaging에 promotion의 세그먼트 회원, integration에 partner의 판매자 상태.
+     - fulfillment가 `acom_sales::service::providers`에 배송·클레임·지역(배송 구역) reader를, `acom_customer::service::providers`에 반품 클레임 reader를 넣습니다.
+     - sales가 promotion에 장바구니 reader를, customer에 회원 주문·상품 카드 reader를 넣습니다. promotion은 customer에 등급 참조 reader를, merchandising은 promotion에 카테고리 상품 reader를 넣습니다.
+     - search가 catalog의 이웃 조회(`acom_catalog::neighbors`: 회원가, 카테고리, 구매 여부)를 customer·promotion·merchandising·sales의 `service::for_catalog`로 연결합니다.
+   - **예약은 엔진으로 합니다.** 나중에 돌 일은 `acom_changeset::jobs::book`으로 예약하고, 할 일(`platform.task`)은 작업 엔진이 감시 작업의 초안으로 씁니다. 도메인은 `platform.job`·`platform.task`를 직접 쓰지 않습니다.
 
-   | 도메인 | 의존 |
+   | 도메인 | 의존 (`Cargo.toml`) |
    |---|---|
-   | catalog, platform | (없음) |
+   | catalog, platform | (없음). catalog가 위쪽 도메인에서 읽는 것은 search가 넘겨 주는 reader로 |
    | customer | platform(비밀번호를 바꾸거나 탈퇴할 때 그 사람의 세션 끝내기) |
-   | search | catalog |
    | promotion | catalog, customer |
-   | merchandising | catalog, promotion |
-   | sales | catalog, promotion, customer |
-   | fulfillment | sales, catalog, customer |
+   | merchandising | catalog, customer(등급과 등급별 회원 수, 쇼퍼의 등급), promotion |
+   | sales | catalog, customer, promotion |
+   | search | catalog, customer, merchandising, promotion, sales(catalog의 이웃 조회를 연결하려고) |
+   | fulfillment | catalog, customer, promotion(취소할 때 쿠폰 되돌리기), sales |
    | messaging | customer, sales·fulfillment(주문의 고객과 번호, 반품 요청·환불 확인, 사진 요청 상태. 각 `service::for_messaging`으로만). promotion의 세그먼트 회원은 `acom-registry`가 넘겨주는 reader로 |
-   | community | catalog, customer, sales |
+   | community | customer(글쓴이와 쓸 수 있는지) |
    | analytics | sales(회원 수 세기). 나머지는 자기 읽기 모델(`analytics` 뷰)만 |
-   | partner, integration | catalog, sales, fulfillment. partner는 platform도(운영자가 속한 조직으로 판매사 직원을 그 판매자로 알아봄) |
-3. **`agent`는 도메인 크레이트에 의존하지 않습니다.** 툴 정보는 `commerce`가 내놓는 매니페스트(`GET /v1/tools`, 빌드 때 생성되는 `tools.json`)로만 압니다. 에이전트와 커머스는 HTTP로만 만납니다(테스트에서는 같은 프로세스 안의 `ToolClient` 구현으로 대체).
-4. **비즈니스 상수는 코드에 두지 않습니다.** 한도·하한·기간·승인 기준은 `acom-policy` 타입을 통해 `policies/*.yml`에서 옵니다. 리뷰에서 숫자 리터럴을 찾습니다.
+   | partner | catalog, sales, fulfillment, platform(운영자가 속한 조직으로 판매사 직원을 그 판매자로 알아봄) |
+   | integration | catalog, sales, fulfillment. partner의 판매자 상태는 `acom-registry`가 넘겨주는 reader로(판매자가 활동 중일 때만 피드 가져오기) |
+3. **`agent`는 도메인 크레이트에 의존하지 않습니다.** 툴 정보는 `commerce`가 내놓는 매니페스트(`GET /v1/tools`)로만 압니다. 에이전트와 커머스는 HTTP로만 만납니다(테스트에서는 같은 프로세스 안의 `ToolClient` 구현으로 대체).
+4. **비즈니스 상수는 코드에 두지 않습니다.** 한도·하한·기간·승인 기준은 `acom-policy`의 `PolicySet`을 통해 `policies/*.yml`과 스토어 덮어쓰기에서 옵니다. 리뷰에서 숫자 리터럴을 찾습니다.
 5. **`unsafe` 금지, `unwrap`/`expect`는 테스트와 시작 단계에서만.** 워크스페이스 lints로 강제합니다.
 
 ### 2.2 도메인 크레이트의 폴더 = API 계층
@@ -143,7 +149,7 @@ API는 `domain.resource.operation` 계층입니다(`catalog.offer.set_price`). �
 
 ```
 crates/domains/catalog/src/
-├── lib.rs                  register(): 리소스 순서대로 모든 오퍼레이션, 도메인 에러 코드
+├── lib.rs                  register(): 리소스 순서대로 모든 오퍼레이션과 작업(Job), 도메인 에러 코드
 ├── offer/                  docs/api/catalog.md 의 `## offer`
 │   ├── mod.rs              리소스 안에서 함께 쓰는 것(타입, 상태기계, SQL 도우미)
 │   ├── set_price.rs        catalog.offer.set_price — 입력 타입, OpMeta, ReadOp/WriteOp, 계약 테스트
@@ -151,12 +157,12 @@ crates/domains/catalog/src/
 ├── inventory/
 │   ├── get_inventory.rs
 │   └── set_variant_stock.rs
-├── service/                for_{소비 도메인}.rs — 다른 도메인이 읽거나 부를 수 있는 것
+├── service/                for_{소비 도메인}.rs — 다른 도메인이 읽거나 부를 수 있는 것 (providers.rs: 위쪽 도메인이 넣어 주는 reader 자리)
 └── repo.rs · model.rs · rules.rs   도메인 전체가 쓰는 SQL·모델·정책 읽기(선택)
 ```
 
 - 오퍼레이션의 `OpMeta`는 `crates/domains/{domain}/src/{resource}/{tool}.rs`에 하나만 있습니다. 사람 전용 엔드포인트도 같습니다(`sales.gift_order.accept` → `sales/src/gift_order/accept_gift_order.rs`).
-- `cargo xtask check-layout [domain…]`이 등록된 오퍼레이션마다 어디 있고 어디에 있어야 하는지 대조하고, `cargo xtask check-coverage [domain…]`이 명세의 툴과 사람 전용 엔드포인트가 모두 만들어졌는지 봅니다.
+- `cargo xtask check-layout [domain…]`이 등록된 오퍼레이션마다 어디 있고 어디에 있어야 하는지 대조하고("layout follows domain/resource/tool"), `cargo xtask check-coverage [domain…]`이 명세의 툴 290개와 사람 전용 엔드포인트 18개가 모두 만들어졌는지 봅니다("every specified operation is built"). 변경셋의 승인·거절·되돌리기 세 엔드포인트는 레지스트리가 아니라 `acom-http`에 있습니다. 둘 다 CI 게이트입니다.
 - 다른 도메인의 기능이 필요하면 그 도메인의 `service/for_{내 도메인}.rs`에 함수를 더합니다(테이블을 직접 읽지 않음).
 
 ---
@@ -165,38 +171,37 @@ crates/domains/catalog/src/
 
 | 관심사 | 선택 | 메모 |
 |---|---|---|
-| 런타임·HTTP | tokio, axum 0.8, tower, tower-http | 미들웨어(추적·타임아웃·압축·CORS)는 tower 레이어 |
+| 런타임·HTTP | tokio, axum 0.8 | 공통 미들웨어(요청 id, 요청 지표, `/healthz`·`/readyz`·`/metrics`, 종료 신호)는 `acom-server` |
 | 게이트웨이 프록시 | hyper-util 클라이언트 + axum | 스트리밍 바디 그대로 중계(SSE 포함) |
-| DB | PostgreSQL 17, pgvector, sqlx 0.9 | 마이그레이션은 바이너리에 포함(`sqlx::migrate!`). 쿼리는 런타임 바인딩 + `FromRow`로 시작하고, DB를 띄우는 통합 단계에서 컴파일 시 검증(`query!`, 오프라인 캐시 `.sqlx/`)으로 옮김 |
+| DB | PostgreSQL 17, pgvector, sqlx 0.9 | 마이그레이션은 바이너리에 포함(`sqlx::migrate!`). 쿼리는 런타임 바인딩(`query`, `query_as`)이고 컴파일 시 검증 매크로(`query!`)는 쓰지 않음 |
 | 직렬화 | serde, serde_json(`arbitrary_precision`) | 금액을 정확한 십진수로 읽고 씀 |
 | 금액·시간 | rust_decimal, chrono, chrono-tz | float 금지 |
 | 스키마 | schemars 1.x → 닫힌 JSON Schema 후처리 | [../api/conventions.md](../api/conventions.md) §툴 스키마 |
-| OpenAPI | 레지스트리에서 직접 생성(xtask) | utoipa는 레지스트리에 안 맞으면 쓰지 않음 |
-| MCP | rmcp (공식 Rust SDK), streamable HTTP | |
-| 모델 호출 | reqwest + eventsource-stream | OpenAI 호환 API(vLLM, Meta Model API) |
+| OpenAPI·MCP | 아직 없음 | 레지스트리에서 만들도록 설계했지만 생성기와 MCP 서버가 없음(`acom-mcp`는 빈 크레이트) |
+| 모델 호출 | reqwest, 스트림은 `acom-llm`이 직접 읽음 | OpenAI 호환 API(self-hosted Glimmer, Meta Model API) |
 | 인증 | jsonwebtoken(EdDSA), argon2(비밀번호) | 내부 토큰은 게이트웨이만 서명 |
-| 레이트 리밋 | governor | 주체·테넌트 키 |
 | 정책 YAML | serde_norway (serde_yaml 후속 포크) | serde_yaml은 유지보수 중단 |
-| 관측성 | tracing, tracing-subscriber(JSON), OpenTelemetry(선택) | 요청 id = 액션 로그 상관 id |
-| 테스트 | `#[sqlx::test]`(테스트마다 새 DB), insta(스냅샷) | testing.md |
+| 관측성 | tracing, tracing-subscriber(JSON), metrics(Prometheus) | 요청 id = 액션 로그 상관 id |
+| 테스트 | 소스 안의 `#[cfg(test)]`, DB가 필요한 테스트는 `#[ignore]`(`DATABASE_URL`의 데모 스토어) | testing.md |
 
-MVP 인프라는 **PostgreSQL 하나**입니다. 멱등 키·락·작업 큐·검색(전문 검색 + pgvector)을 모두 Postgres로 처리합니다. Redis·OpenSearch·메시지 버스는 트레이트 뒤에 두고, 부하가 근거를 줄 때 붙입니다.
+인프라는 **PostgreSQL 하나**입니다. 멱등 키·락·작업 큐·검색을 모두 Postgres로 처리합니다. 검색은 전문 검색으로 순위를 매기고, 임베딩 모델이 연결돼 있지 않아 pgvector 열은 비어 있습니다. Redis·OpenSearch·메시지 버스는 부하가 근거를 줄 때 붙입니다.
 
 ---
 
 ## 4. 설정과 로컬 실행
 
-설정은 환경 변수(`ACOM_*`)와 `config/{local,demo}.toml`을 겹쳐 읽습니다. 비밀(`META_API_KEY`, 서명 키)은 환경 변수로만 받고 레포에 두지 않습니다.
+설정은 환경 변수로만 받습니다(이름은 `.env.example`, [../../infra/README.md](../../infra/README.md) §5). 비밀(`META_API_KEY`, 서명 키 파일)은 레포에 두지 않습니다.
 
 | 변수 | 쓰는 곳 | 예 |
 |---|---|---|
-| `DATABASE_URL` | commerce, agent | `postgres://acom_app:acom_app@localhost:5432/acom` (RLS가 적용되는 서비스 역할) |
-| `MIGRATION_DATABASE_URL` | `xtask db` | `postgres://acom_owner:acom_owner@localhost:5432/acom` (마이그레이션 역할, [database.md](database.md) §8) |
+| `DATABASE_URL` | gateway, commerce, agent | `postgres://acom_app:acom_app@localhost:5432/acom` (RLS가 적용되는 서비스 역할) |
+| `MIGRATION_DATABASE_URL` | `acom-commerce migrate`·`seed`, 데모 모드의 시드 다시 적재 | `postgres://acom_owner:acom_owner@localhost:5432/acom` (마이그레이션 역할, [database.md](database.md) §8) |
 | `ACOM_GATEWAY_SIGNING_KEY_FILE` / `ACOM_GATEWAY_PUBLIC_KEY_FILE` | gateway / commerce·agent | Ed25519 PEM 파일 경로(`make keys`) |
 | `ACOM_COMMERCE_URL`, `ACOM_AGENT_URL`, `ACOM_WEB_URL` | gateway, agent | `http://localhost:7001` |
-| `ACOM_DEMO_MODE` | 전부 | `true`면 데모 로그인·데모 시계 활성 |
-| `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | agent | self-hosted vLLM의 OpenAI 호환 엔드포인트 |
-| `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL` | agent | Meta Model API |
+| `ACOM_STORE_ID` | gateway, commerce `work` | `store_northwind`. 게이트웨이가 섬기는 스토어, 워커가 작업을 돌릴 스토어(쉼표로 여럿) |
+| `ACOM_DEMO_MODE` | 전부 | `true`면 데모 로그인·데모 시계·평가용 파사드 활성 |
+| `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | agent | self-hosted Glimmer의 OpenAI 호환 엔드포인트 |
+| `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL` | agent | Meta Model API. 비어 있으면 Spark를 건너뛰고 Glimmer만 씀(라이브 데모가 그렇습니다) |
 
 전체를 컨테이너로 띄우는 방법은 [../../infra/README.md](../../infra/README.md) §7(`make up`)입니다. 서비스 하나를 컨테이너 밖에서 고치며 돌릴 때:
 
@@ -207,19 +212,22 @@ cargo run -p acom-commerce -- serve     # :7001 (해당 컨테이너는 먼저 �
 cargo run -p acom-commerce -- work      # :7003
 cargo run -p acom-agent-svc             # :7002 (바이너리 acom-agent)
 cargo run -p acom-gateway               # :7000 (웹·API 단일 출처)
-cargo xtask codegen               # tools.json · openapi.json · ui-blocks.schema.json · web/src/contract/*.ts
 cargo test --workspace            # 단위·계약 테스트 (DB 없이)
 cargo test --workspace -- --ignored   # 통합 테스트 (DB 필요, 요청 시)
 cargo xtask check-schema --write  # 마이그레이션 규칙 검사 + 컬럼 사전·어휘(vocab/acom.jsonld) 생성
 cargo xtask check-seed            # 데모 시드가 스키마에 맞는지 (DB 없이)
+cargo xtask check-docs            # 명세 인덱스와 도메인 파일이 같은지
+cargo xtask check-layout          # 오퍼레이션마다 제 파일에 있는지
+cargo xtask check-coverage        # 명세의 모든 툴·사람 전용 엔드포인트가 만들어졌는지
+make check-rust                   # CI의 Rust 검사 전부
 ```
 
 ---
 
 ## 5. 작업 규칙 (코드 리뷰 기준)
 
-- 새 오퍼레이션은 [../api/](../api/README.md)에 먼저 있어야 합니다. 이름·주소·종류·REST 경로는 명세와 같아야 하고, `cargo xtask check-docs`가 레지스트리와 명세 인덱스를 대조합니다.
-- 오퍼레이션 하나 = `Operation` 구현 하나 + 계약 테스트 하나 이상([commerce.md](commerce.md) §1, [testing.md](testing.md) §1).
+- 새 오퍼레이션은 [../api/](../api/README.md)에 먼저 있어야 합니다. 이름·주소·종류·REST 경로는 명세와 같아야 합니다. `acom-registry`의 테스트(`every_operation_matches_its_spec`)가 등록된 오퍼레이션마다 명세의 절과 대조하고, `cargo xtask check-docs`가 명세 인덱스와 도메인 파일을 대조합니다.
+- 오퍼레이션 하나 = `ReadOp`·`WriteOp`·`PersonOp` 구현 하나 + 계약 테스트 하나 이상([commerce.md](commerce.md) §1, [testing.md](testing.md) §1).
 - 툴 체크리스트는 [../../AGENTS.md](../../AGENTS.md)를 따릅니다(한 동사, 단어 enum, 필드 설명·예시, 프리뷰, consumes/produces, 실행 가능한 에러, 정책은 데이터).
-- 마이그레이션은 되돌릴 수 있게 쓰고(확장 → 이전 → 축소), 테이블·컬럼 이름은 [../api/data-model.md](../api/data-model.md) §DB 명명을 따릅니다.
-- `cargo fmt --check`, `cargo clippy --workspace -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`, `cargo xtask check-schema`, `cargo xtask check-seed`, `cargo xtask check-layout`, `cargo xtask check-coverage`가 CI 게이트입니다.
+- 마이그레이션은 새 번호의 파일로 추가만 합니다. 적용된 파일은 고치지 않고, 파괴적 변경은 확장 → 이전 → 축소로 나눕니다([database.md](database.md) §13). 테이블·컬럼 이름은 [../api/data-model.md](../api/data-model.md) §DB 명명을 따릅니다.
+- `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo xtask check-docs`, `cargo xtask check-schema`, `cargo xtask check-seed`, `cargo xtask check-layout`, `cargo xtask check-coverage`가 CI 게이트입니다(`.github/workflows/ci.yml`의 `rust` 작업, 툴체인 1.99).

@@ -72,7 +72,7 @@
 
 ## product
 
-### `get_product` — Kind: R  (MVP)
+### `get_product` — Kind: R  (데모 장면)
 - 논리주소/REST: `catalog.product.get` · `GET /v1/catalog/products/{product_id}`
 - 요약: 상품(`prd_`, `ProductGroup`) 하나를 판매 관점으로 돌려줍니다: 정가, 부르는 사람에게 해당하는 회원가, 상품 재고 합계, 변형별 재고, 비교에 쓰는 속성. 운영자에게는 원가(`cost`)도 보이고, 쇼퍼에게는 그 쇼퍼 자신의 회원가가 붙습니다. 장바구니에 담을 변형 id(`variant_id`)도 여기서 나옵니다.
 - consumes → produces: `product_id` → product, `variant_id[]`
@@ -121,7 +121,7 @@
 - 에러: `not_found`(`detail.entity: product`) → `search_products` · `tier_not_found` → `list_tiers` · `forbidden`(쇼퍼가 운영자 전용 필드를 보냄) → null
 - 멱등성: 읽기(부작용 없음)
 
-### `get_product_measurements` — Kind: R  (MVP)
+### `get_product_measurements` — Kind: R  (데모 장면)
 - 논리주소/REST: `catalog.product.get_measurements` · `GET /v1/catalog/products/{product_id}/measurements?sizes=M,L`
 - 요약: 사이즈별 실측(cm)을 돌려줍니다. 쇼퍼가 "M과 L 중 무엇이 맞을까", "후드티 위에 입으려면" 같은 질문을 할 때 쓰고, 화면은 `fit_check` 블록의 `measurements`([chat.md](chat.md) §3.3)입니다. 쇼퍼가 전에 산 상품의 실측과 나란히 놓을 수 있도록 상품마다 같은 측정 이름을 씁니다.
 - consumes → produces: `product_id` → measurements
@@ -499,7 +499,7 @@
 
 ## review
 
-### `get_review_summary` — Kind: R  (MVP)
+### `get_review_summary` — Kind: R  (데모 장면)
 - 논리주소/REST: `catalog.review.summarize` · `GET /v1/catalog/products/{product_id}/reviews/summary?height_min_cm=175&height_max_cm=182`
 - 요약: 리뷰를 요약해 핏 투표와 반복되는 표현, 근거가 되는 리뷰 몇 개를 돌려줍니다. 키 범위를 주면 그 범위의 리뷰어만 셉니다. 숨긴 리뷰는 세지 않습니다. 화면은 `fit_check` 블록의 `reviews`([chat.md](chat.md) §3.3)입니다.
 - consumes → produces: `product_id` → review summary

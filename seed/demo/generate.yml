@@ -6,7 +6,8 @@
 random_seed: 20261106            # one PRNG (PCG64 or ChaCha8), seeded once, consumed in the order of this file
 store: store_northwind
 runs_after: [01_platform.yml, 02_customer.yml, 03_catalog.yml, 04_promotion.yml, 05_merchandising.yml,
-             06_sales.yml, 07_fulfillment.yml, 08_messaging.yml]
+             06_sales.yml, 07_fulfillment.yml, 08_messaging.yml, 09_supplier_sheet.yml, 10_community.yml,
+             11_partner.yml, 12_integration.yml]
 never_touch:                     # named rows stay exactly as written; the generator adds no rows that point at them
   customers: [cus_jamie, cus_alex, cus_4431, cus_riley, cus_sam, cus_dana, cus_priya, cus_marcus, cus_elena,
               cus_noor, cus_theo, cus_grace, cus_owen]   # no generated orders, claims, coupons or preferences
@@ -124,7 +125,7 @@ orders:
       uses (06_sales.yml: 20105 ... 20431). scenarios.md §7 also asks that numbers increase with order_date across
       all orders, but that cannot hold together with B3: #20402 is placed Oct 27 19:12 and #20431 Oct 29 10:05,
       while B3 needs several hundred orders in between. Named orders keep their numbers and dates; only
-      generated orders are in date order. (Decision needed in scenarios.md; see seed/demo/README.md.)
+      generated orders are in date order. (Settled this way: named orders keep the numbers the scenes use.)
   window: {from: "2026-10-01T00:00", through: "2026-11-05T23:59"}   # history before Oct 1 is the named orders only
   daily_sales:                   # analytics.daily_sales targets (revenue = sum of total_payment_due; orders not payment_due/cancelled)
     rule: >-

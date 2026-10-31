@@ -7,15 +7,15 @@
 ## 1. 이름
 
 - **타입**은 schema.org 이름(PascalCase), 우리 확장은 `acom:` 네임스페이스([data-model.md](data-model.md) §확장).
-- **필드**는 schema.org 프로퍼티를 snake_case로(`validFrom` → `valid_from`). JSON-LD 컨텍스트가 원래 용어로 되돌립니다.
+- **필드**는 schema.org 프로퍼티를 snake_case로(`validFrom` → `valid_from`). 응답은 JSON-LD 컨텍스트가 붙지 않은 보통 JSON입니다. 이름이 어느 schema.org·`acom:` 용어인지는 DB 주석에서 만든 데이터 사전(`describe_data`, [../backend/schema.generated.md](../backend/schema.generated.md))과 `vocab/acom.jsonld`에 있습니다.
 - **enum 값**은 schema.org 열거 멤버를 snake_case 단어로(`InStock` → `in_stock`). 코드값 금지. 값 목록의 단일 출처는 [enums.md](enums.md).
 - **툴 이름**은 `verb_noun` 평이한 영어. **논리 주소**는 `domain.resource.operation`. **REST**는 `/v1/{domain}/{resources}...`.
 
 ## 2. 식별자
 
 - 형식: `{접두}_{접미}`. 접두는 엔티티 종류, 접미는 소문자·숫자·`_`.
-- 시드 데이터는 읽을 수 있는 접미(`prd_windbreaker`, `cs_1042`), 실행 중 생성은 소문자 ULID(`pv_01jc8x...`).
-- 사람에게 보이는 번호(주문 번호 #20402, 변경셋 #1042)는 별도 필드(`order_number`, `change_set_number`)이고 id 접미와 같게 시드합니다. 실행 중에 생긴 레코드는 id 접미가 ULID라 번호와 다릅니다. 번호에 접두를 붙여 id를 만들지 않습니다.
+- 시드 데이터는 읽을 수 있는 접미(`prd_windbreaker`, `cs_1042`), 실행 중 생성은 대개 소문자 ULID(`pv_01jc8x...`)입니다. 이름이나 SKU에서 접미를 만드는 툴도 있습니다(`create_product` → `prd_trail_shell`, `var_<sku>`).
+- 사람에게 보이는 번호(주문 번호 #20402, 변경셋 #1042)는 별도 필드(주문 `order_number`, 변경셋 `number`)이고 id 접미와 같게 시드합니다. 실행 중에 생긴 주문은 id 접미가 ULID라 번호와 다르니 번호로 id를 짐작하지 않습니다. 변경셋만은 실행 중에도 id가 `cs_{번호}`입니다.
 - **id 자리에 사람이 쓰는 값도 받습니다**([../design.md](../design.md) 원칙 1). 아래 엔티티를 가리키는 id 필드는 그 값을 그대로 받고, 서버가 툴을 실행하기 전에 레코드를 찾아 id로 바꿉니다. 툴(오퍼레이션)은 항상 id만 봅니다. 표의 원본은 `acom_core::handle::HANDLES`입니다.
 
   | 엔티티 | 받는 값 | 예 | 못 찾으면 |
@@ -82,7 +82,7 @@ schema.org `MonetaryAmount` 형태입니다.
 
 ## 8. 툴 스키마 (모델이 보는 입력)
 
-`GET /v1/tools` 매니페스트의 입력 스키마는 다음을 지킵니다. `cargo xtask check-docs`와 레지스트리 빌드가 검사합니다.
+`GET /v1/tools` 매니페스트의 입력 스키마는 다음을 지킵니다. 레지스트리 빌드(`acom-registry::build`, 검사는 `acom_contract::schema`)가 1·2와 필드마다 설명이 있는지를 검사해 어기는 스키마를 거부합니다.
 
 1. **닫힌 객체:** 모든 객체에 `additionalProperties: false`(서버도 모르는 필드를 거부).
 2. **평평함:** `$ref`, `$defs`, `anyOf`, `oneOf`, `allOf`, `not`을 쓰지 않습니다. 선택 입력은 `required`에서 빼는 것으로만 표현하고 `null`을 허용하지 않습니다.
@@ -90,7 +90,7 @@ schema.org `MonetaryAmount` 형태입니다.
 4. **enum은 `enum` 목록:** 값마다 뜻은 필드 설명에 "값: 뜻; 값: 뜻"으로. 사람이 쓰는 다른 표현은 `x-aliases`로 선언해 에이전트의 인자 보정이 씁니다(`"VIP members"` → `vip`).
 5. **모든 필드에 `description`과 `examples`.**
 6. **id는 패턴으로:** `"pattern": "^prd_[a-z0-9_]+$"`. 사람이 쓰는 값을 받는 id 필드(§2)는 매니페스트에서 패턴을 넓히고 `x-handle`로 표시합니다: `"pattern": "^(?:ord_[a-z0-9_]+|#?[0-9]+)$", "x-handle": {"field": "order_number", "shape": "number"}`, 설명 끝에 "Also takes the order number people see (27184)."를 붙이고 예시를 하나 더합니다. 오퍼레이션의 스키마(`op.input_schema()`)는 id 패턴 그대로입니다.
-7. **모델 보기에는 `preview`/`preview_id`가 없습니다.** 우리 에이전트의 런타임이 프리뷰·실행을 처리하고, 외부 에이전트(MCP)와 REST 호출자만 전선 위 형태를 봅니다.
+7. **모델 보기에는 `preview`/`preview_id`가 없습니다.** 우리 에이전트의 런타임이 프리뷰·실행을 처리하고, REST 호출자(웹 화면, 테스트)만 전선 위 형태를 봅니다. 외부 에이전트용 MCP 면은 아직 없습니다(게이트웨이의 `/mcp`는 commerce로 가지만 commerce에 그 경로가 없고, `crates/mcp`는 빈 크레이트).
 
 ## 9. 식별자 접두
 
@@ -109,10 +109,10 @@ schema.org `MonetaryAmount` 형태입니다.
 | 캐시 무효화 | `cin` | 리뷰 / 상품 문의 / 답변 | `rev` / `qst` / `ans` |
 | 재입고 알림 | `rsa` | 생성 이미지 | `img` |
 | 재주문(공급처에 하는 주문) | `ro` | 생성 문구 초안 | `cpd` |
-| 가져오기 작업 | `imp` | 색인 재구성 작업 | `rij` |
+| 가져오기 작업 | `imp` | 색인 재구성 작업 / 검색 사전 버전 | `rij` / `lex` |
 | 장바구니 / 장바구니 줄 | `cart` / `cln` | 주문 / 주문 품목 | `ord` / `oln` |
 | 프리뷰(주문 준비·구독 준비 포함) | `pv` | 선물 주문 | `gift` |
-| 구독 | `sub` | 결제 / 영수증 / 청구서 | `pay` / `rct` / `inv` |
+| 구독 | `sub` | 결제 / 영수증 | `pay` / `rct` |
 | 클레임(취소·반품·교환, `claim_type`으로 구분) | `clm` | 증빙 / 검수 | `evd` / `ins` |
 | 환불 | `rfd` | 배송 | `dlv` |
 | 배송 구역 | `zone` | 프로모션 | `promo` |
@@ -122,7 +122,7 @@ schema.org `MonetaryAmount` 형태입니다.
 | 등급 평가 실행 | `tev` | 주소 / 동의 / 기억(선호) | `adr` / `cns` / `mem` |
 | 본인 확인 / 계정 복구 요청 | `ivf` / `rcv` | 임직원 | `emp` |
 | 고객 문의 / 문의 답글 | `inq` / `cmt` | 보상(remedy) | `rmd` |
-| FAQ / 공지 | `faq` / `ntc` | 메시지 / 템플릿 / 캠페인 / 알림 | `msg` / `tpl` / `cmp` / `ntf` |
+| FAQ / 공지 | `faq` / `ntc` | 메시지(알림 포함) / 템플릿 / 캠페인 | `msg` / `tpl` / `cmp` |
 | 게시판 / 글 / 댓글 / 신고 | `brd` / `post` / `rpl` / `rpt` | 변경셋 | `cs` |
 | 액션 로그 항목 | `act` | 할 일 | `task` |
 | 역할 / API 키 / 세션 | `rol` / `key` / `ses` | 메뉴 / 조직 | `mnu` / `org` |
@@ -132,7 +132,7 @@ schema.org `MonetaryAmount` 형태입니다.
 
 - **등급 id**는 스토어가 정한 단어(`vip`, `gold`)이고 접두가 없습니다. `"everyone"`은 예약어입니다([enums.md](enums.md) §5).
 - **사람에게 보이는 번호**는 따로 둡니다: 주문 `order_number: "20402"`, 변경셋 `number: 1042`(`#`은 화면 표기일 뿐 값에 넣지 않음).
-- **모델(에이전트)** 은 id가 아니라 액션 로그의 `agent: {"@type": "SoftwareApplication", "name": "muse-glimmer-30b"}`입니다.
+- **모델(에이전트)** 에는 id가 없습니다. 에이전트가 사람을 대신해 한 일은 액션 로그에 `agent: {"@type": "SoftwareApplication", "name": "Admin", "acom:on_behalf_of": "adm_admin"}`(이름은 그 사람의 것)로 남고, 어느 모델이 불렸는지는 에이전트의 턴 기록(`agent.model_call.model`, 예 `muse-glimmer-30b`)에 남습니다.
 - **상품과 변형:** 사람과 모델은 상품(`prd_`)으로 이야기하고, 장바구니·재고·주문 품목은 변형(`var_`)을 씁니다. 상품 + 옵션(`size`, `color`)을 받는 툴은 변형을 찾아 주고, 결과에 `variant_id`를 돌려줍니다.
 
 ## 10. 헤더와 인증
@@ -140,7 +140,7 @@ schema.org `MonetaryAmount` 형태입니다.
 | 헤더 | 쓰는 곳 | 설명 |
 |---|---|---|
 | `Cookie: acom_session` | 브라우저 → 게이트웨이 | 사람 세션 |
-| `Authorization: Bearer` | 외부 에이전트 → 게이트웨이(OAuth) / 게이트웨이 → 서비스(내부 토큰) | 서비스는 게이트웨이가 서명한 내부 토큰만 받음 |
+| `Authorization: Bearer` | 게이트웨이 → 서비스(내부 토큰) | 서비스는 게이트웨이가 서명한 내부 토큰만 받음. 게이트웨이는 브라우저가 보낸 토큰을 버리고, 외부 에이전트의 OAuth 토큰은 아직 받지 않음([platform.md](platform.md#auth)) |
 | `X-CSRF-Token` | 사람 전용 엔드포인트 | 세션과 짝 |
 | `Idempotency-Key` | 프리뷰 없이 상태를 바꾸는 사람 전용 엔드포인트 | 재시도 시 첫 결과 |
 | `X-Request-Id` | 전부 | 없으면 게이트웨이가 만듦. 액션 로그·에이전트 턴과 이어짐 |

@@ -32,9 +32,9 @@ All names are made up.
 | Explore by look | `look_gallery` | [fo-two-shoppers](fo-two-shoppers.png) (right), [fo-mobile-adapt](fo-mobile-adapt.png) | `search_products` |
 | Compare | `compare_table` | [fo-two-shoppers](fo-two-shoppers.png) (left), [store](../mockups/store.png) | `search_products`, `compare_products` |
 | Fit | `fit_check` | [fo-fit](fo-fit.png) | `get_product_measurements`, `get_my_orders`, `get_review_summary` |
-| Gift | `gift_picker` | [fo-gift](fo-gift.png) | `search_products`, `get_delivery_dates`, `prepare_order` |
+| Gift | `gift_picker` | [fo-gift](fo-gift.png) | `search_products`, `get_delivery_dates`, `prepare_gift_order` |
 | Buy | `cart`, confirm sheet | [store](../mockups/store.png), [mobile confirm](../mockups/mobile-confirm.png) | `prepare_order` (the shopper places it) |
-| Return or exchange | `return_options` | [fo-return](fo-return.png) | `get_order`, `get_return_options`, `request_return` (the shopper sends it) |
+| Return or exchange | `return_options` | [fo-return](fo-return.png) | `get_order`, `get_return_options`; the shopper sends the request (person-only `POST /v1/fulfillment/returns`) |
 | Change the layout | `product_list` → `look_gallery` | [fo-mobile-adapt](fo-mobile-adapt.png) | `update_my_preferences` |
 
 Tool names follow the rules in [docs/design.md](../../docs/design.md): plain verb_noun, safe reads, writes that the person confirms.

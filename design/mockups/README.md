@@ -30,4 +30,4 @@ The two sides tell one story: the sale approved in the change set (40 products, 
 
 Not used on purpose: colored side bars, gradients, glows, drop-shadow cards, dot backgrounds.
 
-All store, product, and person names are made up. Product images are placeholders until we generate real ones (Muse Image).
+All store, product, and person names are made up. Product images are placeholders. The built store keeps it that way: it draws a flat garment picture per product (`/media/garment/…`), and `generate_image` is a placeholder stub; no image model is called.

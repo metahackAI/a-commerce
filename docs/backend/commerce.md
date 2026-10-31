@@ -1,6 +1,6 @@
 # commerce 서비스
 
-커머스의 모든 규칙이 사는 곳입니다. 오퍼레이션(툴)을 실행하고, 정책을 판정하고, 변경셋을 승인·실행·검증·되돌립니다. 에이전트와 웹, 외부 에이전트가 모두 이 서비스의 같은 오퍼레이션을 부릅니다.
+커머스의 모든 규칙이 사는 곳입니다. 오퍼레이션(툴)을 실행하고, 정책을 판정하고, 변경셋을 승인·실행·검증·되돌립니다. 에이전트와 웹, 평가 러너가 모두 이 서비스의 같은 오퍼레이션을 부릅니다. 레지스트리에는 13개 도메인의 툴 290개(읽기 131, 쓰기 119, 돈이 움직이거나 고객에게 닿는 쓰기 40)와 사람 전용 엔드포인트 15개가 있고, 변경셋의 승인·거절·되돌리기 3개는 `acom-http`가 둡니다. 명세의 오퍼레이션은 모두 만들어졌습니다(`cargo xtask check-coverage`).
 
 관련 명세: 응답 형식·규약 [../api/README.md](../api/README.md) §3, [../api/conventions.md](../api/conventions.md) · 변경셋 API [../api/platform.md](../api/platform.md#change_set) · 에러 [../api/errors.md](../api/errors.md) · 상태 값 [../api/enums.md](../api/enums.md)
 
@@ -10,7 +10,7 @@
 
 ### 1.1 메타데이터
 
-모든 오퍼레이션은 정적 메타데이터를 가집니다. 이것이 MCP 툴 스펙, REST 라우트, OpenAPI, 툴 그래프, 문서 대조의 단일 원천입니다.
+모든 오퍼레이션은 정적 메타데이터를 가집니다. 이것이 REST 라우트, 툴 매니페스트(툴 그래프 포함), 문서 대조의 단일 원천입니다. MCP 툴 스펙과 OpenAPI도 여기서 만들도록 설계했지만 아직 없습니다.
 
 ```rust
 // acom-contract
@@ -18,7 +18,7 @@ pub struct OpMeta {
     pub address: &'static str,        // "promotion.offer.set_sale_prices"
     pub tool: &'static str,           // "set_sale_prices"
     pub group: Group,                 // Offer | Transact | Engage | Operate
-    pub kind: Kind,                   // Read | Write | WriteApproval  (= R | W | W$)
+    pub kind: Kind,                   // Read | Write | WriteApproval | Person  (= R | W | W$ | 사람 전용)
     pub method: Method,               // POST
     pub path: &'static str,           // "/v1/promotion/sale-prices"
     pub summary: &'static str,        // 한 줄 설명 (모델이 툴을 고르는 근거)
@@ -28,18 +28,19 @@ pub struct OpMeta {
     pub errors: &'static [ErrorCode],      // 이 오퍼레이션이 낼 수 있는 에러 코드
     pub audience: Audience,           // Operator | Shopper | Both | Internal
     pub action_type: ActionType,      // schema.org Action (SearchAction, UpdateAction, ...)
+    pub person_scope: &'static str,   // 사람 전용 엔드포인트가 요구하는 human:* 스코프. 툴은 ""
 }
 ```
 
-필요한 스코프는 메타에서 나옵니다: 읽기는 `tools:read:{domain}`, 쓰기는 `tools:write:{domain}`([gateway.md](gateway.md) §2). `audience`가 `Internal`이면 모델 매니페스트와 MCP에 나오지 않습니다.
+필요한 스코프는 메타에서 나옵니다: 읽기는 `tools:read:{domain}`, 쓰기는 `tools:write:{domain}`, 사람 전용은 `person_scope`([gateway.md](gateway.md) §2). 매니페스트는 스코프와 `audience`로 거릅니다. `audience`가 `Internal`이거나 종류가 `Person`이면 모델 매니페스트에 나오지 않습니다.
 
 ### 1.2 트레이트
 
 ```rust
 pub trait Operation: Send + Sync + 'static {
     const META: OpMeta;
-    type Input: DeserializeOwned + JsonSchema;   // 닫힌 스키마로 내보낼 수 있어야 함
-    type Output: Serialize + JsonSchema;
+    type Input: DeserializeOwned + JsonSchema + Send;   // 닫힌 스키마로 내보낼 수 있어야 함
+    type Output: Serialize + JsonSchema + Send;
 }
 
 pub trait ReadOp<C: Ctx>: Operation {
@@ -64,6 +65,11 @@ pub trait WriteOp<C: Ctx>: Operation {
     const UNDO: UndoSupport;   // Supported | NotSupported (메시지 발송, 송금된 환불)
 }
 
+/// 사람 전용 엔드포인트. 프리뷰 없이 트랜잭션 하나에서 바로 실행하고, 호출자는 메타의 human:* 스코프를 가져야 한다.
+pub trait PersonOp<C: Ctx>: Operation {
+    async fn run(&self, tx: &mut C::Tx, input: Self::Input) -> Result<Self::Output, ToolError>;
+}
+
 pub struct Planned<P> {
     pub plan: P,
     pub changes: Vec<Change>,          // 응답의 changes[]
@@ -73,7 +79,7 @@ pub struct Planned<P> {
 }
 ```
 
-레지스트리는 이 타입들을 JSON 입출력의 `DynOperation`으로 지워서 보관합니다. 도메인 크레이트는 `pub fn register(r: &mut RegistryBuilder)`만 공개합니다.
+(실제 선언은 `async fn` 대신 `impl Future<Output = …> + Send`를 돌려줍니다.) 레지스트리는 이 타입들을 JSON 입출력의 `DynOp`으로 지워서 보관합니다. 도메인 크레이트는 `pub fn register(b: &mut RegistryBuilder<Cx>)`로 오퍼레이션(`b.read`·`b.write`·`b.person`)과 작업(`b.job`)을 올리고, 다른 도메인이 부르는 것은 `service` 모듈에 둡니다(README §2.1).
 
 ### 1.3 실행 문맥
 
@@ -82,11 +88,13 @@ pub struct Planned<P> {
 ```rust
 pub struct Cx {
     pub tenant: TenantId,
-    pub principal: Principal,      // 누가(사람·에이전트 위임·외부 에이전트·시스템), 스코프 포함 (gateway.md)
-    pub request_id: RequestId,
+    pub principal: Arc<Principal>, // 누가(사람·에이전트 위임·외부 에이전트·시스템), 스코프 포함 (gateway.md)
+    pub request_id: String,
     pub clock: Arc<dyn Clock>,     // 시스템 시계 또는 데모 시계
-    pub policy: Arc<PolicySet>,    // 이 요청 시점의 정책 스냅샷 (버전 해시 포함)
-    pub db: PgPool,
+    pub time: StoreTime,           // 스토어 시간대: 입력을 읽고 출력을 쓰는 기준
+    pub currency: Currency,        // 스토어 통화
+    pub policy: Arc<PolicySet>,    // 이 요청 시점의 정책 스냅샷 (스토어 덮어쓰기 포함, 버전 해시)
+    pub db: Db,
 }
 ```
 
@@ -110,14 +118,16 @@ pub struct Cx {
 
 | 열 | 내용 |
 |---|---|
-| `preview_id` | `pv_` + ULID |
-| `operation` | 논리 주소 |
+| `id` | `pv_` + ULID (API의 `preview_id`) |
+| `operation`, `instrument` | 논리 주소, 툴 이름 |
 | `input`, `input_hash` | 정규화한 입력과 해시 (같은 입력 재프리뷰 감지) |
 | `plan` | `WriteOp::Plan` JSON |
 | `changes`, `checks`, `needs_approval`, `approval_reason` | 응답 그대로 |
 | `basis` | 근거 엔티티 id와 버전 |
 | `policy_version` | 정책 스냅샷 해시 |
-| `principal`, `change_set_id`, `expires_at`, `state` | `open` → `committed` / `expired` / `superseded` |
+| `actor_kind`, `agent_id`, `agent_name`, `request_id` | 누가 프리뷰했는지 |
+| `change_set_id`, `expires_at`, `preview_state` | `open` → `committed` / `expired` / `superseded`(`superseded_by_id`) |
+| `committed_at`, `result` | 실행 결과(같은 `preview_id`의 재실행이 그대로 돌려받음) |
 
 프리뷰는 기본 30분 뒤 만료됩니다(`approval.yml`의 `preview_ttl_minutes`). 변경셋에 붙은 프리뷰는 만료 대신 승인 시점에 재검증합니다(§3.3).
 
@@ -145,7 +155,7 @@ pub struct Cx {
 | 프리뷰·실행 | 에이전트 런타임이 대신 처리 | 호출자가 직접 |
 | 변경셋 | 런타임이 열고 붙임 | `change_set_id` 쿼리 파라미터 |
 
-소형 모델이 `preview`와 `preview_id` 두 모드를 헷갈리지 않도록, 우리 에이전트의 모델은 **"무엇을 바꿀지"만 말하고** 프리뷰·실행·승인 흐름은 런타임이 결정적으로 처리합니다([agent.md](agent.md) §5). 외부 에이전트(MCP)는 전선 위 형태를 그대로 봅니다.
+소형 모델이 `preview`와 `preview_id` 두 모드를 헷갈리지 않도록, 우리 에이전트의 모델은 **"무엇을 바꿀지"만 말하고** 프리뷰·실행·승인 흐름은 런타임이 결정적으로 처리합니다([agent.md](agent.md) §5). REST를 직접 부르는 호출자(웹, 테스트, 평가)는 전선 위 형태를 그대로 씁니다. MCP도 같은 형태로 설계했지만 아직 서빙하지 않습니다.
 
 ---
 
@@ -176,9 +186,9 @@ drafting ──submit──▶ waiting_for_approval ──approve(version)──
 1. 각 항목: §2.2의 실행 경로(재검증 포함). 항목 사이 의존(`create_coupon`이 `set_sale_prices`의 `promotion_id`를 소비)은 프리뷰 때 플레이스홀더(`$item[1].promotion_id`, `n`은 항목의 `position`이며 1부터)로 저장했다가 실행 때 바인딩합니다.
 2. 한 항목이 실패하면 멈추고, 이미 실행한 항목은 역순으로 `undo` → 변경셋 `failed`(어느 항목이 왜 실패했는지 기록).
 3. 모두 성공하면 `verifying`: 항목마다 `verify` → 결과를 `verify_change_set`이 돌려주는 형태로 저장 → 전부 일치하면 `live`, 아니면 `failed`.
-4. 상태가 바뀔 때마다 `change_set_event`를 append하고 아웃박스로 알립니다. 에이전트는 이를 구독해 대화에 `change_set.updated`를 흘립니다([../api/chat.md](../api/chat.md)).
+4. 상태가 바뀔 때마다 `change_set_event`를 append하고 같은 트랜잭션에서 `pg_notify('acom_events', …)`로 알립니다(`GET /v1/platform/events`). 에이전트는 이를 구독해 대화에 `change_set.updated`를 흘립니다([../api/chat.md](../api/chat.md)).
 
-예약 실행(배너를 금요일 0시에 켜기 등)은 실행이 아니라 **예약 레코드를 만드는 것**이 커밋입니다. 실제 켜짐은 작업 큐(§5.3)가 시각에 맞춰 처리하고, `verify`는 예약 레코드를 검증합니다.
+기간이 있는 변경(배너를 금요일 0시에 켜기, 주말 회원가 등)은 **기간을 가진 레코드를 만드는 것**이 커밋이고, `verify`는 그 레코드를 검증합니다. 지금 무엇이 보이는지는 읽기가 기간과 스토어 시계로 계산합니다(프로모션의 `promotion.start`·`promotion.end` 작업은 이미 보이는 상태를 `promotion_status`에 적을 뿐입니다). 나중에 실행해야 하는 일(판매자 상태 변경 예약, 정기 주문 회차, 예약 캠페인)은 커밋이 작업을 예약합니다(§5.3).
 
 ### 3.3 승인 시 재검증
 
@@ -186,24 +196,24 @@ drafting ──submit──▶ waiting_for_approval ──approve(version)──
 
 ### 3.4 되돌리기
 
-되돌리기는 변경셋 단위입니다. 기한은 정책(`approval.yml`의 `undo_window`)으로 정하고 변경셋에 기록합니다. 실행 응답의 `undo`는 다음 형태입니다.
+되돌리기는 변경셋 단위이고 항목을 역순으로 되돌립니다. 기한은 정책(`approval.yml`의 `change_set.undo_window_after_end_days`: 기간이 있는 변경은 가장 늦은 기간 끝 날 + N일 23:59, `undo_window_after_run_days`: 나머지는 실행한 날 + N일 23:59, 스토어 시간대)으로 정하고 변경셋에 기록합니다. 실행 응답의 `undo`는 다음 형태입니다.
 
 ```json
 {"by": "person", "target": "cs_1042", "until": "2026-11-09T23:59:00-05:00"}
 ```
 
-모델은 이 값을 보고 "기한까지 되돌릴 수 있다"고 안내할 뿐, 되돌리기를 호출할 수 없습니다. 되돌릴 수 없는 항목(고객 메시지 발송, 환불 송금)이 있는 변경셋은 프리뷰 단계에서 `checks`에 `irreversible`로 표시합니다.
+모델은 이 값을 보고 "기한까지 되돌릴 수 있다"고 안내할 뿐, 되돌리기를 호출할 수 없습니다. 되돌릴 수 없는 항목(`approval.yml` `change_set.irreversible`: 환불 송금, 고객 메시지 발송, API 키 폐기 등)이 변경셋에 붙으면 프리뷰의 `checks`에 `change_set.irreversible`이 붙고, 그 변경셋은 되돌릴 수 없습니다.
 
 ---
 
 ## 4. 정책 엔진 (`acom-policy`)
 
-- **파일:** `policies/*.yml`(도메인별 파일 + `approval.yml`)이 기본값입니다. 파일마다 Rust 구조체가 있고(`#[serde(deny_unknown_fields)]`), 시작할 때 스키마 검증에 실패하면 서비스가 뜨지 않습니다.
-- **스토어별 덮어쓰기:** `platform.policy_override`(스토어별 부분 YAML) → 기본값에 깊은 병합 → `PolicySet`(+ 버전 해시). 덮어쓰기 변경도 `platform.policy`의 쓰기 오퍼레이션이라 프리뷰·승인을 거칩니다.
-- **식 언어 없음:** YAML 안에 `"subtotal >= min_subtotal"` 같은 문자열 식을 두지 않습니다. 조건은 구조화된 형태(`{field: subtotal, op: gte, value: {value: 50, currency: USD}}`)로 쓰고, 작은 평가기(`policy::cond`)가 해석합니다. 계산식은 코드에 있고 YAML에는 그 파라미터만 둡니다.
-- **체크:** 체크 하나 = 순수 함수 `fn(&PolicySet, &CheckInput) -> Check`. 체크 키(`max_discount`, `price_floor`, ...)는 정책 키와 같고, 실패 시 `fix_tool`을 함께 냅니다. 오퍼레이션 메타의 `checks`가 어떤 체크를 돌릴지 정합니다.
-- **승인 판정:** `approval.yml`이 오퍼레이션 종류·금액·대상 수로 `needs_approval`과 사유를 정합니다. `W$`는 정책과 상관없이 항상 승인입니다.
-- **혜택 계산:** `calculate_benefits`(회원가·쿠폰·적립금 적용 순서와 한도)는 `acom-policy::benefit`의 순수 함수 하나이고, 장바구니·주문 준비·프로모션 프리뷰가 모두 이것을 부릅니다. 운영자가 정한 가격과 쇼퍼 에이전트가 말하는 가격이 같은 이유입니다.
+- **파일:** `policies/*.yml`이 기본값입니다. 도메인별 파일 12개(sales의 파일은 `order.yml`, analytics는 파일 없음)와 `approval.yml`, 모두 `acom_policy::FILES`에 있습니다. 하나라도 없거나 YAML로 읽히지 않으면 `serve`·`work`가 뜨지 않습니다. 도메인은 점으로 이은 키로 값을 읽습니다(`PolicySet::lookup("customer.tier.evaluation.scheduled_runs")`, 도메인의 `rules.rs`). 값이 없으면 코드의 기본값으로 메우지 않고 정책 파일이 깨진 것(`internal`)으로 봅니다. 타입으로 읽는 부분(`#[serde(deny_unknown_fields)]`)은 감시 작업 설정(`acom_policy::watchers`)처럼 필요한 곳에만 있습니다.
+- **스토어별 덮어쓰기:** `platform.policy_override`(스토어별 부분 YAML) → 기본값에 깊은 병합 → `PolicySet`(+ 버전 해시). `acom-store`의 `Runtime`이 스토어마다 잠시 캐시합니다. 정책을 읽는 툴(`get_policy`, `list_policies`)은 있고 바꾸는 툴은 없습니다. 데모 스토어의 덮어쓰기는 시드(`seed/demo/01_platform.yml`)에 있습니다.
+- **식 언어 없음:** YAML 안에 `"subtotal >= min_subtotal"` 같은 문자열 식을 두지 않습니다. 조건은 구조화된 형태(`{field: amount, op: gt, value: {value: 200.00, currency: USD}}`, `all`·`any`, 다른 정책 값을 가리키는 `value_from`)로 씁니다. 승인 조건은 `acom-policy`의 `PolicySet::approval_for`가, 도메인 조건은 그 도메인의 `rules.rs`가 해석합니다. 계산식은 코드에 있고 YAML에는 그 파라미터만 둡니다.
+- **체크:** 체크는 오퍼레이션의 `preview`가 정책 값과 읽은 데이터로 계산해 `checks[]`에 담습니다. 체크 키(`max_discount`, `price_floor`, ...)는 정책 키와 같고, 실패 시 `fix_tool`을 함께 냅니다. 오퍼레이션 메타의 `checks`가 그 오퍼레이션이 내는 체크를 선언합니다.
+- **승인 판정:** `approval.yml`의 `thresholds`(적용 툴, 조건, 승인 역할)와 `no_approval`이 프리뷰가 계산한 사실(금액, 바뀌는 가격 수, 고객에게 닿는지 등)로 `needs_approval`과 사유를 정합니다(`PolicySet::approval_for`). `W$`는 정책과 상관없이 항상 승인입니다.
+- **혜택 계산:** `calculate_benefits`(회원가·쿠폰·적립금·배송 혜택의 적용 순서와 한도)는 promotion 도메인의 순수 계산(`acom_promotion::benefit::calc`) 하나이고, 장바구니·주문 준비·주문이 `service::for_sales`로 모두 이것을 부릅니다. 운영자가 정한 가격과 쇼퍼 에이전트가 말하는 가격이 같은 이유입니다.
 
 ---
 
@@ -211,41 +221,47 @@ drafting ──submit──▶ waiting_for_approval ──approve(version)──
 
 ### 5.1 스키마와 테이블
 
-- PostgreSQL 스키마는 도메인별(`catalog`, `merchandising`, `search`, `promotion`, `customer`, `sales`, `fulfillment`, `messaging`, `community`, `platform`) + 에이전트용 `agent`.
+- PostgreSQL 스키마는 도메인별 13개(`platform`, `catalog`, `customer`, `promotion`, `merchandising`, `search`, `sales`, `fulfillment`, `messaging`, `analytics`(뷰만), `community`, `partner`, `integration`) + 에이전트용 `agent`. 목록과 마이그레이션 규칙은 [database.md](database.md).
 - 테이블·컬럼 이름은 [../api/data-model.md](../api/data-model.md) §DB 명명을 따릅니다. 모든 스토어 범위 테이블에 `tenant_id`와 RLS 정책.
 - 앱 접속 역할(`acom_app`)은 RLS를 우회하지 못합니다. 마이그레이션 역할만 소유자입니다.
 
 ### 5.2 상태와 이벤트
 
-- 상태가 있는 집계(주문, 주문 품목, 클레임, 환불, 쿠폰, 적립금, 변경셋)는 **현재 상태 열 + 이벤트 테이블**(`*_event`, append-only)을 같은 트랜잭션에서 씁니다. 상태 전이는 도메인 크레이트의 상태기계 함수(`fn transition(from, event) -> Result<State, DomainError>`)만 할 수 있습니다.
-- 적립금은 원장(`loyalty_ledger_entry`)으로, 잔액은 합계입니다.
-- 도메인 간 알림은 **아웃박스**(`platform.outbox`)로 합니다. 예: `order_delivered` → 적립금 확정, 등급 즉시 평가. 디스패처가 `LISTEN/NOTIFY` + 주기 폴링으로 꺼내 해당 도메인 핸들러를 부릅니다(최소 한 번 전달, 핸들러는 멱등).
+- 상태가 있는 집계(주문, 클레임, 배송, 환불, 회원 등급, 판매자, 변경셋)는 **현재 상태 열 + 이벤트 테이블**(`*_event`, append-only)을 같은 트랜잭션에서 씁니다. 상태 전이는 그 집계를 가진 도메인만 합니다.
+- 적립금은 원장(`promotion.loyalty_transaction`, 추가만)으로, 잔액은 합계입니다.
+- 작업이 낸 도메인 이벤트(`promotion.started` 등)와 재입고 알림(catalog)은 **아웃박스**(`platform.outbox`)에 행으로 남습니다. 이 행을 꺼내 다른 도메인 핸들러를 부르는 디스패처는 없습니다. 도메인 사이의 후속 일은 같은 트랜잭션 안의 서비스 함수 호출이나 `jobs::book`으로 예약한 작업이 합니다. 화면과 에이전트로 가는 알림은 `pg_notify('acom_events', …)` → `GET /v1/platform/events`(SSE)입니다.
 
 ### 5.3 작업 큐와 시계
 
-- 예약 작업(배너 켜고 끄기, 프로모션 시작·종료, 쿠폰 만료, 등급 정기 평가, 적립 확정)은 `platform.job`(`run_at`, `FOR UPDATE SKIP LOCKED`)으로 돌립니다.
-- **처리기는 도메인이 등록합니다.** 오퍼레이션 옆에 `RegistryBuilder::job(…)`으로 `Job` 구현(`acom-contract::job`)을 하나씩 올립니다. 지금 있는 종류: `promotion.start`·`promotion.end`·`loyalty.expire`(promotion, 적립금 만료는 매일 스토어 자정에 돌고 다음 날 실행을 스스로 예약), `watcher.returns_over_refund_threshold`(fulfillment), `watcher.stock_out_forecast`(sales, 재고는 catalog의 `product_stock`), `subscription.renew`(sales, 정기 주문의 회차 주문), `watcher.price_below_cost`(catalog), `integration.apply_event`(integration, 받은 택배사·결제사 이벤트 중 대상이 아직 없던 것을 다시 반영). 감시 작업이 아닌 작업은 그 일을 정하는 오퍼레이션이나 작업이 `acom_changeset::jobs::book`(고정 id라 같은 실행을 다시 예약해도 하나)으로 예약하고 `platform.job`을 직접 쓰지 않습니다(정기 주문 시작·재개·일정 변경, 회차마다 `job_renew_{subscription_id}_{yyyymmdd}`). 처리기는 작업의 트랜잭션 안에서 돌고, 결과로 `Done {result, events}`(도메인 이벤트는 엔진이 outbox에 씀) 또는 감시 작업의 `Watched(Vec<TaskDraft>)`를 돌려줍니다. 도메인은 `platform.task`를 직접 쓰지 않습니다.
+- 예약 작업은 `platform.job`(`run_at`, `FOR UPDATE SKIP LOCKED`)으로 돌립니다.
+- **처리기는 도메인이 등록합니다.** 오퍼레이션 옆에 `RegistryBuilder::job(…)`으로 `Job` 구현(`acom-contract::job`)을 하나씩 올립니다. 지금 있는 종류는 열하나입니다.
+  - 감시 작업 셋: `watcher.price_below_cost`(catalog, 원가 이하 정가. 고침 변경셋을 스스로 초안), `watcher.stock_out_forecast`(sales, 재고는 catalog의 `product_stock`), `watcher.returns_over_refund_threshold`(fulfillment).
+  - 예약 작업 여덟: `promotion.start`·`promotion.end`(promotion, 기간 시작·끝에 상태를 적음. 데모 시드가 예약), `loyalty.expire`(promotion, 매일 스토어 자정에 돌고 다음 날 실행을 스스로 예약), `customer.evaluate_tiers`(customer, 등급 프로그램의 정기 평가, 다음 실행을 스스로 예약), `partner.change_seller_status`(partner, 나중으로 예약한 판매자 상태 변경), `subscription.renew`(sales, 정기 주문의 회차 주문), `messaging.send_campaign`(messaging, 예약한 캠페인 발송), `integration.apply_event`(integration, 받은 택배사·결제사 이벤트 중 대상이 아직 없던 것을 다시 반영).
+  - 감시 작업이 아닌 작업은 그 일을 정하는 오퍼레이션이나 작업이 `acom_changeset::jobs::book`(고정 id라 같은 실행을 다시 예약해도 하나)으로 예약하고 `platform.job`을 직접 쓰지 않습니다(예: 정기 주문 시작·재개·일정 변경은 회차마다 `job_renew_{subscription_id}_{yyyymmdd}`). 처리기는 작업의 트랜잭션 안에서 돌고, 결과로 `Done {result, events}`(도메인 이벤트는 엔진이 outbox에 씀) 또는 감시 작업의 `Watched(Vec<TaskDraft>)`를 돌려줍니다. 도메인은 `platform.task`를 직접 쓰지 않습니다.
 - **실행기**는 `acom-changeset::jobs::run_due(registry, cx, until)`입니다. 기한이 된 작업을 `run_at` 순서로 하나씩 잡아 작업마다 트랜잭션 하나에서 실행하고(시계는 그 작업의 `run_at`), 성공이면 `done_at`·`attempts`, 실패면 처리기의 쓰기를 세이브포인트로 되돌린 뒤 `attempts`·`last_error`와 1·2·4…60분 뒤의 `run_at`을 기록합니다. 감시 작업은 `platform.yml` `every_minutes`로 다음 실행을 만들고, 놓친 실행은 가장 늦은 한 번으로 합칩니다. 감시 작업의 초안으로 같은 감시 작업·원인의 열린 할 일을 갱신하거나 새로 만들고, 고침이 있으면 `sys_watcher`로 변경셋을 만들어 제출합니다(`run_fix: standing_approval`일 때만 승인 없이 실행). `job.updated`·`task.updated`는 변경셋 이벤트처럼 `pg_notify('acom_events', …)`로 나갑니다. 규칙 전체는 [../api/platform.md](../api/platform.md#예약-작업).
 - **워커**(`acom-commerce work`)는 5초마다 `ACOM_STORE_ID`의 스토어(쉼표로 여러 개)마다 `run_due`를 부르고, 종료 신호를 받으면 잡은 작업을 끝낸 뒤 멈춥니다. `acom_app`은 RLS 때문에 스토어 목록을 읽을 수 없으므로 스토어를 설정으로 받습니다.
 - 시간은 `Clock` 트레이트로만 얻습니다. 데모 모드에서는 스토어별 데모 시계(`platform.demo_clock`)가 기준이고, 시계를 앞으로 돌리면(`PUT /v1/platform/demo-clock`, `admin:demo`) 그 사이 예약 작업이 순서대로 실행된 뒤 시계가 옮겨집니다. 같은 시각으로 다시 옮기면 아무것도 실행하지 않습니다. 시나리오(금요일 아침 운영, 토요일 쇼핑)를 재현하는 장치입니다.
 
 ### 5.4 검색
 
-`search` 도메인은 `SearchBackend` 트레이트 뒤에 Postgres 구현(전문 검색 `tsvector` + pgvector 임베딩, 하이브리드 점수)을 둡니다. 등급·재고·판매 상태 필터는 **질의 안에서** 적용합니다(결과를 받은 뒤 거르지 않음). 임베딩은 상품 저장 시 아웃박스 → 색인 작업으로 갱신합니다.
+`search` 도메인은 PostgreSQL 전문 검색(`tsvector`, 이름 A, 브랜드·카테고리·키워드 B, 소재 C, 설명 D)으로 순위를 매깁니다. 검색 문서(`search.search_document`)는 `reindex`(`full`·`incremental`, 사전 버전 포함)가 catalog의 `service::for_search`로 다시 만들고, 문서가 아직 없으면 catalog의 상품 글로 바로 찾습니다. 재고·판매 상태·가격 조건은 catalog의 상품 질의 안에서 거르고(결과를 받은 뒤 거르지 않음), 쇼퍼는 판매 중인 상품만 찾습니다. 임베딩 모델은 연결돼 있지 않아 `embedding` 열은 비어 있고, 순위는 글로만 정합니다.
 
 ---
 
-## 6. 표면 (`acom-http`, `acom-mcp`)
+## 6. 표면 (`acom-http`)
 
 | 표면 | 경로 | 내용 |
 |---|---|---|
 | 툴 REST | `/v1/{domain}/...` | 레지스트리의 모든 오퍼레이션. 읽기는 GET(필터는 쿼리), 쓰기는 POST/PUT/PATCH/DELETE + `?preview=true` |
-| 툴 매니페스트 | `GET /v1/tools` | 스코프로 거른 툴 목록: 이름·설명·주소·종류·consumes/produces·닫힌 입력 스키마·체크·에러 |
-| 변경셋(런타임용) | `/v1/platform/change-sets/...` | 생성·항목·제출·조회·검증. [../api/platform.md](../api/platform.md#change_set) |
-| 사람 전용 | `/v1/platform/change-sets/{id}/approve` 등 | `human:*` 스코프 필수. [../api/README.md](../api/README.md) §2 |
+| 툴 매니페스트 | `GET /v1/tools` | 스코프와 `audience`로 거른 툴 목록: 이름·설명·주소·종류·consumes/produces·닫힌 입력 스키마·체크·에러 |
+| 툴 이름으로 부르기 | `POST /v1/tools/{tool}` | 에이전트 런타임이 쓰는 길. 데모 모드에서는 `?set=facade`로 평가용 화면형 파사드의 매니페스트와 화면을 같은 길로 내놓음([../api/README.md](../api/README.md) §7) |
+| 변경셋(런타임용) | `/v1/platform/change-sets/...`, `GET /v1/platform/previews/{preview_id}` | 생성·항목·제출·조회, 프리뷰 조회. [../api/platform.md](../api/platform.md#change_set) |
+| 사람 전용 | `/v1/platform/change-sets/{id}/approve`·`reject`·`undo`(`acom-http`), 나머지 15개는 도메인의 `PersonOp` | `human:*` 스코프 필수. [../api/README.md](../api/README.md) §2 |
 | 이벤트 구독 | `GET /v1/platform/events` (SSE) | 변경셋·작업 진행을 에이전트와 웹에 전달 |
 | 데모 시계(런타임용) | `GET`·`PUT /v1/platform/demo-clock` | 스토어 시각 읽기, 데모 모드에서 옮기기(`admin:demo`). [../api/platform.md](../api/platform.md#데모-시계) |
-| MCP | `/mcp` | 외부 에이전트 스코프의 툴만. 전선 위 형태(preview/preview_id 포함) |
+| 데모 다시 적재 | `POST /v1/platform/demo/reset` | `acom-commerce`가 직접 둠. 데모 모드에서 스토어를 비우고 시드를 다시 넣음(`admin:demo`, 소유자 연결이 있을 때만). 모든 세션이 끝남 |
+| 스토어 | `GET /v1/platform/store` | 요청이 도는 스토어의 통화·시간대·현재 시각(데모 모드면 데모 시계). 에이전트가 씀 |
+| MCP | (없음) | 외부 에이전트용으로 설계했지만 아직 서빙하지 않음. `acom-mcp`는 빈 크레이트 |
 | 운영 | `/healthz`, `/readyz`, `/metrics` | |
 
 에러는 한 곳에서 HTTP로 바꿉니다: `ToolError{code, class, message, next_tool, detail}` → 상태 코드는 class에서([../api/errors.md](../api/errors.md) §1), 바디는 `{"error": {...}}`.

@@ -1,5 +1,5 @@
-// The chat contract (docs/api/chat.md). These hand-written types are a placeholder: from M4 they
-// are generated from the Rust contract into src/contract/ and imported from there instead.
+// The chat contract (docs/api/chat.md), written by hand from the spec; nothing generates these
+// types. Keep them equal to docs/api/chat.md and crates/agent when either changes.
 
 export type Surface = 'bo' | 'fo';
 

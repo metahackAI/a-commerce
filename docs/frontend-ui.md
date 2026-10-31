@@ -1,6 +1,6 @@
 # Front-end UI library
 
-Status: decided Oct 30, 2026. The back office (`/bo`) and the storefront (`/fo`) are built on **[Meta Astryx](https://github.com/meta/astryx)**, Meta's open-source React design system (MIT).
+Status: decided Oct 30, 2026. The back office (`/bo`) and the storefront (`/`) of Ailism Commerce are built on **[Meta Astryx](https://github.com/meta/astryx)**, Meta's open-source React design system (MIT).
 
 Links: [GitHub](https://github.com/meta/astryx) · [Docs](https://astryx.atmeta.com) · [Storybook](https://astryx.atmeta.com/storybook/) · [Sandbox](https://astryx.atmeta.com/sandbox/) · [npm `@astryxdesign/core`](https://www.npmjs.com/package/@astryxdesign/core)
 
@@ -54,16 +54,16 @@ Add the CLI as a script so that people and agents call it the same way:
 
 `npm run astryx -- component --list`, `npm run astryx -- template --list`, `npm run astryx -- search "<query>"`.
 
-In this repository the setup is done (`web/`): versions are pinned, the CSS is imported in `src/app/layout.tsx`, and the theme is wired the Astryx way with `npm run astryx -- theme add neutral`, which generates `src/astryx-themes.ts` used by `src/app/providers.tsx`. `npm run astryx -- init --features agents,theme` also wrote `web/AGENTS.md` (the Astryx guide for coding agents) and the theme template. How the AI layer sits on top: [frontend/README.md](frontend/README.md).
+In this repository the setup is done (`web/`): versions are pinned (0.7.4), there is no `globals.css`, and the reset and component CSS are imported in `src/app/layout.tsx`. The theme is our `ailism` (§4): `src/theme/ailism.ts`, built into `ailism.js` and `ailism.css`, which `src/app/providers.tsx` imports with the `Theme` provider. `npm run astryx -- theme add neutral` generated `src/astryx-themes.ts` at the start; nothing imports it now. `npm run astryx -- init --features agents,theme` also wrote `web/AGENTS.md` (the Astryx guide for coding agents) and the theme template. How the AI layer sits on top: [frontend/README.md](frontend/README.md).
 
 ## 4. Rules
 
 - **One UI block, one component.** Each UI block in [api/chat.md](api/chat.md) §3 is one React component under `web/`, built from Astryx parts. The agent picks blocks; it never writes markup.
-- **Brand.** The site is **Ailism Commerce**. Our theme `ailism` (`web/src/theme/ailism.ts`) extends Neutral with the Ailism red (`#D90117`) as the accent and Pretendard as the typeface; it is built with `npm run astryx -- theme build src/theme/ailism.ts` and provided in `src/app/providers.tsx`. The wordmark, the assistant's face (`/brand/`), the voice of the brand (two short beats: "Say it once. See it through.") and the footer live in `web/src/components/brand/Ailism.tsx`. The header follows the Ailism bar: the wordmark with the product name muted beside it, plain menu items, actions on the right.
+- **Brand.** The site is **Ailism Commerce**. Our theme `ailism` (`web/src/theme/ailism.ts`) extends Neutral with the Ailism red (`#D90117`) as the accent and Pretendard as the typeface (loaded from jsDelivr in `src/app/layout.tsx`); it is built with `npm run astryx -- theme build src/theme/ailism.ts` and provided in `src/app/providers.tsx`. The wordmark, the assistant's face (`/brand/`), the voice of the brand (two short beats: "Say it once. See it through.") and the footer live in `web/src/components/brand/Ailism.tsx`. The header follows the Ailism bar: the wordmark with the product name muted beside it, plain menu items, actions on the right.
 - **Look.** Theme `ailism` (Neutral with the Ailism accent), white backgrounds. No gradients, glows, decorative shadows, colored side bars, or sparkle icons. Changes to the look go into our theme file as CSS custom properties, not into per-component overrides.
 - **Overrides.** Small adjustments use `className` with CSS modules. Swizzle a component only when the theme and `className` cannot do it, and note the reason in the commit.
 - **Templates first.** Start back-office pages from an Astryx template (`npm run astryx -- build`) and change it, instead of laying out pages by hand.
-- **Charts.** Astryx charts (`@astryxdesign/charts`, `@astryxdesign/vega`) are only on the `canary` tag. Use them only if a scene needs a chart, and pin the version.
+- **Charts.** Astryx charts (`@astryxdesign/charts`, `@astryxdesign/vega`) are only on the `canary` tag, so they are not used. The one chart, daily revenue in `sales_explainer` and `/bo/insights` (`web/src/components/bo/SalesChart.tsx`), is plain SVG drawn with the Astryx data-visualization tokens.
 
 ## 5. Risks and fallback
 

@@ -12,14 +12,14 @@
 
 | 항목 | 값 |
 |---|---|
-| 이름 | Northwind Apparel (스토어프론트 표기 NORTHWIND), `northwind.example` |
+| 이름 | Northwind Apparel, `northwind.example` (데이터의 스토어 이름. 웹은 브랜드 "Ailism Commerce"로 표기) |
 | 테넌트 id | `store_northwind` |
 | 통화 | USD, 센트 단위 반올림(반올림은 0.5에서 올림) |
 | 시간대 | **America/New_York [정함]**. 11월 기준 UTC−05:00 |
-| 단위 | g, cm. 의류 사이즈 XS–XL, 바지 28–36, 신발 US 7–12 |
+| 단위 | g, cm. 의류 사이즈 XS–XL(생성한 바지·데님 포함), 신발 US 7–12. 바지 28–36은 공급사 시트(FW26)에만 |
 | 세금 | 범위 밖, 0 **[정함]** |
 | 배송비 | 기본 $6.00, 할인 전 상품 소계 $80 이상이면 무료(진행 중 프로모션 "Free shipping over $80") **[정함]** |
-| 모델 표기 | 운영 에이전트 "Muse Glimmer 30B, hands planning to Muse Spark when needed" |
+| 모델 표기 | 운영 에이전트 "Muse Glimmer 30B, hands planning to Muse Spark when needed". 라이브 데모는 Spark가 설정되지 않아 모든 모델 호출이 Glimmer |
 
 ### 1.1 데모 시계
 
@@ -44,13 +44,14 @@
 | `vip` | VIP | 3 | **1,284** | 없음(주말 세일 같은 한정 혜택 대상) |
 
 - 등급은 배타적이며 회원은 하나의 등급에만 속합니다. 등급과 승급 규칙은 `policies/customer.yml`의 구조를 따르고, 이 표는 데모 스토어의 데이터입니다.
-- 할인 상한(정책 덮어쓰기): 전체 20%, `vip` 30%.
+- 할인 상한: 전체 20%(기본값), `vip` 30%(데모 스토어 덮어쓰기, §5).
 
 ### 2.2 운영자
 
 | id | 이름 | 역할 |
 |---|---|---|
 | `adm_sj` | Son SeongJun ("SJ") | merchandiser + catalog admin **[정함]**. 승인 권한: 프로모션·전시·환불·메시지, 상품 초안 저장·게시(B4) |
+| `adm_admin` | Administrator | 데모 관리자. `/bo`에 `admin` / `admin123`으로 로그인, 다섯 역할 모두 **[정함]** |
 
 ### 2.3 쇼퍼
 
@@ -61,7 +62,7 @@
 | (게스트) | Mina | — | 첫 방문, 로그인 안 함, 휴대폰. 기억 없음 |
 | — | Jamie의 아버지 | — | 선물 수령인. "48 Pine Rd, Lakeview". 쇼퍼 프로필에 저장하지 않음 |
 
-Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이고, 그중 하나가 **Packable windbreaker M(Black), 9월 배송, 반품 없음**입니다(핏 장면의 "Windbreaker M, kept"). 나머지 4건은 시드 생성 규칙(§7)으로 만듭니다.
+Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이고, 그중 하나가 **Packable windbreaker M(Black), 9월 배송, 반품 없음**입니다(핏 장면의 "Windbreaker M, kept"). 나머지 4건(#20105, #20151, #20188, #20236)도 `seed/demo/06_sales.yml`에 이름 있는 주문으로 들어 있고, 생성기는 Jamie에게 주문을 만들지 않습니다.
 
 ---
 
@@ -126,15 +127,15 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 
 ---
 
-## 5. 데모 정책 (스토어 덮어쓰기)
+## 5. 데모 정책 (기본값과 스토어 덮어쓰기)
 
-`policies/*.yml` 기본값 위에 데모 스토어가 덮어쓰는 값입니다(`seed/demo/policy-overrides/*.yml`).
+데모 장면이 쓰는 정책 값입니다. 대부분 `policies/*.yml`의 기본값이고, 기본값과 다른 세 값(**덮어씀**)만 `seed/demo/01_platform.yml`의 `platform.policy_override` 행에 있습니다.
 
 | 정책 키 | 값 |
 |---|---|
 | `promotion.max_discount.everyone` | 0.20 |
-| `promotion.max_discount.by_tier.vip` | 0.30 |
-| `catalog.pricing.price_floor` | 원가 × 1.15 (같아도 통과) |
+| `promotion.max_discount.by_tier.vip` | 0.30 (**덮어씀**. 기본값은 등급별 상한 없음) |
+| `catalog.price_floor` | 원가 × 1.15 (같아도 통과) |
 | `promotion.promo_min_stock` | 10 (미만은 세일에서 제외) |
 | `promotion.member_benefits_per_order` | 1 (쿠폰은 등급 쿠폰과 중복 불가) |
 | `approval.thresholds.refund` | $200.00 초과 환불은 사람 승인 |
@@ -145,6 +146,8 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 | `fulfillment` 파손 주장 | 사진 필수 |
 | `fulfillment` 반품 이력 플래그 | 90일 안 4회 |
 | `approval.change_set.undo_window_after_end_days` | 1 |
+| `platform.watchers.price_below_cost.run_fix` | `standing_approval` (**덮어씀**. 기본값 `ask`). §3.2의 08:31 자동 수정이 사람 승인 없이 실행됨 |
+| `platform.task_pickup` | `enabled: true`, `acts_as: adm_sj` (**덮어씀**. 기본값은 꺼짐). 감시 작업이 연 할 일을 게이트웨이가 SJ의 이름으로 에이전트에게 넘김 |
 
 ---
 
@@ -176,11 +179,11 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
   4. `verify_change_set` — 셋을 다시 읽어 모두 일치 → `live`.
   - 제외 2개(chore coat, rain parka)는 실행이 아니라 프리뷰에 남는 기록입니다.
 - **되돌리기 기한:** Nov 9, 23:59 (종료 + 1일).
-- **승인 전 툴 호출:** 9회 [정함]: `get_policy`, `search_products`, `list_tiers`, `list_active_promotions`, `list_display_slots`, 프리뷰 3회(`set_sale_prices`, `create_coupon`, `schedule_banner`), 대화 수정 후 `set_sale_prices` 재프리뷰.
+- **승인 전 툴 호출:** 7회: `search_products`, `list_tiers`, `list_display_slots`, 프리뷰 3회(`set_sale_prices`, `create_coupon`, `schedule_banner`), 대화 수정 후 `set_sale_prices` 재프리뷰. 할인 상한과 진행 중 프로모션 겹침은 `set_sale_prices` 프리뷰가 확인합니다(재생 테스트 `crates/agent/src/runtime/tests.rs`).
 
 ### B2. 반품 12건 검토 (10:40, 에이전트 시작)
 
-- 감시 작업이 "$200 초과 반품 요청 12건 대기"를 할 일로 만들고, 운영 에이전트가 정책 기준으로 분류합니다(읽기만, 14회 툴 호출).
+- 감시 작업이 "$200 초과 반품 요청 12건 대기"를 할 일로 만들고, 운영 에이전트가 정책 기준으로 분류합니다(읽기만, 13회 툴 호출: `search_return_requests` 1 + `evaluate_return_request` 12).
 - **분류:** 환불 9건 $2,463.00 · 사진 요청 2건 · 거절 1건.
 
 | 주문 | 상품 | 금액 | 사유 · 경과 | 제안 |
@@ -194,7 +197,7 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 | 숨김 5건 [정함] | #20333 Wool overcoat $289.00 · #20341 Leather chelsea boots $312.00 · #20352 Field jacket ×2 $256.00 · #20388 Cashmere sweater $248.00 · #20395 Chore coat ×2 $284.00 | 합 $1,389.00 | 30일 안 | 환불 |
 | 숨김 1건 [정함] | #20409 Wool overcoat $289.00 | | 파손 주장, 사진 없음 | 사진 요청 |
 
-- **체크 4개:** 원결제수단 환불 가능(12/12) 통과 · 쿠폰 할인 차감(3건 쿠폰 사용: #20352, #20388, #20395 [정함]) 통과 · 반품 기간(11/12) 통과 · 반품 이력 **확인 필요**(#20431 고객 90일 4회).
+- **체크 4개:** 원결제수단 환불 가능(환불 9건 중 9) 통과 · 쿠폰 할인 차감(3건 쿠폰 사용: #20352, #20388, #20395 [정함]) 통과 · 반품 기간(11/12) 통과 · 반품 이력 **확인 필요**(#20431 고객 90일 4회).
 - **대화:** "Why decline the cashmere sweater?" → 39일 전 배송, 30일 초과, 스토어 크레딧은 정책 밖이라 운영자 OK 필요 → "Keep the decline, but be kind in the message."
 - **변경셋:** 환불 9건 + 메시지 3건(사진 요청 2, 거절 1) → "Approve 9 refunds and send 3 messages". 메시지는 되돌릴 수 없음(`irreversible` 표시).
 
@@ -215,7 +218,7 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 | 08:40 → 09:14 | Linen shirt 재주문(`create_reorder`, S 70 · M 90 · L 80 = 240개, 단가 $26.00, 합계 $6,240.00, Nov 13 도착 예정) | 승인 대기(원가 합계가 $1,000 초과) |
 | 09:30 → 10:00 | 메인 배너 "Fall layers"로 교체 | 운영자 요청, 검증 완료 |
 | Nov 5 → 11:00 | 사이즈표 누락 확인 18개 중 15개 | 진행 중, 변경 없음 |
-| 08:02 ~ | 주문 상태 문의 46건 응답, 사람 이관 0 | 쇼퍼 에이전트, 읽기만 |
+| 08:02 ~ | 주문 상태 문의 46건 응답, 사람 이관 0 | 쇼퍼 에이전트, 읽기만. 시안의 숫자이고 시드에 행 없음 |
 
 ### F1. 같은 질문, 두 쇼퍼
 
@@ -245,7 +248,7 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 
 ### F6. 요청으로 화면 바꾸기 (Mina, 휴대폰)
 
-"Light jacket for spring trips" → `product_list` 3개 → "Less text. Just show me bigger photos." → 같은 결과를 `look_gallery`로, 기억 "photos over details"(되돌리기 가능). 가격·재고·정책은 그대로.
+"Light jacket for spring trips" → `product_list` 3개 → "Less text. Just show me bigger photos." → 같은 결과를 `look_gallery`로, 기억 "photos over details"(되돌리기 가능. 기억은 로그인한 쇼퍼로 재생할 때만, §8 #18). 가격·재고·정책은 그대로.
 
 ---
 
@@ -256,18 +259,18 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 | 대상 | 규칙 |
 |---|---|
 | summer outerwear 생성 상품 35개 | 정가 $59–$149, 원가 = 정가 × 0.45, 재고 12–120, 사이즈 XS–XL |
-| 나머지 카테고리 | 전체 24개 카테고리, 상품 합계 약 400개 |
+| 나머지 카테고리 | 전체 24개 카테고리, 상품 합계 400개(이름 18 + 생성 382) |
 | 회원 | 등급별 수는 §2.1. VIP 1,284명에 Jamie 포함 |
 | 주문 번호 | 이름이 나오는 주문은 위의 번호 그대로. 생성 주문은 주문일 순서로 번호를 받되 이름 있는 번호를 건너뜀(그래서 이름 있는 주문 주변에서는 번호와 날짜 순서가 다를 수 있음) |
-| Jamie의 과거 주문 | 6건, 최근 2건 M, 그중 windbreaker M(Black) 9월 배송 |
+| Jamie의 과거 주문 | 생성하지 않음. 6건 모두 `06_sales.yml`에 있고 최근 2건이 M(#20268 windbreaker M Black, Sep 11 배송; #20381 merino tee M) |
 | 일별 매출 | Oct 23 – Nov 5는 B3의 값, 그 전 목요일 3번(Oct 8·15·22)의 합은 $69,000 |
-| 변경셋 번호 | `cs_1042` VIP 세일, `cs_1043` 반품, `cs_1040` 원가 이하 4개 수정(live), `cs_1041` Linen 재주문(`create_reorder` 한 항목, 제출되어 `waiting_for_approval`). 승인하면 재주문이 `processing`으로 남고 `get_inventory`에 `on_order`로 보이며, 재고는 받을 때 늘어남 |
+| 변경셋 번호 | `cs_1042` VIP 세일, `cs_1043` 반품, `cs_1039` Fall layers 배너(live), `cs_1040` 원가 이하 4개 수정(live), `cs_1041` Linen 재주문(`create_reorder` 한 항목, 제출되어 `waiting_for_approval`). 승인하면 재주문이 `processing`으로 남고 `get_inventory`에 `on_order`로 보이며, 재고는 받을 때 늘어남. 새 변경셋은 스토어의 가장 큰 번호 + 1을 받으므로, #1042·#1043은 시드 직후 B1, B2 순서로 만들 때의 번호 |
 
 ---
 
 ### 7.1 시드와 장면 재생
 
-- 시드는 **금요일 10:40 이후의 상태**입니다. F5(Alex가 반품 요청을 보냄, 09:50)의 결과인 `clm_20402`가 이미 들어 있어 B2가 12건을 봅니다. F5 재생 테스트는 이 클레임을 지운 상태에서 시작합니다(`acom-testkit`의 장면별 준비 단계).
+- 시드는 **금요일 10:40 이후의 상태**입니다. F5(Alex가 반품 요청을 보냄, 09:50)의 결과인 `clm_20402`가 이미 들어 있어 B2가 12건을 봅니다. F5 재생 테스트는 이 클레임과 그 항목·이벤트를 지운 상태에서 시작합니다(`crates/domains/fulfillment/src/tests.rs`의 `f5_alex_sends_the_refund_request`가 커밋하지 않는 트랜잭션 안에서 지움).
 - B3의 원인은 데이터에서 나옵니다. 품절은 `catalog.offer`의 `sold_out_at`(Wed Nov 4 15:00)과 품절 사이즈가 비교 목요일에 판 줄, 주간 이메일은 `messaging.campaign`(`cmp_weekly_1105`, `failed`, "List import failed", Thu 08:00)과 지난 네 목요일 발송에서 온 주문(`sales_order.campaign_id`, 합 $5,200 = 4 × $1,300)입니다. 설명 안 됨 −$660은 나머지입니다.
 
 ## 8. 시안끼리 다른 곳과 결정
@@ -281,8 +284,8 @@ Jamie의 과거 주문 6건 **[정함]**: 가장 최근 2건이 M 사이즈이�
 | 5 | 반품 할 일 시각 | 09:00 자동화 | 10:40 에이전트 | **10:40** |
 | 6 | 공급사 시트 요청 시각 | 10:15 | 10:58 | **10:58** |
 | 7 | "Fall layers" 배너 | 09:30 요청, 10:00 게시 | 08:10 | **09:30 / 10:00** |
-| 8 | VIP 세일 툴 이름 | `create_promotion` → `issue_coupon` → `schedule_display` (design.md §4·§9) | `set_sale_prices` → `create_coupon` → `schedule_banner` → `verify_change_set` (`options/d-command.html`) | **뒤쪽(시안 D)**. 장바구니가 할인 한 줄(−$17.80)로 보여 주는 것과 맞음. design.md의 이름은 같은 계층의 다른 오퍼레이션으로 남음 |
-| 9 | 상품 수 | 42 (design.md §6 예) | 40 (변경셋 v2) | 카테고리 42, 세일 **40** |
+| 8 | VIP 세일 툴 이름 | `create_promotion` → `issue_coupon` → `schedule_display` (design.md 초안) | `set_sale_prices` → `create_coupon` → `schedule_banner` → `verify_change_set` (`options/d-command.html`) | **뒤쪽(시안 D)**. 장바구니가 할인 한 줄(−$17.80)로 보여 주는 것과 맞음. design.md의 이름은 같은 계층의 다른 오퍼레이션으로 남음 |
+| 9 | 상품 수 | 42 (design.md 초안의 예) | 40 (변경셋 v2) | 카테고리 42, 세일 **40** |
 | 10 | Jamie의 windbreaker | 이미 가지고 있음 (`fo-fit.html`) | Nov 7에 삼 (`store.html`) | 과거 주문(Black, 9월)을 시드에 넣고 Nov 7은 같은 사이즈 재구매 |
 | 11 | Alex 반품 시점 | 일주일 뒤 | 금 10:40에 이미 대기열 | Fri Nov 6 **09:50** |
 | 12 | hero 슬롯 | Nov 7–8 비어 있음 | "Fall layers" 게시 중 | 슬롯은 대상별 배치. VIP 배치만 비어 있음 |

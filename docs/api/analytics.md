@@ -3,7 +3,7 @@
 > 계층: `analytics.{resource}.{operation}`. 공통 규약(응답 형식·헤더)은 [conventions.md](conventions.md)와 [README.md](README.md) §3, 에러는 [errors.md](errors.md), 데이터 타입은 [data-model.md](data-model.md).
 > **범위**: 이 도메인은 읽기 전용 집계만 둡니다. 리포트 화면, 엑셀 내보내기, 정산 같은 리포팅 기능은 두지 않습니다. 데모 시나리오에서 쓰는 것은 `sales_explainer` 블록([chat.md](chat.md) §3.3)의 데이터를 주는 `explain_sales_change`와 일별 차트용 `get_sales_trend`입니다(장면 B3, [../scenarios.md](../scenarios.md) §6). 자연어 통계 질문은 전용 엔드포인트 없이 에이전트가 아래 읽기 툴을 조합해 답합니다.
 > **설계 축**: ① 모두 R(부작용 없음, 승인 불필요). 집계 입력이 커서 POST를 쓰지만 부작용 없는 읽기입니다. ② 결과는 schema.org `Dataset`과 `Observation`, 지표 이름은 `acom:metric`(의미 있는 영단어, 코드값 금지), ③ 기간·차원을 파라미터로 받고 지표마다 엔드포인트를 따로 두지 않음, ④ 개인정보 없이 집계값만. ⑤ 금액은 `{value, currency}`, 감소는 음수.
-> **구현**: `crates/domains/analytics`. 읽는 곳은 이 도메인의 읽기 모델인 `analytics` 뷰뿐입니다(`migrations/0011`, `0016`: `daily_sales`, `order_summary`, `order_line_summary`, `variant_stock_out`, `campaign_send`, `member_tier_count`, `daily_new_members`). 뷰에는 이름·연락처·주소·고객 id가 없습니다. 사람을 세지 않고는 뷰로 낼 수 없는 수(기간에 산 회원 수)는 `acom_sales::service::for_analytics`가 셉니다. 기간은 스토어 날짜이고 오늘까지만 받습니다(366일까지). 비율(`*_rate`)은 0–1, 소수 넷째 자리까지입니다.
+> **구현**: `crates/domains/analytics`. 읽는 곳은 이 도메인의 읽기 모델인 `analytics` 뷰뿐입니다(`migrations/0011`, `0016`, `0028`: `daily_sales`, `order_summary`, `order_line_summary`, `variant_stock_out`, `campaign_send`, `member_tier_count`, `daily_new_members`, `inquiry_summary`). 뷰에는 이름·연락처·주소·고객 id가 없습니다. 사람을 세지 않고는 뷰로 낼 수 없는 수(기간에 산 회원 수)는 `acom_sales::service::for_analytics`가 셉니다. 기간은 스토어 날짜이고 오늘까지만 받습니다(366일까지). 비율(`*_rate`)은 0–1, 소수 넷째 자리까지입니다.
 
 리소스: [sales](#sales) · [customer](#customer) · [service](#service)
 

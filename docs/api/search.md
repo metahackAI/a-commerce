@@ -2,7 +2,7 @@
 
 > 계층: `search.{resource}.{operation}`. 공통 형식(읽기 봉투, 쓰기의 프리뷰 → `preview_id` 실행, 시간·금액·id)은 [conventions.md](conventions.md), 에러 코드는 [errors.md](errors.md), 상태 값은 [enums.md](enums.md), 데이터 타입은 [data-model.md](data-model.md), 정책은 [search.yml](../../policies/search.yml). 예시 값은 데모 스토어([../scenarios.md](../scenarios.md))입니다.
 >
-> **설계 축**: ① `search_products`는 운영자와 쇼퍼가 함께 쓰는 첫 툴로, 후속 툴의 입력 `product_id[]`를 만듭니다(툴 그래프의 맨 앞, [README.md](README.md) §5). ② 키워드와 벡터를 섞은 랭킹, 질의 확장, 실패 시 키워드 검색으로 내려가도 같은 정렬 유지. ③ 스토어 격리와 등급·재고 필터는 질의 안에서 적용(결과를 받은 뒤 거르지 않음). ④ 동의어·신조어 변경은 재색인 후 반영(새 색인을 다 채운 뒤 별칭을 바꿔 무중단).
+> **설계 축**: ① `search_products`는 운영자와 쇼퍼가 함께 쓰는 첫 툴로, 후속 툴의 입력 `product_id[]`를 만듭니다(툴 그래프의 맨 앞, [README.md](README.md) §5). ② Postgres 전문 검색으로 순위를 매기고 사전의 동의어로 질의를 넓힘. 검색 문서가 아직 없으면 카탈로그 글에서 같은 방식으로 찾음. 임베딩 모델(바깥 모델)은 연결하지 않아 벡터는 쓰지 않음(`reindex`의 `embeddings`도 그렇게 답함). ③ 스토어 격리와 등급·재고 필터는 질의 안에서 적용(결과를 받은 뒤 거르지 않음). ④ 동의어·신조어 변경은 재색인 후 반영(재색인은 트랜잭션 하나라 커밋 순간 새 문서로 바뀌어 무중단, [index](#index)).
 >
 > **상품과 변형**: 사람과 모델은 상품(`prd_`, schema.org `ProductGroup`)으로 이야기하고, 재고·장바구니는 변형(`var_`, `Product`)을 씁니다([conventions.md](conventions.md) §9). 검색 결과는 상품 단위이며 변형은 `has_variant[]`에 담깁니다.
 
@@ -12,7 +12,7 @@
 
 ## product
 
-### `search_products` — Kind: R  (MVP, 운영자·쇼퍼 공용)
+### `search_products` — Kind: R  (데모 장면, 운영자·쇼퍼 공용)
 - 논리주소/REST: `search.product.search` · `GET /v1/search/products`
 - 요약: 질의·카테고리·재고·가격 조건으로 상품을 찾습니다. 상품마다 정가(`price`), 부르는 사람에게 해당하는 회원가(`member_price`), 재고(`inventory_level`), 변형(`has_variant[]`)을 붙입니다. 운영자는 `valid_for_member_tier`·`as_of`로 "그 등급이 그 시각에 보는 가격"을 볼 수 있고 원가(`cost`)도 받습니다. 쇼퍼가 부르면 가격은 그 쇼퍼의 등급과 지금 시각 기준이고 `cost`는 응답에 없습니다.
 - consumes → produces: `category_id`? → `product_id[]`
@@ -80,7 +80,7 @@
 - 에러: `invalid_input`(필터 값·범위가 틀림, `detail.field`) → `get_facets` · `tier_not_found` → `list_tiers` · `not_found`(`detail.entity: category`) → `list_categories` · `forbidden`(쇼퍼가 운영자 전용 필드를 보냄) → null · `index_unavailable`(검색 색인 장애) → `get_index_status`
 - 멱등성: 읽기(부작용 없음). 같은 입력의 결과는 캐시됨
 
-### `compare_products` — Kind: R  (MVP, 쇼퍼)
+### `compare_products` — Kind: R  (데모 장면, 쇼퍼)
 - 논리주소/REST: `search.product.compare` · `GET /v1/search/products/compare?product_ids=prd_windbreaker,prd_field_jacket&attributes=weight,packed_size` (배열은 쉼표로 구분)
 - 요약: 2–6개 상품을 같은 속성 축으로 나란히 놓습니다. 항목 하나가 상품 하나이고, 상품마다 요청한 속성 값을 같은 순서로 담습니다. 쇼퍼가 "어느 게 가장 작게 접히나"를 물을 때 근거로 쓰고, 화면은 `compare_table` 블록([chat.md](chat.md) §3.3)입니다. 가격은 부르는 쇼퍼의 가격입니다.
 - consumes → produces: `product_id[]` → comparison
