@@ -193,22 +193,24 @@ impl WriteOp<Cx> for SubscribeRestock {
         let existing = super::open_alert(&mut tx, &customer, &v.id, &channel, now).await?;
         tx.commit().await.map_err(ToolError::from)?;
         let availability = v.availability.clone().unwrap_or_default();
-        if availability == "in_stock" && v.stock() > 0 {
-            return Err(ToolError::new(
-                ALREADY_IN_STOCK,
-                format!("{} is in stock now ({} left).", v.name, v.stock()),
-            )
-            .detail(json!({"variant_id": v.id, "inventory_level": v.stock()}))
-            .next("add_to_cart"));
-        }
         if !rules.subscribable_availability.contains(&availability) {
+            // Buyable now (in stock, untracked, or on pre-order): nothing to wait for.
+            if availability != "discontinued" {
+                return Err(ToolError::new(
+                    ALREADY_IN_STOCK,
+                    format!(
+                        "{} can be bought now ({}).",
+                        v.name,
+                        availability.replace('_', " ")
+                    ),
+                )
+                .detail(json!({"variant_id": v.id, "availability": availability,
+                               "inventory_level": v.stock()}))
+                .next("add_to_cart"));
+            }
             return Err(ToolError::new(
                 ErrorCode::INVALID_STATE,
-                format!(
-                    "{} is {}; it is not coming back.",
-                    v.name,
-                    availability.replace('_', " ")
-                ),
+                format!("{} is discontinued; it is not coming back.", v.name),
             )
             .detail(json!({"entity": "variant", "from": availability}))
             .next("search_products"));
