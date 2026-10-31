@@ -16,7 +16,8 @@ tables:
       sizes: {tops: M, bottoms: null, shoes: null}
       card_last4: "4821"
       registered_at: "2025-02-14T20:05:00-05:00"
-    - {tenant_id: store_northwind, id: cus_alex, name: Alex, given_name: Alex, family_name: Kim, email: "alex.kim@example.com", member_state: active, member_type: individual, sizes: {}, card_last4: "0937", registered_at: "2025-12-10T18:22:00-05:00"}
+      email_verified_at: "2025-02-14T20:07:00-05:00"
+    - {tenant_id: store_northwind, id: cus_alex, name: Alex, given_name: Alex, family_name: Kim, email: "alex.kim@example.com", member_state: active, member_type: individual, sizes: {}, card_last4: "0937", registered_at: "2025-12-10T18:22:00-05:00", email_verified_at: "2025-12-10T18:24:00-05:00"}
     - tenant_id: store_northwind
       id: cus_4431
       name: Morgan Reyes
@@ -142,6 +143,18 @@ tables:
       sizes: {}
       card_last4: "8826"
       registered_at: "2025-08-14T17:36:00-04:00"
+    - tenant_id: store_northwind
+      id: cus_biz_31
+      name: Harbor Supply Co.
+      email: "orders@harborsupply.example.com"
+      member_state: active
+      member_type: business
+      sizes: {}
+      legal_name: Harbor Supply Co.
+      tax_id: "12-3456789"
+      business_verification: unverified
+      registered_at: "2026-11-02T14:10:00-05:00"
+      email_verified_at: "2026-11-02T14:12:00-05:00"
   customer.postal_address:
     - tenant_id: store_northwind
       id: adr_home
@@ -349,3 +362,71 @@ tables:
       learned_at: "2026-09-14T19:40:00-04:00"
     - {tenant_id: store_northwind, id: mem_09, customer_id: cus_jamie, preference_key: compares_specs, value: "yes", description: Compares specs, source: conversation, conversation_id: conv_jamie_0914, learned_at: "2026-09-14T19:46:00-04:00"}
     - {tenant_id: store_northwind, id: mem_11, customer_id: cus_jamie, preference_key: travel_priority, value: travels light, description: Travels light, source: conversation, conversation_id: conv_jamie_1020, learned_at: "2026-10-20T08:31:00-04:00"}
+  # Consent history (append only): the named shoppers' sign-up consents and their marketing choices.
+  customer.consent_record:
+    - {tenant_id: store_northwind, id: cns_101, customer_id: cus_alex, consent_type: terms, granted: true, recorded_at: "2025-12-10T18:22:00-05:00", agent_id: cus_alex, instrument: register_member}
+    - {tenant_id: store_northwind, id: cns_102, customer_id: cus_alex, consent_type: privacy, granted: true, recorded_at: "2025-12-10T18:22:00-05:00", agent_id: cus_alex, instrument: register_member}
+    - {tenant_id: store_northwind, id: cns_103, customer_id: cus_alex, consent_type: marketing_email, granted: false, recorded_at: "2025-12-10T18:22:00-05:00", agent_id: cus_alex, instrument: register_member}
+    - {tenant_id: store_northwind, id: cns_412, customer_id: cus_alex, consent_type: marketing_email, granted: true, recorded_at: "2026-04-02T09:00:00-04:00", agent_id: cus_alex, instrument: set_consent}
+    - {tenant_id: store_northwind, id: cns_201, customer_id: cus_jamie, consent_type: terms, granted: true, recorded_at: "2025-02-14T20:05:00-05:00", agent_id: cus_jamie, instrument: register_member}
+    - {tenant_id: store_northwind, id: cns_202, customer_id: cus_jamie, consent_type: privacy, granted: true, recorded_at: "2025-02-14T20:05:00-05:00", agent_id: cus_jamie, instrument: register_member}
+    - {tenant_id: store_northwind, id: cns_203, customer_id: cus_jamie, consent_type: marketing_email, granted: true, recorded_at: "2025-02-14T20:05:00-05:00", agent_id: cus_jamie, instrument: register_member}
+    - {tenant_id: store_northwind, id: cns_204, customer_id: cus_jamie, consent_type: marketing_push, granted: true, recorded_at: "2026-06-14T19:05:00-04:00", agent_id: cus_jamie, instrument: set_consent}
+    - {tenant_id: store_northwind, id: cns_301, customer_id: cus_biz_31, consent_type: terms, granted: true, recorded_at: "2026-11-02T14:10:00-05:00", agent_id: cus_biz_31, instrument: register_member}
+    - {tenant_id: store_northwind, id: cns_302, customer_id: cus_biz_31, consent_type: privacy, granted: true, recorded_at: "2026-11-02T14:10:00-05:00", agent_id: cus_biz_31, instrument: register_member}
+  # The program's saved definition (define_tier_program keeps every version).
+  customer.member_program_version:
+    - tenant_id: store_northwind
+      member_program_id: prg_rewards
+      program_version: 1
+      agent_id: adm_sj
+      defined_at: "2025-01-02T09:00:00-05:00"
+      definition:
+        name: Northwind Rewards
+        evaluation: {schedule: {every: month, on_day: 1, at: "03:00"}, on_event: [order_delivered], settle_days: 14}
+        movement: {upgrade: immediate, downgrade: at_schedule, max_steps_down: 1, grace_periods: 1}
+        has_tiers:
+          - {id: member, name: Member, rank: 1, requirement_combine: any, has_tier_requirement: [], has_tier_benefit: [{type: recurring_coupon, coupon_id: cpn_birthday, every: year}]}
+          - {id: gold, name: Gold, rank: 2, requirement_combine: any, has_tier_requirement: [{metric: spend, threshold: {value: 300.00, currency: USD}, window: {type: rolling, length: 6, unit: month}, counts: {channels: [web, app], order_status: delivered, net_of_returns: true, include_loyalty_spent: true}}], has_tier_benefit: [{type: recurring_coupon, coupon_id: cpn_gold_10, every: month}]}
+          - {id: vip, name: VIP, rank: 3, requirement_combine: any, has_tier_requirement: [{metric: spend, threshold: {value: 800.00, currency: USD}, retain_threshold: {value: 600.00, currency: USD}, window: {type: rolling, length: 6, unit: month}}, {metric: invite}], has_tier_benefit: [{type: member_price}]}
+  # Two past scheduled evaluations: Jamie went up to Gold in April and to VIP in September.
+  customer.tier_evaluation:
+    - {tenant_id: store_northwind, id: tev_2604, member_program_id: prg_rewards, as_of: "2026-04-01T03:00:00-04:00", scope: {scope: all}, action_status: completed, moves: [], summary: {up: 214, down: 96, grace: 41, note: "Counts of the whole store; moves of generated members are not kept in the seed"}, agent_id: sys_scheduler, start_time: "2026-04-01T03:00:00-04:00", end_time: "2026-04-01T03:04:00-04:00"}
+    - {tenant_id: store_northwind, id: tev_2609, member_program_id: prg_rewards, as_of: "2026-09-01T03:00:00-04:00", scope: {scope: all}, action_status: completed, moves: [], summary: {up: 187, down: 112, grace: 38, note: "Counts of the whole store; moves of generated members are not kept in the seed"}, agent_id: sys_scheduler, start_time: "2026-09-01T03:00:00-04:00", end_time: "2026-09-01T03:05:00-04:00"}
+  # Tier history (append only) of the named shoppers whose tier moved, and Alex's entry.
+  customer.program_membership_event:
+    - {tenant_id: store_northwind, customer_id: cus_jamie, member_program_id: prg_rewards, position: 1, to_tier_id: member, cause: entry, agent_id: sys_runner, changed_at: "2025-02-14T20:05:00-05:00"}
+    - {tenant_id: store_northwind, customer_id: cus_jamie, member_program_id: prg_rewards, position: 2, from_tier_id: member, to_tier_id: gold, cause: evaluation, evaluation_id: tev_2604, snapshot: {metric: spend, value: {value: 412.50, currency: USD}}, agent_id: sys_scheduler, changed_at: "2026-04-01T03:00:00-04:00"}
+    - {tenant_id: store_northwind, customer_id: cus_jamie, member_program_id: prg_rewards, position: 3, from_tier_id: gold, to_tier_id: vip, cause: evaluation, evaluation_id: tev_2609, snapshot: {metric: spend, value: {value: 842.00, currency: USD}}, agent_id: sys_scheduler, changed_at: "2026-09-01T03:00:00-04:00"}
+    - {tenant_id: store_northwind, customer_id: cus_alex, member_program_id: prg_rewards, position: 1, to_tier_id: member, cause: entry, agent_id: sys_runner, changed_at: "2025-12-10T18:22:00-05:00"}
+  # Owen works at the store: employee discount up to 500.00 USD a year.
+  customer.employee_role:
+    - {tenant_id: store_northwind, id: emp_041, customer_id: cus_owen, employee_number: NW-E-0041, discount_limit_value: 500.00, discount_limit_currency: USD, discount_limit_period: year, start_date: "2025-08-14"}
+  # Customer service: Alex's boots (#20402), a callback for Morgan (assigned to SJ), and Jamie's resolved delivery question.
+  customer.customer_inquiry:
+    - {tenant_id: store_northwind, id: inq_771, customer_id: cus_alex, inquiry_type: return, inquiry_status: received, order_id: ord_20402, text: "The sole is coming apart.", date_received: "2026-11-06T09:14:00-05:00"}
+    - {tenant_id: store_northwind, id: inq_768, customer_id: cus_4431, inquiry_type: callback, inquiry_status: in_progress, order_id: ord_20431, admin_user_id: adm_sj, text: "Please call me about the overcoat return; the parcel arrived two days late.", date_received: "2026-11-05T16:55:00-05:00", assigned_at: "2026-11-05T17:10:00-05:00"}
+    - {tenant_id: store_northwind, id: inq_752, customer_id: cus_jamie, inquiry_type: order_status, inquiry_status: resolved, order_id: ord_20381, admin_user_id: adm_sj, text: "Has my merino tee shipped yet?", resolution: "Shipped Oct 25; tracking sent by email.", date_received: "2026-10-25T08:40:00-04:00", assigned_at: "2026-10-25T08:45:00-04:00", resolved_at: "2026-10-25T09:02:00-04:00"}
+  customer.comment:
+    - {tenant_id: store_northwind, id: cmt_901, inquiry_id: inq_771, author_type: customer, agent_id: cus_alex, text: "The sole is coming apart.", date_created: "2026-11-06T09:14:00-05:00"}
+    - {tenant_id: store_northwind, id: cmt_880, inquiry_id: inq_768, author_type: customer, agent_id: cus_4431, text: "Please call me about the overcoat return; the parcel arrived two days late.", date_created: "2026-11-05T16:55:00-05:00"}
+    - {tenant_id: store_northwind, id: cmt_881, inquiry_id: inq_768, author_type: staff, agent_id: adm_sj, text: "Called and left a voicemail; will try again Friday morning.", date_created: "2026-11-05T17:30:00-05:00"}
+    - {tenant_id: store_northwind, id: cmt_850, inquiry_id: inq_752, author_type: customer, agent_id: cus_jamie, text: "Has my merino tee shipped yet?", date_created: "2026-10-25T08:40:00-04:00"}
+    - {tenant_id: store_northwind, id: cmt_851, inquiry_id: inq_752, author_type: agent, agent_id: sys_runner, text: "Yes, it shipped on Oct 25. The tracking link is in your email.", message_channel: in_app, date_created: "2026-10-25T09:01:00-04:00", date_sent: "2026-10-25T09:01:00-04:00"}
+  # A remedy waiting for approval: 15.00 USD in points for Morgan's late parcel.
+  customer.remedy:
+    - {tenant_id: store_northwind, id: rmd_310, customer_id: cus_4431, inquiry_id: inq_768, order_id: ord_20431, remedy_type: loyalty_points, liability: carrier_fault, amount_value: 15.00, amount_currency: USD, reason: "Parcel arrived two days late.", remedy_status: requested, requested_by_id: adm_sj, requested_at: "2026-11-05T17:32:00-05:00"}
+  # FAQ (schema:Question) and notices (schema:NewsArticle).
+  customer.question:
+    - {tenant_id: store_northwind, id: faq_returns, name: "How long do I have to return?", accepted_answer: "30 days from delivery. Start a return from your order page.", category: returns, position: 1}
+    - {tenant_id: store_northwind, id: faq_return_shipping, name: "Do I pay for return shipping?", accepted_answer: "Returns for a defect, damage or a wrong item are free. For a change of mind you pay the return shipping.", category: returns, position: 2}
+    - {tenant_id: store_northwind, id: faq_exchange, name: "Can I exchange for another size?", accepted_answer: "Yes, within 30 days of delivery while the size is in stock.", category: returns, position: 3}
+    - {tenant_id: store_northwind, id: faq_free_shipping, name: "When is shipping free?", accepted_answer: "Orders of 80.00 USD or more ship free.", category: shipping, position: 1}
+    - {tenant_id: store_northwind, id: faq_delivery_time, name: "How long does delivery take?", accepted_answer: "Standard shipping arrives in 2 to 4 business days.", category: shipping, position: 2}
+    - {tenant_id: store_northwind, id: faq_sizes, name: "How do I find my size?", accepted_answer: "Every product lists its measurements; ask the shopping assistant to compare them with a piece you own.", category: sizing, position: 1}
+    - {tenant_id: store_northwind, id: faq_tiers, name: "How do member tiers work?", accepted_answer: "Members move up to Gold and VIP by what they spend in six months. Tiers are reviewed on the first of every month.", category: membership, position: 1}
+    - {tenant_id: store_northwind, id: faq_password, name: "I forgot my password.", accepted_answer: "Use Forgot password on the sign-in page; we send a reset link to your verified email.", category: account, position: 1}
+  customer.news_article:
+    - {tenant_id: store_northwind, id: ntc_holiday, headline: "Holiday shipping cutoffs", article_body: "Order by Dec 18 for standard delivery before Dec 24, and by Dec 21 for express.", category: shipping, notice_status: draft}
+    - {tenant_id: store_northwind, id: ntc_fall_layers, headline: "Fall layers are here", article_body: "Overshirts, fleeces and wool coats for the cooler weeks. Free shipping on orders of 80.00 USD or more.", category: news, notice_status: published, date_published: "2026-11-02T09:00:00-05:00", is_pinned: true}
+    - {tenant_id: store_northwind, id: ntc_returns_window, headline: "Returns stay open 30 days", article_body: "Every order can be returned within 30 days of delivery.", category: returns, notice_status: published, date_published: "2026-09-15T09:00:00-04:00"}

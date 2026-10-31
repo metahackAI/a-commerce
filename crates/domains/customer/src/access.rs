@@ -91,6 +91,44 @@ pub(crate) fn approval(cx: &Cx, tool: &str, facts: &Value) -> ApprovalNeed {
     }
 }
 
+/// The approval of a write that always waits for a person (W$): the policy's reason when a
+/// threshold names one, else the sentence the preview wrote.
+pub(crate) fn always(cx: &Cx, tool: &str, facts: &Value, reason: String) -> ApprovalNeed {
+    let a = cx.policy.approval_for(tool, facts);
+    match a.reason {
+        Some(r) if a.needed && !r.starts_with("Always") => ApprovalNeed::Needed {
+            reason: format!("{reason} ({r})"),
+        },
+        _ => ApprovalNeed::Needed { reason },
+    }
+}
+
+/// Who is acting, as the action log and history rows name them (`adm_sj`, `cus_jamie`,
+/// `sys_runner`).
+pub(crate) fn actor(p: &Principal) -> String {
+    p.subject.clone()
+}
+
+/// A policy value that must be there, or an internal error naming the key.
+pub(crate) fn policy_value<'a>(cx: &'a Cx, path: &str) -> Result<&'a Value, ToolError> {
+    policy(cx, path).ok_or_else(|| {
+        ToolError::new(
+            ErrorCode::INTERNAL,
+            format!("The policy value `{path}` is missing."),
+        )
+    })
+}
+
+/// A money amount from the policy (`{value, currency}`).
+pub(crate) fn policy_money(cx: &Cx, path: &str) -> Result<acom_core::Money, ToolError> {
+    serde_json::from_value(policy_value(cx, path)?.clone()).map_err(|_| {
+        ToolError::new(
+            ErrorCode::INTERNAL,
+            format!("The policy value `{path}` is not an amount."),
+        )
+    })
+}
+
 /// A policy value by dotted path (`customer.address.max_per_member`).
 pub(crate) fn policy<'a>(cx: &'a Cx, path: &str) -> Option<&'a Value> {
     cx.policy.lookup(path)
@@ -117,6 +155,11 @@ pub(crate) fn policy_words(cx: &Cx, path: &str) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// A date in store time (`2026-11-02`).
+pub(crate) fn day(time: acom_core::StoreTime, t: chrono::DateTime<chrono::Utc>) -> String {
+    t.with_timezone(&time.zone).format("%Y-%m-%d").to_string()
 }
 
 /// A time input in store time.

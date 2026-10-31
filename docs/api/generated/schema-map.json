@@ -3035,6 +3035,604 @@
   },
   {
     "schema": "customer",
+    "table": "comment",
+    "kind": "table",
+    "term": "schema:Comment",
+    "description": "one message in an inquiry thread, from the customer, an operator or the agent. id prefix cmt_.",
+    "id_prefix": "cmt",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix cmt_; the same value the API, logs and events use."
+      },
+      {
+        "name": "inquiry_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:parentItem",
+        "description": "the inquiry the message belongs to (inq_ id).",
+        "references": "customer.customer_inquiry"
+      },
+      {
+        "name": "author_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:authorType",
+        "description": "who wrote it. values: author_type",
+        "values": [
+          "customer",
+          "staff",
+          "agent"
+        ],
+        "values_list": "author_type"
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:author",
+        "description": "who wrote it: the customer (cus_), an operator (adm_) or the system (sys_)."
+      },
+      {
+        "name": "text",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:text",
+        "description": "the message."
+      },
+      {
+        "name": "message_channel",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:messageChannel",
+        "description": "how a reply goes to the customer (email or in_app); NULL for the customer's own messages. values: message_channel",
+        "values": [
+          "email",
+          "sms",
+          "push",
+          "in_app"
+        ],
+        "values_list": "message_channel"
+      },
+      {
+        "name": "date_created",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:dateCreated",
+        "description": "when it was written (store clock; API at)."
+      },
+      {
+        "name": "date_sent",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:dateSent",
+        "description": "when a reply reached the customer; NULL while delivery is not connected (replies are recorded, not delivered) or for messages that are not sent."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "customer",
+    "table": "consent_record",
+    "kind": "table",
+    "term": "schema:Action/acom:ConsentRecord",
+    "description": "one consent given or withdrawn; records are only added, never changed. id prefix cns_. API: consent.",
+    "id_prefix": "cns",
+    "api_name": "consent",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix cns_; the same value the API, logs and events use."
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "the member who consented (cus_ id).",
+        "references": "customer.person"
+      },
+      {
+        "name": "consent_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:consentType",
+        "description": "what was agreed to. values: consent_type",
+        "values": [
+          "terms",
+          "privacy",
+          "marketing_email",
+          "marketing_sms",
+          "marketing_push",
+          "marketing_in_app",
+          "entry_terms",
+          "winner_contact"
+        ],
+        "values_list": "consent_type"
+      },
+      {
+        "name": "granted",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:granted",
+        "description": "true when consent was given, false when it was withdrawn."
+      },
+      {
+        "name": "recorded_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:recordedAt",
+        "description": "when the member gave or withdrew it (store clock; API at)."
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "who recorded it: the member (cus_), an operator (adm_) or the system (sys_)."
+      },
+      {
+        "name": "instrument",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:instrument",
+        "description": "the tool or endpoint that recorded it, for example set_consent."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "customer",
+    "table": "customer_inquiry",
+    "kind": "table",
+    "term": "schema:Message/acom:CustomerInquiry",
+    "description": "a customer service inquiry and its state; the thread is in customer.comment. id prefix inq_. API: inquiry.",
+    "id_prefix": "inq",
+    "api_name": "inquiry",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix inq_; the same value the API, logs and events use."
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:sender",
+        "description": "the customer who asked (cus_ id).",
+        "references": "customer.person"
+      },
+      {
+        "name": "inquiry_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:inquiryType",
+        "description": "what the inquiry is about. values: inquiry_type",
+        "values": [
+          "order_status",
+          "return",
+          "product_question",
+          "account",
+          "callback",
+          "other"
+        ],
+        "values_list": "inquiry_type"
+      },
+      {
+        "name": "inquiry_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:inquiryStatus",
+        "description": "received, in progress with an operator, or resolved. values: inquiry_status",
+        "values": [
+          "received",
+          "in_progress",
+          "resolved"
+        ],
+        "values_list": "inquiry_status"
+      },
+      {
+        "name": "order_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:about",
+        "description": "the order it is about (ord_ id); NULL when none. Not a foreign key: orders belong to sales."
+      },
+      {
+        "name": "admin_user_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:recipient",
+        "description": "the operator handling it (adm_ id); NULL until assigned.",
+        "references": "platform.admin_user"
+      },
+      {
+        "name": "text",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:text",
+        "description": "the customer's first message."
+      },
+      {
+        "name": "resolution",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:resolution",
+        "description": "how it was resolved, in a sentence; NULL until resolved."
+      },
+      {
+        "name": "date_received",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:dateReceived",
+        "description": "when the store received it (store clock; API created_at)."
+      },
+      {
+        "name": "assigned_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:assignedAt",
+        "description": "when an operator was assigned; NULL until then."
+      },
+      {
+        "name": "resolved_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:resolvedAt",
+        "description": "when it was closed as resolved; NULL until then."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "customer",
+    "table": "employee_role",
+    "kind": "table",
+    "term": "schema:EmployeeRole",
+    "description": "a member who is a store employee, with their employee discount limit. id prefix emp_. API: employee.",
+    "id_prefix": "emp",
+    "api_name": "employee",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix emp_; the same value the API, logs and events use (API employee_id)."
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:member",
+        "description": "the member who is the employee (cus_ id); one employee record per member.",
+        "references": "customer.person"
+      },
+      {
+        "name": "employee_number",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:employeeNumber",
+        "description": "the store's own number for the employee, unique in the store."
+      },
+      {
+        "name": "discount_limit_value",
+        "type": "numeric(12,2)",
+        "nullable": false,
+        "term": "acom:discountLimit",
+        "description": "the most employee discount the member can use per period, in discount_limit_currency."
+      },
+      {
+        "name": "discount_limit_currency",
+        "type": "char(3)",
+        "nullable": false,
+        "term": "acom:discountLimit",
+        "description": "ISO 4217 currency of discount_limit_value."
+      },
+      {
+        "name": "discount_limit_period",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:discountLimitPeriod",
+        "description": "the period the limit renews over. values: discount_limit_period",
+        "values": [
+          "month",
+          "year"
+        ],
+        "values_list": "discount_limit_period"
+      },
+      {
+        "name": "start_date",
+        "type": "date",
+        "nullable": false,
+        "term": "schema:startDate",
+        "description": "first day the employee discount applies."
+      },
+      {
+        "name": "end_date",
+        "type": "date",
+        "nullable": true,
+        "term": "schema:endDate",
+        "description": "last day it applies (set when the member withdraws); NULL while it lasts."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "customer",
+    "table": "identity_verification",
+    "kind": "table",
+    "term": "schema:CheckAction/acom:IdentityVerification",
+    "description": "one identity check by a method from customer.yml identity_verification (one-time code, link, registry lookup). id prefix ivf_.",
+    "id_prefix": "ivf",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix ivf_; the same value the API, logs and events use."
+      },
+      {
+        "name": "purpose",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:purpose",
+        "description": "what the check is for: a key of identity_verification.required_for (signup, contact_change, business_verification, password_reset, login_id_recovery, withdrawal_reauth)."
+      },
+      {
+        "name": "method",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:instrument",
+        "description": "the method id from identity_verification.methods, for example email_code."
+      },
+      {
+        "name": "destination",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:destination",
+        "description": "the email or phone number the code or link goes to; NULL for registry lookups."
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:agent",
+        "description": "the member being checked (cus_ id); NULL before sign-up.",
+        "references": "customer.person"
+      },
+      {
+        "name": "subject",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "schema:object",
+        "description": "what a registry lookup checks: {tax_id, legal_name}; NULL for code and link methods."
+      },
+      {
+        "name": "code_hash",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "SHA-256 of the one-time code; the code itself is never stored."
+      },
+      {
+        "name": "attempts",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:attempts",
+        "description": "wrong codes entered; at identity_verification.code.max_attempts the check fails."
+      },
+      {
+        "name": "action_status",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:actionStatus",
+        "description": "potential while waiting for the code, completed once verified, failed after too many attempts. values: action_status",
+        "values": [
+          "potential",
+          "active",
+          "completed",
+          "failed"
+        ],
+        "values_list": "action_status"
+      },
+      {
+        "name": "requested_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:requestedAt",
+        "description": "when the code was sent (store clock); resend limits count from here."
+      },
+      {
+        "name": "expires",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:expires",
+        "description": "the last moment the code or link can be used."
+      },
+      {
+        "name": "verified_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:verifiedAt",
+        "description": "when the check succeeded; NULL until then."
+      },
+      {
+        "name": "token_hash",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "SHA-256 of the one-time verification_token handed out on success; the token itself is never stored."
+      },
+      {
+        "name": "token_expires",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:tokenExpires",
+        "description": "the last moment the verification_token can be used (identity_verification.token_ttl_seconds)."
+      },
+      {
+        "name": "token_used_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:tokenUsedAt",
+        "description": "when a sign-up or contact change used the token; a token works once."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "customer",
     "table": "member_program",
     "kind": "table",
     "term": "schema:MemberProgram",
@@ -3205,6 +3803,174 @@
   },
   {
     "schema": "customer",
+    "table": "member_program_version",
+    "kind": "table",
+    "term": "schema:MemberProgram/acom:ProgramVersion",
+    "description": "one saved definition of a tier program (define_tier_program); earlier versions stay so a change can be undone.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "member_program_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:isVariantOf",
+        "description": "the program this is a version of (prg_ id).",
+        "references": "customer.member_program"
+      },
+      {
+        "name": "program_version",
+        "type": "integer",
+        "nullable": false,
+        "term": "schema:version",
+        "description": "the program version number, 1 for the first definition."
+      },
+      {
+        "name": "definition",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:definition",
+        "description": "the whole definition: {name, evaluation, movement, has_tiers[]}."
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "who saved it: the change-set runner (sys_runner) or an operator (adm_)."
+      },
+      {
+        "name": "defined_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:definedAt",
+        "description": "when this version took effect (store clock)."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "customer",
+    "table": "news_article",
+    "kind": "table",
+    "term": "schema:NewsArticle",
+    "description": "a store notice shown to shoppers once published. id prefix ntc_. API: notice.",
+    "id_prefix": "ntc",
+    "api_name": "notice",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix ntc_; the same value the API, logs and events use (API notice_id)."
+      },
+      {
+        "name": "headline",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:headline",
+        "description": "the title shoppers see."
+      },
+      {
+        "name": "article_body",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:articleBody",
+        "description": "the notice text."
+      },
+      {
+        "name": "category",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:category",
+        "description": "the notice section, a lowercase word the store chooses, for example shipping."
+      },
+      {
+        "name": "notice_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:noticeStatus",
+        "description": "draft until published. values: notice_status",
+        "values": [
+          "draft",
+          "published"
+        ],
+        "values_list": "notice_status"
+      },
+      {
+        "name": "date_published",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:datePublished",
+        "description": "when it was (or will be shown as) published; NULL for drafts."
+      },
+      {
+        "name": "is_pinned",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:isPinned",
+        "description": "shown above the other notices."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "customer",
     "table": "person",
     "kind": "table",
     "term": "schema:Person",
@@ -3337,6 +4103,116 @@
         "nullable": false,
         "term": "-",
         "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      },
+      {
+        "name": "login_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:loginId",
+        "description": "the id the member signs in with besides the email; NULL when they sign in with the email only."
+      },
+      {
+        "name": "legal_name",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:legalName",
+        "description": "registered name of a business member; NULL for individuals."
+      },
+      {
+        "name": "tax_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:taxID",
+        "description": "business registration number of a business member; masked for operators; NULL for individuals."
+      },
+      {
+        "name": "business_verification",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:businessVerification",
+        "description": "whether the business details were checked (verify_business); turns on business pricing and tax receipts. values: business_verification",
+        "values": [
+          "unverified",
+          "verified"
+        ],
+        "values_list": "business_verification"
+      },
+      {
+        "name": "email_verified_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:emailVerifiedAt",
+        "description": "when the member proved they own the email; NULL when it was never verified. Recovery links go only to verified contacts."
+      },
+      {
+        "name": "telephone_verified_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:telephoneVerifiedAt",
+        "description": "when the member proved they own the phone number; NULL when it was never verified."
+      },
+      {
+        "name": "password_hash",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "adaptive (argon2id) hash of the member's password; NULL for accounts that sign in with a linked login only. Never returned or logged."
+      },
+      {
+        "name": "password_history",
+        "type": "text[]",
+        "nullable": false,
+        "term": "-",
+        "description": "adaptive hashes of the member's earlier passwords, newest first, kept for password.history_block."
+      },
+      {
+        "name": "password_changed_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:passwordChangedAt",
+        "description": "when the password was last set; NULL when it never was."
+      },
+      {
+        "name": "failed_password_attempts",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:failedPasswordAttempts",
+        "description": "wrong passwords since first_failed_password_at, counted for password.lockout."
+      },
+      {
+        "name": "first_failed_password_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:firstFailedPasswordAt",
+        "description": "the first wrong password of the current lockout window; NULL when there is none."
+      },
+      {
+        "name": "locked_until",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:lockedUntil",
+        "description": "password sign-in and re-authentication are refused until this time (password.lockout); NULL when not locked."
+      },
+      {
+        "name": "block_reason",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:blockReason",
+        "description": "why an operator blocked the member (member.block_reason_required); NULL when not blocked."
+      },
+      {
+        "name": "blocked_until",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:blockedUntil",
+        "description": "when a block ends; NULL for a block without end or when not blocked."
+      },
+      {
+        "name": "withdrawn_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:withdrawnAt",
+        "description": "when the member withdrew; NULL for members who did not."
       }
     ]
   },
@@ -3657,6 +4533,683 @@
   },
   {
     "schema": "customer",
+    "table": "program_membership_event",
+    "kind": "table",
+    "term": "schema:UpdateAction/acom:TierChange",
+    "description": "one change of a member's tier, only ever added (list_tier_history). Keyed by member, program and position.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:object",
+        "description": "the member whose tier changed (cus_ id).",
+        "references": "customer.person"
+      },
+      {
+        "name": "member_program_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:instrument",
+        "description": "the program the tier belongs to (prg_ id).",
+        "references": "customer.member_program"
+      },
+      {
+        "name": "position",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "1, 2, 3 ... per member and program, in the order the changes happened."
+      },
+      {
+        "name": "from_tier_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:fromTierId",
+        "description": "the tier before; NULL when the member entered the program. Not a foreign key: history outlives deleted tiers."
+      },
+      {
+        "name": "to_tier_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:toTierId",
+        "description": "the tier after; NULL when the member left (withdrawal)."
+      },
+      {
+        "name": "cause",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:cause",
+        "description": "why the tier changed. values: tier_change_cause",
+        "values": [
+          "entry",
+          "evaluation",
+          "event",
+          "manual_override",
+          "override_expired",
+          "grace_started",
+          "grace_ended",
+          "program_change",
+          "withdrawal"
+        ],
+        "values_list": "tier_change_cause"
+      },
+      {
+        "name": "evaluation_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:evaluationId",
+        "description": "the evaluation run that made the change (tev_ id); NULL for other causes.",
+        "references": "customer.tier_evaluation"
+      },
+      {
+        "name": "snapshot",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "acom:snapshot",
+        "description": "the result the change was based on: {metric, value}; NULL when none applies."
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "who made the change: an operator (adm_), the scheduler (sys_scheduler) or the runner (sys_runner)."
+      },
+      {
+        "name": "reason",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:reason",
+        "description": "the operator's reason for a manual tier; NULL otherwise."
+      },
+      {
+        "name": "expires",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:expires",
+        "description": "when a manual tier ends; NULL otherwise."
+      },
+      {
+        "name": "changed_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:changedAt",
+        "description": "when the tier changed (store clock; API at)."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "customer",
+    "table": "question",
+    "kind": "table",
+    "term": "schema:Question",
+    "description": "one FAQ entry with its accepted answer, part of the store's FAQPage. id prefix faq_. API: faq.",
+    "id_prefix": "faq",
+    "api_name": "faq",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix faq_; the same value the API, logs and events use (API faq_id)."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "the question as shoppers ask it."
+      },
+      {
+        "name": "accepted_answer",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:acceptedAnswer",
+        "description": "the store's answer."
+      },
+      {
+        "name": "category",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:category",
+        "description": "the FAQ section, a lowercase word the store chooses, for example returns."
+      },
+      {
+        "name": "position",
+        "type": "integer",
+        "nullable": false,
+        "term": "schema:position",
+        "description": "order within the section, 1 first."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "customer",
+    "table": "recovery_request",
+    "kind": "table",
+    "term": "schema:Action/acom:RecoveryRequest",
+    "description": "a password reset or sign-in id request; made the same way whether an account matches or not. id prefix rcv_.",
+    "id_prefix": "rcv",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix rcv_; the same value the API, logs and events use (API: request_id)."
+      },
+      {
+        "name": "recovery_kind",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:recoveryKind",
+        "description": "a password reset or a sign-in id reminder. values: recovery_kind",
+        "values": [
+          "password_reset",
+          "login_id"
+        ],
+        "values_list": "recovery_kind"
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:object",
+        "description": "the account that matched (cus_ id); NULL when none did.",
+        "references": "customer.person"
+      },
+      {
+        "name": "identifier_fingerprint",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "SHA-256 of the identifier as typed (lowercased email, sign-in id or phone), for the per-identifier rate limit; the identifier itself is not kept."
+      },
+      {
+        "name": "session_id",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "the browser session that asked (ses_ id), for the per-client rate limit."
+      },
+      {
+        "name": "method",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:instrument",
+        "description": "the method id from identity_verification.required_for.password_reset, for example email_link."
+      },
+      {
+        "name": "message_channel",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:messageChannel",
+        "description": "where the link or code went (the account's verified contact); NULL when no account matched. values: message_channel",
+        "values": [
+          "email",
+          "sms",
+          "push",
+          "in_app"
+        ],
+        "values_list": "message_channel"
+      },
+      {
+        "name": "token_hash",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "SHA-256 of the reset link token; the token itself is never stored."
+      },
+      {
+        "name": "code_hash",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "SHA-256 of the reset code; the code itself is never stored."
+      },
+      {
+        "name": "attempts",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:attempts",
+        "description": "wrong codes entered; past account_recovery.confirm_max_attempts the request stops working."
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "who asked: the session (ses_), the member (cus_) or an operator (adm_) through send_password_reset."
+      },
+      {
+        "name": "reason",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:reason",
+        "description": "why an operator sent the link; NULL for requests people made themselves."
+      },
+      {
+        "name": "requested_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:requestedAt",
+        "description": "when it was asked for (store clock); rate limits count from here."
+      },
+      {
+        "name": "expires",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:expires",
+        "description": "the last moment the link or code works."
+      },
+      {
+        "name": "used_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:usedAt",
+        "description": "when the new password was set with it; links and codes work once."
+      },
+      {
+        "name": "invalidated_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:invalidatedAt",
+        "description": "when a newer request or too many wrong codes made it stop working."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "customer",
+    "table": "remedy",
+    "kind": "table",
+    "term": "schema:Action/acom:Remedy",
+    "description": "compensation for a customer (points, coupon or cash) with its liability and step-by-step approval. id prefix rmd_.",
+    "id_prefix": "rmd",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix rmd_; the same value the API, logs and events use."
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:recipient",
+        "description": "the customer compensated (cus_ id); NULL when an order-only request could not name them.",
+        "references": "customer.person"
+      },
+      {
+        "name": "inquiry_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:object",
+        "description": "the inquiry it answers (inq_ id); NULL for an order-only request.",
+        "references": "customer.customer_inquiry"
+      },
+      {
+        "name": "order_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:about",
+        "description": "the order it is about (ord_ id); NULL when none. Not a foreign key: orders belong to sales."
+      },
+      {
+        "name": "remedy_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:remedyType",
+        "description": "what the customer gets. values: remedy_type",
+        "values": [
+          "loyalty_points",
+          "coupon",
+          "cash"
+        ],
+        "values_list": "remedy_type"
+      },
+      {
+        "name": "liability",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:liability",
+        "description": "whose fault led to it. values: liability",
+        "values": [
+          "store_fault",
+          "seller_fault",
+          "customer_fault",
+          "carrier_fault",
+          "none"
+        ],
+        "values_list": "liability"
+      },
+      {
+        "name": "amount_value",
+        "type": "numeric(12,2)",
+        "nullable": false,
+        "term": "acom:amount",
+        "description": "how much the remedy is worth, in amount_currency."
+      },
+      {
+        "name": "amount_currency",
+        "type": "char(3)",
+        "nullable": false,
+        "term": "acom:amount",
+        "description": "ISO 4217 currency of amount_value."
+      },
+      {
+        "name": "reason",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:reason",
+        "description": "why it was requested, in a sentence."
+      },
+      {
+        "name": "remedy_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:remedyStatus",
+        "description": "where it is in approval and payment. values: remedy_status",
+        "values": [
+          "requested",
+          "approved",
+          "rejected",
+          "payout_pending",
+          "paid",
+          "failed"
+        ],
+        "values_list": "remedy_status"
+      },
+      {
+        "name": "requested_by_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "who asked for it (adm_ or sys_ id)."
+      },
+      {
+        "name": "requested_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:requestedAt",
+        "description": "when it was requested (store clock)."
+      },
+      {
+        "name": "decided_by_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:decidedBy",
+        "description": "who approved or rejected it (the approving person's id); NULL until decided."
+      },
+      {
+        "name": "decided_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:decidedAt",
+        "description": "when it was approved or rejected; NULL until decided."
+      },
+      {
+        "name": "decision_reason",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:decisionReason",
+        "description": "why it was rejected; NULL otherwise."
+      },
+      {
+        "name": "paid_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:paidAt",
+        "description": "when it was paid; NULL until paid."
+      },
+      {
+        "name": "payout",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "acom:payout",
+        "description": "how it was paid: {method, to, reference, delivered}; NULL until paid. Payments to outside accounts are a stub here."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "customer",
+    "table": "tier_evaluation",
+    "kind": "table",
+    "term": "schema:AssessAction/acom:TierEvaluation",
+    "description": "one run of a program's tier evaluation and the moves it made. id prefix tev_. API: evaluation_id.",
+    "id_prefix": "tev",
+    "api_name": "evaluation_id",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix tev_; the same value the API, logs and events use."
+      },
+      {
+        "name": "member_program_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:object",
+        "description": "the program evaluated (prg_ id).",
+        "references": "customer.member_program"
+      },
+      {
+        "name": "as_of",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:asOf",
+        "description": "the moment the members' results were measured at."
+      },
+      {
+        "name": "scope",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:scope",
+        "description": "who was evaluated: {scope: all | segment | customers, segment_id?, customer_ids?}."
+      },
+      {
+        "name": "action_status",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:actionStatus",
+        "description": "active while it runs, completed when done, failed when undone or stopped. values: action_status",
+        "values": [
+          "potential",
+          "active",
+          "completed",
+          "failed"
+        ],
+        "values_list": "action_status"
+      },
+      {
+        "name": "moves",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:moves",
+        "description": "the tier moves made: [{customer_id, from_tier_id, to_tier_id, direction, reason, from_since}], kept so the run can be undone."
+      },
+      {
+        "name": "summary",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:summary",
+        "description": "counts of the run: {up, down, grace, unchanged, coupons, notices}."
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "who ran it: the change-set runner (sys_runner) or the scheduler (sys_scheduler)."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the run started (store clock)."
+      },
+      {
+        "name": "end_time",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:endTime",
+        "description": "when the run finished; NULL while it runs."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "customer",
     "table": "wishlist_item",
     "kind": "table",
     "term": "schema:ListItem/acom:WishlistItem",
@@ -3692,6 +5245,109 @@
         "nullable": false,
         "term": "-",
         "description": "when the shopper added the product (API added_at)."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "customer",
+    "table": "withdrawal",
+    "kind": "table",
+    "term": "schema:Action/acom:Withdrawal",
+    "description": "a member leaving the store: why, what was settled, what is kept and until when, and the one-way fingerprints that block rejoining and id reuse for a while.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "the member who withdrew (cus_ id); one withdrawal per member.",
+        "references": "customer.person"
+      },
+      {
+        "name": "reasons",
+        "type": "text[]",
+        "nullable": false,
+        "term": "acom:reasons",
+        "description": "the reasons the member picked; every element is a word from the list. values: withdrawal_reason",
+        "values_list": "withdrawal_reason"
+      },
+      {
+        "name": "reason_text",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:reasonText",
+        "description": "what the member wrote, up to 500 characters; NULL when nothing."
+      },
+      {
+        "name": "effective_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:effectiveAt",
+        "description": "when the withdrawal took effect (store clock)."
+      },
+      {
+        "name": "identifier_fingerprints",
+        "type": "text[]",
+        "nullable": false,
+        "term": "-",
+        "description": "SHA-256 of the email, phone and sign-in id the member used; the only contact data kept, for withdrawal.rejoin and withdrawal.identifier_reuse."
+      },
+      {
+        "name": "rejoin_after",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:rejoinAfter",
+        "description": "the same person can sign up again from this time (withdrawal.rejoin.block_days)."
+      },
+      {
+        "name": "identifier_reusable_after",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:identifierReusableAfter",
+        "description": "the email and sign-in id can be used again from this time; NULL when never (withdrawal.identifier_reuse)."
+      },
+      {
+        "name": "settled",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:settled",
+        "description": "what was settled: [{type, action, amount?, count?}]."
+      },
+      {
+        "name": "data_retention",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:dataRetention",
+        "description": "what is kept and until when: [{data, until, why}]."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
       },
       {
         "name": "updated_at",
