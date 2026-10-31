@@ -3,6 +3,8 @@
 # not seeded. Scene B3: the weekly email went out on the four Thursdays before Nov 5 and failed on
 # Nov 5 at 08:00 (the list import failed); generate.yml `orders.campaign_orders` gives the orders that
 # came from each sent email.
+# The VIP weekend reminder (`tpl_vip_weekend`, `cmp_vip_weekend`) is a draft for the vip tier that
+# send_bulk can send; it has no send time, so nothing goes out unless a person approves it.
 tables:
   messaging.message:
     - tenant_id: store_northwind
@@ -49,6 +51,17 @@ tables:
       variables: [customer_name, headline_item, highlights]
       in_language: en-US
       template_status: in_use
+    # The VIP weekend reminder: a draft campaign for the vip tier, ready for send_bulk.
+    - tenant_id: store_northwind
+      id: tpl_vip_weekend
+      name: VIP weekend reminder
+      message_channel: email
+      message_purpose: marketing
+      headline: "VIP weekend: {{headline_item}}"
+      text: "Hi {{customer_name}}, as a VIP you get {{headline_item}} this Saturday and Sunday, before anyone else."
+      variables: [customer_name, headline_item]
+      in_language: en-US
+      template_status: in_use
   messaging.campaign:
     - {tenant_id: store_northwind, id: cmp_weekly_1008, name: Weekly email, message_channel: email, template_id: tpl_weekly_email, campaign_status: sent, scheduled_time: "2026-10-08T08:00:00-04:00", date_sent: "2026-10-08T08:02:00-04:00", recipient_count: 11204}
     - {tenant_id: store_northwind, id: cmp_weekly_1015, name: Weekly email, message_channel: email, template_id: tpl_weekly_email, campaign_status: sent, scheduled_time: "2026-10-15T08:00:00-04:00", date_sent: "2026-10-15T08:02:00-04:00", recipient_count: 11236}
@@ -62,3 +75,11 @@ tables:
       campaign_status: failed
       scheduled_time: "2026-11-05T08:00:00-05:00"
       error: {code: list_import_failed, message: List import failed}
+    - tenant_id: store_northwind
+      id: cmp_vip_weekend
+      name: VIP weekend reminder
+      message_channel: email
+      template_id: tpl_vip_weekend
+      valid_for_member_tier: vip
+      campaign_status: draft
+      variable_values: [{name: headline_item, value: early access to the wool overcoat}]

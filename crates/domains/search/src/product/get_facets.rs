@@ -149,7 +149,7 @@ impl ReadOp<Cx> for GetFacets {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ops::testing;
+    use crate::testing;
     use acom_core::enums::ActorKind;
 
     #[test]

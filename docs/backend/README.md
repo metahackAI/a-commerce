@@ -129,7 +129,7 @@ llm ◀── agent ◀── services/agent
    | merchandising | catalog, promotion |
    | sales | catalog, promotion, customer |
    | fulfillment | sales, catalog, customer |
-   | messaging | customer |
+   | messaging | customer, sales·fulfillment(주문의 고객과 번호, 반품 요청·환불 확인, 사진 요청 상태. 각 `service::for_messaging`으로만). promotion의 세그먼트 회원은 `acom-registry`가 넘겨주는 reader로 |
    | community | catalog, customer, sales |
    | analytics | sales(회원 수 세기). 나머지는 자기 읽기 모델(`analytics` 뷰)만 |
    | partner, integration | catalog, sales, fulfillment |

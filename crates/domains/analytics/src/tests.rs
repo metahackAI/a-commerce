@@ -17,6 +17,7 @@ use serde_json::{Value, json};
 
 use crate::customer::GetCustomerOverview;
 use crate::sales::{CODES, ExplainSalesChange, GetSalesOverview, GetSalesTrend};
+use crate::service::GetCsOverview;
 
 fn policy() -> PolicySet {
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../policies");
@@ -75,7 +76,7 @@ fn every_operation_is_a_closed_operator_read_matching_its_spec() {
     crate::register(&mut b);
     let registry = b.build().unwrap_or_else(|e| panic!("{e:#?}"));
     let tools: Vec<&str> = registry.iter().map(|op| op.meta().tool).collect();
-    assert_eq!(tools.len(), 4, "{tools:?}");
+    assert_eq!(tools.len(), 5, "{tools:?}");
     for op in registry.iter() {
         let m = op.meta();
         assert_eq!(m.kind, Kind::Read, "{}", m.tool);
@@ -520,4 +521,73 @@ async fn sales_and_customer_overviews_on_the_demo_store() {
             "no personal data: {text}"
         );
     }
+}
+
+#[tokio::test]
+async fn service_overview_refuses_a_period_in_the_future() {
+    let e = GetCsOverview
+        .read(
+            &offline(),
+            input(json!({"valid_from": "2026-11-01", "valid_through": "2026-11-09"})),
+        )
+        .await
+        .unwrap_err();
+    assert_code(&e, "invalid_period", "get_cs_overview");
+}
+
+#[tokio::test]
+#[ignore = "integration: needs a PostgreSQL database"]
+async fn service_overview_counts_the_seeded_inquiries() {
+    let cx = demo().await;
+    let out = GetCsOverview
+        .read(
+            &cx,
+            input(json!({"valid_from": "2026-10-07", "valid_through": "2026-11-06"})),
+        )
+        .await
+        .unwrap();
+    let value = |m: &str| {
+        out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["acom:metric"] == m)
+            .map(|i| i["value"].clone())
+            .unwrap()
+    };
+    // inq_752 (answered in 21 minutes, resolved), inq_768 (35 minutes, in progress), inq_771
+    // (no answer yet).
+    assert_eq!(value("inquiry_count"), json!(3));
+    assert_eq!(value("unresolved_count"), json!(2));
+    assert_eq!(value("average_response_time"), json!(28));
+    assert_eq!(value("resolution_rate"), json!(0.3333));
+    let by_type = GetCsOverview
+        .read(
+            &cx,
+            input(
+                json!({"valid_from": "2026-11-05", "valid_through": "2026-11-06",
+                         "acom:metrics": ["inquiry_count", "average_response_time"],
+                         "acom:dimensions": ["inquiry_type"]}),
+            ),
+        )
+        .await
+        .unwrap();
+    assert_eq!(by_type["total"], 4);
+    let items = by_type["items"].as_array().unwrap();
+    assert!(
+        items
+            .iter()
+            .any(|i| i["acom:dimension"]["inquiry_type"] == "callback"
+                && i["acom:metric"] == "average_response_time"
+                && i["value"] == json!(35))
+    );
+    assert!(
+        items
+            .iter()
+            .any(|i| i["acom:dimension"]["inquiry_type"] == "return"
+                && i["acom:metric"] == "average_response_time"
+                && i["value"].is_null())
+    );
+    let text = by_type.to_string();
+    assert!(!text.contains("cus_") && !text.contains("inq_"), "{text}");
 }

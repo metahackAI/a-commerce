@@ -16,8 +16,8 @@ use acom_core::enums::ActorKind;
 use acom_store::Cx;
 use serde_json::{Value, json};
 
-use crate::ops::products::{SearchProducts, SearchProductsInput};
-use crate::ops::testing;
+use crate::product::{SearchProducts, SearchProductsInput};
+use crate::testing;
 
 const SHEET: &str = "upl_fw26_supplier";
 const COAT: &str = "prd_fw26_ot_014_chr";

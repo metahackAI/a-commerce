@@ -270,6 +270,24 @@
       "rdfs:comment": "one identity check by a method from customer.yml identity_verification (one-time code, link, registry lookup). id prefix ivf_."
     },
     {
+      "@id": "acom:InquirySummary",
+      "@type": "rdfs:Class",
+      "rdfs:label": "InquirySummary",
+      "rdfs:subClassOf": {
+        "@id": "schema:Observation"
+      },
+      "rdfs:comment": "one row per customer inquiry: the store day it came in, its type and state, when staff or the agent first answered and when it was resolved; never who asked or what they wrote."
+    },
+    {
+      "@id": "acom:Lexicon",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Lexicon",
+      "rdfs:subClassOf": {
+        "@id": "schema:DefinedTermSet"
+      },
+      "rdfs:comment": "one version of the store's search dictionary for one language: synonyms, new words and boost or exclude rules; a version takes effect when a reindex uses it. id prefix lex_."
+    },
+    {
       "@id": "acom:LoyaltyTransaction",
       "@type": "rdfs:Class",
       "rdfs:label": "LoyaltyTransaction",
@@ -394,6 +412,15 @@
         "@id": "schema:MoneyTransfer"
       },
       "rdfs:comment": "Money paid back to a shopper for a claim. Used as additionalType on a MoneyTransfer."
+    },
+    {
+      "@id": "acom:ReindexJob",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ReindexJob",
+      "rdfs:subClassOf": {
+        "@id": "schema:UpdateAction"
+      },
+      "rdfs:comment": "one rebuild of the store's search documents, whole or only what changed, with the dictionary version it used; the documents switch over when it commits. id prefix rij_."
     },
     {
       "@id": "acom:Remedy",
@@ -688,6 +715,25 @@
         }
       ],
       "rdfs:comment": "ISO 4217 code of amount_off_value."
+    },
+    {
+      "@id": "acom:analyzerVersion",
+      "@type": "rdf:Property",
+      "rdfs:label": "analyzerVersion",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Lexicon"
+        },
+        {
+          "@id": "acom:ReindexJob"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "dictionary version the index uses from this job on (search.lexicon, or v1 for the policy default)."
     },
     {
       "@id": "acom:announceAt",
@@ -1025,6 +1071,22 @@
       "rdfs:comment": "UI blocks returned: [{block, schema, data}]."
     },
     {
+      "@id": "acom:boostRules",
+      "@type": "rdf:Property",
+      "rdfs:label": "boostRules",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Lexicon"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "words that raise products in the ranking or exclude them, as [{term, effect}]; an excluded word finds nothing."
+    },
+    {
       "@id": "acom:broader",
       "@type": "rdf:Property",
       "rdfs:label": "broader",
@@ -1085,6 +1147,9 @@
         },
         {
           "@id": "acom:OrderSummary"
+        },
+        {
+          "@id": "schema:Message"
         },
         {
           "@id": "schema:Order"
@@ -1374,6 +1439,22 @@
         }
       ],
       "rdfs:comment": "when the tier changed (store clock; API at)."
+    },
+    {
+      "@id": "acom:changedSince",
+      "@type": "rdf:Property",
+      "rdfs:label": "changedSince",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ReindexJob"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "an incremental job rebuilt the products changed at or after this time; NULL when not limited by time."
     },
     {
       "@id": "acom:changes",
@@ -2182,6 +2263,22 @@
       "rdfs:comment": "when shoppers stop seeing it; NULL means until end_date."
     },
     {
+      "@id": "acom:documentCount",
+      "@type": "rdf:Property",
+      "rdfs:label": "documentCount",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ReindexJob"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "search documents written."
+    },
+    {
       "@id": "acom:draftNote",
       "@type": "rdf:Property",
       "rdfs:label": "draftNote",
@@ -2846,6 +2943,22 @@
       "rdfs:comment": "the first wrong password of the current lockout window; NULL when there is none."
     },
     {
+      "@id": "acom:firstResponseTime",
+      "@type": "rdf:Property",
+      "rdfs:label": "firstResponseTime",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:InquirySummary"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "when staff or the agent first wrote in the thread; NULL while nobody has."
+    },
+    {
       "@id": "acom:fitVote",
       "@type": "rdf:Property",
       "rdfs:label": "fitVote",
@@ -3152,12 +3265,31 @@
       "rdfs:comment": "tokens sent."
     },
     {
+      "@id": "acom:inquiryId",
+      "@type": "rdf:Property",
+      "rdfs:label": "inquiryId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:InquirySummary"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the inquiry (inq_ id)."
+    },
+    {
       "@id": "acom:inquiryStatus",
       "@type": "rdf:Property",
       "rdfs:label": "inquiryStatus",
       "schema:domainIncludes": [
         {
           "@id": "acom:CustomerInquiry"
+        },
+        {
+          "@id": "acom:InquirySummary"
         }
       ],
       "schema:rangeIncludes": [
@@ -3165,7 +3297,7 @@
           "@id": "acom:InquiryStatus"
         }
       ],
-      "rdfs:comment": "received, in progress with an operator, or resolved. values: inquiry_status"
+      "rdfs:comment": "where the inquiry is now. values: inquiry_status"
     },
     {
       "@id": "acom:inquiryType",
@@ -3174,6 +3306,9 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:CustomerInquiry"
+        },
+        {
+          "@id": "acom:InquirySummary"
         }
       ],
       "schema:rangeIncludes": [
@@ -3851,6 +3986,22 @@
         }
       ],
       "rdfs:comment": "true when only an approved change set may run it."
+    },
+    {
+      "@id": "acom:neologisms",
+      "@type": "rdf:Property",
+      "rdfs:label": "neologisms",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Lexicon"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "new words and what they mean in common words, as [{surface, normalize}]."
     },
     {
       "@id": "acom:nextChargeDate",
@@ -4903,6 +5054,22 @@
       "rdfs:comment": "when the shopper created the account."
     },
     {
+      "@id": "acom:reindexMode",
+      "@type": "rdf:Property",
+      "rdfs:label": "reindexMode",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ReindexJob"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ReindexMode"
+        }
+      ],
+      "rdfs:comment": "full rebuilds every document; incremental only the products named, changed since a time, or out of date. values: reindex_mode"
+    },
+    {
       "@id": "acom:rejectedAt",
       "@type": "rdf:Property",
       "rdfs:label": "rejectedAt",
@@ -5110,11 +5277,17 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:CustomerInquiry"
+        },
+        {
+          "@id": "acom:InquirySummary"
         }
       ],
       "schema:rangeIncludes": [
         {
           "@id": "schema:DateTime"
+        },
+        {
+          "@id": "schema:Text"
         }
       ],
       "rdfs:comment": "when it was closed as resolved; NULL until then."
@@ -5471,6 +5644,22 @@
         }
       ],
       "rdfs:comment": "sha256 of the seed, as published before entries closed."
+    },
+    {
+      "@id": "acom:segmentId",
+      "@type": "rdf:Property",
+      "rdfs:label": "segmentId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Campaign"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "segment the campaign goes to (seg_ id); NULL unless it was set up for a segment."
     },
     {
       "@id": "acom:selectionMethod",
@@ -6012,6 +6201,22 @@
       "rdfs:comment": "bo for operators, fo for shoppers. values: chat_surface"
     },
     {
+      "@id": "acom:synonyms",
+      "@type": "rdf:Property",
+      "rdfs:label": "synonyms",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Lexicon"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "the whole synonym set, as [{terms, bidirectional}]; a one-way entry widens its first term to the others."
+    },
+    {
       "@id": "acom:tag",
       "@type": "rdf:Property",
       "rdfs:label": "tag",
@@ -6394,6 +6599,22 @@
         }
       ],
       "rdfs:comment": "when it was used."
+    },
+    {
+      "@id": "acom:variableValues",
+      "@type": "rdf:Property",
+      "rdfs:label": "variableValues",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Campaign"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "values of the template variables that are the same for every shopper, as [{name, value}]; per-shopper ones (customer_name) are filled at sending."
     },
     {
       "@id": "acom:variables",
@@ -7212,6 +7433,16 @@
       },
       "rdfs:comment": "Values of the refund_status list (docs/api/enums.md).",
       "acom:wireList": "refund_status"
+    },
+    {
+      "@id": "acom:ReindexMode",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ReindexMode",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the reindex_mode list (docs/api/enums.md).",
+      "acom:wireList": "reindex_mode"
     },
     {
       "@id": "acom:RemedyStatus",
@@ -8986,6 +9217,13 @@
       "schema:position": 4
     },
     {
+      "@id": "acom:MessageKindCampaign",
+      "@type": "acom:MessageKind",
+      "rdfs:label": "Campaign",
+      "acom:wireWord": "campaign",
+      "schema:position": 5
+    },
+    {
       "@id": "acom:NoticeStatusDraft",
       "@type": "acom:NoticeStatus",
       "rdfs:label": "Draft",
@@ -9348,6 +9586,20 @@
       "rdfs:label": "Failed",
       "acom:wireWord": "failed",
       "schema:position": 3
+    },
+    {
+      "@id": "acom:ReindexModeFull",
+      "@type": "acom:ReindexMode",
+      "rdfs:label": "Full",
+      "acom:wireWord": "full",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:ReindexModeIncremental",
+      "@type": "acom:ReindexMode",
+      "rdfs:label": "Incremental",
+      "acom:wireWord": "incremental",
+      "schema:position": 2
     },
     {
       "@id": "acom:RemedyStatusRequested",
