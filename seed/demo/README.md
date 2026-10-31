@@ -18,11 +18,13 @@ members and sales history) under fixed counts and a fixed random seed.
 | `08_messaging.yml` | Refund notices for cus_4431's completed returns; the weekly email template `tpl_weekly_email` and its sends: four sent Thursdays (Oct 8–29) and `cmp_weekly_1105`, failed Thu Nov 5 08:00 (list import failed) |
 | `09_supplier_sheet.yml` | Scene B4's supplier sheet `upl_fw26_supplier` (`fw26_supplier.xlsx`, 30 rows); the scene imports it |
 | `generate.yml` | Spec for the generator (not data) |
+| `catalog_content.yml` | Content for the 382 generated products, laid over the generator's rows: fiber content, fit, weight per size, care and other facts in `additional_property`, size charts (`catalog.measurement`), descriptions and tags. Never changes ids, names, prices or stock. Generated, not written by hand |
 
 Load the files in name order, and the tables inside each file in the order written; foreign keys are
 satisfied in that order. Run everything in one transaction with
 `SELECT set_config('app.tenant_id', 'store_northwind', true)` first, since every table forces row-level
-security. Then run the generator.
+security. Then run the generator, then lay `catalog_content.yml` over its products
+(`acom_testkit::generate::content::overlay`; the commerce service does this when it loads the seed).
 
 Row format: keys are exactly the column names in `migrations/*.sql`. A missing key takes the column
 default (usually NULL), so `created_at`, `updated_at` and `version` are never written. Every row has
