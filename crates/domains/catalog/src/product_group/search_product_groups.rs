@@ -1,7 +1,7 @@
 //! `search_product_groups` (docs/api/catalog.md#product_group).
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_core::enums::{ApprovalStatus, Availability, DraftStatus};
 use acom_store::{Cx, Page};
@@ -15,7 +15,7 @@ use crate::model::num;
 use crate::repo::{self, Find, Order};
 use crate::viewer::Viewer;
 use crate::write::{self};
-use crate::{INVALID_FILTER, is_operator, list, neighbors, project};
+use crate::{INVALID_FILTER, is_operator, list, neighbors};
 
 /// How `search_product_groups` orders products.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
@@ -205,10 +205,10 @@ impl ReadOp<Cx> for SearchProductGroups {
                 if let Some(d) = drafts.iter().find(|d| d.product_group_id == c.id) {
                     item["acom:draft"] = draft_json(d);
                 }
-                project(item, &fields)
+                item
             })
             .collect();
-        Ok(list(items, total, &page))
+        Ok(list(fields::keep_each(items, &fields)?, total, &page))
     }
 }
 

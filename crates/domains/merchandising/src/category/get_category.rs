@@ -1,7 +1,7 @@
 //! `get_category` (docs/api/merchandising.md#category).
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_store::Cx;
 use schemars::JsonSchema;
@@ -9,8 +9,8 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::{CATEGORY_NOT_FOUND, category_json, mappings_of};
+use crate::check_id;
 use crate::repo;
-use crate::{check_id, pick};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -77,6 +77,6 @@ impl ReadOp<Cx> for GetCategory {
                 .collect::<Vec<_>>()
         );
         out["product_count"] = json!(count);
-        Ok(pick(out, input.fields.as_deref()))
+        fields::keep(out, &input.fields.unwrap_or_default())
     }
 }

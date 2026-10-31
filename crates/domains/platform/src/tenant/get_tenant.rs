@@ -3,7 +3,7 @@
 
 use acom_contract::{
     ActionType, Audience, ErrorCode, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot,
-    ToolError,
+    ToolError, fields,
 };
 use acom_store::Cx;
 use schemars::JsonSchema;
@@ -80,10 +80,7 @@ impl ReadOp<Cx> for GetTenant {
         })?;
         let overrides = overridden_keys(&mut tx).await?;
         tx.commit().await.map_err(ToolError::from)?;
-        Ok(crate::project(
-            store(&row, overrides),
-            &input.fields.unwrap_or_default(),
-        ))
+        fields::keep(store(&row, overrides), &input.fields.unwrap_or_default())
     }
 }
 
@@ -138,6 +135,6 @@ mod tests {
             )
             .await
             .unwrap();
-        assert_eq!(only, json!({"currency": "USD"}));
+        assert_eq!(only, json!({"id": "store_northwind", "currency": "USD"}));
     }
 }

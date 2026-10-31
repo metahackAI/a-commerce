@@ -2,7 +2,7 @@
 //! coupons, gift and claims.
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_promotion::service::for_sales as promotion;
 use acom_store::Cx;
@@ -14,7 +14,6 @@ use serde_json::{Value, json};
 use super::{item_facts, item_json, visible_order};
 use crate::ORDER_NOT_FOUND;
 use crate::gift_order as gift;
-use crate::pricing;
 use crate::repo;
 
 /// Top-level fields of an order.
@@ -241,7 +240,7 @@ impl ReadOp<Cx> for GetOrder {
             .iter()
             .map(|f| f.word().to_owned())
             .collect();
-        Ok(pricing::pick(out, &fields))
+        Ok(fields::pick(out, &fields))
     }
 }
 

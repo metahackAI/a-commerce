@@ -4,7 +4,7 @@
 use acom_contract::{
     ActionType, ApprovalNeed, Audience, Change, ChangeOp, Check, Committed, ErrorClass, ErrorCode,
     Group, Kind, Method, OpMeta, Operation, Planned, ReadOp, Slot, ToolError, UndoSupport,
-    Verification, WriteOp,
+    Verification, WriteOp, fields,
 };
 use acom_core::enums::MessageChannel;
 use acom_store::{Cx, Page, TxCx};
@@ -337,16 +337,14 @@ impl ReadOp<Cx> for ListMessageTemplates {
         let items: Vec<Value> = rows
             .iter()
             .map(|t| {
-                crate::select(
-                    json!({"id": t.id, "name": t.name, "channel": t.message_channel,
-                           "purpose": t.message_purpose, "status": t.template_status,
-                           "headline": t.headline, "text": t.text, "variables": t.variables,
-                           "in_language": t.in_language,
-                           "created_at": cx.time.format(t.created_at)}),
-                    &fields,
-                )
+                json!({"id": t.id, "name": t.name, "channel": t.message_channel,
+                       "purpose": t.message_purpose, "status": t.template_status,
+                       "headline": t.headline, "text": t.text, "variables": t.variables,
+                       "in_language": t.in_language,
+                       "created_at": cx.time.format(t.created_at)})
             })
             .collect();
+        let items = fields::keep_each(items, &fields)?;
         let mut out = json!({"items": items, "total": total});
         if let Some(next) = page.next_cursor(rows.len(), total) {
             out["next_cursor"] = json!(next);

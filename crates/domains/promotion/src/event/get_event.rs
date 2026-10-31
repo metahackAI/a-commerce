@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use acom_contract::{
     ActionType, Audience, ErrorCode, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot,
-    ToolError,
+    ToolError, fields,
 };
 use acom_core::enums::RewardStatus;
 use acom_store::Cx;
@@ -13,7 +13,6 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::{draw_record_ids, entry_counts, event_json, known_event, rewards};
-use crate::pick;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -75,7 +74,7 @@ impl ReadOp<Cx> for GetEvent {
         out["draw_record_ids"] = json!(draws);
         out["rewards"] = json!(by_status);
         out["version"] = json!(e.version);
-        Ok(pick(out, input.fields.as_deref()))
+        fields::keep(out, &input.fields.unwrap_or_default())
     }
 }
 

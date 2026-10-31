@@ -493,14 +493,3 @@ pub(crate) fn order_json(v: &CartView) -> Value {
         })).collect::<Vec<_>>(),
     })
 }
-
-/// Keeps only the top-level `fields` asked for (all when empty).
-pub(crate) fn pick(mut v: Value, fields: &[String]) -> Value {
-    if fields.is_empty() {
-        return v;
-    }
-    if let Some(o) = v.as_object_mut() {
-        o.retain(|k, _| fields.iter().any(|f| f == k));
-    }
-    v
-}

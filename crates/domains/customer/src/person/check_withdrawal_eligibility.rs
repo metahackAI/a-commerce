@@ -5,7 +5,7 @@
 //! withdraw anyone.
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, ToolError, fields,
 };
 use acom_store::Cx;
 use schemars::JsonSchema;
@@ -13,7 +13,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::{account_or_not_found, data_handling, eligibility};
-use crate::access::{customer_for, only_fields, policy_number, policy_words};
+use crate::access::{customer_for, policy_number, policy_words};
 use crate::verification;
 use crate::{ALREADY_WITHDRAWN, CUSTOMER_NOT_FOUND, NOT_SIGNED_IN};
 
@@ -94,7 +94,7 @@ impl ReadOp<Cx> for CheckWithdrawalEligibility {
             "reasons": policy_words(cx, "customer.withdrawal.reasons"),
             "reauthentication_methods": reauth,
         });
-        Ok(only_fields(out, &input.fields.unwrap_or_default()))
+        fields::keep(out, &input.fields.unwrap_or_default())
     }
 }
 

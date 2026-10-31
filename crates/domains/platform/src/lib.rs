@@ -138,18 +138,6 @@ pub(crate) fn list(items: Vec<Value>, total: i64, page: &Page) -> Value {
     out
 }
 
-/// Keeps only the named top-level fields of an object (all of them when `fields` is empty).
-pub(crate) fn project(v: Value, fields: &[String]) -> Value {
-    match v {
-        Value::Object(map) if !fields.is_empty() => Value::Object(
-            map.into_iter()
-                .filter(|(k, _)| fields.iter().any(|f| f == k))
-                .collect(),
-        ),
-        other => other,
-    }
-}
-
 /// What `approval.yml` says about a write of kind W, from the facts its preview computed.
 pub(crate) fn policy_approval(cx: &Cx, tool: &str, facts: &Value) -> ApprovalNeed {
     let a = cx.policy.approval_for(tool, facts);
