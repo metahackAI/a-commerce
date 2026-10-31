@@ -478,6 +478,85 @@ word_enum! {
     ImageStyle = "image_style" { Studio = "studio", Lifestyle = "lifestyle", FlatLay = "flat_lay" }
 }
 
+// ── customer (docs/api/enums.md §1.13, §2.4) ────────────────────────────────────────────
+
+word_enum! {
+    /// acom:businessVerification of a business member.
+    BusinessVerification = "business_verification" { Unverified = "unverified", Verified = "verified" }
+}
+
+word_enum! {
+    /// acom:consentType, what a member agreed to.
+    ConsentType = "consent_type" {
+        Terms = "terms", Privacy = "privacy", MarketingEmail = "marketing_email", MarketingSms = "marketing_sms",
+        MarketingPush = "marketing_push", MarketingInApp = "marketing_in_app", EntryTerms = "entry_terms",
+        WinnerContact = "winner_contact",
+    }
+}
+
+word_enum! {
+    /// acom:inquiryType, what a customer inquiry is about.
+    InquiryType = "inquiry_type" {
+        OrderStatus = "order_status", Return = "return", ProductQuestion = "product_question",
+        Account = "account", Callback = "callback", Other = "other",
+    }
+}
+
+word_enum! {
+    /// acom:inquiryStatus of a customer inquiry.
+    InquiryStatus = "inquiry_status" { Received = "received", InProgress = "in_progress", Resolved = "resolved" }
+}
+
+word_enum! {
+    /// acom:authorType, who wrote a comment in an inquiry thread.
+    AuthorType = "author_type" { Customer = "customer", Staff = "staff", Agent = "agent" }
+}
+
+word_enum! {
+    /// acom:remedyType, what a remedy gives.
+    RemedyType = "remedy_type" { LoyaltyPoints = "loyalty_points", Coupon = "coupon", Cash = "cash" }
+}
+
+word_enum! {
+    /// acom:remedyStatus.
+    RemedyStatus = "remedy_status" {
+        Requested = "requested", Approved = "approved", Rejected = "rejected", PayoutPending = "payout_pending",
+        Paid = "paid", Failed = "failed",
+    }
+}
+
+word_enum! {
+    /// acom:noticeStatus of a store notice.
+    NoticeStatus = "notice_status" { Draft = "draft", Published = "published" }
+}
+
+word_enum! {
+    /// acom:withdrawalReason a member gives when leaving.
+    WithdrawalReason = "withdrawal_reason" {
+        NotUsing = "not_using", TooManyMessages = "too_many_messages", PrivacyConcern = "privacy_concern",
+        PoorService = "poor_service", FoundAlternative = "found_alternative", Other = "other",
+    }
+}
+
+word_enum! {
+    /// acom:tierChangeCause, why a member's tier changed (`list_tier_history`).
+    TierChangeCause = "tier_change_cause" {
+        Entry = "entry", Evaluation = "evaluation", Event = "event", ManualOverride = "manual_override",
+        OverrideExpired = "override_expired", GraceStarted = "grace_started", GraceEnded = "grace_ended",
+        ProgramChange = "program_change", Withdrawal = "withdrawal",
+    }
+}
+
+word_enum! {
+    /// acom:discountLimitPeriod, the period an employee discount limit renews over.
+    DiscountLimitPeriod = "discount_limit_period" { Month = "month", Year = "year" }
+}
+
+word_enum! {
+    /// acom:recoveryKind of an account recovery request.
+    RecoveryKind = "recovery_kind" { PasswordReset = "password_reset", LoginId = "login_id" }
+}
+
 /// Every word list, by name. `cargo xtask check-schema` compares database `CHECK` lists with these.
 pub const LISTS: &[(&str, &[&str])] = &[
     (OrderStatus::LIST, OrderStatus::WORDS),
@@ -539,6 +618,18 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (ReportReason::LIST, ReportReason::WORDS),
     (CopyType::LIST, CopyType::WORDS),
     (ImageStyle::LIST, ImageStyle::WORDS),
+    (BusinessVerification::LIST, BusinessVerification::WORDS),
+    (ConsentType::LIST, ConsentType::WORDS),
+    (InquiryType::LIST, InquiryType::WORDS),
+    (InquiryStatus::LIST, InquiryStatus::WORDS),
+    (AuthorType::LIST, AuthorType::WORDS),
+    (RemedyType::LIST, RemedyType::WORDS),
+    (RemedyStatus::LIST, RemedyStatus::WORDS),
+    (NoticeStatus::LIST, NoticeStatus::WORDS),
+    (WithdrawalReason::LIST, WithdrawalReason::WORDS),
+    (TierChangeCause::LIST, TierChangeCause::WORDS),
+    (DiscountLimitPeriod::LIST, DiscountLimitPeriod::WORDS),
+    (RecoveryKind::LIST, RecoveryKind::WORDS),
 ];
 
 /// The words of one list, by name.
