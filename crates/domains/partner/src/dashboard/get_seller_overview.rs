@@ -24,8 +24,10 @@ use acom_contract::ErrorCode;
 #[serde(rename_all = "snake_case")]
 pub enum OverviewPeriod {
     /// The 30 store days before today (the default).
+    #[serde(rename = "last_30_days")]
     Last30Days,
     /// The 7 store days before today.
+    #[serde(rename = "last_7_days")]
     Last7Days,
     /// The days from `valid_from` to `valid_through`.
     Custom,
@@ -263,6 +265,15 @@ mod tests {
             days(&i, day("2026-11-06")).unwrap(),
             (day("2026-10-07"), day("2026-11-05"))
         );
+        let i: GetSellerOverviewInput =
+            input(json!({"seller_id": "slr_fieldstone", "period": "last_7_days"}));
+        assert_eq!(
+            days(&i, day("2026-11-06")).unwrap(),
+            (day("2026-10-30"), day("2026-11-05"))
+        );
+        let i: GetSellerOverviewInput =
+            input(json!({"seller_id": "slr_fieldstone", "period": "last_30_days"}));
+        assert_eq!(days(&i, day("2026-11-06")).unwrap().0, day("2026-10-07"));
         let i: GetSellerOverviewInput =
             input(json!({"seller_id": "slr_fieldstone", "period": "custom"}));
         assert!(days(&i, day("2026-11-06")).is_err());

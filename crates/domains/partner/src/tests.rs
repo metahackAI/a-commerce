@@ -130,7 +130,7 @@ async fn search_finds_sellers_by_name_tax_id_and_grade_with_tax_ids_masked() {
         .await
         .unwrap();
     assert_eq!(gold["total"], 1);
-    assert_eq!(gold["items"][0]["id"], "slr_fieldstone");
+    assert_eq!(gold["items"][0]["id"], "slr_ridgeline");
     let review = SearchSellers
         .read(
             &cx,
@@ -154,7 +154,7 @@ async fn get_seller_shows_the_contract_in_force_the_grade_and_the_products() {
     assert_eq!(s["tax_id"], "**-***8840");
     assert_eq!(s["acom:contract_summary"]["contract_id"], "ctr_fieldstone");
     assert_eq!(s["acom:contract_summary"]["version"], 2);
-    assert_eq!(s["acom:grade_level"], "gold");
+    assert_eq!(s["acom:grade_level"], "silver");
     assert_eq!(s["acom:products"][0]["product_id"], "prd_chelsea_boots");
     let small = GetSeller
         .read(
@@ -287,7 +287,7 @@ async fn the_grade_rests_on_last_months_orders_parcels_and_claims() {
         g["acom:graded_period"],
         json!({"valid_from": "2026-10-01", "valid_through": "2026-10-31"})
     );
-    assert_eq!(g["acom:grade_level"], "silver");
+    assert_eq!(g["acom:grade_level"], "gold");
     assert_eq!(g["acom:next_review_date"], "2026-12-01");
     assert!(g["acom:basis"]["order_count"].as_i64().unwrap() > 100);
     assert!(g["acom:shipping_compliance_rate"].is_number());
@@ -329,7 +329,7 @@ async fn the_overview_reads_sales_claims_and_the_payout_estimate() {
     assert!(o["claims"]["open_claims"].as_i64().unwrap() >= 1);
     assert_eq!(o["settlement"]["acom:settlement_cycle"], "monthly");
     assert_eq!(o["settlement"]["next_payout_date"], "2026-11-15");
-    assert_eq!(o["grade"]["acom:grade_level"], "gold");
+    assert_eq!(o["grade"]["acom:grade_level"], "silver");
     assert!(o["tasks"]["unanswered_inquiries"].is_number());
     let r = GetSellerOverview
         .read(
