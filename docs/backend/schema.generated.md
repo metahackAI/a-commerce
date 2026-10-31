@@ -967,6 +967,7 @@
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `organization_id` | text | ✓ | `schema:worksFor` | the organization (org_ id) the operator belongs to; NULL when none. API: org_id. → `platform.organization` |
 
 ### `platform.admin_user_role`
 
@@ -977,6 +978,31 @@
 | `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
 | `admin_user_id` | text |  | `-` | operator account (adm_ id; API admin_id). → `platform.admin_user` |
 | `role_id` | text |  | `-` | role given to the account (rol_ id). → `platform.role` |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `platform.api_key`
+
+`schema:Intangible/acom:ApiKey` — a credential an outside agent or integration client signs in with (login); the secret is shown once when issued and kept only as a hash. id prefix key_. · id `key_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix key_; the same value the API, logs and events use; the client_id at login. |
+| `name` | text |  | `schema:name` | what the key is for, for example Outside shopping agent; unique among active keys. |
+| `key_prefix` | text |  | `acom:keyPrefix` | the first characters of the secret, shown in lists so people can recognize a key. |
+| `secret_hash` | text |  | `-` | SHA-256 (hex) of the secret; the secret itself is never stored. |
+| `scopes` | text[] |  | `acom:scopes` | the scopes a session of this key may get, for example {external:read,external:cart}. |
+| `api_key_status` | text |  | `acom:apiKeyStatus` | whether the key can still sign in. values: api_key_status Values: `active` · `revoked`. |
+| `expires` | timestamptz | ✓ | `schema:expires` | when the key stops working; NULL means it does not expire. |
+| `creator_id` | text | ✓ | `schema:creator` | the operator (adm_ id) who asked for the key. → `platform.admin_user` |
+| `last_used_at` | timestamptz | ✓ | `acom:lastUsedAt` | the last successful sign-in with the key; NULL if never. |
+| `revoked_at` | timestamptz | ✓ | `acom:revokedAt` | when the key was revoked; NULL while active. |
+| `revocation_reason` | text | ✓ | `acom:revocationReason` | why the key was revoked, in a sentence; NULL while active. |
+| `failed_attempt_count` | integer |  | `-` | wrong secrets since first_failed_at; customer.yml password.lockout locks the key when it reaches failed_attempts. |
+| `first_failed_at` | timestamptz | ✓ | `-` | the first wrong secret of the current lockout window; NULL when there is none. |
+| `locked_until` | timestamptz | ✓ | `acom:lockedUntil` | sign-in is refused until then after too many wrong secrets; NULL when not locked. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
@@ -1103,6 +1129,20 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `platform.menu_favorite`
+
+`-` — whether an operator keeps a back-office menu entry among their favorites (set_favorite).
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `admin_user_id` | text |  | `-` | the operator account (adm_ id; API admin_id). → `platform.admin_user` |
+| `site_navigation_element_id` | text |  | `-` | the menu entry (mnu_ id; API menu_id). → `platform.site_navigation_element` |
+| `is_favorite` | boolean |  | `-` | true while the entry is a favorite; turning it off keeps the row. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `platform.online_store`
 
 `schema:OnlineStore` — one store; every other row belongs to exactly one store (tenant). id prefix store_. API: tenant. · id `store_…`
@@ -1119,6 +1159,23 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 | `seed_fingerprint` | text | ✓ | `-` | fingerprint (SHA-256 of the rows) of the demo seed this store was loaded from; NULL for a store not loaded from a seed. |
+| `store_status` | text |  | `acom:storeStatus` | whether the store is open for business; a suspended store keeps its data but serves no one. values: store_status Values: `active` · `suspended`. |
+| `feature_flags` | jsonb |  | `acom:featureFlags` | features switched on for this store, as {flag: true\|false}; {} when none. |
+
+### `platform.organization`
+
+`schema:Organization` — a department, vendor or branch that operator accounts belong to; organizations nest. id prefix org_. API: org. · id `org_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix org_; the same value the API, logs and events use (API: org_id). |
+| `name` | text |  | `schema:name` | organization name shown to administrators, unique in the store. |
+| `organization_type` | text |  | `acom:organizationType` | what kind of organization this is (API: org_type). values: organization_type Values: `department` · `vendor` · `branch`. |
+| `parent_organization_id` | text | ✓ | `schema:parentOrganization` | the organization this one belongs to; NULL at the top. Never itself or one of its own sub-organizations (orgs.no_cycle). → `platform.organization` |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
 ### `platform.outbox`
 
@@ -1221,12 +1278,34 @@
 | `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
 | `id` | text |  | `-` | id with prefix ses_; the same value the API, logs and events use. |
 | `actor_kind` | text |  | `-` | who holds the session. values: actor_kind Values: `operator` · `shopper` · `agent_on_behalf` · `external_agent` · `system`. |
-| `subject_id` | text | ✓ | `-` | person behind the session (adm_ or cus_ id); NULL for an anonymous guest. |
+| `subject_id` | text | ✓ | `-` | who holds the session: a person (adm_ or cus_ id), an API client (key_ id), or NULL for an anonymous guest. |
 | `token_hash` | text |  | `-` | hash of the session cookie value; the cookie itself is never stored. |
 | `csrf_token_hash` | text |  | `-` | hash of the CSRF token paired with the session. |
 | `expires_at` | timestamptz |  | `-` | when the session stops being accepted. |
 | `last_seen_at` | timestamptz | ✓ | `-` | last request made with the session. |
 | `revoked_at` | timestamptz | ✓ | `-` | when the session was signed out or revoked; NULL while active. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `scopes` | text[] | ✓ | `-` | scopes of an API client session, fixed at login; NULL for a browser session, whose scopes come from roles. |
+| `refresh_token_hash` | text | ✓ | `-` | SHA-256 (hex) of an API client session's refresh token; NULL for a browser session. |
+| `refresh_expires_at` | timestamptz | ✓ | `-` | when the refresh token stops being accepted; NULL for a browser session. |
+| `replaced_by_id` | text | ✓ | `-` | the session its refresh token was exchanged for; a refresh token that comes back after that is reuse and ends every session of the client. → `platform.session` |
+
+### `platform.site_navigation_element`
+
+`schema:SiteNavigationElement` — one entry of the back-office menu; entries nest one level under a parent. id prefix mnu_. API: menu. · id `mnu_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix mnu_; the same value the API, logs and events use (API: menu_id). |
+| `name` | text |  | `schema:name` | the label operators see, for example Promotions. |
+| `url` | text |  | `schema:url` | the back-office path the entry opens, for example /bo/promotions (API: path). |
+| `required_scope` | text |  | `acom:requiredScope` | the scope an operator needs to see the entry, for example tools:read:promotion. |
+| `position` | integer |  | `schema:position` | order among the entries with the same parent, smallest first. |
+| `is_visible` | boolean |  | `acom:isVisible` | false hides the entry from every operator without removing it. |
+| `is_part_of_id` | text | ✓ | `schema:isPartOf` | the parent entry (mnu_ id); NULL for a top-level entry. → `platform.site_navigation_element` |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |

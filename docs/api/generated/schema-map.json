@@ -5200,6 +5200,14 @@
         "nullable": false,
         "term": "-",
         "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      },
+      {
+        "name": "organization_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:worksFor",
+        "description": "the organization (org_ id) the operator belongs to; NULL when none. API: org_id.",
+        "references": "platform.organization"
       }
     ]
   },
@@ -5233,6 +5241,149 @@
         "term": "-",
         "description": "role given to the account (rol_ id).",
         "references": "platform.role"
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "platform",
+    "table": "api_key",
+    "kind": "table",
+    "term": "schema:Intangible/acom:ApiKey",
+    "description": "a credential an outside agent or integration client signs in with (login); the secret is shown once when issued and kept only as a hash. id prefix key_.",
+    "id_prefix": "key",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix key_; the same value the API, logs and events use; the client_id at login."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "what the key is for, for example Outside shopping agent; unique among active keys."
+      },
+      {
+        "name": "key_prefix",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:keyPrefix",
+        "description": "the first characters of the secret, shown in lists so people can recognize a key."
+      },
+      {
+        "name": "secret_hash",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "SHA-256 (hex) of the secret; the secret itself is never stored."
+      },
+      {
+        "name": "scopes",
+        "type": "text[]",
+        "nullable": false,
+        "term": "acom:scopes",
+        "description": "the scopes a session of this key may get, for example {external:read,external:cart}."
+      },
+      {
+        "name": "api_key_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:apiKeyStatus",
+        "description": "whether the key can still sign in. values: api_key_status",
+        "values": [
+          "active",
+          "revoked"
+        ],
+        "values_list": "api_key_status"
+      },
+      {
+        "name": "expires",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:expires",
+        "description": "when the key stops working; NULL means it does not expire."
+      },
+      {
+        "name": "creator_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:creator",
+        "description": "the operator (adm_ id) who asked for the key.",
+        "references": "platform.admin_user"
+      },
+      {
+        "name": "last_used_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:lastUsedAt",
+        "description": "the last successful sign-in with the key; NULL if never."
+      },
+      {
+        "name": "revoked_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:revokedAt",
+        "description": "when the key was revoked; NULL while active."
+      },
+      {
+        "name": "revocation_reason",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:revocationReason",
+        "description": "why the key was revoked, in a sentence; NULL while active."
+      },
+      {
+        "name": "failed_attempt_count",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "wrong secrets since first_failed_at; customer.yml password.lockout locks the key when it reaches failed_attempts."
+      },
+      {
+        "name": "first_failed_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "-",
+        "description": "the first wrong secret of the current lockout window; NULL when there is none."
+      },
+      {
+        "name": "locked_until",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:lockedUntil",
+        "description": "sign-in is refused until then after too many wrong secrets; NULL when not locked."
       },
       {
         "name": "created_at",
@@ -5922,6 +6073,67 @@
   },
   {
     "schema": "platform",
+    "table": "menu_favorite",
+    "kind": "table",
+    "term": "-",
+    "description": "whether an operator keeps a back-office menu entry among their favorites (set_favorite).",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "admin_user_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "the operator account (adm_ id; API admin_id).",
+        "references": "platform.admin_user"
+      },
+      {
+        "name": "site_navigation_element_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "the menu entry (mnu_ id; API menu_id).",
+        "references": "platform.site_navigation_element"
+      },
+      {
+        "name": "is_favorite",
+        "type": "boolean",
+        "nullable": false,
+        "term": "-",
+        "description": "true while the entry is a favorite; turning it off keeps the row."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "platform",
     "table": "online_store",
     "kind": "table",
     "term": "schema:OnlineStore",
@@ -5998,6 +6210,100 @@
         "nullable": true,
         "term": "-",
         "description": "fingerprint (SHA-256 of the rows) of the demo seed this store was loaded from; NULL for a store not loaded from a seed."
+      },
+      {
+        "name": "store_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:storeStatus",
+        "description": "whether the store is open for business; a suspended store keeps its data but serves no one. values: store_status",
+        "values": [
+          "active",
+          "suspended"
+        ],
+        "values_list": "store_status"
+      },
+      {
+        "name": "feature_flags",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:featureFlags",
+        "description": "features switched on for this store, as {flag: true|false}; {} when none."
+      }
+    ]
+  },
+  {
+    "schema": "platform",
+    "table": "organization",
+    "kind": "table",
+    "term": "schema:Organization",
+    "description": "a department, vendor or branch that operator accounts belong to; organizations nest. id prefix org_. API: org.",
+    "id_prefix": "org",
+    "api_name": "org",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix org_; the same value the API, logs and events use (API: org_id)."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "organization name shown to administrators, unique in the store."
+      },
+      {
+        "name": "organization_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:organizationType",
+        "description": "what kind of organization this is (API: org_type). values: organization_type",
+        "values": [
+          "department",
+          "vendor",
+          "branch"
+        ],
+        "values_list": "organization_type"
+      },
+      {
+        "name": "parent_organization_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:parentOrganization",
+        "description": "the organization this one belongs to; NULL at the top. Never itself or one of its own sub-organizations (orgs.no_cycle).",
+        "references": "platform.organization"
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
       }
     ]
   },
@@ -6513,7 +6819,7 @@
         "type": "text",
         "nullable": true,
         "term": "-",
-        "description": "person behind the session (adm_ or cus_ id); NULL for an anonymous guest."
+        "description": "who holds the session: a person (adm_ or cus_ id), an API client (key_ id), or NULL for an anonymous guest."
       },
       {
         "name": "token_hash",
@@ -6549,6 +6855,125 @@
         "nullable": true,
         "term": "-",
         "description": "when the session was signed out or revoked; NULL while active."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      },
+      {
+        "name": "scopes",
+        "type": "text[]",
+        "nullable": true,
+        "term": "-",
+        "description": "scopes of an API client session, fixed at login; NULL for a browser session, whose scopes come from roles."
+      },
+      {
+        "name": "refresh_token_hash",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "SHA-256 (hex) of an API client session's refresh token; NULL for a browser session."
+      },
+      {
+        "name": "refresh_expires_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "-",
+        "description": "when the refresh token stops being accepted; NULL for a browser session."
+      },
+      {
+        "name": "replaced_by_id",
+        "type": "text",
+        "nullable": true,
+        "term": "-",
+        "description": "the session its refresh token was exchanged for; a refresh token that comes back after that is reuse and ends every session of the client.",
+        "references": "platform.session"
+      }
+    ]
+  },
+  {
+    "schema": "platform",
+    "table": "site_navigation_element",
+    "kind": "table",
+    "term": "schema:SiteNavigationElement",
+    "description": "one entry of the back-office menu; entries nest one level under a parent. id prefix mnu_. API: menu.",
+    "id_prefix": "mnu",
+    "api_name": "menu",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix mnu_; the same value the API, logs and events use (API: menu_id)."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "the label operators see, for example Promotions."
+      },
+      {
+        "name": "url",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:url",
+        "description": "the back-office path the entry opens, for example /bo/promotions (API: path)."
+      },
+      {
+        "name": "required_scope",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:requiredScope",
+        "description": "the scope an operator needs to see the entry, for example tools:read:promotion."
+      },
+      {
+        "name": "position",
+        "type": "integer",
+        "nullable": false,
+        "term": "schema:position",
+        "description": "order among the entries with the same parent, smallest first."
+      },
+      {
+        "name": "is_visible",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:isVisible",
+        "description": "false hides the entry from every operator without removing it."
+      },
+      {
+        "name": "is_part_of_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:isPartOf",
+        "description": "the parent entry (mnu_ id); NULL for a top-level entry.",
+        "references": "platform.site_navigation_element"
       },
       {
         "name": "created_at",
