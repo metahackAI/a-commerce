@@ -56,7 +56,7 @@ export function TaskView({task, changeSet}: {task: Task; changeSet: ChangeSet | 
               label="Ask the agent to work on it"
               onClick={() => {
                 dock.open();
-                void ai.send(task.request ?? task.title);
+                void ai.send(task.request ?? task.title, task.id);
               }}
             />
           ) : null}

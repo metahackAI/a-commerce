@@ -24,6 +24,8 @@ pub struct NewChangeSet {
     pub request_text: Vec<String>,
     pub interpretation: Vec<Value>,
     pub conversation_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub task_id: Option<String>,
 }
 
 /// One item of `PUT /v1/platform/change-sets/{id}/items`. Without `depends_on`, commerce derives

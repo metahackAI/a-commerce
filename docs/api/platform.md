@@ -229,7 +229,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 
 | 엔드포인트 | 본문 | 응답 | 에러 |
 |---|---|---|---|
-| `POST /v1/platform/change-sets` | `{title, request_text, interpretation[], conversation_id}` | `{id, number, version: 1, state: "drafting"}` | `invalid_input` |
+| `POST /v1/platform/change-sets` | `{title, request_text, interpretation[], conversation_id, task_id?}` — `task_id`: 이 변경셋이 답하는 할 일. 열려 있고 변경셋이 없을 때만 묶임 | `{id, number, version: 1, state: "drafting", task_id}` (`task_id`: 묶인 할 일, 없으면 `null`) | `invalid_input` |
 | `PATCH /v1/platform/change-sets/{id}` | `{title?, append_request_text?, interpretation?[]}` — 대화로 고친 요청: 문장을 `request_text`에 덧붙이고 해석을 바꿈. 항목은 아래 교체로 | `{id, version, state, item_count}` | `change_set_not_found`, `invalid_state`(끝 상태·실행 중) |
 | `POST /v1/platform/change-sets/{id}/items` | `{preview_id, depends_on?: [preview_id]}` | `{id, version, state, item_count}` | `change_set_not_found`, `preview_not_found`, `preview_expired`, `invalid_state`(끝 상태·실행 중), `already_exists`(같은 프리뷰) |
 | `PUT /v1/platform/change-sets/{id}/items` | `{items: [{preview_id, depends_on?}]}` — 대화로 고친 항목 전체로 교체 | `{id, version, state: "drafting", superseded: [preview_id]}` | `change_set_not_found`, `preview_not_found`, `preview_expired`, `invalid_state` |
@@ -272,7 +272,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 
 ## task
 
-할 일(`acom:Task`)은 운영자 홈(`task_list` 블록, [chat.md](chat.md) §3.3)에 보이는 일 단위입니다. 상태는 `acom:task_state`(`needs_you` \| `working` \| `done` \| `dismissed`, [enums.md](enums.md) §1.14), 출처 `origin`은 셋 중 하나입니다. 묶인 변경셋이 `live`나 `rejected`가 되면 할 일은 `done`이 되고 `summary`는 그 끝을 말합니다(`"#1041 ran: Reorder linen shirt: 3 sizes, 240 units"`, `"#1041 was rejected: …"`).
+할 일(`acom:Task`)은 운영자 홈(`task_list` 블록, [chat.md](chat.md) §3.3)에 보이는 일 단위입니다. 상태는 `acom:task_state`(`needs_you` \| `working` \| `done` \| `dismissed`, [enums.md](enums.md) §1.14), 출처 `origin`은 셋 중 하나입니다. 에이전트가 할 일을 맡아 변경셋을 만들면(턴의 `task_id`, [chat.md](chat.md) §1) 할 일은 그 변경셋과 대화에 묶여 `working`("Drafting change set #N")이 되고, 변경셋이 제출되면 `needs_you`("Change set #N is waiting for your approval")가 됩니다. 묶인 변경셋이 `live`나 `rejected`가 되면 할 일은 `done`이 되고 `summary`는 그 끝을 말합니다(`"#1041 ran: Reorder linen shirt: 3 sizes, 240 units"`, `"#1041 was rejected: …"`).
 
 | `origin` | 어떻게 생기나 | 예(장면 B2·B5) |
 |---|---|---|

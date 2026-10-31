@@ -562,6 +562,7 @@ async fn upsert_task(
     if let Some((id, state, cs)) = open {
         sqlx::query(
             "UPDATE platform.task SET title = $3, watcher_observation = $4, related_entities = $5,
+               summary = CASE WHEN change_set_id IS NULL THEN $7 ELSE summary END,
                updated_at = $6, version = version + 1
              WHERE tenant_id = $1 AND id = $2",
         )
@@ -571,6 +572,7 @@ async fn upsert_task(
         .bind(&d.observation)
         .bind(&related)
         .bind(now)
+        .bind(&d.summary)
         .execute(&mut *tx.tx)
         .await
         .map_err(db_err)?;
@@ -689,6 +691,7 @@ async fn draft_fix(
             request_text: vec![fix.request_text.clone()],
             interpretation: fix.interpretation.clone(),
             conversation_id: None,
+            task_id: None,
         },
     )
     .await?;

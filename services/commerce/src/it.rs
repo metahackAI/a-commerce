@@ -735,3 +735,121 @@ async fn the_clock_refuses_callers_without_admin_demo() {
     assert_eq!(body["now"], "2026-11-06T11:00:00-05:00");
     assert_eq!(body["demo_mode"], true);
 }
+
+#[tokio::test]
+#[ignore = "integration: needs a PostgreSQL database"]
+async fn a_change_set_drafted_for_a_task_is_linked_to_it_and_asks_for_a_person() {
+    let rt = runtime(true).await;
+    let pool = owner().await;
+    let registry = acom_registry::build().unwrap();
+    let cx = rt
+        .context(Principal::system(tenant(), "sys_test"), "req_it".into())
+        .await
+        .unwrap();
+    let at = cx.clock.now();
+    let row = |id: &'static str| {
+        let pool = pool.clone();
+        async move {
+            let mut tx = scoped(&pool).await;
+            let r: (String, Option<String>, Option<String>, Option<String>) = sqlx::query_as(
+                "SELECT task_state, change_set_id, conversation_id, summary FROM platform.task
+                 WHERE tenant_id = $1 AND id = $2",
+            )
+            .bind(STORE)
+            .bind(id)
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap();
+            tx.commit().await.unwrap();
+            r
+        }
+    };
+    let draft = |task: Option<&'static str>| {
+        let cx = cx.clone();
+        async move {
+            acom_changeset::change_set::create(
+                &cx,
+                acom_changeset::NewChangeSet {
+                    title: "Reorder hiking socks".into(),
+                    request_text: vec!["Draft a reorder for the sizes that will run out.".into()],
+                    interpretation: Vec::new(),
+                    conversation_id: Some("conv_it_task".into()),
+                    task_id: task.map(str::to_owned),
+                },
+            )
+            .await
+            .unwrap()
+        }
+    };
+
+    let (first, second, closed, drafting, waiting) = isolated(async {
+        let mut tx = scoped(&pool).await;
+        for (id, state) in [("task_it_open", "needs_you"), ("task_it_done", "done")] {
+            sqlx::query(
+                "INSERT INTO platform.task (tenant_id, id, title, task_state, task_origin,
+                   summary, request_text, watcher, start_time)
+                 VALUES ($1, $2, 'Hiking socks sells out in about 5 days', $3, 'agent_noticed',
+                   '78 left', 'Draft a reorder for the sizes that will run out.',
+                   'stock_out_forecast', $4)",
+            )
+            .bind(STORE)
+            .bind(id)
+            .bind(state)
+            .bind(at)
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        }
+        tx.commit().await.unwrap();
+
+        let first = draft(Some("task_it_open")).await;
+        let drafting = row("task_it_open").await;
+        // A second set for the same task stands on its own; so does one for a closed task.
+        let second = draft(Some("task_it_open")).await;
+        let closed = draft(Some("task_it_done")).await;
+
+        let cs = first["id"].as_str().unwrap();
+        acom_changeset::preview(
+            &registry,
+            &cx,
+            "create_reorder",
+            json!({"product_id": "prd_hiking_socks",
+                   "lines": [{"variant_id": "var_hiking_socks_m_grey", "order_quantity": 60}]}),
+            Some(cs),
+        )
+        .await
+        .unwrap();
+        acom_changeset::change_set::submit(&cx, cs, 1)
+            .await
+            .unwrap();
+        let waiting = row("task_it_open").await;
+        (first, second, closed, drafting, waiting)
+    })
+    .await;
+
+    let cs = first["id"].as_str().unwrap().to_owned();
+    assert_eq!(first["task_id"], "task_it_open");
+    assert_eq!(
+        drafting,
+        (
+            "working".to_owned(),
+            Some(cs.clone()),
+            Some("conv_it_task".to_owned()),
+            Some(format!("Drafting change set #{}", first["number"]))
+        )
+    );
+    assert!(second["task_id"].is_null(), "{second}");
+    assert!(closed["task_id"].is_null(), "{closed}");
+    assert_eq!(
+        waiting,
+        (
+            "needs_you".to_owned(),
+            Some(cs),
+            Some("conv_it_task".to_owned()),
+            Some(format!(
+                "Change set #{} is waiting for your approval",
+                first["number"]
+            ))
+        )
+    );
+}

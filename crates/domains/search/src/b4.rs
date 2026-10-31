@@ -94,6 +94,7 @@ async fn new_set(cx: &Cx, title: &str, request: &str) -> String {
             request_text: vec![request.into()],
             interpretation: vec![],
             conversation_id: None,
+            task_id: None,
         },
     )
     .await
