@@ -7,13 +7,14 @@ use acom_contract::{
     ToolError,
 };
 use acom_core::Money;
+use acom_core::ids::RefundId;
 use acom_store::{Cx, TxCx};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::not_yours;
-use crate::errors::*;
+use super::{not_yours, refund_paid_charge};
+use crate::errors::{CLAIM_NOT_FOUND, NOT_REVOCABLE, NOT_YOUR_ORDER};
 use crate::repo::{self, ClaimEvent};
 use crate::{rules, shopper};
 
@@ -116,21 +117,27 @@ impl PersonOp<Cx> for WithdrawClaim {
                 }
             }
         }
+        // A charge the shopper paid comes back (`exchange.withdraw.on_withdraw:
+        // refund_paid_charge`).
+        let instrument = "POST /v1/fulfillment/claims/{claim_id}/withdraw";
+        let refunded = refund_paid_charge(tx, &c, &RefundId::generate().to_string(), instrument)
+            .await?
+            .unwrap_or(zero);
         repo::append_event(
             tx,
             &c.id,
             &ClaimEvent {
                 action_type: "UpdateAction",
                 action_status: "completed",
-                instrument: "POST /v1/fulfillment/claims/{claim_id}/withdraw",
+                instrument,
                 from_state: Some(&c.claim_status),
                 to_state: Some("withdrawn"),
-                result: Some(json!({"reason_text": input.reason_text})),
+                result: Some(json!({"reason_text": input.reason_text,
+                                    "charge_refunded": refunded})),
             },
         )
         .await?;
-        // No extra charge is collected yet (pay-charge is not built), so none comes back.
         Ok(json!({"ok": true, "id": c.id, "status": "withdrawn",
-                  "charge_refunded": zero, "undo": null}))
+                  "charge_refunded": refunded, "undo": null}))
     }
 }

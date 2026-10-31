@@ -9,8 +9,8 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::visible_claim;
-use crate::errors::*;
-use crate::repo::{self};
+use crate::errors::CLAIM_NOT_FOUND;
+use crate::repo;
 use crate::select;
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -105,6 +105,8 @@ impl ReadOp<Cx> for GetClaim {
                 "id": i.id, "condition": i.inspection_condition, "liability": i.liability,
                 "note": i.description, "at": cx.time.format(i.end_time)})),
             "refund_id": refund.map(|r| r.id),
+            "charge": c.charge()?,
+            "charge_paid_at": c.charge_paid_at.map(|t| cx.time.format(t)),
             "requested_at": cx.time.format(c.start_time),
             "closed_at": c.end_time.map(|t| cx.time.format(t)),
             "status_history": history,

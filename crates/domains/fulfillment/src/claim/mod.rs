@@ -1,30 +1,43 @@
 //! The `claim` resource (docs/api/fulfillment.md `## claim`): cancel, return and exchange
 //! claims. One file per operation; this module holds what they share: finding a claim the
-//! caller may see, loading a line as a return or a cancel sees it, the errors for lines that
-//! cannot be returned or cancelled, and the effects a cancel has besides the claim itself.
+//! caller may see, loading a line as a return, an exchange or a cancel sees it, the errors for
+//! lines that cannot be returned or cancelled, the effects a cancel has besides the claim
+//! itself, and refunding an extra charge a claim no longer needs.
 
 pub(crate) mod approve_claim;
 pub(crate) mod cancel_my_order;
+pub(crate) mod cancel_order_lines;
+pub(crate) mod convert_exchange_to_return;
 pub(crate) mod evaluate_return_request;
 pub(crate) mod get_cancel_options;
 pub(crate) mod get_claim;
+pub(crate) mod get_exchange_options;
 pub(crate) mod get_return_options;
+pub(crate) mod pay_claim_charge;
 pub(crate) mod reject_claim;
 pub(crate) mod search_claims;
 pub(crate) mod search_return_requests;
+pub(crate) mod send_exchange_request;
 pub(crate) mod send_return_request;
+pub(crate) mod upload_evidence;
 pub(crate) mod withdraw_claim;
 
 pub use approve_claim::ApproveClaim;
 pub use cancel_my_order::CancelMyOrder;
+pub use cancel_order_lines::CancelOrderLines;
+pub use convert_exchange_to_return::ConvertExchangeToReturn;
 pub use evaluate_return_request::EvaluateReturnRequest;
 pub use get_cancel_options::GetCancelOptions;
 pub use get_claim::GetClaim;
+pub use get_exchange_options::GetExchangeOptions;
 pub use get_return_options::GetReturnOptions;
+pub use pay_claim_charge::PayClaimCharge;
 pub use reject_claim::RejectClaim;
 pub use search_claims::SearchClaims;
 pub use search_return_requests::SearchReturnRequests;
+pub use send_exchange_request::SendExchangeRequest;
 pub use send_return_request::SendReturnRequest;
+pub use upload_evidence::UploadEvidence;
 pub use withdraw_claim::WithdrawClaim;
 
 use std::collections::BTreeMap;
@@ -32,6 +45,7 @@ use std::collections::BTreeMap;
 use acom_catalog::service::for_fulfillment as catalog;
 use acom_contract::{Basis, Change, ChangeOp, ErrorCode, ToolError};
 use acom_core::Money;
+use acom_customer::service::for_fulfillment as customer;
 use acom_promotion::service::for_fulfillment as promotion;
 use acom_sales::service::for_fulfillment as sales;
 use acom_store::TxCx;
@@ -39,13 +53,23 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::errors::*;
+use crate::errors::{
+    ALREADY_CANCELLED, ALREADY_SHIPPED, CLAIM_IN_PROGRESS, CLAIM_NOT_FOUND, NOT_EXCHANGEABLE,
+    NOT_RETURNABLE, NOT_SHIPPED_YET, NOT_YOUR_ORDER, ORDER_ITEM_NOT_FOUND, OUTSIDE_EXCHANGE_WINDOW,
+    OUTSIDE_RETURN_WINDOW, QUANTITY_OVER_CANCELLABLE, REASON_NOT_SELECTABLE,
+    REPLACEMENT_UNAVAILABLE,
+};
 use crate::model::cancel::{CancelBlock, CancelLine, CancelOrder, CouponLine, PaymentLine};
-use crate::model::delivery::{days_since, estimate, local_date, pickup_window};
+use crate::model::delivery::{days_since, estimate, exchange_dates, local_date, pickup_window};
+use crate::model::exchange::{
+    Candidate, Choice, ExchangeCost, choices, exchange_cost, exchange_liability, exchange_reasons,
+    needs_person, not_exchangeable,
+};
 use crate::model::returns::{
     ClaimLine, OptionInputs, ReturnBlock, ReturnOption, ReturnableLine, Window, return_options,
     returnable,
 };
+use crate::model::zone::{Zone, default_zone, zone_for};
 use crate::model::{Rules, date_text};
 use crate::repo::{self, ClaimRow, NewRefund};
 use crate::{delivered_at, order_for, original_payment, payment_label, shopper};
@@ -707,4 +731,357 @@ impl RefundToInput {
         };
         json!({"type": kind, "ref": self.reference})
     }
+}
+
+/// Everything known about exchanging one line now.
+pub(crate) struct ExchangeView {
+    pub order: sales::Order,
+    pub item: sales::OrderItem,
+    /// The variant bought.
+    pub variant: catalog::Variant,
+    /// Every variant of the same product.
+    pub siblings: Vec<catalog::Variant>,
+    pub days_since_delivery: Option<i64>,
+    /// An open claim on the line, if any.
+    pub open_claim: Option<String>,
+    /// Units already in return or exchange claims that were not declined or withdrawn.
+    pub already_claimed: i32,
+    /// Where the carrier collects the item: `(saved address id, address)`.
+    pub pickup_address: (Option<String>, Value),
+    /// Where the replacement goes.
+    pub delivery_address: (Option<String>, Value),
+    pub zones: Vec<Zone>,
+}
+
+fn address_json(a: &customer::Address) -> Value {
+    json!({"name": a.name, "street_address": a.street_address,
+           "address_locality": a.address_locality, "address_region": a.address_region,
+           "postal_code": a.postal_code, "address_country": a.address_country})
+}
+
+/// A saved address of the order's shopper, or the address the order was delivered to.
+async fn exchange_address(
+    tx: &mut TxCx,
+    order: &sales::Order,
+    delivered_to: &Value,
+    address_id: Option<&str>,
+    field: &str,
+) -> Result<(Option<String>, Value), ToolError> {
+    let Some(id) = address_id else {
+        return Ok((None, delivered_to.clone()));
+    };
+    let owner = order.customer_id.clone().unwrap_or_default();
+    let a = customer::address(tx, &owner, id).await?.ok_or_else(|| {
+        ToolError::invalid_input(format!("{id} is not one of the shopper's saved addresses."))
+            .detail(json!({"field": field, "reason": "format"}))
+    })?;
+    Ok((Some(a.id.clone()), address_json(&a)))
+}
+
+/// Loads one line of the caller's order as an exchange sees it.
+pub(crate) async fn exchange_view(
+    tx: &mut TxCx,
+    order_id: &str,
+    order_item_id: &str,
+    addresses: (Option<&str>, Option<&str>),
+    now: chrono::DateTime<chrono::Utc>,
+    rules: &Rules,
+) -> Result<ExchangeView, ToolError> {
+    let zone = tx.time.zone;
+    let me = shopper(&tx.principal);
+    let order = order_for(tx, order_id, me.as_deref(), "get_my_orders").await?;
+    let item = sales::order_items(tx, order_id)
+        .await?
+        .into_iter()
+        .find(|i| i.id == order_item_id)
+        .ok_or_else(|| {
+            ToolError::new(
+                ORDER_ITEM_NOT_FOUND,
+                format!("Order {} has no line {order_item_id}.", order.order_number),
+            )
+            .detail(json!({"entity": "order_item", "id": order_item_id}))
+            .next("get_order")
+        })?;
+    let claims = repo::claims_on_order(tx, order_id).await?;
+    let claim_ids: Vec<String> = claims.iter().map(|c| c.id.clone()).collect();
+    let claim_items = repo::claim_items(tx, &claim_ids).await?;
+    let on_line = |c: &ClaimRow| {
+        claim_items
+            .iter()
+            .filter(|i| i.claim_id == c.id && i.order_item_id == item.id)
+            .map(|i| i.order_quantity)
+            .sum::<i32>()
+    };
+    let open_claim = claims
+        .iter()
+        .find(|c| c.is_open() && on_line(c) > 0)
+        .map(|c| c.id.clone());
+    let already_claimed = claims
+        .iter()
+        .filter(|c| {
+            c.claim_type != "cancel" && !matches!(c.claim_status.as_str(), "declined" | "withdrawn")
+        })
+        .map(on_line)
+        .sum();
+    let deliveries = repo::deliveries_of_orders(tx, std::slice::from_ref(&order.id)).await?;
+    let delivered_to = deliveries
+        .iter()
+        .filter(|d| d.claim_id.is_none() && d.delivery_state != "cancelled")
+        .max_by_key(|d| d.delivered_at)
+        .map(|d| d.delivery_address.clone())
+        .unwrap_or(Value::Null);
+    let variant = catalog::variant(tx, &item.variant_id)
+        .await?
+        .ok_or_else(|| crate::broken(format!("variant {} is missing", item.variant_id)))?;
+    let siblings = catalog::product_variants(tx, &variant.product_id)
+        .await?
+        .unwrap_or_default();
+    let pickup_address =
+        exchange_address(tx, &order, &delivered_to, addresses.0, "pickup_address_id").await?;
+    let delivery_address = exchange_address(
+        tx,
+        &order,
+        &delivered_to,
+        addresses.1,
+        "delivery_address_id",
+    )
+    .await?;
+    let zones = crate::shipping_rate::zones(tx, rules).await?;
+    Ok(ExchangeView {
+        days_since_delivery: delivered_at(&deliveries, &order.id).map(|d| days_since(d, now, zone)),
+        order,
+        item,
+        variant,
+        siblings,
+        open_claim,
+        already_claimed,
+        pickup_address,
+        delivery_address,
+        zones,
+    })
+}
+
+/// What an exchange of a line costs and offers, for the reason and units asked.
+pub(crate) struct ExchangeQuote {
+    pub liability: String,
+    pub exchangeable: i32,
+    pub choices: Vec<Choice>,
+    pub cost: ExchangeCost,
+    /// A person at the store confirms it (`exchange.pickup.operator_approval_when`).
+    pub person: bool,
+    pub pickup_window: Window,
+    pub ships_on: chrono::NaiveDate,
+    pub arrives_by: chrono::NaiveDate,
+    pub reship_after: String,
+    /// Days after delivery the shopper may ask (`exchange.window.self_service_days`).
+    pub window_days: i64,
+}
+
+/// The zone of an address, or the store's first zone when none covers it.
+fn zone_of_address<'a>(zones: &'a [Zone], address: &Value) -> Option<&'a Zone> {
+    zone_for(
+        zones,
+        address
+            .get("address_country")
+            .and_then(Value::as_str)
+            .unwrap_or_default(),
+        address.get("address_region").and_then(Value::as_str),
+    )
+    .or(zones.first())
+}
+
+/// The exchange of a loaded line, or why it cannot be exchanged.
+pub(crate) fn exchange_quote(
+    rules: &Rules,
+    v: &ExchangeView,
+    reason: &str,
+    quantity: Option<i32>,
+    now: chrono::DateTime<chrono::Utc>,
+    time: &acom_core::StoreTime,
+) -> Result<ExchangeQuote, ToolError> {
+    if let Some(c) = &v.open_claim {
+        return Err(ToolError::new(
+            CLAIM_IN_PROGRESS,
+            format!("This item already has an open request ({c})."),
+        )
+        .detail(json!({"existing_id": c}))
+        .next("get_claim"));
+    }
+    let liability = exchange_liability(rules, reason).ok_or_else(|| {
+        ToolError::invalid_input(format!("An exchange cannot have the reason {reason}.")).detail(
+            json!({"field": "reason", "reason": "enum", "allowed": exchange_reasons(rules)}),
+        )
+    })?;
+    let state = match (
+        v.item.order_item_status.as_str(),
+        v.item.fulfillment_stage.as_deref(),
+    ) {
+        ("delivered", _) => "delivered",
+        ("in_transit", _) | (_, Some("shipped")) => "shipped",
+        (other, _) => other,
+    };
+    if matches!(state, "cancelled" | "returned") {
+        return Err(ToolError::new(
+            NOT_EXCHANGEABLE,
+            format!("This item is {state} and cannot be exchanged."),
+        )
+        .detail(json!({"rule": "exchange.eligible_states", "why": state}))
+        .next("get_return_options"));
+    }
+    if !rules
+        .list("exchange.eligible_states")
+        .iter()
+        .any(|s| s == state)
+    {
+        return Err(ToolError::new(
+            NOT_SHIPPED_YET,
+            "This item has not shipped yet; cancel it and order the other size instead.",
+        )
+        .detail(json!({"rule": "exchange.eligible_states", "from": state}))
+        .next("get_cancel_options"));
+    }
+    if let Some(why) = not_exchangeable(rules, &v.variant.sale_type, &v.variant.keywords) {
+        return Err(ToolError::new(
+            NOT_EXCHANGEABLE,
+            format!("This item cannot be exchanged ({}).", why.replace('_', " ")),
+        )
+        .detail(json!({"rule": "exchange.not_exchangeable_when", "why": why}))
+        .next("get_return_options"));
+    }
+    let window = rules
+        .lookup("exchange.window.self_service_days")
+        .and_then(Value::as_i64)
+        .unwrap_or(rules.return_window_days);
+    if let Some(days) = v.days_since_delivery
+        && days > window
+    {
+        return Err(ToolError::new(
+            OUTSIDE_EXCHANGE_WINDOW,
+            format!("Delivered {days} days ago; exchanges are accepted within {window} days."),
+        )
+        .detail(json!({"rule": "exchange.window", "days_since_delivery": days, "limit": window}))
+        .next("get_return_options"));
+    }
+    let exchangeable = v.item.order_quantity - v.already_claimed;
+    if exchangeable <= 0 {
+        return Err(ToolError::new(
+            NOT_EXCHANGEABLE,
+            "Every unit of this item is already returned or exchanged.",
+        )
+        .detail(json!({"rule": "exchange.scope", "why": "returned"}))
+        .next("get_claim"));
+    }
+    let q = quantity.unwrap_or(exchangeable);
+    if q < 1 || q > exchangeable {
+        return Err(ToolError::invalid_input(format!(
+            "Up to {exchangeable} of this item can be exchanged."
+        ))
+        .detail(json!({"field": "quantity", "reason": "range", "max": exchangeable})));
+    }
+    let candidates: Vec<Candidate> = v
+        .siblings
+        .iter()
+        .map(|s| Candidate {
+            variant_id: s.id.clone(),
+            size: s.size.clone(),
+            color: s.color.clone(),
+            availability: s
+                .stock
+                .as_ref()
+                .map_or_else(|| "discontinued".to_owned(), |x| x.availability.clone()),
+            available_quantity: s
+                .is_managed
+                .then(|| s.stock.as_ref().map_or(0, |x| x.inventory_level)),
+            price: s.stock.as_ref().map(|x| x.price),
+            sale_type: s.sale_type.clone(),
+        })
+        .collect();
+    let reference = v.variant.stock.as_ref().map_or(v.item.price, |s| s.price);
+    let list = choices(rules, &liability, &v.variant.id, reference, q, &candidates);
+    if list.is_empty() {
+        return Err(ToolError::new(
+            REPLACEMENT_UNAVAILABLE,
+            "There is no other size or color of this product to exchange for; a return is possible instead.",
+        )
+        .detail(json!({"rule": "exchange.replacement"}))
+        .next("get_return_options"));
+    }
+    let fallback = default_zone(rules);
+    let pickup_zone = zone_of_address(&v.zones, &v.pickup_address.1).unwrap_or(&fallback);
+    let reship_zone = zone_of_address(&v.zones, &v.delivery_address.1).unwrap_or(&fallback);
+    let cost = exchange_cost(rules, reason, &liability, pickup_zone, reship_zone);
+    let reship_after = rules
+        .lookup("exchange.reship_after")
+        .and_then(Value::as_str)
+        .unwrap_or("inspected")
+        .to_owned();
+    let (_, ships_on, arrives_by) = exchange_dates(
+        rules,
+        now,
+        time.zone,
+        reship_zone.transit_business_days,
+        &reship_after,
+    );
+    let (start, end) = pickup_window(rules, now, time.zone);
+    Ok(ExchangeQuote {
+        person: needs_person(rules, reason),
+        liability,
+        exchangeable,
+        choices: list,
+        cost,
+        pickup_window: Window {
+            start: time.format(start),
+            end: time.format(end),
+        },
+        ships_on,
+        arrives_by,
+        reship_after,
+        window_days: window,
+    })
+}
+
+/// Refunds the extra charge a shopper paid on a claim that will not go ahead (a withdrawn
+/// exchange, or one converted to a return: `exchange.on_fallback.refund_paid_charge`). The
+/// money goes back the way it came, outside the order's payments. Returns the amount, or `None`
+/// when nothing was paid.
+pub(crate) async fn refund_paid_charge(
+    tx: &mut TxCx,
+    c: &ClaimRow,
+    refund_id: &str,
+    instrument: &str,
+) -> Result<Option<Money>, ToolError> {
+    let (Some(charge), Some(_)) = (c.charge()?, c.charge_paid_at) else {
+        return Ok(None);
+    };
+    if repo::refund_of_claim(tx, &c.id).await?.is_some() {
+        return Ok(Some(charge));
+    }
+    repo::insert_refund(
+        tx,
+        &NewRefund {
+            id: refund_id,
+            claim_id: &c.id,
+            order_id: &c.order_id,
+            payment_id: None,
+            amount: charge,
+            refund_method: "original_payment",
+            refund_type: "full_refund",
+        },
+    )
+    .await?;
+    repo::append_refund_event(
+        tx,
+        refund_id,
+        &repo::ClaimEvent {
+            action_type: "RefundAction",
+            action_status: "active",
+            instrument,
+            from_state: None,
+            to_state: Some("requested"),
+            result: Some(json!({"reason": "charge_refunded", "amount": charge,
+                                "payment_provider": crate::refund::retry_refund::PROVIDER_NOTE})),
+        },
+    )
+    .await?;
+    Ok(Some(charge))
 }

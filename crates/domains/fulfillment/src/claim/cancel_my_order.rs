@@ -17,7 +17,11 @@ use super::{
     ApproveStep, CancelItemInput, PlannedRefund, RefundDestination, RefundToInput, apply_effects,
     asked_items, cancel_block_error, cancel_effects, cancel_view, changed, not_yours,
 };
-use crate::errors::*;
+use crate::errors::{
+    ALREADY_CANCELLED, ALREADY_SHIPPED, CLAIM_IN_PROGRESS, NOT_CANCELLABLE, NOT_YOUR_ORDER,
+    QUANTITY_OVER_CANCELLABLE, REASON_NOT_SELECTABLE, REFUND_DESTINATION_REQUIRED,
+    WHOLE_QUANTITY_ONLY,
+};
 use crate::model::cancel::{CancelAsk, cancel_outcome};
 use crate::repo::{self, ClaimEvent, NewClaim};
 use crate::{order_for, rules, shopper};
@@ -146,6 +150,7 @@ impl PersonOp<Cx> for CancelMyOrder {
                 evidence: json!([]),
                 amount: e.cancelled_amount,
                 refund_estimate: Some(e.refund_total),
+                charge: (status == "charge_due").then_some(e.charge_due),
                 items: outcome
                     .chosen
                     .iter()

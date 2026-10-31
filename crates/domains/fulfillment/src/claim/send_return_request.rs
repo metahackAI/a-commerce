@@ -16,7 +16,10 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::{RefundToInput, WindowInput, changed, not_yours, options_for, return_view};
-use crate::errors::*;
+use crate::errors::{
+    CLAIM_IN_PROGRESS, EVIDENCE_REQUIRED, NOT_RETURNABLE, NOT_SHIPPED_YET, NOT_YOUR_ORDER,
+    OUTSIDE_RETURN_WINDOW, REPLACEMENT_UNAVAILABLE,
+};
 use crate::repo::{self, ClaimEvent, NewClaim};
 use crate::{rules, shopper};
 
@@ -290,6 +293,7 @@ impl PersonOp<Cx> for SendReturnRequest {
                     .collect::<Vec<_>>()),
                 amount,
                 refund_estimate: refund,
+                charge: None,
                 items: lines
                     .iter()
                     .map(|(l, q)| {

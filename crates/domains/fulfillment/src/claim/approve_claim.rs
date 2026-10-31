@@ -20,7 +20,10 @@ use super::{
     ApproveStep, PlannedRefund, apply_effects, cancel_block_error, cancel_effects, cancel_view,
     claim_not_found, invalid_state, pays_sentence, visible_claim,
 };
-use crate::errors::*;
+use crate::errors::{
+    ALREADY_HANDED_OVER, CHARGE_UNPAID, CLAIM_NOT_FOUND, INSPECTION_PENDING,
+    LIABILITY_COST_CONFLICT, NOT_REVOCABLE, REPLACEMENT_UNAVAILABLE,
+};
 use crate::model::cancel::{CancelAsk, CancelBlock, cancel_outcome};
 use crate::model::money_text;
 use crate::repo::{self, ClaimEvent, ClaimRow};

@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::errors::*;
+use crate::errors::INVALID_FILTER;
 use crate::repo::{self, ClaimFilter, ClaimOrder};
 use crate::{parse_time, select, shopper};
 

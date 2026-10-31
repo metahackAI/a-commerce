@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
 use super::{claim_not_found, invalid_state, visible_claim};
-use crate::errors::*;
+use crate::errors::{CLAIM_NOT_FOUND, REASON_REQUIRED};
 use crate::model::date_text;
 use crate::model::delivery::{days_since, local_date};
 use crate::repo::{self, ClaimEvent};

@@ -26,9 +26,11 @@ use crate::model::tests::policy;
 use crate::parcel_delivery::{GetDelivery, GetDeliveryDates, TrackShipment};
 use crate::refund::{GetRefund, RefundReturn};
 
-const NY: chrono_tz::Tz = chrono_tz::America::New_York;
+mod operations;
 
-fn principal(subject: &str) -> Principal {
+pub(crate) const NY: chrono_tz::Tz = chrono_tz::America::New_York;
+
+pub(crate) fn principal(subject: &str) -> Principal {
     let (kind, surface) = if subject.starts_with("cus_") {
         (ActorKind::Shopper, Surface::Fo)
     } else {
@@ -46,7 +48,7 @@ fn principal(subject: &str) -> Principal {
 }
 
 /// A context for the demo store at a scene time, as `subject`.
-fn cx_on(db: Db, subject: &str, at: &str) -> Cx {
+pub(crate) fn cx_on(db: Db, subject: &str, at: &str) -> Cx {
     let time = StoreTime::new(NY);
     Cx {
         tenant: TenantId::parse("store_northwind").unwrap(),
@@ -61,7 +63,7 @@ fn cx_on(db: Db, subject: &str, at: &str) -> Cx {
 }
 
 /// A context whose pool never connects: for inputs refused before any query.
-fn offline(subject: &str) -> Cx {
+pub(crate) fn offline(subject: &str) -> Cx {
     cx_on(
         Db::connect_lazy("postgres://offline.invalid/acom", 1).unwrap(),
         subject,
@@ -69,7 +71,7 @@ fn offline(subject: &str) -> Cx {
     )
 }
 
-fn input<T: serde::de::DeserializeOwned>(v: Value) -> T {
+pub(crate) fn input<T: serde::de::DeserializeOwned>(v: Value) -> T {
     serde_json::from_value(v).unwrap()
 }
 
@@ -194,7 +196,7 @@ fn inputs_reject_unknown_fields_and_bad_words() {
 
 // ── Scenes B2 and F5 on the demo store (integration) ──────────────────────────
 
-async fn db(var: &str) -> Db {
+pub(crate) async fn db(var: &str) -> Db {
     let url = std::env::var(var).unwrap_or_else(|_| panic!("{var}"));
     Db::connect(&url, 2).await.expect("connect")
 }

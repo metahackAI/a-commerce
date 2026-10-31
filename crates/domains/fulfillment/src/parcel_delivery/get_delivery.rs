@@ -9,9 +9,9 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::{events, visible_delivery};
-use crate::errors::*;
+use crate::errors::DELIVERY_NOT_FOUND;
 use crate::model::delivery::local_date;
-use crate::repo::{self};
+use crate::repo;
 use crate::select;
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -60,7 +60,26 @@ impl ReadOp<Cx> for GetDelivery {
             .detail(json!({"entity": "parcel_delivery", "id": input.delivery_id}))
             .next("get_order")
         })?;
+        let recorded = repo::delivery_events(&mut tx, &d.id).await?;
         tx.commit().await.map_err(ToolError::from)?;
+        let mut history: Vec<Value> = recorded
+            .iter()
+            .map(|e| {
+                json!({"at": cx.time.format(e.start_time), "delivery_state": e.to_state,
+                       "by": e.instrument, "location": null})
+            })
+            .collect();
+        if history.is_empty() {
+            history = events(cx, &d);
+        } else {
+            // Carrier scans are not recorded here; add them from the parcel's own times.
+            history.extend(events(cx, &d).into_iter().filter(|e| {
+                matches!(
+                    e["delivery_state"].as_str(),
+                    Some("picked_up" | "delivered")
+                )
+            }));
+        }
         let zone = cx.time.zone;
         let out = json!({
             "id": d.id,
@@ -72,7 +91,7 @@ impl ReadOp<Cx> for GetDelivery {
             "has_delivery_method": d.has_delivery_method,
             "delivery_state": d.delivery_state,
             "expected_arrival_until": d.expected_arrival_until.map(|t| local_date(t, zone).to_string()),
-            "events": events(cx, &d),
+            "events": history,
         });
         Ok(select(out, &input.fields.unwrap_or_default()))
     }

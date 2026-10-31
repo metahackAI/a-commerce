@@ -9,8 +9,8 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::errors::*;
-use crate::repo::{self};
+use crate::errors::REFUND_NOT_FOUND;
+use crate::repo;
 use crate::{payment_label, shopper};
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -70,6 +70,7 @@ impl ReadOp<Cx> for GetRefund {
             }
         }
         let payments = sales::payments(&mut tx, &r.order_id).await?;
+        let recorded = repo::refund_events(&mut tx, &r.id).await?;
         tx.commit().await.map_err(ToolError::from)?;
         let to = match r.refund_method.as_str() {
             "original_payment" => r
@@ -82,6 +83,23 @@ impl ReadOp<Cx> for GetRefund {
         };
         let mut events =
             vec![json!({"refund_status": "requested", "at": cx.time.format(r.start_time)})];
+        // Each retry (retry_refund) records the failure it answers and the new attempt.
+        for e in &recorded {
+            if let Some(failed) = e
+                .result
+                .as_ref()
+                .and_then(|v| v.get("failed_at"))
+                .and_then(Value::as_str)
+            {
+                events.push(json!({"refund_status": "failed", "at": failed}));
+            }
+            events.push(json!({
+                "refund_status": e.to_state,
+                "at": cx.time.format(e.start_time),
+                "by": e.instrument,
+                "attempt": e.result.as_ref().and_then(|v| v.get("attempt")),
+            }));
+        }
         if let Some(end) = r.end_time
             && r.refund_status != "requested"
         {

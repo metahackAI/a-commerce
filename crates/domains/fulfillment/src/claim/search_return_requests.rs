@@ -12,7 +12,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::claim_lines;
-use crate::errors::*;
+use crate::errors::{CURRENCY_MISMATCH, INVALID_STATUS};
 use crate::model::delivery::{days_since, local_date};
 use crate::model::returns::photo_count;
 use crate::repo::{self, ClaimFilter, ClaimOrder};

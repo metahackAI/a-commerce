@@ -13,9 +13,11 @@ pub mod model;
 pub mod service;
 
 mod claim;
+mod inspection;
 mod parcel_delivery;
 mod refund;
 mod repo;
+mod shipping_rate;
 #[cfg(test)]
 mod tests;
 mod watch;
@@ -49,7 +51,21 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .read(parcel_delivery::TrackShipment)
         .person(claim::SendReturnRequest)
         .person(claim::CancelMyOrder)
-        .person(claim::WithdrawClaim);
+        .person(claim::WithdrawClaim)
+        .read(claim::GetExchangeOptions)
+        .write(claim::CancelOrderLines)
+        .write(claim::ConvertExchangeToReturn)
+        .write(claim::UploadEvidence)
+        .person(claim::SendExchangeRequest)
+        .person(claim::PayClaimCharge)
+        .write(inspection::AssessReturnCondition)
+        .write(refund::RetryRefund)
+        .write(parcel_delivery::ScheduleShipment)
+        .write(parcel_delivery::ConfirmShipment)
+        .write(parcel_delivery::RegisterShortage)
+        .read(shipping_rate::ListShippingZones)
+        .write(shipping_rate::ManageShippingZone)
+        .write(shipping_rate::SetShippingRate);
     // Scheduled work (platform.job): the watcher over waiting return requests.
     b.job(watch::ReturnsOverRefundThreshold);
 }

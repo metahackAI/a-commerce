@@ -9,8 +9,8 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::{events, visible_delivery};
-use crate::errors::*;
-use crate::repo::{self};
+use crate::errors::TRACKING_NOT_FOUND;
+use crate::repo;
 
 /// How to find the parcel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]

@@ -12,9 +12,10 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::errors::*;
-use crate::model::delivery::{estimate, local_date};
+use crate::errors::{ADDRESS_NOT_DELIVERABLE, ADDRESS_NOT_FOUND, OUT_OF_STOCK, PRODUCT_NOT_FOUND};
+use crate::model::delivery::{estimate_in, local_date};
 use crate::model::money_text;
+use crate::model::zone::zone_for;
 use crate::{rules, shopper};
 
 /// Which address the estimate is for.
@@ -151,7 +152,7 @@ impl ReadOp<Cx> for GetDeliveryDates {
         if !in_stock(variant) {
             return Err(out_of_stock(&input.product_id));
         }
-        let country = match input.address_mode {
+        let (country, region) = match input.address_mode {
             AddressMode::Saved => {
                 let Some(address_id) = &input.address_id else {
                     return Err(
@@ -164,16 +165,15 @@ impl ReadOp<Cx> for GetDeliveryDates {
                     Some(me) => customer::address(&mut tx, me, address_id).await?,
                     None => None,
                 };
-                found
-                    .ok_or_else(|| {
-                        ToolError::new(
-                            ADDRESS_NOT_FOUND,
-                            format!("There is no saved address {address_id}."),
-                        )
-                        .detail(json!({"entity": "address", "id": address_id}))
-                        .next("get_my_profile")
-                    })?
-                    .address_country
+                let a = found.ok_or_else(|| {
+                    ToolError::new(
+                        ADDRESS_NOT_FOUND,
+                        format!("There is no saved address {address_id}."),
+                    )
+                    .detail(json!({"entity": "address", "id": address_id}))
+                    .next("get_my_profile")
+                })?;
+                (a.address_country, a.address_region)
             }
             AddressMode::OneTime => {
                 let Some(a) = &input.delivery_address else {
@@ -194,12 +194,16 @@ impl ReadOp<Cx> for GetDeliveryDates {
                     )
                     .detail(json!({"field": "delivery_address", "reason": "missing"})));
                 }
-                a.address_country.clone()
+                (a.address_country.clone(), a.address_region.clone())
             }
         };
+        // The address's delivery zone sets the transit days and any surcharge; while the store
+        // has saved no zone, that is `delivery.default_zone`.
+        let zones = crate::shipping_rate::zones(&mut tx, &rules).await?;
         tx.commit().await.map_err(ToolError::from)?;
+        let zone = zone_for(&zones, &country, region.as_deref());
         let no_ship = rules.list("delivery.no_ship_for");
-        if !rules.zone_countries.contains(&country) || no_ship.contains(&variant.sale_type) {
+        let Some(zone) = zone.filter(|_| !no_ship.contains(&variant.sale_type)) else {
             return Err(ToolError::new(
                 ADDRESS_NOT_DELIVERABLE,
                 if no_ship.contains(&variant.sale_type) {
@@ -210,9 +214,14 @@ impl ReadOp<Cx> for GetDeliveryDates {
             )
             .detail(json!({"country": country}))
             .next("get_my_profile"));
-        }
+        };
 
-        let (ships_on, arrives) = estimate(&rules, cx.clock.now(), cx.time.zone);
+        let (ships_on, arrives) = estimate_in(
+            &rules,
+            cx.clock.now(),
+            cx.time.zone,
+            zone.transit_business_days,
+        );
         let price = variant
             .stock
             .as_ref()
@@ -231,7 +240,7 @@ impl ReadOp<Cx> for GetDeliveryDates {
                 format!("{} standard shipping; free over {} before member benefits",
                         money_text(rules.shipping_rate), money_text(rules.free_shipping_min))
             },
-            "remote_area_surcharge": rules.zone_surcharge,
+            "remote_area_surcharge": zone.surcharge,
             "by": by.map(|d| d.to_string()),
             "arrives_by_requested_date": by.map(|d: NaiveDate| arrives <= d),
         });

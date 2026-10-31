@@ -269,7 +269,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
       "available_quantity": 3, "price": 138.00, "price_currency": "USD",
       "price_difference": {"value": 10.00, "currency": "USD"}, "selectable": false, "why": "price_differs"}],
    "order_item": {"order_item_id": "oln_2", "name": "Trail runner, 9, Slate", "exchangeable_quantity": 1,
-                  "days_since_delivery": 5, "window_days": 30, "path": "self_service"},   // 기간 후면 store_review
+                  "days_since_delivery": 5, "window_days": 30, "path": "self_service"},   // 사진을 확인할 파손 교환이면 store_review
    "liability": "customer_fault",
    "pickup": {"window": {"start": "2026-11-09T09:00:00-05:00", "end": "2026-11-09T12:00:00-05:00"},
               "address": "12 Harbor St, Apt 3", "cost": {"value": 0.00, "currency": "USD"}},
@@ -287,6 +287,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 - 정책: `exchange.eligible_states`, `exchange.window`, `exchange.not_exchangeable_when`, `exchange.replacement`, `exchange.shipping_cost`, `exchange.pickup`, `exchange.reship_after`, `size_exchange_fee`, `delivery.remote_area_surcharge`
 - 에러: `order_not_found` → `get_my_orders` · `not_your_order` → `get_my_orders` · `order_item_not_found` → `get_order` · `not_shipped_yet`(출고 전이면 취소 후 다시 주문) → `get_cancel_options` · `outside_exchange_window` → `get_return_options` · `not_exchangeable` → `get_return_options` · `replacement_unavailable`(바꿀 변형 없음) → `get_return_options` · `claim_in_progress` → `get_claim`
 - 멱등성: 읽기, 부작용 없음. 재고는 `POST /v1/fulfillment/exchanges` 때 예약됩니다(`exchange.replacement.reserve_stock_on`).
+- 기간: 배송 후 `exchange.window.self_service_days`가 지나면 `outside_exchange_window`(`after_window: operator_only`: 그 뒤는 상담·운영자만 접수). 회수·재배송 비용은 회수지·재배송지의 배송 지역(`list_shipping_zones`) 요율과 추가 배송비로 계산하고, 재배송일은 회수일 + 운송일 뒤 검수 다음 출고일입니다(`exchange.reship_after: inspected`).
 
 ### `search_claims` — Kind: R
 - 논리주소/REST: `fulfillment.claim.search` · `GET /v1/fulfillment/claims`
@@ -357,6 +358,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 - 정책: `cancel.reasons`, `cancel.restore`, `cancel.not_cancellable_states`, `refund`, [approval.yml](../../policies/approval.yml)
 - 에러: `already_shipped` → `get_delivery` · `order_item_not_found` → `get_order` · `reason_not_store_fault` → `cancel_order_lines` · `whole_quantity_only` → `cancel_order_lines` · `claim_in_progress` → `get_claim`
 - 멱등성: 같은 `preview_id` 재실행은 첫 결과. 서버는 `cancel.dedupe_on`(주문·품목·수량)으로 중복 취소를 막습니다.
+- 재가격: 남는 수량으로 sales가 주문을 다시 계산합니다(`acom_sales::service::for_fulfillment::reprice`, 품목 할인은 남는 수량에 비례, 스토어 귀책이라 배송비는 그대로이고 모두 취소되면 0). 환불액 = 취소 전 계산 합계 − 취소 후 계산 합계(결제 전 주문은 0)이고, 주문의 금액 필드는 취소 후 값으로 바뀝니다(`changes`의 `order`). 실행 응답의 `undo`는 `null`(되돌릴 수 없음).
 
 ### `convert_exchange_to_return` — Kind: W
 - 논리주소/REST: `fulfillment.claim.convert_exchange_to_return` · `POST /v1/fulfillment/claims/{claim_id}/convert-to-return`
@@ -366,14 +368,16 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 - 출력(프리뷰): `{"preview_id": "pv_c60d", "expires_at": "2026-11-06T11:40:00-05:00", "change_set_id": "cs_1047", "changes": [{"op": "update", "entity": "claim", "id": "clm_3301", "from": "picked_up", "to": "converted"}, {"op": "create", "entity": "claim", "id": null, "from": null, "to": {"claim_type": "return", "status": "requested", "liability": "store_fault"}}, {"op": "update", "entity": "inventory_level", "id": "var_trail_runner_10_slate", "from": {"reserved": 1}, "to": {"reserved": 0}}], "checks": [{"rule": "exchange.fallback_to_return_when", "passed": true, "detail": "Replacement size 10 is out of stock", "fix_tool": null}, {"rule": "exchange.on_fallback", "passed": true, "detail": "Liability moves to store fault: no return shipping charged", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
 - 출력(실행): `{"ok": true, "id": "clm_4471", "undo": {"by": "person", "target": "cs_1047", "until": "2026-11-07T23:59:00-05:00"}}`
 - 정책: `exchange.fallback_to_return_when`, `exchange.allowed_conversion_states`, `exchange.conversion_window`, `exchange.on_fallback`
-- 에러: `not_an_exchange` → `get_claim` · `invalid_state`(이미 재배송 출고) → `get_claim` · `customer_not_notified` → `send_customer_message`
+- 에러: `not_an_exchange` → `get_claim` · `invalid_state`(이미 재배송 출고) → `get_claim`
+- 쇼퍼 안내: 메시지는 `messaging`이 보내고 fulfillment는 그 기록을 읽지 않으므로(의존 방향), 안내 여부는 에러(`customer_not_notified`)가 아니라 `exchange.on_fallback` 체크의 `fix_tool: "send_customer_message"`로 알리고, 같은 변경셋에 메시지를 담는 것은 런타임·승인자가 봅니다. 되돌리기는 새 반품 클레임을 `withdrawn`으로 닫고 교환을 원래 상태로 돌립니다(이미 환불된 교환 배송비가 있으면 되돌릴 수 없음).
 - 멱등성: 같은 `preview_id` 재실행은 첫 결과. 교환 클레임 하나는 한 번만 전환됩니다.
 
 ### `upload_evidence` — Kind: W
 - 논리주소/REST: `fulfillment.claim.upload_evidence` · `POST /v1/fulfillment/claims/{claim_id}/evidence`
 - 요약: 클레임에 증빙(파손 사진·배송 사진·영수증) 첨부. 검수·승인·귀책 판단의 근거가 됩니다. append만 하며 지우지 않고 무효 표시만 합니다. 쇼퍼가 사진 요청을 받고 올린 사진도 여기로 들어와 클레임을 `photos_requested` → `requested`로 되돌립니다.
 - consumes → produces: `claim_id` → `evidence_id[]`
-- 입력: `claim_id`(✓), `upload_ids[]`(✓, 업로드 id `upl_…`, schema.org `MediaObject`), `evidence_type`(✓, `damage_photo` \| `delivery_photo` \| `product_defect` \| `receipt` \| `other`), `note`
+- 입력: `claim_id`(✓), `files[]`(✓, 올린 파일 schema.org `MediaObject` `{upload_id, name, encoding_format, content_size_bytes}`, 업로드 id `upl_…`), `evidence_type`(✓, `damage_photo` \| `delivery_photo` \| `product_defect` \| `receipt` \| `other`), `note`
+  - 파일 저장소는 우리 시스템 밖입니다. 증빙은 업로드 id·이름·형식·크기로 기록하고 바이트는 보관하지 않으므로, 형식 확인(`evidence.media_types`)에 필요한 `encoding_format`과 크기를 입력으로 받습니다. 중복 첨부는 `(claim_id, upload_id)`로 막습니다(같은 파일은 `exclude`).
 - 출력(프리뷰): `{"preview_id": "pv_e11f", "expires_at": "2026-11-06T12:05:00-05:00", "changes": [{"op": "create", "entity": "evidence", "id": null, "from": null, "to": {"evidence_type": "damage_photo", "files": 2}}, {"op": "update", "entity": "claim", "id": "clm_20366", "from": "photos_requested", "to": "requested"}], "checks": [{"rule": "evidence.media_types", "passed": true, "detail": "2 JPEG photos", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
 - 출력(실행): `{"ok": true, "id": "evd_901", "undo": null}` — 증빙은 지우지 않으므로 되돌리기가 없습니다(무효 표시는 운영자 화면에서).
 - 정책: `evidence.media_types`, `evidence.max_files_per_claim`, `evidence.append_only`, `evidence.mask_payment_details`
@@ -394,6 +398,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 - 정책: `return.inventory_restore_when`, `liability`
 - 에러: `not_picked_up` → `get_claim` · `invalid_state` → `get_claim`
 - 멱등성: 같은 `preview_id` 재실행은 첫 결과. 클레임 하나에 검수 결과는 하나(다시 기록하면 새 프리뷰가 필요).
+- 교환: `as_new`이고 `next`가 `approve`(as_new의 기본값)면 클레임은 `inspected`를 지나 `reship_requested`가 되고(`exchange.reship_after: inspected`), `schedule_shipment`가 재배송을 지시합니다. 되돌리기는 검수 기록을 지우고 상태·재고·귀책을 되돌립니다(클레임 이벤트에 이력이 남음).
 
 ---
 
@@ -450,6 +455,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 - 정책: `refund.on_failure`, `refund.manual_queue_sla_hours`, `refund.max_retries`
 - 에러: `not_failed` → `get_refund` · `max_retries_reached`(수동 처리) → `get_refund`
 - 멱등성: 같은 `preview_id` 재실행은 첫 결과. 시도 번호마다 한 번.
+- 시도 번호: 처음 보낸 것이 1회이고 `retry_refund`마다 1씩 늘어 `refund.max_retries`(시도 총수)에 닿으면 `max_retries_reached`. 시도는 `refund_event`에 남고 `get_refund`의 `events`에 보입니다. 결제사 연동은 범위 밖이라, 재시도는 `requested`로 기록되고 결제 이벤트가 확정·실패를 정합니다.
 
 ---
 
@@ -514,10 +520,11 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 - 정책: `delivery.shipping_group_by`, `delivery.remote_area_surcharge`, `delivery.no_ship_for`, `delivery.shortage_state`
 - 에러: `no_ship_item`(배송하지 않는 상품, 그 품목을 빼고 다시) → `schedule_shipment` · `out_of_stock` → `register_shortage` · `invalid_state` → `get_delivery`
 - 멱등성: 같은 `preview_id` 재실행은 첫 결과. 서버는 `(order_id, shipping_group, order_item_ids)`로 중복 출고 지시를 막습니다.
+- 품목: `order_item_ids`가 없으면 기다리는 품목(`processing`, 아직 배송에 없음) 전부, 없으면 `reship_requested`인 교환의 대체품입니다. 배송지는 주문 때 고른 주소, 없으면 그 주문의 이전 배송지, 없으면 쇼퍼의 기본 배송지입니다. 재고 부족은 예약·입고 대기 판매(`pre_order`·`back_order`) 품목으로 판단합니다.
 
 ### `confirm_shipment` — Kind: W
 - 논리주소/REST: `fulfillment.parcel_delivery.confirm` · `POST /v1/fulfillment/deliveries/{delivery_id}/confirm`
-- 요약: 출고 확정(송장번호 기재, 배송 `packed` → `label_created`, 품목의 출고 단계 `shipped`). 모든 품목이 `shipped`면 주문 상태가 `in_transit`이 됩니다.
+- 요약: 출고 확정(송장번호 기재, 배송 `packed` → `label_created`, 품목의 출고 단계 `shipped`). 모든 품목이 `shipped`면 주문 상태가 `in_transit`이 됩니다. 창고 연동이 없어 `packed`를 기록할 곳이 없는 스토어를 위해 `ship_instructed`에서도 확정할 수 있습니다(포장과 송장을 한 번에). 송장 형식은 `delivery.tracking.number_formats`(택배사별 앞자리·길이·문자)로 확인하고, 택배사 연동은 범위 밖이라 형식만 봅니다.
 - consumes → produces: `delivery_id` → `delivery_id`
 - 입력: `delivery_id`(✓), `tracking_number`(✓), `carrier`(✓)
 - 출력(프리뷰): `{"preview_id": "pv_d11a", "expires_at": "2026-11-06T16:30:00-05:00", "changes": [{"op": "update", "entity": "parcel_delivery", "id": "dlv_20455", "from": "packed", "to": "label_created"}], "checks": [{"rule": "delivery.tracking", "passed": true, "detail": "Tracking number matches the UPS format", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
@@ -550,6 +557,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 - 정책: 없음(읽기).
 - 에러: `invalid_filter` → `list_shipping_zones`
 - 멱등성: 읽기.
+- 스토어가 배송 지역을 저장하기 전에는 정책의 `delivery.default_zone`을 `zone_default`(저장되지 않음)로 돌려줍니다. 배송 지역은 `get_delivery_dates`·`get_exchange_options`·`schedule_shipment`의 운송 일수·추가 배송비를 정합니다.
 
 ### `manage_shipping_zone` — Kind: W
 - 논리주소/REST: `fulfillment.shipping_rate.manage_zone` · `POST /v1/fulfillment/shipping-zones`
@@ -561,6 +569,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 - 정책: `delivery.remote_area_surcharge`, `delivery.zone_overlap`
 - 에러: `overlapping_zone` → `list_shipping_zones`
 - 멱등성: 같은 `preview_id` 재실행은 첫 결과.
+- 겹침: 같은 나라 전체, 또는 같은 나라의 같은 지역을 두 지역이 가지면 겹칩니다. 나라 전체 항목과 그 나라 한 지역 항목은 겹치지 않고 지역 항목이 우선합니다(Contiguous US = `US`, Alaska and Hawaii = `US-AK`·`US-HI`). 새 지역의 요율은 `delivery.default_zone`에서 시작하며 `set_shipping_rate`로 바꿉니다. id는 이름에서 만듭니다(`zone_alaska_and_hawaii`).
 
 ### `set_shipping_rate` — Kind: W
 - 논리주소/REST: `fulfillment.shipping_rate.set` · `POST /v1/fulfillment/shipping-zones/{zone_id}/rate`
@@ -639,7 +648,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
   | expected_charge | MonetaryAmount | ✓ | 쇼퍼가 확인한 `you_pay` | `{"value": 0.00, "currency": "USD"}` |
 - 응답:
   ```jsonc
-  {"ok": true, "id": "clm_3301", "claim_type": "exchange", "status": "requested",   // charge_due | requested | pickup_instructed
+  {"ok": true, "id": "clm_3301", "claim_type": "exchange", "status": "pickup_instructed",   // charge_due | requested | pickup_instructed (비용도 사람 확인도 없으면 exchange.pickup.instruction: automatic으로 바로 회수 지시)
    "liability": "customer_fault",
    "replacement": [{"order_item_id": "oln_2", "variant_id": "var_trail_runner_10_slate", "reserved": 1}],
    "pickup": {"window": {"start": "2026-11-09T09:00:00-05:00", "end": "2026-11-09T12:00:00-05:00"}, "cost": {"value": 0.00, "currency": "USD"}},
@@ -679,6 +688,7 @@ schedule_shipment ──▶ ship_instructed ──(창고 포장)──▶ packe
 - 응답: `{"ok": true, "id": "clm_3302", "status": "requested", "charged": {"value": 12.00, "currency": "USD"}, "undo": null}`
 - 에러: `estimate_changed`(금액이 바뀜) → null · `invalid_state` → null · `payment_declined` → null · `not_your_order` → null
 - 멱등성: `Idempotency-Key` 필수.
+- 결제사 연동은 범위 밖입니다: 저장된 결제수단 참조로 결제된 것으로 기록하고(`claim.charge_paid_at`) 실제로 걷지 않으며, 응답의 `payment`가 그렇게 말합니다. 참조가 `declined`로 시작하면 데모 결제사가 거절합니다(`payment_declined`). 낸 비용은 철회·반품 전환 때 자동 환불됩니다(`exchange.withdraw.on_withdraw`, `exchange.on_fallback.refund_paid_charge`).
 
 ### `POST /v1/fulfillment/claims/{claim_id}/withdraw`
 - 스코프: `human:claim`

@@ -12,10 +12,10 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::{claim_lines, visible_claim};
-use crate::errors::*;
+use crate::errors::{CLAIM_NOT_FOUND, NOT_A_RETURN};
 use crate::model::delivery::days_since;
 use crate::model::returns::{EvalFacts, evaluate, photo_count, refund_amount};
-use crate::repo::{self};
+use crate::repo;
 use crate::{delivered_at, rules};
 
 #[derive(Debug, Deserialize, JsonSchema)]

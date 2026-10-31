@@ -196,6 +196,16 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:zoneType of a shipping zone: an ordinary area or a remote one (usually a surcharge).
+    ZoneType = "zone_type" { Standard = "standard", Remote = "remote" }
+}
+
+word_enum! {
+    /// acom:feeType, how a shipping zone charges shipping.
+    ShippingFeeType = "shipping_fee_type" { Paid = "paid", Free = "free", FreeOverMinSubtotal = "free_over_min_subtotal" }
+}
+
+word_enum! {
     /// schema.org `ActionStatusType`.
     ActionStatus = "action_status" {
         Potential = "potential", Active = "active", Completed = "completed", Failed = "failed",
@@ -446,6 +456,8 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (RefundStatus::LIST, RefundStatus::WORDS),
     (RefundMethod::LIST, RefundMethod::WORDS),
     (RefundType::LIST, RefundType::WORDS),
+    (ZoneType::LIST, ZoneType::WORDS),
+    (ShippingFeeType::LIST, ShippingFeeType::WORDS),
     (ActionStatus::LIST, ActionStatus::WORDS),
     (ChangeSetState::LIST, ChangeSetState::WORDS),
     (PreviewState::LIST, PreviewState::WORDS),

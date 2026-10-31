@@ -11,7 +11,10 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::{options_for, return_view};
-use crate::errors::*;
+use crate::errors::{
+    CLAIM_IN_PROGRESS, NOT_RETURNABLE, NOT_SHIPPED_YET, NOT_YOUR_ORDER, ORDER_ITEM_NOT_FOUND,
+    ORDER_NOT_FOUND, OUTSIDE_RETURN_WINDOW,
+};
 use crate::rules;
 
 #[derive(Debug, Deserialize, JsonSchema)]
