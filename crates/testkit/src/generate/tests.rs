@@ -129,12 +129,14 @@ fn named_rows_load_in_file_table_and_row_order() {
     assert!(first("customer.person") < first("catalog.brand"));
     assert!(first("catalog.offer") < first("promotion.promotion"));
     assert!(first("sales.sales_order") < first("fulfillment.parcel_delivery"));
-    assert_eq!(rows(named, "sales.sales_order").count(), 21);
+    // The 21 orders of the scenes, then the two waiting for their money (#29001, #29002).
+    assert_eq!(rows(named, "sales.sales_order").count(), 23);
     let ids: Vec<&str> = rows(named, "sales.sales_order")
         .map(|o| s(o, "id"))
         .collect();
     assert_eq!(ids.first(), Some(&"ord_20105"));
-    assert_eq!(ids.last(), Some(&"ord_20431"));
+    assert_eq!(ids[20], "ord_20431");
+    assert_eq!(ids.last(), Some(&"ord_29002"));
 }
 
 #[test]
