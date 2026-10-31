@@ -27,6 +27,15 @@
       "rdfs:comment": "Content shown in a display slot: headline, image, link. Used as additionalType on a CreativeWork."
     },
     {
+      "@id": "acom:Board",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Board",
+      "rdfs:subClassOf": {
+        "@id": "schema:CreativeWork"
+      },
+      "rdfs:comment": "a community board shoppers write posts on, with who may write and how it is moderated. id prefix brd_."
+    },
+    {
       "@id": "acom:CacheInvalidation",
       "@type": "rdfs:Class",
       "rdfs:label": "CacheInvalidation",
@@ -710,6 +719,38 @@
       "rdfs:comment": "true for generated content (catalog.yml content.ai_content_disclosure)."
     },
     {
+      "@id": "acom:allowAttachment",
+      "@type": "rdf:Property",
+      "rdfs:label": "allowAttachment",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Board"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Boolean"
+        }
+      ],
+      "rdfs:comment": "true when posts may carry uploaded images (community.yml attachment)."
+    },
+    {
+      "@id": "acom:allowSecret",
+      "@type": "rdf:Property",
+      "rdfs:label": "allowSecret",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Board"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Boolean"
+        }
+      ],
+      "rdfs:comment": "true when a post may be secret (only its writer and the store read it)."
+    },
+    {
       "@id": "acom:amount",
       "@type": "rdf:Property",
       "rdfs:label": "amount",
@@ -1110,6 +1151,22 @@
         }
       ],
       "rdfs:comment": "UI blocks returned: [{block, schema, data}]."
+    },
+    {
+      "@id": "acom:boardType",
+      "@type": "rdf:Property",
+      "rdfs:label": "boardType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Board"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:BoardType"
+        }
+      ],
+      "rdfs:comment": "what the board is for. values: board_type"
     },
     {
       "@id": "acom:boostRules",
@@ -3502,6 +3559,25 @@
       "rdfs:comment": "true when only the asker and the store may read it (catalog.yml question.private_allowed)."
     },
     {
+      "@id": "acom:isSecret",
+      "@type": "rdf:Property",
+      "rdfs:label": "isSecret",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Comment"
+        },
+        {
+          "@id": "schema:DiscussionForumPosting"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Boolean"
+        }
+      ],
+      "rdfs:comment": "true when only its writer, the post's writer and the store may read it."
+    },
+    {
       "@id": "acom:isSystem",
       "@type": "rdf:Property",
       "rdfs:label": "isSystem",
@@ -3685,6 +3761,22 @@
         }
       ],
       "rdfs:comment": "Who is responsible, which decides who pays."
+    },
+    {
+      "@id": "acom:likeCount",
+      "@type": "rdf:Property",
+      "rdfs:label": "likeCount",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:DiscussionForumPosting"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "how many shoppers liked the post; 0 or more."
     },
     {
       "@id": "acom:lockedUntil",
@@ -3901,6 +3993,60 @@
         }
       ],
       "rdfs:comment": "model name, for example muse-glimmer-30b."
+    },
+    {
+      "@id": "acom:moderationMode",
+      "@type": "rdf:Property",
+      "rdfs:label": "moderationMode",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Board"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ModerationMode"
+        }
+      ],
+      "rdfs:comment": "pre_review holds new posts until the store looks; post_review shows them at once and reports hold them; none keeps no queue. values: moderation_mode"
+    },
+    {
+      "@id": "acom:moderationReason",
+      "@type": "rdf:Property",
+      "rdfs:label": "moderationReason",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Comment"
+        },
+        {
+          "@id": "schema:DiscussionForumPosting"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "why the store blinded it, or why it is held; NULL for a published reply."
+    },
+    {
+      "@id": "acom:moderationStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "moderationStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Comment"
+        },
+        {
+          "@id": "schema:DiscussionForumPosting"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ModerationStatus"
+        }
+      ],
+      "rdfs:comment": "published, held_for_review, blinded by the store, or deleted by its writer. values: moderation_status"
     },
     {
       "@id": "acom:movement",
@@ -5080,6 +5226,22 @@
         }
       ],
       "rdfs:comment": "variant sent instead for an exchange (var_ id); NULL otherwise."
+    },
+    {
+      "@id": "acom:replyDepth",
+      "@type": "rdf:Property",
+      "rdfs:label": "replyDepth",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Comment"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "1 for a reply to the post, 2 for a reply to a reply, and so on."
     },
     {
       "@id": "acom:replyText",
@@ -6804,6 +6966,22 @@
       "rdfs:comment": "when the member withdrew; NULL for members who did not."
     },
     {
+      "@id": "acom:writePermission",
+      "@type": "rdf:Property",
+      "rdfs:label": "writePermission",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Board"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:WritePermission"
+        }
+      ],
+      "rdfs:comment": "who may write posts: everyone (guests too), member (signed-in members) or staff (the store). values: write_permission"
+    },
+    {
       "@id": "acom:zoneType",
       "@type": "rdf:Property",
       "rdfs:label": "zoneType",
@@ -6888,6 +7066,16 @@
       },
       "rdfs:comment": "Values of the billing_cycle list (docs/api/enums.md).",
       "acom:wireList": "billing_cycle"
+    },
+    {
+      "@id": "acom:BoardType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "BoardType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the board_type list (docs/api/enums.md).",
+      "acom:wireList": "board_type"
     },
     {
       "@id": "acom:BusinessVerification",
@@ -7270,6 +7458,26 @@
       "acom:wireList": "message_kind"
     },
     {
+      "@id": "acom:ModerationMode",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ModerationMode",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the moderation_mode list (docs/api/enums.md).",
+      "acom:wireList": "moderation_mode"
+    },
+    {
+      "@id": "acom:ModerationStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ModerationStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the moderation_status list (docs/api/enums.md).",
+      "acom:wireList": "moderation_status"
+    },
+    {
       "@id": "acom:NoticeStatus",
       "@type": "rdfs:Class",
       "rdfs:label": "NoticeStatus",
@@ -7630,6 +7838,16 @@
       "acom:wireList": "withdrawal_reason"
     },
     {
+      "@id": "acom:WritePermission",
+      "@type": "rdfs:Class",
+      "rdfs:label": "WritePermission",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the write_permission list (docs/api/enums.md).",
+      "acom:wireList": "write_permission"
+    },
+    {
       "@id": "acom:ZoneType",
       "@type": "rdfs:Class",
       "rdfs:label": "ZoneType",
@@ -7806,6 +8024,34 @@
       "rdfs:label": "EveryMonth",
       "acom:wireWord": "every_month",
       "schema:position": 3
+    },
+    {
+      "@id": "acom:BoardTypeFree",
+      "@type": "acom:BoardType",
+      "rdfs:label": "Free",
+      "acom:wireWord": "free",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:BoardTypeReview",
+      "@type": "acom:BoardType",
+      "rdfs:label": "Review",
+      "acom:wireWord": "review",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:BoardTypeQuestion",
+      "@type": "acom:BoardType",
+      "rdfs:label": "Question",
+      "acom:wireWord": "question",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:BoardTypeEvent",
+      "@type": "acom:BoardType",
+      "rdfs:label": "Event",
+      "acom:wireWord": "event",
+      "schema:position": 4
     },
     {
       "@id": "acom:BusinessVerificationUnverified",
@@ -9159,6 +9405,55 @@
       "schema:position": 5
     },
     {
+      "@id": "acom:ModerationModePreReview",
+      "@type": "acom:ModerationMode",
+      "rdfs:label": "PreReview",
+      "acom:wireWord": "pre_review",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:ModerationModePostReview",
+      "@type": "acom:ModerationMode",
+      "rdfs:label": "PostReview",
+      "acom:wireWord": "post_review",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:ModerationModeNone",
+      "@type": "acom:ModerationMode",
+      "rdfs:label": "None",
+      "acom:wireWord": "none",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:ModerationStatusPublished",
+      "@type": "acom:ModerationStatus",
+      "rdfs:label": "Published",
+      "acom:wireWord": "published",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:ModerationStatusHeldForReview",
+      "@type": "acom:ModerationStatus",
+      "rdfs:label": "HeldForReview",
+      "acom:wireWord": "held_for_review",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:ModerationStatusBlinded",
+      "@type": "acom:ModerationStatus",
+      "rdfs:label": "Blinded",
+      "acom:wireWord": "blinded",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:ModerationStatusDeleted",
+      "@type": "acom:ModerationStatus",
+      "rdfs:label": "Deleted",
+      "acom:wireWord": "deleted",
+      "schema:position": 4
+    },
+    {
       "@id": "acom:NoticeStatusDraft",
       "@type": "acom:NoticeStatus",
       "rdfs:label": "Draft",
@@ -10151,6 +10446,27 @@
       "rdfs:label": "Other",
       "acom:wireWord": "other",
       "schema:position": 6
+    },
+    {
+      "@id": "acom:WritePermissionEveryone",
+      "@type": "acom:WritePermission",
+      "rdfs:label": "Everyone",
+      "acom:wireWord": "everyone",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:WritePermissionMember",
+      "@type": "acom:WritePermission",
+      "rdfs:label": "Member",
+      "acom:wireWord": "member",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:WritePermissionStaff",
+      "@type": "acom:WritePermission",
+      "rdfs:label": "Staff",
+      "acom:wireWord": "staff",
+      "schema:position": 3
     },
     {
       "@id": "acom:ZoneTypeStandard",

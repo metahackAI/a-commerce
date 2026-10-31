@@ -32,11 +32,12 @@ A-Commerce의 DB는 **AI가 읽는 DB**입니다. 에이전트(인사이트 에�
 | `sales` | 장바구니, 주문(Order), 주문 품목(OrderItem), 결제 |
 | `fulfillment` | 배송(ParcelDelivery), 클레임, 검수, 환불 |
 | `messaging` | 메시지 |
+| `community` | 게시판(`acom:Board`), 글(DiscussionForumPosting), 댓글(Comment), 글 신고 |
 | `analytics` | 읽기 전용 뷰(일별 매출 등) |
 | `partner` | 입점 판매자(Organization), 판매자가 파는 상품, 상태 이력, 계약과 계약 버전, 등급 |
 | `agent` | 대화, 턴, 단계, 모델 호출 (agent 서비스 소유) |
 
-나머지 도메인(community, integration)의 스키마는 착수할 때 같은 규칙으로 추가합니다.
+나머지 도메인(integration)의 스키마는 착수할 때 같은 규칙으로 추가합니다.
 
 ## 3. 이름 규칙
 
@@ -241,6 +242,10 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `fulfillment.refund` | schema:MoneyTransfer/acom:Refund | `rfd` | `refund_status`, `refund_method`, `amount_value`·`amount_currency` |
 | `messaging.message` | schema:Message | `msg` | `recipient_id`, `text`, `message_channel`, `about_id` |
 | `messaging.campaign` | schema:CreativeWork/acom:Campaign | `cmp` | `campaign_status`(`failed` 포함), `scheduled_time`, `date_sent`, `error`, 대상(`valid_for_member_tier`·`segment_id`·`recipient_ids`), `variable_values`. 고객별 메시지는 `messaging.message.campaign_id`(`message_kind: campaign`). 주문은 `sales_order.campaign_id`로 자기를 데려온 캠페인을 가리킴 |
+| `community.board` | schema:CreativeWork/acom:Board | `brd` | `board_type`, `write_permission`, `allow_secret`, `allow_attachment`, `moderation_mode` |
+| `community.discussion_forum_posting` | schema:DiscussionForumPosting | `post` | API: post. `headline`, `article_body`, `is_secret`, `moderation_status`, 마스킹된 `author_name` |
+| `community.comment` | schema:Comment | `rpl` | API: reply. `parent_item_id`, `reply_depth`, `text`, `moderation_status` |
+| `community.content_report` | schema:Action/acom:ContentReport | `rpt` | 글 신고. 글·신고자마다 하나 |
 | `analytics.daily_sales` | - (뷰) | — | 일별 매출·주문 수 |
 | `analytics.order_summary`, `analytics.order_line_summary` | - (뷰) | — | 주문·주문 줄 하나에 한 행: 날짜, 상태, 등급, 캠페인, 금액. 누가 샀는지는 없음 |
 | `analytics.variant_stock_out`, `analytics.campaign_send` | - (뷰) | — | 지금 품절인 변형과 품절 시각, 캠페인 발송 여부·실패 이유 |

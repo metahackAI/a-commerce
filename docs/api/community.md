@@ -12,7 +12,7 @@
 
 ### `list_posts` — Kind: R
 - 논리 주소 · REST: `community.post.list_posts` · `POST /v1/community/posts/search` (조건이 많아 POST지만 부작용 없는 읽기)
-- 요약: 게시판의 글 목록. 기본은 공개 글만, 비밀글은 작성자 본인이나 운영자 토큰일 때만 포함. 작성자 마스킹 적용. 목록과 개수를 한 번에 반환.
+- 요약: 게시판의 글 목록. 기본은 공개 글만, 비밀글은 작성자 본인이나 운영자 토큰일 때만 포함. 작성자 본인에게는 검수 대기 글도 보이고, 다른 사람의 댓글이 달린 삭제 글은 본문 없이 자리만 남음. 작성자 마스킹 적용. 목록과 개수를 한 번에 반환. 항목에는 `acom:moderation_status`가 있고, 운영자에게는 `acom:report_count`도 있음.
 - consumes → produces: `board_id` → `post_id[]`
 - 입력: `board_id`(✓, 예 `"brd_reviews"`), `author_id?`(`cus_…`), `keyword?`, `has_reply?`(Boolean), `reported?`(Boolean, 운영자만), `date_published_from?`, `date_published_to?`(DateTime), `scope`(`all` \| `mine`, 기본 `all`), `sort`(`newest` \| `popular`, 기본 `newest`), `limit`(기본 20, 최대 100), `cursor?`
 - 출력: `{"items": [{"id": "post_8812", "headline": "Runs a bit small", "author": "ho****", "date_published": "2026-11-05T19:12:00-05:00", "comment_count": 3, "acom:like_count": 12, "acom:is_secret": false}], "total": 41, "next_cursor": "c_2"}`
@@ -22,7 +22,7 @@
 
 ### `get_post` — Kind: R
 - 논리 주소 · REST: `community.post.get_post` · `GET /v1/community/posts/{post_id}`
-- 요약: 글 하나의 본문·첨부·댓글 수. 비밀글은 작성자 본인과 운영자만 볼 수 있음. 조회수 증가는 서버의 부수 효과이며 별도 툴이 아님.
+- 요약: 글 하나의 본문·첨부·댓글 수. 비밀글은 작성자 본인과 운영자만 볼 수 있음. 블라인드·삭제된 글은 상태와 자리만 보이고 본문은 운영자만. 읽기는 부작용이 없으므로 조회수는 세지 않음.
 - consumes → produces: `post_id` → post
 - 입력: `post_id`(✓, 예 `"post_8812"`), `fields?[]`
 - 출력(목록 봉투 없이 엔티티): `{"id": "post_8812", "board_id": "brd_reviews", "headline": "Runs a bit small", "article_body": "…", "associated_media": [], "author": "ho****", "date_published": "2026-11-05T19:12:00-05:00", "comment_count": 3, "acom:is_secret": false, "acom:moderation_status": "published", "acom:report_count": 0}` — `acom:moderation_status`: `published` \| `held_for_review` \| `blinded` \| `deleted`
@@ -46,7 +46,7 @@
 - 출력(프리뷰): `{"preview_id": "pv_k01a", "expires_at": "2026-11-07T10:30:00-05:00", "changes": [{"op": "create", "entity": "post", "id": null, "from": null, "to": "published"}], "checks": [{"rule": "moderation.profanity_filter", "passed": true, "detail": "No blocked words", "fix_tool": null}, {"rule": "spam", "passed": true, "detail": "1 link, 2 posts this hour", "fix_tool": null}, {"rule": "attachment", "passed": true, "detail": "No attachments", "fix_tool": null}, {"rule": "board.write_permission", "passed": true, "detail": "Members can write here", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
 - 출력(실행): `{"ok": true, "id": "post_8812", "undo": null}`
 - 정책: `moderation`, `moderation.profanity_filter`, `spam`, `board.write_permission`, `attachment`
-- 에러: `profanity_blocked`(금칙어, 본문을 고쳐 다시) → `create_post` · `write_not_allowed` → `list_boards` · `attachment_not_allowed`(첨부를 빼고 다시) → `create_post` · `board_not_found` → `list_boards`
+- 에러: `profanity_blocked`(금칙어, 본문을 고쳐 다시) → `create_post` · `write_not_allowed` → `list_boards` · `attachment_not_allowed`(첨부를 빼고 다시) → `create_post` · `board_not_found` → `list_boards`. 스팸 차단(`spam.on_match: block`)은 공통 에러로 돌려줍니다: 링크가 많으면 `invalid_input`(`detail.rule: spam`) → `create_post`, 시간당 글·댓글이 많으면 `rate_limited`(`retry_after_seconds`)
 - 멱등성: `Idempotency-Key`. 같은 작성자·게시판·제목이 `spam.duplicate_window_minutes`(5분) 안에 다시 오면 첫 결과 반환.
 
 ### `update_post` — Kind: W
@@ -57,7 +57,7 @@
 - 출력(프리뷰): `{"preview_id": "pv_k02b", "expires_at": "2026-11-07T10:31:00-05:00", "changes": [{"op": "update", "entity": "post", "id": "post_8812", "from": "Runs small", "to": "Runs a bit small"}], "checks": [{"rule": "moderation.profanity_filter", "passed": true, "detail": "No blocked words", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
 - 출력(실행): `{"ok": true, "id": "post_8812", "undo": null}`
 - 정책: `moderation.profanity_filter`, `spam`
-- 에러: `not_author` → `get_post` · `profanity_blocked` → `update_post` · `post_not_found` → `list_posts`
+- 에러: `not_author` → `get_post` · `profanity_blocked` → `update_post` · `post_not_found` → `list_posts` · `post_locked`(블라인드·삭제된 글) → `get_post`
 - 멱등성: `Idempotency-Key`. 같은 값으로 다시 보내면 같은 결과.
 
 ### `delete_post` — Kind: W
@@ -98,13 +98,13 @@
 
 ### `create_reply` — Kind: W
 - 논리 주소 · REST: `community.reply.create_reply` · `POST /v1/community/posts/{post_id}/replies`
-- 요약: 댓글 작성. `parent_item`을 주면 대댓글(깊이는 `reply.max_depth`까지). 금칙어·스팸 검사.
+- 요약: 댓글 작성. `parent_item`을 주면 대댓글(깊이는 `reply.max_depth`까지). 금칙어·스팸 검사. 회원과 운영자는 어느 게시판에나, 게스트는 `everyone` 게시판에만 댓글을 씀(아니면 `forbidden`).
 - consumes → produces: `post_id` → `reply_id`
 - 입력: `post_id`(✓), `text`(✓), `parent_item?`(상위 댓글 id `rpl_…`), `acom:is_secret?`
 - 출력(프리뷰): `{"preview_id": "pv_k05e", "expires_at": "2026-11-07T10:33:00-05:00", "changes": [{"op": "create", "entity": "reply", "id": null, "from": null, "to": "published"}], "checks": [{"rule": "moderation.profanity_filter", "passed": true, "detail": "No blocked words", "fix_tool": null}, {"rule": "spam", "passed": true, "detail": "No links", "fix_tool": null}, {"rule": "reply.max_depth", "passed": true, "detail": "Depth 1 of 2", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
 - 출력(실행): `{"ok": true, "id": "rpl_5521", "undo": null}`
 - 정책: `moderation.profanity_filter`, `spam`, `reply.max_depth`
-- 에러: `profanity_blocked` → `create_reply` · `post_locked`(블라인드·삭제된 글) → `get_post` · `depth_exceeded` → `create_reply`
+- 에러: `profanity_blocked` → `create_reply` · `post_locked`(블라인드·삭제된 글이나 댓글) → `get_post` · `depth_exceeded` → `create_reply` · `post_not_found` → `list_posts` · `not_found`(상위 댓글, `detail.entity: reply`) → `list_replies`
 - 멱등성: `Idempotency-Key`. 같은 작성자·글·본문이 `spam.duplicate_window_minutes` 안에 다시 오면 첫 결과 반환.
 
 ### `update_reply` — Kind: W
@@ -114,7 +114,7 @@
 - 입력: `reply_id`(✓), `text?`, `acom:is_secret?`
 - 출력(프리뷰): `{"preview_id": "pv_k06f", "expires_at": "2026-11-07T10:34:00-05:00", "changes": [{"op": "update", "entity": "reply", "id": "rpl_5521", "from": "Same here.", "to": "Same here, size up."}], "checks": [{"rule": "moderation.profanity_filter", "passed": true, "detail": "No blocked words", "fix_tool": null}], "needs_approval": false, "approval_reason": null}` · 실행 `{"ok": true, "id": "rpl_5521", "undo": null}`
 - 정책: `moderation.profanity_filter`
-- 에러: `not_author` → `list_replies` · `profanity_blocked` → `update_reply`
+- 에러: `not_author` → `list_replies` · `profanity_blocked` → `update_reply` · `post_locked`(블라인드·삭제된 댓글이나 글) → `get_post` · `not_found`(`detail.entity: reply`) → `list_replies`
 - 멱등성: `Idempotency-Key`.
 
 ### `delete_reply` — Kind: W
@@ -124,7 +124,7 @@
 - 입력: `reply_id`(✓), `reason?`(운영자일 때 필수)
 - 출력: 프리뷰 `changes` `[{"op": "update", "entity": "reply", "id": "rpl_5521", "from": "published", "to": "deleted"}]` · 실행 `{"ok": true, "id": "rpl_5521", "undo": null}`(운영자 블라인드면 `{"by": "person", "target": "cs_1045", "until": "2026-11-07T23:59:00-05:00"}`)
 - 정책: `moderation.blind`
-- 에러: `not_author` → `list_replies` · `reason_required` → `delete_reply`
+- 에러: `not_author` → `list_replies` · `reason_required` → `delete_reply` · `not_found`(`detail.entity: reply`) → `list_replies`
 - 멱등성: 이미 지운 댓글은 성공으로 수렴.
 
 ---
@@ -143,7 +143,7 @@
 
 ### `configure_board` — Kind: W
 - 논리 주소 · REST: `community.board.configure_board` · `POST /v1/community/boards`(생성), `PATCH /v1/community/boards/{board_id}`(수정)
-- 요약: 게시판 생성과 설정(유형·쓰기 권한·비밀글·첨부·모더레이션 방식). 운영자 전용.
+- 요약: 게시판 생성과 설정(유형·쓰기 권한·비밀글·첨부·모더레이션 방식). 운영자 전용. 오퍼레이션 하나는 경로 하나로 등록되므로 수정도 `POST /v1/community/boards`에 `board_id`를 담아 보냅니다(`PATCH /v1/community/boards/{board_id}`는 따로 열리지 않음).
 - consumes → produces: → `board_id`
 - 입력:
   | 필드 | 타입 | 필수 | 설명 · 예 |

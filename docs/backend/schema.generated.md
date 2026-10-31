@@ -606,6 +606,91 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+## `community`
+
+### `community.board`
+
+`schema:CreativeWork/acom:Board` — a community board shoppers write posts on, with who may write and how it is moderated. id prefix brd_. · id `brd_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix brd_; the same value the API, logs and events use (API board_id). |
+| `name` | text |  | `schema:name` | the board's name shown to shoppers; one board per name in a store (community.yml board.name_unique). |
+| `board_type` | text |  | `acom:boardType` | what the board is for. values: board_type Values: `free` · `review` · `question` · `event`. |
+| `write_permission` | text |  | `acom:writePermission` | who may write posts: everyone (guests too), member (signed-in members) or staff (the store). values: write_permission Values: `everyone` · `member` · `staff`. |
+| `allow_secret` | boolean |  | `acom:allowSecret` | true when a post may be secret (only its writer and the store read it). |
+| `allow_attachment` | boolean |  | `acom:allowAttachment` | true when posts may carry uploaded images (community.yml attachment). |
+| `moderation_mode` | text |  | `acom:moderationMode` | pre_review holds new posts until the store looks; post_review shows them at once and reports hold them; none keeps no queue. values: moderation_mode Values: `pre_review` · `post_review` · `none`. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `community.comment`
+
+`schema:Comment` — a reply to a post, or to another reply up to community.yml reply.max_depth. id prefix rpl_. API: reply. · id `rpl_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix rpl_; the same value the API, logs and events use (API reply_id). |
+| `discussion_forum_posting_id` | text |  | `schema:about` | the post the reply belongs to (post_ id, API post_id). → `community.discussion_forum_posting` |
+| `parent_item_id` | text | ✓ | `schema:parentItem` | the reply this one answers (rpl_ id); NULL for a reply to the post itself. → `community.comment` |
+| `reply_depth` | integer |  | `acom:replyDepth` | 1 for a reply to the post, 2 for a reply to a reply, and so on. |
+| `author_id` | text |  | `schema:author` | who wrote it: a shopper (cus_), a guest's browser session (ses_) or an operator of the store (adm_); only they may edit it. |
+| `author_name` | text | ✓ | `schema:author` | the name shown with the reply, masked as community.yml moderation.author_masking said when it was written; NULL for the store and for guests. |
+| `text` | text |  | `schema:text` | the reply as its writer wrote it. |
+| `is_secret` | boolean |  | `acom:isSecret` | true when only its writer, the post's writer and the store may read it. |
+| `moderation_status` | text |  | `acom:moderationStatus` | published, held_for_review, blinded by the store, or deleted by its writer. values: moderation_status Values: `published` · `held_for_review` · `blinded` · `deleted`. |
+| `moderation_reason` | text | ✓ | `acom:moderationReason` | why the store blinded it, or why it is held; NULL for a published reply. |
+| `date_created` | timestamptz |  | `schema:dateCreated` | when it was written (store clock). |
+| `date_modified` | timestamptz | ✓ | `schema:dateModified` | when its writer last changed it; NULL when never changed. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `community.content_report`
+
+`schema:Action/acom:ContentReport` — a shopper's report that a post is inappropriate; enough reports from different shoppers hold or blind it (community.yml moderation.report_threshold). id prefix rpt_. · id `rpt_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix rpt_; the same value the API, logs and events use (API report_id). |
+| `discussion_forum_posting_id` | text |  | `schema:object` | the post reported (post_ id, API post_id). → `community.discussion_forum_posting` |
+| `customer_id` | text |  | `schema:agent` | the shopper who reported it (cus_ id); one report per shopper and post. → `customer.person` |
+| `report_reason` | text |  | `acom:reportReason` | why it was reported (community.yml moderation.report_reasons). values: report_reason Values: `spam` · `abuse` · `obscene` · `advertisement` · `fake` · `irrelevant` · `other`. |
+| `description` | text | ✓ | `schema:description` | the reporter's own words; NULL when they gave none. |
+| `start_time` | timestamptz |  | `schema:startTime` | when the report was made (store clock). |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `community.discussion_forum_posting`
+
+`schema:DiscussionForumPosting` — a post on a community board. id prefix post_. API: post. · id `post_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix post_; the same value the API, logs and events use (API post_id). |
+| `board_id` | text |  | `schema:isPartOf` | the board the post is on (brd_ id). → `community.board` |
+| `author_id` | text |  | `schema:author` | who wrote it: a shopper (cus_), a guest's browser session (ses_) or an operator of the store (adm_); only they may edit it. |
+| `author_name` | text | ✓ | `schema:author` | the name shown with the post, masked as community.yml moderation.author_masking said when it was written (Ja***); NULL for the store and for guests. |
+| `headline` | text |  | `schema:headline` | the post's title. |
+| `article_body` | text |  | `schema:articleBody` | the post's text. |
+| `associated_media` | text[] |  | `schema:associatedMedia` | uploaded images attached to the post (upl_ ids); empty when none. |
+| `is_secret` | boolean |  | `acom:isSecret` | true when only the writer and the store may read it (board allow_secret). |
+| `in_language` | text | ✓ | `schema:inLanguage` | the language it is written in (BCP 47, for example en); NULL when not given. |
+| `moderation_status` | text |  | `acom:moderationStatus` | published; held_for_review (board pre_review, a filter hold, or enough reports); blinded by the store; deleted by its writer or the store. values: moderation_status Values: `published` · `held_for_review` · `blinded` · `deleted`. |
+| `moderation_reason` | text | ✓ | `acom:moderationReason` | why the store blinded or deleted it, or why it is held (report_threshold, profanity_filter, spam, pre_review); NULL for a published post. |
+| `like_count` | integer |  | `acom:likeCount` | how many shoppers liked the post; 0 or more. |
+| `date_published` | timestamptz |  | `schema:datePublished` | when it was written (store clock). |
+| `date_modified` | timestamptz | ✓ | `schema:dateModified` | when its writer last changed it; NULL when never changed. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ## `customer`
 
 ### `customer.comment`
