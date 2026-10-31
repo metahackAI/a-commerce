@@ -343,6 +343,218 @@ impl ReviewRules {
     }
 }
 
+/// `review.report_reasons`, `review.report_holds_review`: what a report on a review may say, and
+/// whether it puts the review in the moderation queue.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReportRules {
+    pub reasons: Vec<String>,
+    pub holds_review: bool,
+}
+
+impl ReportRules {
+    pub fn from_policy(p: &PolicySet) -> Result<Self, ToolError> {
+        Ok(Self {
+            reasons: words_at(p, "catalog.review.report_reasons")?,
+            holds_review: lookup(p, "catalog.review.report_holds_review")?
+                .as_bool()
+                .ok_or_else(|| missing("catalog.review.report_holds_review"))?,
+        })
+    }
+}
+
+/// `question`: what a product question and its answer must pass, and who may answer.
+#[derive(Debug, Clone, PartialEq)]
+pub struct QuestionRules {
+    /// `block` refuses text with a blocked word; `hold_for_review` saves the question hidden.
+    pub profanity_filter: String,
+    pub blocked_words: Vec<String>,
+    pub private_allowed: bool,
+    /// `edit_until: answered` — the asker may edit until the store answers.
+    pub edit_until_answered: bool,
+    /// `operator` (the store and its agent) and/or `shopper` (another signed-in shopper).
+    pub answered_by: Vec<String>,
+}
+
+impl QuestionRules {
+    pub fn from_policy(p: &PolicySet) -> Result<Self, ToolError> {
+        Ok(Self {
+            profanity_filter: lookup(p, "catalog.question.profanity_filter")?
+                .as_str()
+                .ok_or_else(|| missing("catalog.question.profanity_filter"))?
+                .to_owned(),
+            blocked_words: words_at(p, "catalog.question.blocked_words")?
+                .into_iter()
+                .map(|w| w.to_lowercase())
+                .collect(),
+            private_allowed: lookup(p, "catalog.question.private_allowed")?
+                .as_bool()
+                .ok_or_else(|| missing("catalog.question.private_allowed"))?,
+            edit_until_answered: lookup(p, "catalog.question.edit_until")?.as_str()
+                == Some("answered"),
+            answered_by: words_at(p, "catalog.question.answered_by")?,
+        })
+    }
+
+    /// Whether a blocked word refuses the text (`block`) rather than holding it for review.
+    pub fn blocks(&self) -> bool {
+        self.profanity_filter == "block"
+    }
+}
+
+/// `author_masking`: the name a shopper's review, question or answer shows (`Jamie` → `Ja***`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthorMasking {
+    pub enabled: bool,
+    pub visible_chars: usize,
+    pub mask_char: char,
+}
+
+impl AuthorMasking {
+    pub fn from_policy(p: &PolicySet) -> Result<Self, ToolError> {
+        let enabled = lookup(p, "catalog.author_masking.enabled")?
+            .as_bool()
+            .ok_or_else(|| missing("catalog.author_masking.enabled"))?;
+        let visible_chars = lookup(p, "catalog.author_masking.visible_chars")?
+            .as_u64()
+            .and_then(|n| usize::try_from(n).ok())
+            .ok_or_else(|| missing("catalog.author_masking.visible_chars"))?;
+        let mask_char = lookup(p, "catalog.author_masking.mask_char")?
+            .as_str()
+            .and_then(|s| s.chars().next())
+            .ok_or_else(|| missing("catalog.author_masking.mask_char"))?;
+        Ok(Self {
+            enabled,
+            visible_chars,
+            mask_char,
+        })
+    }
+
+    /// The name to show: the first `visible_chars` characters and the rest masked. A name that
+    /// short keeps its first character only, so some of it is always masked.
+    pub fn shown(&self, name: &str) -> String {
+        let name = name.trim();
+        if !self.enabled || name.is_empty() {
+            return name.to_owned();
+        }
+        let chars: Vec<char> = name.chars().collect();
+        let keep = self.visible_chars.min(chars.len().saturating_sub(1)).max(1);
+        let mut out: String = chars[..keep].iter().collect();
+        out.extend(std::iter::repeat_n(self.mask_char, chars.len() - keep));
+        out
+    }
+}
+
+/// `restock_alert` and `inventory.auto_restore.notify_restock_alerts`: who may ask to hear when
+/// a variant is back, how, for how long, and whether the store tells them.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RestockRules {
+    pub channels: Vec<String>,
+    pub expires_after_days: u32,
+    /// Availability words a variant can be waited for in.
+    pub subscribable_availability: Vec<String>,
+    /// `transactional`: sent regardless of marketing consent.
+    pub message_kind: String,
+    /// Whether a variant that comes back in stock by itself tells the shoppers waiting for it.
+    pub notify: bool,
+}
+
+impl RestockRules {
+    pub fn from_policy(p: &PolicySet) -> Result<Self, ToolError> {
+        Ok(Self {
+            channels: words_at(p, "catalog.restock_alert.channels")?,
+            expires_after_days: lookup(p, "catalog.restock_alert.expires_after_days")?
+                .as_u64()
+                .and_then(|n| u32::try_from(n).ok())
+                .ok_or_else(|| missing("catalog.restock_alert.expires_after_days"))?,
+            subscribable_availability: words_at(
+                p,
+                "catalog.restock_alert.subscribable_availability",
+            )?,
+            message_kind: lookup(p, "catalog.restock_alert.message_kind")?
+                .as_str()
+                .ok_or_else(|| missing("catalog.restock_alert.message_kind"))?
+                .to_owned(),
+            notify: lookup(p, "catalog.inventory.auto_restore.notify_restock_alerts")?
+                .as_bool()
+                .ok_or_else(|| missing("catalog.inventory.auto_restore.notify_restock_alerts"))?,
+        })
+    }
+}
+
+/// `bundle`: what a bundle's components must share, and its limits.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BundleRules {
+    pub same_seller: bool,
+    pub same_age_restriction: bool,
+    pub components_must_be_active: bool,
+    pub min_components: usize,
+    /// The largest bundle discount, as a rate (0–1).
+    pub max_discount: Decimal,
+}
+
+impl BundleRules {
+    pub fn from_policy(p: &PolicySet) -> Result<Self, ToolError> {
+        let flag = |path: &str| -> Result<bool, ToolError> {
+            lookup(p, path)?.as_bool().ok_or_else(|| missing(path))
+        };
+        Ok(Self {
+            same_seller: flag("catalog.bundle.same_seller")?,
+            same_age_restriction: flag("catalog.bundle.same_age_restriction")?,
+            components_must_be_active: flag("catalog.bundle.components_must_be_active")?,
+            min_components: lookup(p, "catalog.bundle.min_components")?
+                .as_u64()
+                .and_then(|n| usize::try_from(n).ok())
+                .ok_or_else(|| missing("catalog.bundle.min_components"))?,
+            max_discount: decimal(lookup(p, "catalog.bundle.max_discount")?)
+                .ok_or_else(|| missing("catalog.bundle.max_discount"))?,
+        })
+    }
+}
+
+/// `content`: generated copy and images (`generate_copy`, `generate_image`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ContentRules {
+    /// `placeholder` while no generator is connected.
+    pub generator: String,
+    /// `ai_content_disclosure: required` — drafts carry `acom:ai_generated: true`.
+    pub disclosure_required: bool,
+    /// `brand_guideline: enforced` — prompts with a blocked word are refused.
+    pub brand_guideline_enforced: bool,
+    pub prompt_blocked_words: Vec<String>,
+    pub max_images_per_request: u32,
+    pub title_max_chars: usize,
+    pub seo_max_chars: usize,
+}
+
+impl ContentRules {
+    pub fn from_policy(p: &PolicySet) -> Result<Self, ToolError> {
+        let count = |path: &str| -> Result<u64, ToolError> {
+            lookup(p, path)?.as_u64().ok_or_else(|| missing(path))
+        };
+        let word = |path: &str| -> Result<String, ToolError> {
+            lookup(p, path)?
+                .as_str()
+                .map(str::to_owned)
+                .ok_or_else(|| missing(path))
+        };
+        Ok(Self {
+            generator: word("catalog.content.generator")?,
+            disclosure_required: word("catalog.content.ai_content_disclosure")? == "required",
+            brand_guideline_enforced: word("catalog.content.brand_guideline")? == "enforced",
+            prompt_blocked_words: words_at(p, "catalog.content.prompt_blocked_words")?
+                .into_iter()
+                .map(|w| w.to_lowercase())
+                .collect(),
+            max_images_per_request: u32::try_from(count("catalog.content.max_images_per_request")?)
+                .map_err(|_| missing("catalog.content.max_images_per_request"))?,
+            title_max_chars: usize::try_from(count("catalog.content.copy.title_max_chars")?)
+                .map_err(|_| missing("catalog.content.copy.title_max_chars"))?,
+            seo_max_chars: usize::try_from(count("catalog.content.copy.seo_max_chars")?)
+                .map_err(|_| missing("catalog.content.copy.seo_max_chars"))?,
+        })
+    }
+}
+
 /// Whether a structured policy condition holds for the facts: `{field, op, value}`,
 /// `{all: [...]}`, `{any: [...]}` (the same form as `approval.yml`).
 pub fn holds(cond: &Value, facts: &Value) -> bool {
@@ -466,6 +678,46 @@ mod tests {
         assert!(p.publish_requires.iter().any(|r| r == "no_open_fields"));
         let c = CopyRules::from_policy(&policies()).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(c.shape_text(), "2 sentences + care line");
+    }
+
+    #[test]
+    fn engagement_rules_read_the_policy() {
+        let p = policies();
+        let q = QuestionRules::from_policy(&p).unwrap_or_else(|e| panic!("{e}"));
+        assert!(q.blocks() && q.private_allowed && q.edit_until_answered);
+        assert_eq!(q.answered_by, ["operator"]);
+        let r = ReportRules::from_policy(&p).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(r.reasons.len(), 7);
+        assert!(r.holds_review);
+        let s = RestockRules::from_policy(&p).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(s.expires_after_days, 90);
+        assert!(s.notify && s.channels.contains(&"email".to_owned()));
+        let b = BundleRules::from_policy(&p).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(b.min_components, 2);
+        assert_eq!(
+            b.max_discount,
+            Decimal::from_str("0.30").unwrap_or_default()
+        );
+        let c = ContentRules::from_policy(&p).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(c.generator, "placeholder");
+        assert_eq!(
+            (c.max_images_per_request, c.title_max_chars, c.seo_max_chars),
+            (4, 70, 155)
+        );
+        assert!(c.disclosure_required && c.brand_guideline_enforced);
+    }
+
+    #[test]
+    fn author_names_are_masked_as_the_policy_says() {
+        let m = AuthorMasking::from_policy(&policies()).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(m.shown("Jamie"), "Ja***");
+        assert_eq!(m.shown("Al"), "A*");
+        assert_eq!(m.shown(" Jo "), "J*");
+        let off = AuthorMasking {
+            enabled: false,
+            ..m
+        };
+        assert_eq!(off.shown("Jamie"), "Jamie");
     }
 
     #[test]

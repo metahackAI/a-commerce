@@ -90,3 +90,4 @@
 - **세션 없는 요청:** 읽기는 익명(읽기 스코프만)으로 통과합니다. 상태를 바꾸는 첫 요청(게스트의 장바구니 담기)은 그 자리에서 게스트 세션을 만들고 쿠키를 붙여 돌려줍니다.
 - **내부 토큰:** `/api/v1/*`는 사람의 스코프 그대로(수명 5분), `/api/chat/*`는 `on_behalf()`(`human:*`·`admin:*` 제거, 운영자는 `changeset:draft` 추가, 한 턴 15분). 브라우저가 보낸 `Authorization`은 버리고, commerce·agent로 쿠키를 넘기지 않습니다.
 - **운영자 스코프:** 역할(`platform.admin_user_role` → `platform.role_scope`)의 합 + `changeset:draft`. 데모 모드의 플랫폼 관리자는 `admin:demo`도 받습니다. 데모 계정은 `admin` / `admin123`(모든 역할과 승인 역할).
+- **API 클라이언트 세션:** 외부 에이전트·연동 클라이언트는 API 키로 `login` 툴([../api/platform.md](../api/platform.md#auth))을 불러 토큰을 받습니다. 그 세션도 `platform.session`의 행이지만 `actor_kind: external_agent`이고 주체가 키(`key_…`)라 쿠키 조회는 이 행을 사람 세션으로 받지 않습니다. 이 토큰을 `/mcp`에서 받아 `external_agent` 주체로 바꾸는 일은 게이트웨이의 후속 작업입니다.

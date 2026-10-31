@@ -401,15 +401,19 @@ dependencies = [
 name = "acom-platform"
 version = "0.1.0"
 dependencies = [
+ "acom-auth",
  "acom-changeset",
  "acom-contract",
  "acom-core",
  "acom-policy",
  "acom-store",
  "chrono",
+ "chrono-tz",
+ "rand 0.9.5",
  "schemars",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "sqlx",
  "tokio",
 ]

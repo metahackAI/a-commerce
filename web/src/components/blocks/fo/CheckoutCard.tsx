@@ -1,7 +1,7 @@
 'use client';
 
 // checkout_card: an order prepared by prepare_order, exactly as the server priced it (chat.md
-// §3.3). Northwind can prepare it; only the shopper places it, with the person-only "Place order"
+// §3.3). Ailism can prepare it; only the shopper places it, with the person-only "Place order"
 // button (POST /v1/sales/orders {preview_id}). The agent cannot press it.
 
 import {HStack, VStack} from '@astryxdesign/core/Layout';

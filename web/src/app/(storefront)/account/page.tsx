@@ -54,7 +54,7 @@ export default async function AccountPage() {
               <Banner
                 status="info"
                 title={who.isGuest ? 'You are browsing as a guest' : 'You are not signed in'}
-                description="Sign in to see your sizes, what Northwind remembers, your wishlist, coupons and orders."
+                description="Sign in to see your sizes, what Ailism remembers, your wishlist, coupons and orders."
                 endContent={<Button label="Sign in" variant="primary" size="sm" href="/login?next=%2Faccount" />}
               />
             </VStack>
@@ -96,7 +96,7 @@ export default async function AccountPage() {
             </HStack>
             {!profile.ok ? <ErrorNotice error={profile.error} /> : null}
             <Grid columns={{minWidth: 320, max: 2}} gap={5} align="start">
-              <Section title="What Northwind knows about you" subtitle="Remembered from your conversations. Undo any of them; only you can.">
+              <Section title="What Ailism knows about you" subtitle="Remembered from your conversations. Undo any of them; only you can.">
                 <VStack gap={3}>
                   {p?.sizes ? (
                     <MetadataList>
@@ -115,7 +115,7 @@ export default async function AccountPage() {
               <Section title="Addresses">
                 <Loadable loaded={addresses}>{d => <AddressList addresses={d.items} />}</Loadable>
               </Section>
-              <Section title="Messages from Northwind" subtitle="Emails and notices about your orders and returns, newest first.">
+              <Section title="Messages from Ailism" subtitle="Emails and notices about your orders and returns, newest first.">
                 <Loadable loaded={messages}>{d => <MessageList messages={d.items} />}</Loadable>
               </Section>
               <Section title="Coupons and rewards">

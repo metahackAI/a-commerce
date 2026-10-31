@@ -98,10 +98,14 @@ where
     tx.commit().await.map_err(|e| ApiError(e.into()))?;
 
     let result = f().await;
-    let (status, body) = match &result {
+    let (status, mut body) = match &result {
         Ok(v) => (200u16, v.clone()),
         Err(e) => (e.http_status(), json!({"error": e})),
     };
+    // A secret shown once (a new API key's) answers this request only; a replay goes without it.
+    if let Some(o) = body.as_object_mut() {
+        o.remove(acom_changeset::SHOWN_ONCE);
+    }
     let mut tx = cx.begin().await.map_err(|e| ApiError(e.into()))?;
     if status >= 500 {
         // Let a retry run again.

@@ -3,20 +3,31 @@
 # policy overrides (docs/scenarios.md §5), the demo clock (Fri Nov 6 2026 11:00), the change sets
 # that exist before the scenes (#1039 Fall layers banner, #1040 below-cost fix, #1041 linen reorder
 # draft) with their previews, items, events and action log, the home tasks of scene B5, and jobs.
+# Who may do what: organizations, two more operator accounts (one suspended), the back-office menu
+# and SJ's favorites, and two API keys (one revoked), kept only as hashes.
 # platform.online_store has no tenant_id column: its id is the tenant.
 tables:
   platform.online_store:
     - {id: store_northwind, name: Northwind Apparel, url: northwind.example, currency: USD, time_zone: America/New_York, in_language: en}
+  # Organizations operators belong to (list_orgs): the store, two departments, and a supplier.
+  platform.organization:
+    - {tenant_id: store_northwind, id: org_northwind, name: Northwind Apparel, organization_type: department}
+    - {tenant_id: store_northwind, id: org_merchandising, name: Merchandising, organization_type: department, parent_organization_id: org_northwind}
+    - {tenant_id: store_northwind, id: org_operations, name: Store operations, organization_type: department, parent_organization_id: org_northwind}
+    - {tenant_id: store_northwind, id: org_fieldstone, name: Fieldstone Boot Co., organization_type: vendor}
   platform.admin_user:
-    - {tenant_id: store_northwind, id: adm_sj, name: Son SeongJun, alternate_name: SJ, email: "sj@northwind.example", job_title: Merchandiser, admin_status: active, last_login_at: "2026-11-06T07:50:00-05:00"}
+    - {tenant_id: store_northwind, id: adm_sj, name: Son SeongJun, alternate_name: SJ, email: "sj@northwind.example", job_title: Merchandiser, admin_status: active, last_login_at: "2026-11-06T07:50:00-05:00", organization_id: org_merchandising}
     # Demo administrator. Sign in at /login with admin / admin123 (demo only; the hash is of "admin123").
-    - {tenant_id: store_northwind, id: adm_admin, name: Administrator, alternate_name: Admin, email: "admin@northwind.example", job_title: Store administrator, admin_status: active, login_id: admin, password_hash: "$argon2id$v=19$m=19456,t=2,p=1$Zx0oEiPZFlNF6ugh5Hgyqw$2VJg1SY4v4wWKpM+UzhyUnP6mLBMKEM71Ioi7mPT0pI"}
+    - {tenant_id: store_northwind, id: adm_admin, name: Administrator, alternate_name: Admin, email: "admin@northwind.example", job_title: Store administrator, admin_status: active, login_id: admin, password_hash: "$argon2id$v=19$m=19456,t=2,p=1$Zx0oEiPZFlNF6ugh5Hgyqw$2VJg1SY4v4wWKpM+UzhyUnP6mLBMKEM71Ioi7mPT0pI", organization_id: org_northwind}
+    # More accounts for search_admin_users: one who handles customers, one suspended for the off season.
+    - {tenant_id: store_northwind, id: adm_mina, name: Mina Park, alternate_name: Mina, email: "mina.park@northwind.example", job_title: Customer care lead, admin_status: active, last_login_at: "2026-11-05T17:20:00-05:00", organization_id: org_operations}
+    - {tenant_id: store_northwind, id: adm_jordan, name: Jordan Reyes, alternate_name: Jordan, email: "jordan.reyes@northwind.example", job_title: Seasonal merchandiser, admin_status: suspended, last_login_at: "2026-08-29T16:05:00-04:00", organization_id: org_merchandising}
   platform.role:
     - {tenant_id: store_northwind, id: rol_merchandiser, name: Merchandiser, description: "Runs promotions and the storefront, and handles returns and customer messages.", approver_roles: [merchandiser, operator], is_system: true}
     - {tenant_id: store_northwind, id: rol_operator, name: Operator, description: "Handles orders, returns, refunds and customer messages.", approver_roles: [operator], is_system: true}
     - {tenant_id: store_northwind, id: rol_catalog_admin, name: Catalog admin, description: Publishes products and approves structural catalog changes., approver_roles: [catalog_admin], is_system: true}
     - {tenant_id: store_northwind, id: rol_payout_approver, name: Payout approver, description: Approves cash remedies., approver_roles: [payout_approver], is_system: true}
-    - {tenant_id: store_northwind, id: rol_platform_admin, name: Platform admin, description: "Manages roles, accounts, API keys and the demo clock.", approver_roles: [], is_system: true}
+    - {tenant_id: store_northwind, id: rol_platform_admin, name: Platform admin, description: "Manages roles, accounts, API keys and the demo clock.", approver_roles: [platform_admin], is_system: true}
   platform.role_scope:
     - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:platform"}
     - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:catalog"}
@@ -107,6 +118,10 @@ tables:
     - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:exchange"}
     - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:claim"}
     - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:account"}
+    # An outside agent's key carries these; the administrator holds them so it can issue one (api_keys.scope_within_issuer).
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "external:read"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "external:cart"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "external:prepare_order"}
   platform.admin_user_role:
     - {tenant_id: store_northwind, admin_user_id: adm_sj, role_id: rol_merchandiser}
     - {tenant_id: store_northwind, admin_user_id: adm_sj, role_id: rol_catalog_admin}
@@ -115,6 +130,8 @@ tables:
     - {tenant_id: store_northwind, admin_user_id: adm_admin, role_id: rol_operator}
     - {tenant_id: store_northwind, admin_user_id: adm_admin, role_id: rol_catalog_admin}
     - {tenant_id: store_northwind, admin_user_id: adm_admin, role_id: rol_payout_approver}
+    - {tenant_id: store_northwind, admin_user_id: adm_mina, role_id: rol_operator}
+    - {tenant_id: store_northwind, admin_user_id: adm_jordan, role_id: rol_merchandiser}
   platform.policy_override:
     - {tenant_id: store_northwind, file: promotion, partial: {max_discount: {by_tier: {vip: 0.30}}}, policy_version: 3}
     - {tenant_id: store_northwind, file: platform, partial: {watchers: {price_below_cost: {run_fix: standing_approval}}}, policy_version: 1}
@@ -899,3 +916,29 @@ tables:
     - {tenant_id: store_northwind, id: job_promo_denim_bundle_start, kind: promotion.start, run_at: "2026-11-13T00:00:00-05:00", payload: {promotion_id: promo_denim_bundle}, attempts: 0}
     - {tenant_id: store_northwind, id: job_promo_denim_bundle_end, kind: promotion.end, run_at: "2026-11-21T00:00:00-05:00", payload: {promotion_id: promo_denim_bundle}, attempts: 0}
     - {tenant_id: store_northwind, id: job_promo_autumn_knit_end, kind: promotion.end, run_at: "2026-11-16T00:00:00-05:00", payload: {promotion_id: promo_autumn_knit}, attempts: 0}
+  # The back-office menu (list_menus): one entry per console page, shown to operators whose roles
+  # hold the entry's scope. SJ keeps Promotions and Change sets among his favorites.
+  platform.site_navigation_element:
+    - {tenant_id: store_northwind, id: mnu_home, name: Home, url: /bo, required_scope: "tools:read:platform", position: 10}
+    - {tenant_id: store_northwind, id: mnu_change_sets, name: Change sets, url: /bo/change-sets, required_scope: "tools:read:platform", position: 20}
+    - {tenant_id: store_northwind, id: mnu_products, name: Products, url: /bo/products, required_scope: "tools:read:catalog", position: 30}
+    - {tenant_id: store_northwind, id: mnu_product_drafts, name: Drafts, url: /bo/products/drafts, required_scope: "tools:read:catalog", position: 10, is_part_of_id: mnu_products}
+    - {tenant_id: store_northwind, id: mnu_brands, name: Brands, url: /bo/brands, required_scope: "tools:read:catalog", position: 20, is_part_of_id: mnu_products}
+    - {tenant_id: store_northwind, id: mnu_categories, name: Categories, url: /bo/categories, required_scope: "tools:read:merchandising", position: 40}
+    - {tenant_id: store_northwind, id: mnu_storefront, name: Storefront, url: /bo/merchandising, required_scope: "tools:read:merchandising", position: 50}
+    - {tenant_id: store_northwind, id: mnu_promotions, name: Promotions, url: /bo/promotions, required_scope: "tools:read:promotion", position: 60}
+    - {tenant_id: store_northwind, id: mnu_orders, name: Orders, url: /bo/orders, required_scope: "tools:read:sales", position: 70}
+    - {tenant_id: store_northwind, id: mnu_returns, name: Returns, url: /bo/returns, required_scope: "tools:read:fulfillment", position: 80}
+    - {tenant_id: store_northwind, id: mnu_customers, name: Customers, url: /bo/customers, required_scope: "tools:read:customer", position: 90}
+    - {tenant_id: store_northwind, id: mnu_insights, name: Insights, url: /bo/insights, required_scope: "tools:read:analytics", position: 100}
+    - {tenant_id: store_northwind, id: mnu_activity, name: Activity, url: /bo/activity, required_scope: "tools:read:platform", position: 110}
+    - {tenant_id: store_northwind, id: mnu_policies, name: Policies, url: /bo/policies, required_scope: "tools:read:platform", position: 120}
+    - {tenant_id: store_northwind, id: mnu_data, name: Data dictionary, url: /bo/data, required_scope: "tools:read:platform", position: 130}
+  platform.menu_favorite:
+    - {tenant_id: store_northwind, admin_user_id: adm_sj, site_navigation_element_id: mnu_promotions}
+    - {tenant_id: store_northwind, admin_user_id: adm_sj, site_navigation_element_id: mnu_change_sets}
+  # API keys (list_api_keys). Secrets were shown once when the keys were issued; only their SHA-256
+  # hashes are here, and nobody holds the secrets behind these demo hashes.
+  platform.api_key:
+    - {tenant_id: store_northwind, id: key_31, name: Outside shopping agent, key_prefix: ak_live_3f, secret_hash: "9d8f1c06c1b0a4f2e7d3b5a91c7e4f6082b3d9a7e5c1f0b8d6a4c2e0f9b7d5a3", scopes: ["external:read", "external:cart", "external:prepare_order"], api_key_status: active, creator_id: adm_admin, last_used_at: "2026-11-06T09:14:00-05:00"}
+    - {tenant_id: store_northwind, id: key_27, name: Spreadsheet sync, key_prefix: ak_live_8a, secret_hash: "4b2e9f7a1c3d5e8f0a6b4c2d9e7f1a3b5c8d0e2f4a6b9c1d3e5f7a0b2c4d6e8f", scopes: ["tools:read:catalog"], api_key_status: revoked, creator_id: adm_admin, last_used_at: "2026-10-12T14:30:00-04:00", revoked_at: "2026-10-20T10:00:00-04:00", revocation_reason: Replaced by the supplier sheet upload.}

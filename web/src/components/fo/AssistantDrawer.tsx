@@ -17,16 +17,18 @@ import {Card} from '@astryxdesign/core/Card';
 import {Button} from '@astryxdesign/core/Button';
 import {Drawer, DrawerHeader} from '@astryxdesign/core/Drawer';
 import {EmptyState} from '@astryxdesign/core/EmptyState';
-import {HStack, VStack} from '@astryxdesign/core/Layout';
+import {HStack, Layout, LayoutContent, VStack} from '@astryxdesign/core/Layout';
 import {Text} from '@astryxdesign/core/Text';
 import {Token} from '@astryxdesign/core/Token';
 import {usePathname} from 'next/navigation';
+import type {CSSProperties} from 'react';
 
 import {useAi} from '@/ai/AiProvider';
 import type {UiBlock} from '@/ai/types';
 import {useAiTarget} from '@/ai/useAiTarget';
 import {blockComponent} from '@/components/blocks/registry';
 
+import {AILISM, AilismAvatar} from '@/components/brand/Ailism';
 import {useStorefront} from './StorefrontContext';
 
 const STARTERS = ['I need a light jacket for spring trips.', 'What goes with what is in my cart?', 'Where is my order?'];
@@ -53,6 +55,10 @@ function Block({block}: {block: UiBlock}) {
   const Component = blockComponent(block.ui);
   return Component ? <Component block={block} /> : <FallbackBlock block={block} />;
 }
+
+/** The chat fills the drawer under its header, as in the workspace (components/workspace). */
+const fill: CSSProperties = {height: '100%', minHeight: 0};
+const grow: CSSProperties = {flex: 1, minHeight: 0};
 
 export function AssistantDrawer() {
   const ai = useAi();
@@ -84,25 +90,33 @@ export function AssistantDrawer() {
     <Drawer
       isOpen={isOpen}
       onOpenChange={setAssistantOpen}
-      label="Ask Northwind"
+      label="Ask Ailism"
       width={480}
-      padding={0}
       experimental={{isFullWidthOnMobile: true}}>
-      <VStack height="100%">
-        <DrawerHeader
-          title="Ask Northwind"
-          subtitle="Northwind can find, compare and prepare. Only you can place an order."
-          onOpenChange={setAssistantOpen}
-          endContent={<Button label="Open full view" size="sm" variant="ghost" href="/ask" onClick={() => setAssistantOpen(false)} />}
-          hasDivider
-        />
-        <ChatLayout density="compact" composer={composer}>
+      {/* Drawer → Layout with the DrawerHeader in its header slot keeps the header on the drawer's
+          inset (Astryx DrawerHeader). */}
+      <Layout
+        height="fill"
+        header={
+          <DrawerHeader
+            startContent={<AilismAvatar size="md" />}
+            title="Ask Ailism"
+            subtitle={`${AILISM.screen} Only you can place an order.`}
+            onOpenChange={setAssistantOpen}
+            endContent={<Button label="Open full view" size="sm" variant="ghost" href="/ask" onClick={() => setAssistantOpen(false)} />}
+            hasDivider
+          />
+        }
+        content={
+          <LayoutContent padding={0} isScrollable={false}>
+            <VStack style={fill}>
+        <ChatLayout density="compact" style={grow} composer={composer}>
           <ChatMessageList
             density="compact"
             isStreaming={ai.isBusy}
             emptyState={
               <EmptyState
-                title="What are you looking for?"
+                title={AILISM.tagline}
                 description="Ask in your own words, or pick something on the page and ask about it."
                 isCompact
                 actions={
@@ -114,25 +128,38 @@ export function AssistantDrawer() {
                 }
               />
             }>
-            {ai.messages.map(m =>
-              m.sender === 'system' ? (
-                <ChatSystemMessage key={m.id}>{m.text}</ChatSystemMessage>
-              ) : (
-                <ChatMessage key={m.id} sender={m.sender} name={m.sender === 'assistant' ? 'Northwind' : undefined}>
-                  <ChatMessageBubble>{m.text}</ChatMessageBubble>
-                </ChatMessage>
+            {/* One flat list: ChatMessageList shows its empty state only when its children are an
+                empty array. */}
+            {[
+              ...ai.messages.map(m =>
+                m.sender === 'system' ? (
+                  <ChatSystemMessage key={m.id}>{m.text}</ChatSystemMessage>
+                ) : (
+                  <ChatMessage
+                    key={m.id}
+                    sender={m.sender}
+                    name={m.sender === 'assistant' ? AILISM.assistant : undefined}
+                    avatar={m.sender === 'assistant' ? <AilismAvatar size="sm" /> : undefined}>
+                    <ChatMessageBubble>{m.text}</ChatMessageBubble>
+                  </ChatMessage>
+                ),
               ),
-            )}
-            {ai.blocks.length > 0 ? (
-              <VStack gap={3}>
-                {ai.blocks.map(b => (
-                  <Block key={b.block_id} block={b} />
-                ))}
-              </VStack>
-            ) : null}
+              ...(ai.blocks.length > 0
+                ? [
+                    <VStack key="blocks" gap={3}>
+                      {ai.blocks.map(b => (
+                        <Block key={b.block_id} block={b} />
+                      ))}
+                    </VStack>,
+                  ]
+                : []),
+            ]}
           </ChatMessageList>
         </ChatLayout>
-      </VStack>
+            </VStack>
+          </LayoutContent>
+        }
+      />
     </Drawer>
   );
 }

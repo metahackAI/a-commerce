@@ -424,6 +424,21 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:storeStatus of a store (tenant): open for business or suspended.
+    StoreStatus = "store_status" { Active = "active", Suspended = "suspended" }
+}
+
+word_enum! {
+    /// acom:organizationType of an organization operators belong to.
+    OrganizationType = "organization_type" { Department = "department", Vendor = "vendor", Branch = "branch" }
+}
+
+word_enum! {
+    /// acom:apiKeyStatus of an API key: it can sign in, or it was revoked.
+    ApiKeyStatus = "api_key_status" { Active = "active", Revoked = "revoked" }
+}
+
+word_enum! {
     /// schema:creativeWorkStatus of a review: whether shoppers see it.
     ReviewStatus = "review_status" { Visible = "visible", Hidden = "hidden", Reported = "reported" }
 }
@@ -469,6 +484,29 @@ word_enum! {
 word_enum! {
     /// acom:importMode of `batch_import`: new drafts only, or also refresh drafts made earlier.
     ImportMode = "import_mode" { Create = "create", Upsert = "upsert" }
+}
+
+word_enum! {
+    /// schema:creativeWorkStatus of a product question: whether shoppers see it (and its answer).
+    QuestionStatus = "question_status" { Visible = "visible", Hidden = "hidden" }
+}
+
+word_enum! {
+    /// acom:reportReason, why a shopper reports a review or a post as inappropriate.
+    ReportReason = "report_reason" {
+        Spam = "spam", Abuse = "abuse", Obscene = "obscene", Advertisement = "advertisement",
+        Fake = "fake", Irrelevant = "irrelevant", Other = "other",
+    }
+}
+
+word_enum! {
+    /// acom:copyType, which text of a product `generate_copy` drafts.
+    CopyType = "copy_type" { Title = "title", Summary = "summary", Description = "description", Seo = "seo" }
+}
+
+word_enum! {
+    /// acom:imageStyle, how a generated product image is staged.
+    ImageStyle = "image_style" { Studio = "studio", Lifestyle = "lifestyle", FlatLay = "flat_lay" }
 }
 
 /// Every word list, by name. `cargo xtask check-schema` compares database `CHECK` lists with these.
@@ -520,6 +558,9 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (PreferenceKey::LIST, PreferenceKey::WORDS),
     (ActorKind::LIST, ActorKind::WORDS),
     (AdminStatus::LIST, AdminStatus::WORDS),
+    (StoreStatus::LIST, StoreStatus::WORDS),
+    (OrganizationType::LIST, OrganizationType::WORDS),
+    (ApiKeyStatus::LIST, ApiKeyStatus::WORDS),
     (ReviewStatus::LIST, ReviewStatus::WORDS),
     (FitVote::LIST, FitVote::WORDS),
     (MeasurementName::LIST, MeasurementName::WORDS),
@@ -528,6 +569,10 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (StepKind::LIST, StepKind::WORDS),
     (DraftStatus::LIST, DraftStatus::WORDS),
     (ImportMode::LIST, ImportMode::WORDS),
+    (QuestionStatus::LIST, QuestionStatus::WORDS),
+    (ReportReason::LIST, ReportReason::WORDS),
+    (CopyType::LIST, CopyType::WORDS),
+    (ImageStyle::LIST, ImageStyle::WORDS),
 ];
 
 /// The words of one list, by name.

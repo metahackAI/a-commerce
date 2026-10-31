@@ -200,6 +200,23 @@
 
 ## `catalog`
 
+### `catalog.answer`
+
+`schema:Answer` — the accepted answer to a product question; one per question. id prefix ans_. · id `ans_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix ans_; the same value the API, logs and events use (API answer_id). |
+| `question_id` | text |  | `schema:parentItem` | the question answered (qst_ id); it shows the answer as acceptedAnswer. → `catalog.question` |
+| `author_id` | text |  | `schema:author` | who answered: an operator (adm_), the system (sys_), or a shopper (cus_) when catalog.yml question.answered_by allows it. |
+| `author_name` | text | ✓ | `schema:author` | the masked name shown for a shopper's answer; NULL when the store answered, shown as the store. |
+| `text` | text |  | `schema:text` | the answer shoppers read, word for word as previewed. |
+| `date_created` | timestamptz |  | `schema:dateCreated` | when the answer was posted (store clock). |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `catalog.brand`
 
 `schema:Brand` — a brand products are sold under. id prefix brn_. · id `brn_…`
@@ -211,6 +228,25 @@
 | `name` | text |  | `schema:name` | brand name. |
 | `logo` | text | ✓ | `schema:logo` | URL of the logo image. |
 | `description` | text | ✓ | `schema:description` | short brand description. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `catalog.copy_draft`
+
+`schema:CreativeWork/acom:CopyDraft` — generated text for a product (generate_copy), kept as a draft until update_product_group uses it. id prefix cpd_. · id `cpd_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix cpd_; the same value the API, logs and events use (API copy_draft_id). |
+| `product_group_id` | text |  | `schema:about` | the product the copy is for (prd_ id, API product_id). → `catalog.product_group` |
+| `copy_type` | text |  | `acom:copyType` | which text of the product this drafts. values: copy_type Values: `title` · `summary` · `description` · `seo`. |
+| `text` | text |  | `schema:text` | the drafted text. |
+| `keywords` | text[] |  | `schema:keywords` | words the draft was asked to use; empty when none. |
+| `tone` | text |  | `acom:tone` | the tone the draft was written in: the request's, or catalog.yml content.copy.tone. |
+| `is_ai_generated` | boolean |  | `acom:aiGenerated` | true for generated content (catalog.yml content.ai_content_disclosure). |
+| `date_created` | timestamptz |  | `schema:dateCreated` | when the draft was made (store clock). |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
@@ -246,6 +282,26 @@
 | `draft_status` | text |  | `acom:draftStatus` | whether the draft is complete or waits for a person. values: draft_status Values: `ready` · `needs_you` · `working`. |
 | `open_fields` | text[] |  | `acom:openFields` | required fields that were missing or unclear in the sheet, from catalog.yml import.required_fields, for example {material}; empty when none. |
 | `draft_note` | text | ✓ | `acom:draftNote` | one sentence for the person about what is open, for example Fabric mix is missing in the sheet; NULL when nothing is. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `catalog.image_object`
+
+`schema:ImageObject` — a generated product image (generate_image), kept as a draft off the product page until it is used. id prefix img_. · id `img_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix img_; the same value the API, logs and events use (API image_id). |
+| `product_group_id` | text |  | `schema:about` | the product pictured (prd_ id, API product_id). → `catalog.product_group` |
+| `content_url` | text |  | `schema:contentUrl` | where the image is; while no image generator is connected (catalog.yml content.generator: placeholder), a placeholder picture that says so. |
+| `encoding_format` | text |  | `schema:encodingFormat` | media type of the image, for example image/svg+xml. |
+| `caption` | text |  | `schema:caption` | the alternative text shown with the image. |
+| `prompt` | text |  | `acom:prompt` | what the operator asked the image to show. |
+| `image_style` | text |  | `acom:imageStyle` | how the image is staged. values: image_style Values: `studio` · `lifestyle` · `flat_lay`. |
+| `is_ai_generated` | boolean |  | `acom:aiGenerated` | true for generated content (catalog.yml content.ai_content_disclosure). |
+| `date_created` | timestamptz |  | `schema:dateCreated` | when the image was made (store clock). |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
@@ -375,6 +431,25 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `catalog.question`
+
+`schema:Question` — a shopper's question about a product; a hidden question hides its answer too. id prefix qst_. · id `qst_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix qst_; the same value the API, logs and events use (API question_id). |
+| `product_group_id` | text |  | `schema:about` | the product asked about (prd_ id, API product_id). → `catalog.product_group` |
+| `author_id` | text |  | `schema:author` | the shopper who asked (cus_ id); only they may edit or delete it. → `customer.person` |
+| `author_name` | text |  | `schema:author` | the name shown with the question, masked as catalog.yml author_masking says when it was asked, for example Ja***. |
+| `text` | text |  | `schema:text` | the question as the shopper wrote it. |
+| `is_private` | boolean |  | `acom:isPrivate` | true when only the asker and the store may read it (catalog.yml question.private_allowed). |
+| `creative_work_status` | text |  | `schema:creativeWorkStatus` | visible, or hidden by moderate_question or held by question.profanity_filter. values: question_status Values: `visible` · `hidden`. |
+| `date_created` | timestamptz |  | `schema:dateCreated` | when the shopper asked (store clock). |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `catalog.reorder`
 
 `schema:Order/acom:Reorder` — stock the store orders from its supplier for one product; id prefix ro_. API: reorder. · id `ro_…`
@@ -409,6 +484,24 @@
 | `price_currency` | char(3) |  | `schema:priceCurrency` | currency of price (ISO 4217). |
 | `created_at` | timestamptz |  | `-` | when the row was written. |
 
+### `catalog.restock_alert`
+
+`schema:SubscribeAction/acom:RestockAlert` — a shopper asks to be told when a sold-out variant is back; a transactional alert, not marketing. id prefix rsa_. · id `rsa_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix rsa_; the same value the API, logs and events use (API restock_alert_id). |
+| `customer_id` | text |  | `schema:agent` | the shopper who asked (cus_ id); only they see it. → `customer.person` |
+| `product_id` | text |  | `schema:object` | the variant waited for (var_ id, API variant_id). → `catalog.product` |
+| `message_channel` | text |  | `acom:messageChannel` | how the shopper wants to hear (catalog.yml restock_alert.channels). values: message_channel Values: `email` · `sms` · `push` · `in_app`. |
+| `start_time` | timestamptz |  | `schema:startTime` | when the shopper asked (store clock). |
+| `expires` | timestamptz |  | `schema:expires` | when the request lapses if the variant is not back by then (start_time + restock_alert.expires_after_days). |
+| `notified_at` | timestamptz | ✓ | `acom:notifiedAt` | when the variant came back and the alert was handed to messaging (platform.outbox topic restock_alert.notify); NULL while waiting. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `catalog.review`
 
 `schema:Review` — a shopper review of a product with a fit vote; hidden reviews are left out of summaries. id prefix rev_. · id `rev_…`
@@ -435,6 +528,23 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `catalog.review_report`
+
+`schema:Action/acom:ContentReport` — a shopper's report that a review is inappropriate; it puts the review in the moderation queue. id prefix rpt_. · id `rpt_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix rpt_; the same value the API, logs and events use. |
+| `review_id` | text |  | `schema:object` | the review reported (rev_ id). → `catalog.review` |
+| `customer_id` | text |  | `schema:agent` | the shopper who reported it (cus_ id); one report per shopper and review. → `customer.person` |
+| `report_reason` | text |  | `acom:reportReason` | why it was reported (catalog.yml review.report_reasons). values: report_reason Values: `spam` · `abuse` · `obscene` · `advertisement` · `fake` · `irrelevant` · `other`. |
+| `description` | text | ✓ | `schema:description` | the reporter's own words; NULL when they gave none. |
+| `start_time` | timestamptz |  | `schema:startTime` | when the report was made (store clock). |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `catalog.review_vote`
 
 `schema:VoteAction/acom:ReviewVote` — one shopper's helpful vote on a review; a review's helpful count is its rows with is_helpful true.
@@ -445,6 +555,20 @@
 | `review_id` | text |  | `schema:object` | review voted on (rev_ id). → `catalog.review` |
 | `customer_id` | text |  | `schema:agent` | shopper who voted (cus_ id). → `customer.person` |
 | `is_helpful` | boolean |  | `acom:isHelpful` | true while the shopper marks the review helpful; false after they take the vote back. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `catalog.type_and_quantity_node`
+
+`schema:TypeAndQuantityNode` — one component of a bundle (create_bundle): a variant and how many of it; the bundle's price and stock are derived from its components.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `product_group_id` | text |  | `acom:productGroupId` | the bundle this is a component of (prd_ id); schema:includesObject seen from the bundle. → `catalog.product_group` |
+| `product_id` | text |  | `schema:typeOfGood` | the component variant (var_ id, API variant_id). → `catalog.product` |
+| `amount_of_this_good` | integer |  | `schema:amountOfThisGood` | units of the variant in one bundle (API order_quantity). |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
@@ -967,6 +1091,7 @@
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `organization_id` | text | ✓ | `schema:worksFor` | the organization (org_ id) the operator belongs to; NULL when none. API: org_id. → `platform.organization` |
 
 ### `platform.admin_user_role`
 
@@ -977,6 +1102,31 @@
 | `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
 | `admin_user_id` | text |  | `-` | operator account (adm_ id; API admin_id). → `platform.admin_user` |
 | `role_id` | text |  | `-` | role given to the account (rol_ id). → `platform.role` |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `platform.api_key`
+
+`schema:Intangible/acom:ApiKey` — a credential an outside agent or integration client signs in with (login); the secret is shown once when issued and kept only as a hash. id prefix key_. · id `key_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix key_; the same value the API, logs and events use; the client_id at login. |
+| `name` | text |  | `schema:name` | what the key is for, for example Outside shopping agent; unique among active keys. |
+| `key_prefix` | text |  | `acom:keyPrefix` | the first characters of the secret, shown in lists so people can recognize a key. |
+| `secret_hash` | text |  | `-` | SHA-256 (hex) of the secret; the secret itself is never stored. |
+| `scopes` | text[] |  | `acom:scopes` | the scopes a session of this key may get, for example {external:read,external:cart}. |
+| `api_key_status` | text |  | `acom:apiKeyStatus` | whether the key can still sign in. values: api_key_status Values: `active` · `revoked`. |
+| `expires` | timestamptz | ✓ | `schema:expires` | when the key stops working; NULL means it does not expire. |
+| `creator_id` | text | ✓ | `schema:creator` | the operator (adm_ id) who asked for the key. → `platform.admin_user` |
+| `last_used_at` | timestamptz | ✓ | `acom:lastUsedAt` | the last successful sign-in with the key; NULL if never. |
+| `revoked_at` | timestamptz | ✓ | `acom:revokedAt` | when the key was revoked; NULL while active. |
+| `revocation_reason` | text | ✓ | `acom:revocationReason` | why the key was revoked, in a sentence; NULL while active. |
+| `failed_attempt_count` | integer |  | `-` | wrong secrets since first_failed_at; customer.yml password.lockout locks the key when it reaches failed_attempts. |
+| `first_failed_at` | timestamptz | ✓ | `-` | the first wrong secret of the current lockout window; NULL when there is none. |
+| `locked_until` | timestamptz | ✓ | `acom:lockedUntil` | sign-in is refused until then after too many wrong secrets; NULL when not locked. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
@@ -1103,6 +1253,20 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `platform.menu_favorite`
+
+`-` — whether an operator keeps a back-office menu entry among their favorites (set_favorite).
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `admin_user_id` | text |  | `-` | the operator account (adm_ id; API admin_id). → `platform.admin_user` |
+| `site_navigation_element_id` | text |  | `-` | the menu entry (mnu_ id; API menu_id). → `platform.site_navigation_element` |
+| `is_favorite` | boolean |  | `-` | true while the entry is a favorite; turning it off keeps the row. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `platform.online_store`
 
 `schema:OnlineStore` — one store; every other row belongs to exactly one store (tenant). id prefix store_. API: tenant. · id `store_…`
@@ -1119,6 +1283,23 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 | `seed_fingerprint` | text | ✓ | `-` | fingerprint (SHA-256 of the rows) of the demo seed this store was loaded from; NULL for a store not loaded from a seed. |
+| `store_status` | text |  | `acom:storeStatus` | whether the store is open for business; a suspended store keeps its data but serves no one. values: store_status Values: `active` · `suspended`. |
+| `feature_flags` | jsonb |  | `acom:featureFlags` | features switched on for this store, as {flag: true\|false}; {} when none. |
+
+### `platform.organization`
+
+`schema:Organization` — a department, vendor or branch that operator accounts belong to; organizations nest. id prefix org_. API: org. · id `org_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix org_; the same value the API, logs and events use (API: org_id). |
+| `name` | text |  | `schema:name` | organization name shown to administrators, unique in the store. |
+| `organization_type` | text |  | `acom:organizationType` | what kind of organization this is (API: org_type). values: organization_type Values: `department` · `vendor` · `branch`. |
+| `parent_organization_id` | text | ✓ | `schema:parentOrganization` | the organization this one belongs to; NULL at the top. Never itself or one of its own sub-organizations (orgs.no_cycle). → `platform.organization` |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
 ### `platform.outbox`
 
@@ -1221,12 +1402,34 @@
 | `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
 | `id` | text |  | `-` | id with prefix ses_; the same value the API, logs and events use. |
 | `actor_kind` | text |  | `-` | who holds the session. values: actor_kind Values: `operator` · `shopper` · `agent_on_behalf` · `external_agent` · `system`. |
-| `subject_id` | text | ✓ | `-` | person behind the session (adm_ or cus_ id); NULL for an anonymous guest. |
+| `subject_id` | text | ✓ | `-` | who holds the session: a person (adm_ or cus_ id), an API client (key_ id), or NULL for an anonymous guest. |
 | `token_hash` | text |  | `-` | hash of the session cookie value; the cookie itself is never stored. |
 | `csrf_token_hash` | text |  | `-` | hash of the CSRF token paired with the session. |
 | `expires_at` | timestamptz |  | `-` | when the session stops being accepted. |
 | `last_seen_at` | timestamptz | ✓ | `-` | last request made with the session. |
 | `revoked_at` | timestamptz | ✓ | `-` | when the session was signed out or revoked; NULL while active. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `scopes` | text[] | ✓ | `-` | scopes of an API client session, fixed at login; NULL for a browser session, whose scopes come from roles. |
+| `refresh_token_hash` | text | ✓ | `-` | SHA-256 (hex) of an API client session's refresh token; NULL for a browser session. |
+| `refresh_expires_at` | timestamptz | ✓ | `-` | when the refresh token stops being accepted; NULL for a browser session. |
+| `replaced_by_id` | text | ✓ | `-` | the session its refresh token was exchanged for; a refresh token that comes back after that is reuse and ends every session of the client. → `platform.session` |
+
+### `platform.site_navigation_element`
+
+`schema:SiteNavigationElement` — one entry of the back-office menu; entries nest one level under a parent. id prefix mnu_. API: menu. · id `mnu_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix mnu_; the same value the API, logs and events use (API: menu_id). |
+| `name` | text |  | `schema:name` | the label operators see, for example Promotions. |
+| `url` | text |  | `schema:url` | the back-office path the entry opens, for example /bo/promotions (API: path). |
+| `required_scope` | text |  | `acom:requiredScope` | the scope an operator needs to see the entry, for example tools:read:promotion. |
+| `position` | integer |  | `schema:position` | order among the entries with the same parent, smallest first. |
+| `is_visible` | boolean |  | `acom:isVisible` | false hides the entry from every operator without removing it. |
+| `is_part_of_id` | text | ✓ | `schema:isPartOf` | the parent entry (mnu_ id); NULL for a top-level entry. → `platform.site_navigation_element` |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
