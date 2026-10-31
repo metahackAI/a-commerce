@@ -12,7 +12,7 @@ import {Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow} fro
 import {price, value, words} from '@/app/bo/_lib/format';
 import {entityHref} from '@/app/bo/_lib/links';
 import type {IntentsFor} from '@/components/bo/ChangeParts';
-import {TargetRow} from '@/components/bo/targets';
+import {AskHeaderCell, TargetRow} from '@/components/bo/targets';
 
 const ID_KEYS = ['product_id', 'variant_id', 'claim_id', 'order_id', 'promotion_id', 'customer_id', 'id', 'draft_id'];
 const NAME_KEYS = ['name', 'title', 'label', 'item'];
@@ -78,11 +78,7 @@ export function RowsTable({
           {cols.map(c => (
             <TableHeaderCell key={c.key}>{c.label}</TableHeaderCell>
           ))}
-          <TableHeaderCell>
-            <Text type="supporting" color="secondary">
-              Ask
-            </Text>
-          </TableHeaderCell>
+          <AskHeaderCell />
         </TableRow>
       </TableHeader>
       <TableBody>

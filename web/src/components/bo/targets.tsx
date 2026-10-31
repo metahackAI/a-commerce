@@ -2,8 +2,10 @@
 
 // Elements people can ask about (docs/frontend/README.md §3): each wrapper registers its element
 // with `useAiTarget` (so the agent can point at it with `ui.command`) and carries an Ask button
-// that picks it as "this" for the next message. Suggested intents, when a block provides them,
-// sit next to the element and send their sentence as is.
+// that picks it as "this" for the next message. Ask shows while the pointer is on its element or
+// focus is inside it, and always on touch screens (Astryx `useContainerReveal`, as TreeList shows
+// a row's actions), so a page of rows does not repeat it on every line. Suggested intents, when a
+// block provides them, sit next to the element and send their sentence as is.
 
 import {useEffect, useRef, type ReactNode} from 'react';
 import {HStack, StackItem, VStack} from '@astryxdesign/core/Layout';
@@ -12,7 +14,9 @@ import {IconButton} from '@astryxdesign/core/IconButton';
 import {Icon} from '@astryxdesign/core/Icon';
 import {Card} from '@astryxdesign/core/Card';
 import {MetadataListItem} from '@astryxdesign/core/MetadataList';
-import {TableCell, TableRow} from '@astryxdesign/core/Table';
+import {TableCell, TableHeaderCell, TableRow} from '@astryxdesign/core/Table';
+import {VisuallyHidden} from '@astryxdesign/core/VisuallyHidden';
+import {useContainerReveal} from '@astryxdesign/core/hooks';
 import {ChatBubbleOvalLeftEllipsisIcon} from '@heroicons/react/24/outline';
 
 import {useAi} from '@/ai/AiProvider';
@@ -37,6 +41,26 @@ export function AskButton({target, label}: {target: Registered; label: string}) 
         dock.open();
       }}
     />
+  );
+}
+
+/** Ask, revealed by its element: spread `container` on the element and `ask` on Ask's slot. */
+export function useAskReveal() {
+  const {getContainerProps, getContentRevealProps} = useContainerReveal();
+  // The slot keeps its space while hidden, so nothing moves when Ask appears.
+  return {container: getContainerProps(), ask: getContentRevealProps({isLayoutPreserved: true})};
+}
+
+/**
+ * The header cell over the rows' Ask column: named for screen readers only, as Polaris hides an
+ * index table's action heading. The column shrinks to its button, so the data columns get the
+ * width.
+ */
+export function AskHeaderCell() {
+  return (
+    <TableHeaderCell style={{width: '1%'}}>
+      <VisuallyHidden>Ask</VisuallyHidden>
+    </TableHeaderCell>
   );
 }
 
@@ -83,16 +107,20 @@ export function SuggestedIntents({intents, target}: {intents?: string[]; target?
   );
 }
 
-/** A table row that is an AI target. Its last cell holds Ask, so the header needs one more cell. */
+/** A table row that is an AI target. Its last cell holds Ask, so the header ends with `AskHeaderCell`. */
 export function TargetRow({target, intents, children}: {target: AiTarget; intents?: string[]; children: ReactNode}) {
   const t = useAiTarget(target);
+  const reveal = useAskReveal();
   return (
-    <TableRow ref={t.ref} {...t.props}>
+    <TableRow ref={t.ref} {...t.props} {...reveal.container}>
       {children}
-      <TableCell>
+      {/* Its content sets its width (Astryx cells otherwise give up theirs to the table). */}
+      <TableCell style={{maxWidth: 'none'}}>
         <HStack gap={1} vAlign="center" hAlign="end">
           <SuggestedIntents intents={intents} target={t} />
-          <AskButton target={t} label={target.label} />
+          <StackItem {...reveal.ask}>
+            <AskButton target={t} label={target.label} />
+          </StackItem>
         </HStack>
       </TableCell>
     </TableRow>
@@ -114,14 +142,17 @@ export function TargetCard({
   variant?: 'default' | 'muted' | 'transparent';
 }) {
   const t = useAiTarget(target);
+  const reveal = useAskReveal();
   return (
-    <Card ref={t.ref} {...t.props} variant={variant}>
+    <Card ref={t.ref} {...t.props} {...reveal.container} variant={variant}>
       <VStack gap={2}>
         <HStack gap={2} vAlign="start">
           <StackItem size="fill">
             <VStack gap={1}>{heading}</VStack>
           </StackItem>
-          <AskButton target={t} label={target.label} />
+          <StackItem {...reveal.ask}>
+            <AskButton target={t} label={target.label} />
+          </StackItem>
         </HStack>
         {children}
         <SuggestedIntents intents={intents} target={t} />
@@ -133,10 +164,13 @@ export function TargetCard({
 /** Any inline content (a price, a figure, a chip) that is an AI target. */
 export function TargetInline({target, children, intents}: {target: AiTarget; children: ReactNode; intents?: string[]}) {
   const t = useAiTarget(target);
+  const reveal = useAskReveal();
   return (
-    <HStack ref={t.ref} {...t.props} gap={1} vAlign="center" wrap="wrap">
+    <HStack ref={t.ref} {...t.props} {...reveal.container} gap={1} vAlign="center" wrap="wrap">
       {children}
-      <AskButton target={t} label={target.label} />
+      <StackItem {...reveal.ask}>
+        <AskButton target={t} label={target.label} />
+      </StackItem>
       <SuggestedIntents intents={intents} target={t} />
     </HStack>
   );
@@ -145,12 +179,15 @@ export function TargetInline({target, children, intents}: {target: AiTarget; chi
 /** A labelled fact (MetadataListItem) that is an AI target. */
 export function TargetFact({target, label, children, intents}: {target: AiTarget; label: string; children: ReactNode; intents?: string[]}) {
   const t = useAiTarget(target);
+  const reveal = useAskReveal();
   return (
-    <MetadataListItem ref={t.ref} {...t.props} label={label}>
+    <MetadataListItem ref={t.ref} {...t.props} {...reveal.container} label={label}>
       <VStack gap={1}>
         <HStack gap={1} vAlign="center" wrap="wrap">
           {children}
-          <AskButton target={t} label={target.label} />
+          <StackItem {...reveal.ask}>
+            <AskButton target={t} label={target.label} />
+          </StackItem>
         </HStack>
         <SuggestedIntents intents={intents} target={t} />
       </VStack>
@@ -161,10 +198,13 @@ export function TargetFact({target, label, children, intents}: {target: AiTarget
 /** A form field that is an AI target: the input, and Ask beside it at the field's baseline. */
 export function TargetField({target, children}: {target: AiTarget; children: ReactNode}) {
   const t = useAiTarget(target);
+  const reveal = useAskReveal();
   return (
-    <HStack ref={t.ref} {...t.props} gap={1} vAlign="end" wrap="wrap">
+    <HStack ref={t.ref} {...t.props} {...reveal.container} gap={1} vAlign="end" wrap="wrap">
       {children}
-      <AskButton target={t} label={target.label} />
+      <StackItem {...reveal.ask}>
+        <AskButton target={t} label={target.label} />
+      </StackItem>
     </HStack>
   );
 }
@@ -182,13 +222,16 @@ export function TargetRegion({target, children}: {target: AiTarget; children: Re
 /** A stacked block of content that is an AI target (a section, a group). */
 export function TargetBlock({target, children, intents}: {target: AiTarget; children: ReactNode; intents?: string[]}) {
   const t = useAiTarget(target);
+  const reveal = useAskReveal();
   return (
-    <VStack ref={t.ref} {...t.props} gap={2}>
+    <VStack ref={t.ref} {...t.props} {...reveal.container} gap={2}>
       <HStack gap={2} vAlign="start">
         <StackItem size="fill">
           <VStack gap={2}>{children}</VStack>
         </StackItem>
-        <AskButton target={t} label={target.label} />
+        <StackItem {...reveal.ask}>
+          <AskButton target={t} label={target.label} />
+        </StackItem>
       </HStack>
       <SuggestedIntents intents={intents} target={t} />
     </VStack>
