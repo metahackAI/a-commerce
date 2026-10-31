@@ -18,6 +18,7 @@ use crate::delivery::{self, Address};
 use crate::pricing::{self, DeliveryChoice};
 use crate::repo::{self, OrderRow};
 use crate::rules;
+use crate::service::providers;
 use crate::{
     ADDRESS_NOT_DELIVERABLE, ADDRESS_NOT_FOUND, ALREADY_SHIPPED, ORDER_NOT_FOUND, approval,
 };
@@ -155,38 +156,79 @@ async fn new_delivery(
     }))
 }
 
-/// `remote_area_surcharge`: until shipping-zone data exists every address the store ships to is
-/// in `fulfillment.delivery.default_zone`, so a new address costs no more than the old one.
-fn surcharge_check(
+/// The delivery area of an address and what it adds to a parcel.
+#[derive(Debug, Clone, PartialEq)]
+struct Area {
+    name: String,
+    surcharge: rust_decimal::Decimal,
+    currency: String,
+}
+
+/// The area a delivery's address is in: the store's saved shipping zone (fulfillment's reader),
+/// or `fulfillment.delivery.default_zone` when no saved zone covers it. `None` without an address.
+async fn area_of(
+    tx: &mut TxCx,
     policy: &acom_policy::PolicySet,
-    from: Option<&Value>,
-    to: &Value,
-) -> Result<Check, ToolError> {
-    let zone = rules::default_zone(policy)?;
-    let surcharge = |d: Option<&Value>| {
-        d.and_then(country_of)
-            .filter(|c| zone.countries.iter().any(|z| z.eq_ignore_ascii_case(c)))
-            .map_or(rust_decimal::Decimal::ZERO, |_| zone.surcharge.value)
+    d: Option<&Value>,
+) -> Result<Option<Area>, ToolError> {
+    let Some(country) = d.and_then(country_of) else {
+        return Ok(None);
     };
-    let extra = surcharge(Some(to)) - surcharge(from);
+    let region = d.and_then(|d| d["delivery_address"]["address_region"].as_str());
+    if let Some(read) = providers::areas()
+        && let Some(a) = read(tx, &country, region).await?
+    {
+        return Ok(Some(Area {
+            name: a.name,
+            surcharge: a.surcharge.value,
+            currency: a.surcharge.currency.to_string(),
+        }));
+    }
+    default_area(policy, &country).map(Some)
+}
+
+/// `fulfillment.delivery.default_zone`: the area of every address while the store saves no zones.
+fn default_area(policy: &acom_policy::PolicySet, country: &str) -> Result<Area, ToolError> {
+    let zone = rules::default_zone(policy)?;
+    let covered = zone
+        .countries
+        .iter()
+        .any(|z| z.eq_ignore_ascii_case(country));
+    Ok(Area {
+        name: zone.name.clone(),
+        surcharge: if covered {
+            zone.surcharge.value
+        } else {
+            rust_decimal::Decimal::ZERO
+        },
+        currency: zone.surcharge.currency.to_string(),
+    })
+}
+
+/// `remote_area_surcharge`: a new address may not cost more to reach than the old one, because a
+/// surcharge cannot be charged after ordering.
+fn surcharge_check(from: Option<&Area>, to: Option<&Area>) -> Result<Check, ToolError> {
+    let cost = |a: Option<&Area>| a.map_or(rust_decimal::Decimal::ZERO, |a| a.surcharge);
+    let extra = cost(to) - cost(from);
     if extra > rust_decimal::Decimal::ZERO {
+        let (name, currency) = to.map_or(("", ""), |a| (a.name.as_str(), a.currency.as_str()));
         return Err(ToolError::new(
             ErrorCode::POLICY_VIOLATION,
             format!(
-                "The new address adds a {extra} {} area surcharge, which cannot be charged after ordering.",
-                zone.surcharge.currency
+                "The new address is in {name}, which adds a {extra} {currency} area surcharge that cannot be charged after ordering."
             ),
         )
-        .detail(json!({"rule": "remote_area_surcharge", "extra": extra.to_string()}))
+        .detail(json!({"rule": "remote_area_surcharge", "extra": extra.to_string(), "zone": name}))
         .next("list_addresses"));
     }
     Ok(Check {
         rule: "remote_area_surcharge".into(),
         passed: true,
-        detail: Some(if zone.surcharge.value.is_zero() {
-            "No surcharge for this address".to_owned()
-        } else {
-            format!("Same area ({}), same surcharge", zone.name)
+        detail: Some(match to {
+            Some(a) if !a.surcharge.is_zero() => {
+                format!("{}: no more surcharge than the old address", a.name)
+            }
+            _ => "No surcharge for this address".to_owned(),
         }),
         fix_tool: None,
     })
@@ -221,9 +263,11 @@ impl WriteOp<Cx> for ChangeShippingAddress {
         }
         let from = repo::latest_delivery(&mut tx, &o.id).await?;
         let to = new_delivery(&mut tx, &o, &choice, from.as_ref()).await?;
+        let from_area = area_of(&mut tx, &cx.policy, from.as_ref()).await?;
+        let to_area = area_of(&mut tx, &cx.policy, Some(&to)).await?;
         tx.commit().await.map_err(ToolError::from)?;
 
-        let surcharge = surcharge_check(&cx.policy, from.as_ref(), &to)?;
+        let surcharge = surcharge_check(from_area.as_ref(), to_area.as_ref())?;
         let change = Change {
             op: ChangeOp::Update,
             entity: "order".into(),
@@ -354,15 +398,50 @@ mod tests {
         );
     }
 
+    fn area(name: &str, surcharge: &str) -> Area {
+        Area {
+            name: name.into(),
+            surcharge: surcharge.parse().unwrap(),
+            currency: "USD".into(),
+        }
+    }
+
     #[test]
-    fn a_new_address_in_the_same_zone_costs_nothing_more() {
-        let policy = crate::rules::tests::defaults();
-        let home = json!({"delivery_address": {"address_country": "US"}});
-        let pier = json!({"delivery_address": {"address_country": "US"}});
-        let c = surcharge_check(&policy, Some(&home), &pier).unwrap();
+    fn a_new_address_may_not_cost_more_to_reach() {
+        let home = area("Contiguous US", "0");
+        let pier = area("Contiguous US", "0");
+        let c = surcharge_check(Some(&home), Some(&pier)).unwrap();
         assert!(c.passed);
         assert_eq!(c.detail.as_deref(), Some("No surcharge for this address"));
-        assert!(surcharge_check(&policy, None, &pier).unwrap().passed);
+        assert!(surcharge_check(None, Some(&pier)).unwrap().passed);
+
+        let anchorage = area("Alaska and Hawaii", "12.00");
+        let e = surcharge_check(Some(&home), Some(&anchorage)).unwrap_err();
+        assert_eq!(e.detail.as_ref().unwrap()["extra"], json!("12.00"));
+        assert!(e.message.contains("Alaska and Hawaii"), "{}", e.message);
+        // Moving within a surcharged area, or out of it, costs nothing more.
+        let c = surcharge_check(Some(&anchorage), Some(&anchorage)).unwrap();
+        assert_eq!(
+            c.detail.as_deref(),
+            Some("Alaska and Hawaii: no more surcharge than the old address")
+        );
+        assert!(
+            surcharge_check(Some(&anchorage), Some(&home))
+                .unwrap()
+                .passed
+        );
+    }
+
+    #[test]
+    fn without_saved_zones_the_default_zone_applies() {
+        let policy = crate::rules::tests::defaults();
+        let zone = rules::default_zone(&policy).unwrap();
+        let a = default_area(&policy, "us").unwrap();
+        assert_eq!(
+            (a.name, a.surcharge),
+            (zone.name.clone(), zone.surcharge.value)
+        );
+        assert!(default_area(&policy, "ZZ").unwrap().surcharge.is_zero());
     }
 
     #[tokio::test]
