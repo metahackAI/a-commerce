@@ -9,13 +9,18 @@ use acom_contract::{Kind, Operation, RegistryBuilder};
 use acom_store::Cx;
 use serde_json::{Map, Value, json};
 
-use crate::banner::{
-    BannerRun, ListBannersInput, PlannedBanner, ScheduleBannerInput, SetBannerInput,
-    compare_booking,
+use crate::banner::list_banners::ListBannersInput;
+use crate::banner::schedule_banner::{
+    BannerRun, PlannedBanner, ScheduleBannerInput, compare_booking,
 };
-use crate::category::{GetCategoryInput, ListCategoriesInput};
-use crate::curation::{GetCurationInput, ListCurationsInput};
-use crate::display_slot::{GetDisplaySlotInput, ListDisplaySlotsInput, hidden_reason};
+use crate::banner::set_banner::SetBannerInput;
+use crate::category::get_category::GetCategoryInput;
+use crate::category::list_categories::ListCategoriesInput;
+use crate::collection_page::get_curation::GetCurationInput;
+use crate::collection_page::list_curations::ListCurationsInput;
+use crate::display_slot::get_display_slot::GetDisplaySlotInput;
+use crate::display_slot::hidden_reason;
+use crate::display_slot::list_display_slots::ListDisplaySlotsInput;
 use crate::model::DisplayRules;
 use crate::testing::{at, bookings_of, policies};
 
@@ -52,6 +57,14 @@ fn registers_every_operation_with_closed_schemas() {
         "set_banner",
         "list_curations",
         "get_curation",
+        "arrange_display_slot",
+        "schedule_display",
+        "list_popups",
+        "set_popup",
+        "create_curation",
+        "update_curation",
+        "publish_curation",
+        "invalidate_display_cache",
     ] {
         assert!(registry.get(t).is_some(), "{t} is not registered");
     }
@@ -62,10 +75,10 @@ fn registers_every_operation_with_closed_schemas() {
         json!(["product", "image"])
     );
     assert_eq!(
-        crate::banner::ScheduleBanner::META.kind,
+        crate::banner::schedule_banner::ScheduleBanner::META.kind,
         Kind::WriteApproval
     );
-    assert_eq!(crate::banner::SetBanner::META.kind, Kind::Write);
+    assert_eq!(crate::banner::set_banner::SetBanner::META.kind, Kind::Write);
 }
 
 #[test]
@@ -174,18 +187,18 @@ fn a_banner_plan_binds_the_promotion_and_reads_back() {
 fn banner_text_follows_the_policy_limits() {
     let rules = DisplayRules::from_policy(&policies(true)).unwrap();
     let ok: ScheduleBannerInput = parses(b1_banner());
-    assert!(crate::banner::check_content(&rules, &ok.content).is_ok());
+    assert!(crate::banner::schedule_banner::check_content(&rules, &ok.content).is_ok());
     let mut long = ok.content.clone();
     long.headline = "x".repeat(rules.headline_max + 1);
-    let e = crate::banner::check_content(&rules, &long).unwrap_err();
+    let e = crate::banner::schedule_banner::check_content(&rules, &long).unwrap_err();
     assert_eq!(e.detail.unwrap()["field"], "content.headline");
     let mut no_product = ok.content.clone();
     no_product.image_product_id = None;
-    let e = crate::banner::check_content(&rules, &no_product).unwrap_err();
+    let e = crate::banner::schedule_banner::check_content(&rules, &no_product).unwrap_err();
     assert_eq!(e.detail.unwrap()["field"], "content.image_product_id");
     let mut outside = ok.content;
     outside.url = "https://elsewhere.example".into();
-    assert!(crate::banner::check_content(&rules, &outside).is_err());
+    assert!(crate::banner::schedule_banner::check_content(&rules, &outside).is_err());
 }
 
 #[test]

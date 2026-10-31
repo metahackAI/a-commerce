@@ -21,6 +21,8 @@ use crate::{Gateway, REQUEST_TOKEN_SECONDS, TURN_TOKEN_SECONDS, now_seconds};
 const SUBJECT: &str = "sys_task_pickup";
 /// How long to wait before following the events again after the stream ends or fails.
 const RECONNECT: Duration = Duration::from_secs(5);
+/// The line a back-office turn stream sends when the turn finished.
+const TURN_DONE: &[u8] = b"event: turn.done";
 
 /// Starts following the store's events, and the worker that hands new tasks to the agent.
 pub fn spawn(gw: Arc<Gateway>) {
@@ -62,11 +64,13 @@ async fn follow(
     if !r.status().is_success() {
         return Err(format!("events: {}", r.status()));
     }
-    let (mut pending, mut event) = (String::new(), String::new());
+    // Bytes until a whole line is in: a chunk may end inside a character, never inside a `\n`.
+    let (mut pending, mut event) = (Vec::<u8>::new(), String::new());
     while let Some(chunk) = r.chunk().await.map_err(|e| e.to_string())? {
-        pending.push_str(&String::from_utf8_lossy(&chunk));
-        while let Some(end) = pending.find('\n') {
-            let line: String = pending.drain(..=end).collect();
+        pending.extend_from_slice(&chunk);
+        while let Some(end) = pending.iter().position(|b| *b == b'\n') {
+            let raw: Vec<u8> = pending.drain(..=end).collect();
+            let line = String::from_utf8_lossy(&raw);
             let line = line.trim_end();
             if let Some(e) = line.strip_prefix("event:") {
                 e.trim().clone_into(&mut event);
@@ -91,9 +95,12 @@ fn new_agent_task(event: &str, data: &str) -> Option<String> {
 async fn work(gw: Arc<Gateway>, mut rx: mpsc::UnboundedReceiver<String>) {
     let http = reqwest::Client::new();
     while let Some(task) = rx.recv().await {
-        match pick_up(&gw, &http, &task).await {
-            Ok(outcome) => tracing::info!(task = %task, outcome = %outcome, "task pickup"),
-            Err(e) => tracing::warn!(task = %task, error = %e, "task pickup"),
+        // Each pickup runs as its own task, so a panic in one leaves the queue running.
+        let (gw, http, id) = (gw.clone(), http.clone(), task.clone());
+        match tokio::spawn(async move { pick_up(&gw, &http, &id).await }).await {
+            Ok(Ok(outcome)) => tracing::info!(task = %task, outcome = %outcome, "task pickup"),
+            Ok(Err(e)) => tracing::warn!(task = %task, error = %e, "task pickup"),
+            Err(e) => tracing::error!(task = %task, error = %e, "task pickup panicked"),
         }
     }
 }
@@ -175,18 +182,25 @@ async fn pick_up(gw: &Gateway, http: &reqwest::Client, task: &str) -> Result<Str
         ));
     }
     // Read the turn to its end; the change set and the task carry the result.
-    let mut tail = String::new();
+    let (mut tail, mut done) = (Vec::new(), false);
     while let Some(chunk) = r.chunk().await.map_err(|e| e.to_string())? {
-        tail.push_str(&String::from_utf8_lossy(&chunk));
-        if tail.len() > 4096 {
-            tail.drain(..tail.len() - 4096);
-        }
+        done |= saw_turn_done(&mut tail, &chunk);
     }
-    Ok(if tail.contains("turn.done") {
+    Ok(if done {
         format!("turn done as {acts_as}")
     } else {
         format!("turn ended without turn.done as {acts_as}")
     })
+}
+
+/// Feeds one chunk of a turn stream: true when [`TURN_DONE`] is in it, also when chunks split
+/// it. Works on bytes, since a chunk may end inside a character; `tail` keeps only the bytes a
+/// split `TURN_DONE` could start with.
+fn saw_turn_done(tail: &mut Vec<u8>, chunk: &[u8]) -> bool {
+    tail.extend_from_slice(chunk);
+    let seen = tail.windows(TURN_DONE.len()).any(|w| w == TURN_DONE);
+    tail.drain(..tail.len().saturating_sub(TURN_DONE.len() - 1));
+    seen
 }
 
 #[cfg(test)]
@@ -206,5 +220,28 @@ mod tests {
             r#"{"task_id": "task_2", "state": "working", "created": true, "origin": "automation"}"#;
         assert_eq!(new_agent_task("task.updated", automation), None);
         assert_eq!(new_agent_task("change_set.updated", new), None);
+    }
+
+    #[test]
+    fn a_turn_stream_split_inside_characters_and_the_done_line_still_ends() {
+        let stream = "event: message.delta\ndata: {\"text\": \"재고 — 주문\"}\n\nevent: turn.done\ndata: {}\n\n";
+        let bytes = stream.as_bytes();
+        // Every chunk size, so some chunk ends inside `—`, `재` and `turn.done`.
+        for size in 1..=bytes.len() {
+            let (mut tail, mut done) = (Vec::new(), false);
+            for chunk in bytes.chunks(size) {
+                done |= saw_turn_done(&mut tail, chunk);
+            }
+            assert!(done, "chunks of {size}");
+            assert!(tail.len() < TURN_DONE.len());
+        }
+        let (mut tail, mut done) = (Vec::new(), false);
+        for chunk in "event: message.delta\ndata: {\"text\": \"주문\"}\n"
+            .as_bytes()
+            .chunks(3)
+        {
+            done |= saw_turn_done(&mut tail, chunk);
+        }
+        assert!(!done);
     }
 }
