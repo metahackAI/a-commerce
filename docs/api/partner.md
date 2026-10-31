@@ -1,8 +1,8 @@
 # API 명세 — `partner` (입점 판매자·계약·등급)
 
 > 계층: `partner.{resource}.{operation}`. 공통 규약(응답 형식·프리뷰/실행·멱등성·헤더)은 [conventions.md](conventions.md)와 [README.md](README.md) §3, 에러는 [errors.md](errors.md), 값 목록은 [enums.md](enums.md), 데이터 타입은 [data-model.md](data-model.md), 정책은 [partner.yml](../../policies/partner.yml) · [approval.yml](../../policies/approval.yml).
-> **범위**: 데모 시나리오([../scenarios.md](../scenarios.md))는 판매자가 하나인 단일 스토어라 이 도메인을 쓰지 않습니다. 여러 판매자가 입점하는 구조를 위한 명세입니다.
-> **설계 축**: ① 입점 판매자는 schema.org `Organization`이며, 상품의 `Offer.seller`·주문의 `Order.seller`와 같은 id(`slr_…`)를 씁니다. ② 신청 → 심사 → 승인 → 활성의 상태 전이(enums.md §1.14 판매자). ③ 계약(수수료·정산 조건)은 돈이 움직이므로 W$이고 버전으로 쌓습니다(id는 그대로, `version` 필드가 오름). ④ 등급은 배송 준수율·이행률 실적으로 서버가 계산하고, 사람은 확정과 예외 조정만 합니다. ⑤ `seller_id`는 모든 도메인에서 같은 필터 축입니다.
+> **범위**: 여러 판매자가 입점하는 구조를 위한 도메인입니다. 데모 스토어에는 입점 판매자 셋이 시드돼 있지만(Fieldstone Boot Co.와 Ridgeline Outdoor Inc.는 `active`, Harbor Goods LLC는 `under_review`, `seed/demo/11_partner.yml`) 데모 장면([../scenarios.md](../scenarios.md) §6)은 이 도메인을 쓰지 않습니다. 바깥에 닿는 일(사업자 등록 조회)은 결정적 스텁이고 결과에 그렇게 적습니다(`onboard_seller`의 `registry_check`).
+> **설계 축**: ① 입점 판매자는 schema.org `Organization`(+ `acom:Seller`, id `slr_…`)입니다. 판매자가 파는 상품은 partner의 연결(`partner.seller_product_group`, `schema:offeredBy`, 상품 하나에 판매자 하나)로 정합니다. ② 신청 → 심사 → 승인 → 활성의 상태 전이(enums.md §1.16 판매자). ③ 계약(수수료·정산 조건)은 돈이 움직이므로 W$이고 버전으로 쌓습니다(id는 그대로, `version` 필드가 오름). ④ 등급은 배송 준수율·이행률 실적으로 서버가 계산하고, 사람은 확정과 예외 조정만 합니다. ⑤ `seller_id`는 partner·integration에서 같은 필터 축입니다. 주문은 아직 판매자를 기록하지 않아 `search_orders`의 `seller_id`는 `invalid_filter`입니다.
 
 리소스: [seller](#seller) · [contract](#contract) · [grade](#grade) · [dashboard](#dashboard)
 

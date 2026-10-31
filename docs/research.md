@@ -214,9 +214,9 @@ Captures:
 | Starts from | Existing API | Existing admin | New small store | Large existing back-end, redesigned |
 | Tool layer | 1:1 wrappers | Platform-internal | Platform-internal | Designed for agents (A2API), measured |
 | Operator review | n/a | Approve a step | Chat | Change set: interpretation, checks, preview, read-back, undo |
-| Shopper side | Through outside agents | n/a | Generated store | Same tools for our shopper agent and outside agents |
+| Shopper side | Through outside agents | n/a | Generated store | Same tools for our shopper agent and, once the MCP endpoint is built, outside agents |
 | Models | Any | Vendor | Vendor | Open weights in-house (Muse Glimmer) plus Muse Spark |
-| Evidence | — | — | — | Same tasks: wrapped API vs A2API, Glimmer vs Spark |
+| Evidence | — | — | — | Same tasks: wrapped API vs A2API (on Glimmer, design set, Oct 31: 0% vs 58%; Spark not measured yet) |
 
 Closest competitors to watch: **Shopify Sidekick** (operator side), **Genstore** (pitch), **BigCommerce Store Management MCP + Smart Edits** (agent writes to the admin).
 
@@ -224,7 +224,7 @@ How A-Commerce differs:
 
 1. **It starts from the back-end.** We redesign a large commerce back-end into an AI-friendly tool layer (the "A2API" idea) and measure that a small open model can use it. Others either expose the existing API or build a new small-store product.
 2. **Change sets.** Operator work is reviewed as a change set with interpretation, checks, preview, read-back, and undo. Sidekick has approval; nobody we found treats store changes like reviewable pull requests.
-3. **One tool layer for every agent.** Our operator agent, our shopper agent, and outside agents (ChatGPT, Gemini through ACP/UCP-style endpoints) use the same tools and policies.
+3. **One tool layer for every agent.** Our operator agents and our shopper agent use the same tools and policies, and outside agents (ChatGPT, Gemini through ACP/UCP-style endpoints) are meant to use them too; the MCP endpoint for them is not built yet.
 4. **Open weights, on our own servers.** Muse Glimmer runs inside the company, so catalog and customer data stay in-house.
 
 ## 9. What we borrow

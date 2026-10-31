@@ -1,6 +1,6 @@
 # 데이터베이스 (PostgreSQL)
 
-A-Commerce의 DB는 **AI가 읽는 DB**입니다. 에이전트(인사이트 에이전트의 질의, 툴 구현을 돕는 코딩 에이전트, 외부 분석 도구)와 사람이 테이블 이름, 컬럼 이름, 주석만 보고 무엇이 무엇인지 알 수 있어야 합니다. 그래서 이름은 schema.org에서 가져오고, 모든 테이블과 컬럼에 schema.org 용어가 적힌 주석을 달고, 규칙은 `cargo xtask check-schema`가 강제합니다.
+A-Commerce의 DB는 **AI가 읽는 DB**입니다. 에이전트(운영 에이전트, 툴 구현을 돕는 코딩 에이전트, 외부 분석 도구)와 사람이 테이블 이름, 컬럼 이름, 주석만 보고 무엇이 무엇인지 알 수 있어야 합니다. 그래서 이름은 schema.org에서 가져오고, 모든 테이블과 컬럼에 schema.org 용어가 적힌 주석을 달고, 규칙은 `cargo xtask check-schema`가 강제합니다.
 
 - 개념 모델(엔티티 ↔ schema.org 타입, API 필드): [../api/data-model.md](../api/data-model.md)
 - 값 목록: [../api/enums.md](../api/enums.md), 식별자 접두: [../api/conventions.md](../api/conventions.md) §9
@@ -23,17 +23,17 @@ A-Commerce의 DB는 **AI가 읽는 DB**입니다. 에이전트(인사이트 에�
 
 | 스키마 | 내용 |
 |---|---|
-| `platform` | 스토어(테넌트), 운영자, 역할, 세션, 정책 덮어쓰기, 프리뷰, 변경셋, 액션 로그, 할 일, 작업 큐, 아웃박스, 멱등 키, 데모 시계 |
-| `catalog` | 브랜드, 상품(ProductGroup), 변형(Product), 가격 제안(Offer), 실측, 반품 정책, 리뷰 |
-| `merchandising` | 카테고리(DefinedTerm), 진열 슬롯, 배너, 진열 예약 |
-| `search` | 검색 문서(전문 검색 + 임베딩) |
-| `promotion` | 프로모션, 기간·회원가(UnitPriceSpecification), 쿠폰, 회원 쿠폰 |
-| `customer` | 사람(Person), 주소, 회원 프로그램·등급·멤버십, 기억(선호) |
-| `sales` | 장바구니, 주문(Order), 주문 품목(OrderItem), 결제 |
-| `fulfillment` | 배송(ParcelDelivery), 클레임, 검수, 환불 |
-| `messaging` | 메시지 |
+| `platform` | 스토어(테넌트), 운영자, 역할, 세션, 조직, 백오피스 메뉴, API 키, 정책 덮어쓰기, 프리뷰, 변경셋, 액션 로그, 할 일, 작업 큐, 아웃박스, 멱등 키, 데모 시계 |
+| `catalog` | 브랜드, 상품(ProductGroup), 변형(Product), 가격 제안(Offer), 예약 정가, 묶음 구성, 실측, 반품 정책, 리뷰·도움돼요·신고, 상품 문의·답, 재입고 알림, 공급사 재주문, 공급사 시트와 가져오기, 생성한 문구·이미지 초안 |
+| `merchandising` | 카테고리(DefinedTerm)와 매핑, 진열 슬롯, 배너, 진열 예약, 기획전, 팝업, 캐시 비우기 기록 |
+| `search` | 검색 문서(전문 검색, 임베딩 열은 비어 있음), 검색 사전 버전, 재색인 기록 |
+| `promotion` | 프로모션, 기간·회원가(UnitPriceSpecification), 쿠폰, 회원 쿠폰, 적립금 원장, 사은품, 세그먼트, 이벤트·응모·추첨·보상 |
+| `customer` | 사람(Person), 주소, 회원 프로그램(버전)·등급·멤버십과 등급 변경 이력·정기 평가, 기억(선호), 위시리스트, 동의 기록, 문의와 그 대화, FAQ·공지, 직원, 보상, 본인 확인, 계정 찾기, 탈퇴 |
+| `sales` | 장바구니, 주문(Order), 주문 품목(OrderItem), 주문 이벤트, 결제, 선물 주문, 정기 주문, 영수증, 비회원 주문 조회 |
+| `fulfillment` | 배송(ParcelDelivery)과 그 이벤트, 클레임, 검수, 환불과 그 이벤트, 배송 구역 |
+| `messaging` | 메시지, 메시지 템플릿, 캠페인 |
 | `community` | 게시판(`acom:Board`), 글(DiscussionForumPosting), 댓글(Comment), 글 신고 |
-| `analytics` | 읽기 전용 뷰(일별 매출 등) |
+| `analytics` | 읽기 전용 뷰 8개(일별 매출, 주문·주문 줄 요약, 품절, 캠페인 발송, 등급별 회원 수, 일별 가입, 문의 요약) |
 | `partner` | 입점 판매자(Organization), 판매자가 파는 상품, 상태 이력, 계약과 계약 버전, 등급 |
 | `integration` | 외부 채널(자격 증명·서명 키는 해시만), 채널이 가진 주문·클레임 사본, 외부 피드 가져오기와 행별 결과, 받은 택배사·결제사 이벤트 |
 | `agent` | 대화, 턴, 단계, 모델 호출 (agent 서비스 소유) |
@@ -73,7 +73,7 @@ A-Commerce의 DB는 **AI가 읽는 DB**입니다. 에이전트(인사이트 에�
 
 ## 5. 값 목록과 제약
 
-- 상태·종류 컬럼은 `text`와 `CHECK (<컬럼> IN (...))`이고 값은 [enums.md](../api/enums.md)와 같습니다. Rust의 `acom-core` enum과 마이그레이션의 목록이 같은지 단위 테스트가 확인합니다.
+- 상태·종류 컬럼은 `text`와 `CHECK (<컬럼> IN (...))`이고 값은 [enums.md](../api/enums.md)와 같습니다. Rust의 `acom-core` enum과 마이그레이션의 목록이 같은지 `cargo xtask check-schema`가 확인합니다.
 - Postgres `ENUM` 타입은 쓰지 않습니다. 값을 더할 때 마이그레이션이 쉽고, `\d+`와 주석으로 목록이 바로 보입니다.
 - 금액은 `numeric(12,2)`, 통화는 `char(3)`이며 `CHECK (price_currency ~ '^[A-Z]{3}$')`를 둡니다. 음수가 안 되는 값은 `CHECK (>= 0)`을 둡니다.
 - 기간은 `CHECK (valid_through > valid_from)`.
@@ -106,7 +106,7 @@ COMMENT ON COLUMN catalog.offer.tenant_id IS
   - `docs/api/generated/schema-map.json`: 기계용
   - [`vocab/acom.jsonld`](../../vocab/acom.jsonld): 주석에 쓴 모든 `acom:` 용어의 정의. 손으로 쓴 `vocab/terms.json` + 주석 + `acom-core` enum으로 만들기 때문에, DB에 나오는 우리 용어는 모두 정의를 가집니다.
 - `schema-map.json` 항목: `{schema, table, term, id_prefix, api_name, columns: [{name, type, nullable, term, description, values?, references?}]}`.
-- 커머스 서비스는 이 지도를 `platform.schema.describe`(툴 `describe_data`, 읽기)로 내놓습니다. 인사이트 에이전트가 "order_status가 무슨 뜻인가", "일별 매출은 어디에 있나"를 물어볼 수 있고, 읽기 전용 질의는 `analytics` 뷰로만 합니다.
+- 커머스 서비스는 이 지도를 `platform.schema.describe`(툴 `describe_data`, 읽기)로 내놓습니다. "order_status가 무슨 뜻인가", "일별 매출은 어디에 있나"를 물을 수 있습니다. 툴 범위에 `platform`이 있는 운영 에이전트(promotion, orders, catalog)가 부를 수 있고, 인사이트 에이전트의 범위는 `analytics`뿐입니다. 외부 분석 도구는 `acom_readonly` 역할로 `analytics` 뷰만 읽습니다(§8).
 
 ## 8. 스토어 격리 (RLS)
 
@@ -144,7 +144,7 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 
 ## 10. 검색
 
-`search.search_document`는 상품마다 한 행: `product_group_id`, `search_vector tsvector`(이름·브랜드·카테고리·소재·설명, 가중치 A–D), `embedding vector(1024)`, 거르기용 컬럼(`category_ids text[]`, `available_sizes text[]`, `price_min`, `price_max`, `price_currency`). 등급별 가격과 재고는 질의할 때 `promotion`·`catalog`와 조인해서 거릅니다(결과를 받은 뒤 거르지 않음). 임베딩 차원은 설정한 임베딩 모델에 맞추고, 바꿀 때는 마이그레이션으로 바꿉니다.
+`search.search_document`는 상품마다 한 행: `product_group_id`, `search_vector tsvector`(이름 A, 브랜드·카테고리·키워드 B, 소재 C, 설명 D), `embedding vector(1024)`와 `embedding_model`, 거르기용 컬럼(`brand_id`, `category_ids text[]`, `keywords`, `available_sizes`, `available_colors`, `price_min`, `price_max`, `price_currency`, `approval_status`). `reindex`가 catalog에서 다시 만듭니다. 재고·판매 상태·가격 조건은 catalog의 상품 질의(`service::for_search::find_products`) 안에서 거르고(결과를 받은 뒤 거르지 않음), 회원가는 상품 카드를 만들 때 promotion에서 읽습니다. 임베딩 모델은 연결돼 있지 않아 `embedding`은 NULL이고 순위는 전문 검색으로만 정합니다. 모델을 붙여 차원이 바뀌면 마이그레이션으로 바꿉니다.
 
 ## 11. API 이름과 DB 이름
 
@@ -165,7 +165,9 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 
 변형을 가리키는 DB 컬럼은 `product_id`, 상품을 가리키는 DB 컬럼은 `product_group_id`입니다. 값의 접두(`var_`, `prd_`)가 항상 어느 쪽인지 알려 줍니다.
 
-## 12. 테이블 목록 (MVP와 P1)
+## 12. 테이블 목록
+
+마이그레이션 31개가 만드는 테이블과 뷰는 135개, 컬럼은 1,816개이고, 모두 schema.org나 `acom:` 용어로 시작하는 주석이 있습니다(`cargo xtask check-schema`). 컬럼까지는 [schema.generated.md](schema.generated.md)에 있습니다.
 
 | 스키마.테이블 | 용어 (`@type`/`additionalType`, `-`는 기술 테이블) | 접두 | 비고 |
 |---|---|---|---|
@@ -192,11 +194,17 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `catalog.offer` | schema:Offer | `off` | `price`, `price_currency`, `availability`, `inventory_level`, `cost_value`·`cost_currency`(acom, 운영자만) |
 | `catalog.measurement` | schema:QuantitativeValue (hasMeasurement) | — | 실측(가슴, 어깨, 소매, 기장) |
 | `catalog.merchant_return_policy` | schema:MerchantReturnPolicy | — | `merchant_return_days`, `return_fees` |
-| `catalog.review` | schema:Review | `rev` | `review_rating_value`, `review_body`, `acom:fit_vote` |
+| `catalog.review` | schema:Review | `rev` | `rating_value`, `review_body`, `fit_vote` |
 | `catalog.data_feed` | schema:DataFeed | `upl` | 올린 공급사 시트(API: upload_id). 행은 `data_feed_element` |
 | `catalog.product_import` | schema:CreateAction/acom:ProductImport | `imp` | `batch_import` 실행 한 번 |
 | `catalog.data_feed_item` | schema:DataFeedItem | — | 시트 행 ↔ 초안, `draft_status`, `open_fields` |
 | `catalog.unit_price_specification` | schema:UnitPriceSpecification | `ups` | 예약 정가(`schedule_price_change`), 그때그때 계산 |
+| `catalog.type_and_quantity_node` | schema:TypeAndQuantityNode | — | 묶음(`create_bundle`)의 구성 변형과 수량. 묶음의 가격·재고는 구성에서 계산 |
+| `catalog.review_vote`, `catalog.review_report` | schema:VoteAction/acom:ReviewVote, schema:Action/acom:ContentReport | —, `rpt` | 리뷰 도움돼요(쇼퍼마다 하나), 리뷰 신고(모더레이션 대기열로) |
+| `catalog.question`, `catalog.answer` | schema:Question, schema:Answer | `qst`, `ans` | 상품 문의와 채택된 답(문의마다 하나) |
+| `catalog.restock_alert` | schema:SubscribeAction/acom:RestockAlert | `rsa` | 품절 변형의 재입고 알림 신청. 보낼 알림은 `platform.outbox`에 남음 |
+| `catalog.reorder`, `catalog.reorder_item` | schema:Order/acom:Reorder, schema:OrderItem | `ro` | 공급사에 내는 재주문과 변형별 수량 |
+| `catalog.copy_draft`, `catalog.image_object` | schema:CreativeWork/acom:CopyDraft, schema:ImageObject | `cpd`, `img` | `generate_copy`·`generate_image`의 초안(자리 표시 생성). `update_product_group`이 쓸 때까지 상품 페이지 밖 |
 | `merchandising.defined_term` | schema:DefinedTerm | `cat` | 카테고리, `in_defined_term_set`(standard/display) |
 | `merchandising.product_group_category` | - | — | 상품 ↔ 카테고리 |
 | `merchandising.category_mapping` | schema:Intangible/acom:CategoryMapping | `map` | 표준 → 전시 카테고리 |
@@ -224,12 +232,24 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `customer.member_program_tier` | schema:MemberProgramTier | — | id는 스토어가 정한 단어(`vip`), `rank` |
 | `customer.program_membership` | schema:ProgramMembership | — | 사람 ↔ 등급 |
 | `customer.preference` | schema:PropertyValue/acom:Preference | `mem` | 보이는 기억 |
+| `customer.member_program_version` | schema:MemberProgram/acom:ProgramVersion | — | 등급 프로그램 정의의 버전(`define_tier_program`). 되돌리기용으로 남김 |
+| `customer.program_membership_event` | schema:UpdateAction/acom:TierChange | — | 회원 등급 변경 이력(추가만) |
+| `customer.tier_evaluation` | schema:AssessAction/acom:TierEvaluation | `tev` | 등급 평가 한 번과 그 이동 |
+| `customer.wishlist_item` | schema:ListItem/acom:WishlistItem | — | 위시리스트. 상품 id가 키 |
+| `customer.consent_record` | schema:Action/acom:ConsentRecord | `cns` | 동의·철회 기록(추가만). API: consent |
+| `customer.customer_inquiry`, `customer.comment` | schema:Message/acom:CustomerInquiry, schema:Comment | `inq`, `cmt` | 고객 문의와 그 대화. API: inquiry |
+| `customer.question`, `customer.news_article` | schema:Question, schema:NewsArticle | `faq`, `ntc` | FAQ, 공지. API: faq, notice |
+| `customer.employee_role` | schema:EmployeeRole | `emp` | 직원인 회원과 직원 할인 한도. API: employee |
+| `customer.remedy` | schema:Action/acom:Remedy | `rmd` | 고객 보상(적립금·쿠폰·현금), 귀책과 단계별 승인 |
+| `customer.identity_verification`, `customer.recovery_request` | schema:CheckAction/acom:IdentityVerification, schema:Action/acom:RecoveryRequest | `ivf`, `rcv` | 본인 확인 한 번, 비밀번호 재설정·아이디 찾기 요청 |
+| `customer.withdrawal` | schema:Action/acom:Withdrawal | — | 탈퇴: 사유, 정산, 보관하는 것과 기한, 재가입을 잠시 막는 단방향 지문 |
 | `sales.cart` | schema:Order/acom:Cart | `cart` | |
 | `sales.cart_line` | schema:OrderItem/acom:CartLine | `cln` | |
 | `sales.sales_order` | schema:Order | `ord` | `order_number`, `order_status`, `order_date`, `is_gift` |
 | `sales.order_item` | schema:OrderItem | `oln` | `order_item_status`, `order_quantity`, `acom:fulfillment_stage` |
 | `sales.payment` | schema:PayAction | `pay` | `payment_method`, `payment_status` |
 | `sales.order_event` | schema:Action | — | |
+| `sales.gift_order` | schema:AcceptAction/acom:GiftOrder | `gift` | 받는 사람이 수락하고 주소를 줄 때까지 기다리는 선물 |
 | `sales.subscription` | schema:Order/acom:Subscription | `sub` | 정기 주문: `subscription_status`, `billing_cycle`, `next_charge_date`, 줄(`ordered_item`)과 배송지(`order_delivery`)는 jsonb |
 | `sales.receipt` | schema:Invoice/acom:Receipt | `rct` | `receipt_type`, `tax_id`, 주문·종류마다 취소되지 않은 것 하나 |
 | `sales.guest_lookup` | - | — | `verify_guest`의 주문 번호별 틀린 시도·잠금·토큰 해시 |
@@ -239,7 +259,10 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `fulfillment.claim_event` | schema:Action | — | |
 | `fulfillment.inspection` | schema:CheckAction | `ins` | `inspection_condition` |
 | `fulfillment.refund` | schema:MoneyTransfer/acom:Refund | `rfd` | `refund_status`, `refund_method`, `amount_value`·`amount_currency` |
+| `fulfillment.parcel_delivery_event`, `fulfillment.refund_event` | schema:Action | — | 배송·환불 상태 변화(추가만) |
+| `fulfillment.shipping_zone` | schema:ShippingRateSettings/acom:ShippingZone | `zone` | 배송 구역: 배송비, 무료 배송 기준, 추가 요금, 배송 일수 |
 | `messaging.message` | schema:Message | `msg` | `recipient_id`, `text`, `message_channel`, `about_id` |
+| `messaging.message_template` | schema:CreativeWork/acom:MessageTemplate | `tpl` | 채널별 재사용 메시지와 변수. 만들어도 보내지 않음 |
 | `messaging.campaign` | schema:CreativeWork/acom:Campaign | `cmp` | `campaign_status`(`failed` 포함), `scheduled_time`, `date_sent`, `error`, 대상(`valid_for_member_tier`·`segment_id`·`recipient_ids`), `variable_values`. 고객별 메시지는 `messaging.message.campaign_id`(`message_kind: campaign`). 주문은 `sales_order.campaign_id`로 자기를 데려온 캠페인을 가리킴 |
 | `community.board` | schema:CreativeWork/acom:Board | `brd` | `board_type`, `write_permission`, `allow_secret`, `allow_attachment`, `moderation_mode` |
 | `community.discussion_forum_posting` | schema:DiscussionForumPosting | `post` | API: post. `headline`, `article_body`, `is_secret`, `moderation_status`, 마스킹된 `author_name` |
@@ -263,8 +286,9 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 
 ## 13. 마이그레이션 규칙과 검사
 
-- 파일: `migrations/NNNN_<내용>.sql`. 모든 테이블은 우리 문서에서 새로 설계해 작성합니다(다른 시스템의 정의를 옮기지 않음).
-- **첫 공유 DB 전까지(M6 전)는 기준선(baseline)입니다.** DB가 아직 없으므로 마이그레이션 파일을 제자리에서 고쳐 테이블을 하나씩 다듬습니다. 첫 공유 DB가 생긴 뒤부터는 앞으로만 진행하고, 파괴적 변경은 확장 → 이전 → 축소 세 단계로 합니다.
+- 파일: `migrations/NNNN_<내용>.sql`. 지금 `0001`–`0032`의 31개이고 `0015`는 쓰지 않은 번호입니다. 모든 테이블은 우리 문서에서 새로 설계해 작성합니다(다른 시스템의 정의를 옮기지 않음).
+- **추가만 합니다.** 데모 서버의 DB가 마이그레이션을 적용하고 있고, `sqlx`는 적용된 파일의 체크섬이 바뀌면 `migrate`를 거부합니다. 그래서 적용된 파일은 고치지 않고 새 번호의 파일을 더하며, 파괴적 변경은 확장 → 이전 → 축소 세 단계로 합니다.
+- **번호는 main의 마지막 번호 다음입니다.** 두 브랜치가 같은 번호를 잡았으면 나중에 머지하는 쪽이 번호를 올립니다(예: integration은 `0031`에서 `0032`로).
 - 한 파일 안에서: `CREATE TABLE` → 인덱스 → `COMMENT` → RLS 순서.
 - `cargo xtask check-schema`가 확인하는 것:
   - 모든 테이블·컬럼에 주석이 있고 첫 토큰이 `schema:`/`acom:`/`-`.
@@ -272,7 +296,7 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
   - 참조 컬럼이 `_id`로 끝남.
   - 금액 `_value`에 짝 `_currency`가 있음.
   - 스토어 범위 테이블에 `tenant_id`와 RLS 정책이 있음.
-  - 시각이 `timestamptz`.
+  - 시각이 `timestamptz`, 부동소수 컬럼 없음.
   - `id`에 접두 검사가 있음.
   - `CHECK` 단어 목록이 `acom-core` enum과 같고, 주석에 `values: <목록>`이 있음.
   - 테이블 용어의 우리 타입은 PascalCase, 컬럼 용어의 우리 프로퍼티는 lowerCamelCase.

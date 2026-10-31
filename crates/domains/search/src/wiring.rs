@@ -2,7 +2,9 @@
 //! catalog, customer, promotion, merchandising and sales in the crate graph, so it is the
 //! place where catalog's lookups meet their service functions. Installed once by `register`.
 
-use acom_catalog::neighbors::{CategoryLink, CategoryTerm, Neighbors, PurchasedItem, SalePrice};
+use acom_catalog::neighbors::{
+    CategoryLink, CategoryTerm, Neighbors, PurchasedItem, SalePrice, UnitsSold,
+};
 use acom_contract::ToolError;
 use acom_store::TxCx;
 use chrono::{DateTime, Utc};
@@ -106,6 +108,23 @@ impl Neighbors for Wiring {
                     order_item_status: l.order_item_status,
                 })
                 .collect())
+        })
+    }
+
+    fn units_sold<'a>(
+        &'a self,
+        tx: &'a mut TxCx,
+        variant_ids: &'a [String],
+        days: u32,
+    ) -> BoxFuture<'a, Result<UnitsSold, ToolError>> {
+        Box::pin(async move {
+            let (window, by_variant) =
+                acom_sales::service::for_catalog::units_sold(tx, variant_ids, days).await?;
+            Ok(UnitsSold {
+                valid_from: Some(window.valid_from),
+                valid_through: Some(window.valid_through),
+                by_variant,
+            })
         })
     }
 

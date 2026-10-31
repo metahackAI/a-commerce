@@ -9,7 +9,7 @@ A-Commerce의 모든 구성 요소는 컨테이너이고, **어디서 띄우든 
 | `infra/k8s/` | Kubernetes(Kustomize): `base/`, `components/`, `overlays/{local,production}`, `kind/`. 자세한 것은 [k8s/README.md](k8s/README.md) |
 | `infra/postgres/` | DB 역할을 만드는 `init.sql`(Compose·Kubernetes 공용)과 로컬 클러스터용 Postgres 컴포넌트 |
 | `infra/scripts/` | `gen-keys.sh`(게이트웨이 서명 키), `kind-up.sh` / `kind-down.sh` |
-| `infra/deploy/` | 데모 서버 배포: main 머지 → GitHub Actions가 GHCR에 이미지 → 서버 배포기가 가져가 실행. 쓰는 법은 [deploy/README.md](deploy/README.md) |
+| `infra/deploy/` | 데모 서버 배포: main 머지 → GitHub Actions가 deployment를 기록 → 서버의 배포기가 그 sha의 이미지를 서버에서 빌드하고 바뀐 서비스만 재시작. 쓰는 법은 [deploy/README.md](deploy/README.md) |
 | `infra/secrets/` | 로컬 비밀(git 무시). 운영 비밀은 여기 두지 않음 |
 
 명령은 저장소 루트의 `Makefile` 하나로 모읍니다(`make help`).
@@ -29,14 +29,14 @@ A-Commerce의 모든 구성 요소는 컨테이너이고, **어디서 띄우든 
 
 | 구성 요소 | 이미지 | 명령 | 포트 | 하는 일 | 확장 |
 |---|---|---|---|---|---|
-| **gateway** | `acom-gateway` | (기본) | 7000 | 유일한 입구. `/api/v1/*`·`/mcp` → commerce, `/api/chat/*` → agent(SSE 스트리밍), 나머지 → web. `/api/auth/*`(로그인·세션) 자체 처리, 요청마다 내부 토큰 서명 | 수평 |
-| **web** | `acom-web` | `node server.js` | 3000 | Next.js(Meta Astryx). `/`(스토어프론트), `/bo`(백오피스) | 수평 |
-| **commerce** | `acom-commerce` | `serve` | 7001 | 툴 REST·MCP·사람 전용 엔드포인트, 정책 엔진, 변경셋 | 수평 |
+| **gateway** | `acom-gateway` | (기본) | 7000 | 유일한 입구. `/api/v1/*`·`/mcp`(자리만, commerce에 MCP가 아직 없음) → commerce, `/api/chat/*` → agent(SSE 스트리밍), 나머지 → web. `/api/auth/*`(로그인·세션) 자체 처리, 요청마다 내부 토큰 서명 | 수평 |
+| **web** | `acom-web` | `node server.js` | 3000 | Next.js(Meta Astryx), 제목 "Ailism Commerce". `/`(스토어프론트), `/bo`(백오피스) | 수평 |
+| **commerce** | `acom-commerce` | `serve` | 7001 | 툴 REST·사람 전용 엔드포인트, 정책 엔진, 변경셋(외부 에이전트용 MCP는 아직 없음) | 수평 |
 | **commerce-worker** | `acom-commerce` | `work` | 7003(헬스·지표) | 예약 작업, 아웃박스 | 수평(작업을 잠금으로 나눔) |
 | **agent** | `acom-agent` | (기본) | 7002 | 대화 턴, 툴 검색·계획·실행, 모델 호출 | 수평 |
 | **migrate** | `acom-commerce` | `migrate` | — | 마이그레이션 적용 후 종료(Compose 서비스 / Kubernetes Job) | 한 번 |
 | **postgres** | `pgvector/pgvector:pg17` | — | 5432 | 유일한 상태 저장소. 운영은 관리형 Postgres | — |
-| models (선택) | `vllm/vllm-openai` | `--model …` | 8000 | 작업 모델(Glimmer)을 OpenAI 호환 API로. GPU 필요 | GPU 수 |
+| models (선택) | `vllm/vllm-openai` | `--model …` | 8000 | 작업 모델(Glimmer)을 OpenAI 호환 API로. GPU 필요. 데모 서버는 이 서비스 대신 따로 띄운 Glimmer 엔드포인트를 씀 | GPU 수 |
 | prometheus·grafana (선택) | 공식 이미지 | — | 9090·3000 | 지표 수집과 화면 | — |
 
 ## 3. 요청 흐름과 네트워크
@@ -111,12 +111,13 @@ make logs SERVICE=commerce
 make up-debug      # Postgres :5432와 각 서비스 포트(7001·7002·7003·3000)도 열고, 읽기 쉬운 로그
 make up-models     # GPU로 작업 모델(vLLM)도 실행 (.env의 VLLM_MODEL)
 make up-observability   # Prometheus :9090, Grafana :3001
+make reseed        # 스토어를 비우고 데모 스토어를 다시 적재 (admin / admin123)
 make down          # 멈춤(DB 볼륨 유지) / make clean: 볼륨까지 삭제
 ```
 
 - 시작 순서: `postgres`(healthy) → `migrate`(성공 종료, `ACOM_SEED=demo`면 데모 스토어 적재) → `commerce`·`commerce-worker`·`agent` → `web`·`gateway`.
 - 컨테이너는 읽기 전용 루트 파일 시스템, 권한 제거, `no-new-privileges`로 뜹니다(운영과 같음).
-- 시드 데이터 적재(`seed` 작업)는 M2에서 같은 방식(한 번 실행되는 서비스)으로 추가합니다.
+- 데모 스토어는 별도 서비스 없이 `migrate`가 적재합니다(`ACOM_SEED=demo`). 지금 시드의 지문이 스토어에 적힌 지문과 다를 때만 비우고 다시 적재하므로, 시드가 그대로면 재시작해도 데이터가 남습니다.
 
 ## 8. Kubernetes
 

@@ -57,7 +57,7 @@ a-commerce API
 | 툴 이름(모델이 보는 이름) | `verb_noun`, 평이한 영어 | `set_sale_prices` |
 | REST 경로 | `METHOD /v1/{domain}/{resources}/...` | `POST /v1/promotion/sale-prices` |
 
-툴 검색은 이 계층을 씁니다. 요청 → 해당 도메인 → 리소스 → 후보 툴 몇 개 + 툴 그래프 이웃. 모델은 290개 목록이 아니라 소수 후보만 봅니다([../backend/agent.md](../backend/agent.md) §3).
+툴 검색은 이 계층을 씁니다. 에이전트마다 쓸 수 있는 도메인(`agents/*.yml`의 `tool_scope`)과 주 도메인(`home_domains`)이 정해져 있고, 그 안에서 요청의 낱말로 툴에 점수를 매긴 뒤(BM25, 주 도메인 가산) 툴 그래프 이웃을 더해 후보 5–8개를 냅니다(`agents/runtime.yml` `tool_search`). 모델은 291개 목록이 아니라 이 후보만 봅니다([../backend/agent.md](../backend/agent.md) §3).
 
 ## 2. 오퍼레이션 종류
 
@@ -95,6 +95,8 @@ a-commerce API
 | `POST /v1/customer/account-recovery/login-id` | `{contact}` | 누구나(익명 세션) | `human:account` | 로그인 아이디 찾기 | 〃 |
 | `PUT /v1/customer/me/password` | `{current_password, new_password}` | 회원 본인 | `human:account` | 로그인 상태에서 비밀번호 변경 | 〃 |
 
+18개 모두 commerce에 있습니다(`cargo xtask check-coverage`). 웹에 버튼이 있는 것은 승인·거절·되돌리기, 할 일 치우기, 주문하기, 선물 수락, 주문 취소, 반품 요청, 기억 되돌리기의 아홉입니다. 정기 주문 시작, 교환 요청, 추가 비용 결제, 클레임 철회, 탈퇴, 비밀번호 재설정 요청·확정, 로그인 아이디 찾기, 비밀번호 변경의 아홉은 아직 웹 화면이 없습니다.
+
 에이전트는 `get_*_options`·`prepare_*`로 준비만 하고, 보내는 것은 사람입니다. 서버는 보내는 순간 다시 계산해 사람이 본 금액과 다르면 `estimate_changed`로 거부합니다. 비밀번호는 어떤 툴도 다루지 않습니다.
 
 ### 2.2 런타임 전용 엔드포인트
@@ -103,7 +105,7 @@ a-commerce API
 
 | 엔드포인트 | 본문 | 결과 |
 |---|---|---|
-| `POST /v1/platform/change-sets` | `{title, request_text, interpretation[], conversation_id}` | `{id, number, version: 1, state: "drafting"}` |
+| `POST /v1/platform/change-sets` | `{title, request_text, interpretation[], conversation_id, task_id?}` | `{id, number, version: 1, state: "drafting"}` |
 | `PATCH /v1/platform/change-sets/{id}` | `{title?, append_request_text?, interpretation?[]}` | 요청 문장 덧붙이기·해석 교체(대화로 고침) |
 | `POST /v1/platform/change-sets/{id}/items` | `{preview_id, depends_on?: [preview_id]}` | 항목 붙이기 |
 | `PUT /v1/platform/change-sets/{id}/items` | `{items: [{preview_id, depends_on?}]}` | 항목 교체(대화로 고침). `version+1`, `drafting` |
@@ -118,7 +120,7 @@ a-commerce API
 | `PUT /v1/platform/demo-clock` | `{now, is_running?}` (`admin:demo`, 데모 모드에서만) | 그 사이 기한이 된 예약 작업을 순서대로 실행한 뒤 `{now, is_running, demo_mode, previous, ran[]}` |
 | `POST /v1/platform/demo/reset` | — | 스토어를 비우고 데모 시드를 다시 적재(`admin:demo`, 데모 스택에서만). 모든 세션이 끝남 |
 
-쓰기 프리뷰는 `?change_set_id=cs_…`로 바로 붙일 수도 있습니다. 내부 읽기 `GET /v1/platform/previews/{preview_id}`와 이벤트 구독 `GET /v1/platform/events`(SSE: `change_set.updated`, `task.updated`, `job.updated`)는 [platform.md](platform.md#내부-엔드포인트).
+쓰기 프리뷰는 `?change_set_id=cs_…`로 바로 붙일 수도 있습니다. 내부 읽기 `GET /v1/platform/store`(스토어의 통화·시간대·현재 시각), `GET /v1/platform/previews/{preview_id}`와 이벤트 구독 `GET /v1/platform/events`(SSE: `change_set.updated`, `task.updated`, `job.updated`)는 [platform.md](platform.md#내부-엔드포인트).
 
 ## 3. 공통 규약 (요약)
 
@@ -181,7 +183,7 @@ a-commerce API
 
 ## 4. 전체 오퍼레이션 인덱스
 
-툴 **290개**(R 131 · W 119 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 9개(§2.2: 변경셋 6개, 데모 시계 2개, 데모 스토어 다시 적재 1개). **굵게** 표시한 30개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
+툴 **291개**(R 132 · W 119 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 9개(§2.2: 변경셋 6개, 데모 시계 2개, 데모 스토어 다시 적재 1개). **굵게** 표시한 30개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
 
 ### Offer
 
@@ -192,7 +194,7 @@ a-commerce API
 | product | **`get_product`** R · **`get_product_measurements`** R · `create_product` W · `update_product` W · `set_variants` W · `discontinue_product` W · `get_return_policy` R · `get_delivery_policy` R · `batch_import` W$ · `generate_image` W$ · `generate_copy` W |
 | offer | `get_price_breakdown` R · `set_price` W · `schedule_price_change` W |
 | inventory | `get_inventory` R · `set_variant_stock` W · `set_safety_stock` W |
-| reorder | `create_reorder` W · `receive_reorder` W |
+| reorder | `suggest_reorder` R · `create_reorder` W · `receive_reorder` W |
 | approval | `submit_for_review` W · `approve_product` W$ · `reject_product` W · `get_change_history` R |
 | brand | `list_brands` R · `get_brand` R · `create_brand` W · `update_brand` W |
 | review | **`get_review_summary`** R · `list_reviews` R · `moderate_review` W · `create_review` W · `update_review` W · `delete_review` W · `vote_review_helpful` W · `report_review` W |

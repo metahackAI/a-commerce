@@ -72,7 +72,7 @@ enum SeedMode {
 enum Command {
     /// Serve the API (the default).
     Serve,
-    /// Run scheduled jobs and the outbox.
+    /// Run scheduled jobs and watchers (platform.job).
     Work,
     /// Apply migrations as the owner role, then exit. With `ACOM_SEED=demo`, also load the demo
     /// store if it is not there yet or was loaded from other seed rows.

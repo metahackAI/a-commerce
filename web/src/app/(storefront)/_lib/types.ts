@@ -1,7 +1,7 @@
 // Response types for the storefront, written by hand from docs/api/*.md (catalog, search,
 // merchandising, promotion, sales, customer, fulfillment). They follow the specs' example
-// outputs; optional fields are the ones a spec shows only sometimes. When the generated contract
-// lands in src/contract/, these move there.
+// outputs; optional fields are the ones a spec shows only sometimes. Nothing generates them; keep
+// them equal to the specs when a response changes.
 
 /** `{"value": 71.20, "currency": "USD"}` (docs/api/conventions.md §3). */
 export interface Money {

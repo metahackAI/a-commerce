@@ -197,6 +197,103 @@ pub fn echo_start(reply: &str, prompt: &str) -> Option<usize> {
         .min()
 }
 
+/// Adds the field names of a result that read as identifiers (`order_quantity`, not `name`).
+pub fn field_names(v: &Value, into: &mut BTreeSet<String>) {
+    match v {
+        Value::Object(m) => {
+            for (k, x) in m {
+                if k.contains('_') {
+                    into.insert(k.to_ascii_lowercase());
+                }
+                field_names(x, into);
+            }
+        }
+        Value::Array(a) => a.iter().for_each(|x| field_names(x, into)),
+        _ => {}
+    }
+}
+
+/// The words of `reply` that are one of `names` (tools and fields, written with `_`) and that
+/// the person did not write themselves, in order and once each.
+pub fn system_words(reply: &str, request: &str, names: &BTreeSet<String>) -> Vec<String> {
+    let asked = request.to_ascii_lowercase();
+    let mut found = Vec::new();
+    for word in reply.split(|c: char| !(c.is_ascii_alphanumeric() || c == '_')) {
+        let word = word.trim_matches('_').to_ascii_lowercase();
+        if word.contains('_')
+            && names.contains(&word)
+            && !asked.contains(&word)
+            && !found.contains(&word)
+        {
+            found.push(word);
+        }
+    }
+    found
+}
+
+/// The `text` of a structured reply that stopped before its closing brace, as a length limit
+/// leaves it: `{"text":"Two are low. The third is` gives `Two are low. The third is`. `None` when
+/// the answer does not start as that object.
+pub fn text_of_cut_reply(raw: &str) -> Option<String> {
+    let rest = raw.trim_start().strip_prefix('{')?.trim_start();
+    let rest = rest.strip_prefix("\"text\"")?.trim_start();
+    let rest = rest.strip_prefix(':')?.trim_start().strip_prefix('"')?;
+    let mut out = String::new();
+    let mut chars = rest.chars();
+    while let Some(c) = chars.next() {
+        match c {
+            '"' => break,
+            '\\' => match chars.next() {
+                Some('n') => out.push('\n'),
+                Some('t') => out.push('\t'),
+                Some('u') => {
+                    let hex: String = chars.by_ref().take(4).collect();
+                    if let Some(ch) = u32::from_str_radix(&hex, 16).ok().and_then(char::from_u32) {
+                        out.push(ch);
+                    }
+                }
+                Some(other) => out.push(other),
+                None => break,
+            },
+            c => out.push(c),
+        }
+    }
+    let out = out.trim();
+    (!out.is_empty()).then(|| out.to_owned())
+}
+
+/// The text up to its last finished sentence (`.`, `!` or `?` before a space or the end, so
+/// `$2,463.00` does not end one). `None` when no sentence finished.
+pub fn whole_sentences(text: &str) -> Option<String> {
+    let end = text
+        .char_indices()
+        .rev()
+        .find(|&(i, c)| {
+            matches!(c, '.' | '!' | '?')
+                && text[i + c.len_utf8()..]
+                    .chars()
+                    .next()
+                    .is_none_or(char::is_whitespace)
+        })
+        .map(|(i, c)| i + c.len_utf8())?;
+    let kept = text[..end].trim();
+    (!kept.is_empty()).then(|| kept.to_owned())
+}
+
+/// Whether `reply` repeats the person's whole request: a model narrating its own reasoning
+/// ("X is selling fast. Draft a reorder… The results show…") instead of answering. Requests
+/// under 20 characters are too short to tell.
+pub fn repeats_request(reply: &str, request: &str) -> bool {
+    let flat = |s: &str| {
+        s.split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .to_lowercase()
+    };
+    let request = flat(request);
+    request.chars().count() >= 20 && flat(reply).contains(&request)
+}
+
 /// The reply with every date said as weekday, month and day ("Sun Nov 2", "Monday, November 2")
 /// given the weekday that date falls on, in the year nearest `today`. A small model names the
 /// weekday of a date wrong now and then; the calendar does not.
@@ -413,5 +510,74 @@ mod tests {
         );
         let said = "since Monday, 3 orders";
         assert_eq!(fix_weekdays(said, today), said);
+    }
+
+    #[test]
+    fn tool_and_field_names_the_person_did_not_write_are_system_words() {
+        let mut names: BTreeSet<String> = ["suggest_reorder".to_owned()].into();
+        field_names(
+            &serde_json::json!({"lines": [{"order_quantity": 0, "name": "x"}], "days_until_stockout": null}),
+            &mut names,
+        );
+        assert!(names.contains("order_quantity") && !names.contains("lines"));
+        let reply =
+            "Run suggest_reorder again; every order_quantity is 0 and order_quantity stays 0.";
+        assert_eq!(
+            system_words(reply, "Draft a reorder", &names),
+            vec!["suggest_reorder", "order_quantity"]
+        );
+        // Asked for by name, or not a name the turn used: left alone.
+        assert_eq!(
+            system_words(
+                reply,
+                "what does suggest_reorder do with order_quantity?",
+                &names
+            ),
+            Vec::<String>::new()
+        );
+        assert!(system_words("Reason wrong_size, order #20402.", "", &names).is_empty());
+    }
+
+    #[test]
+    fn a_reply_cut_before_its_closing_brace_still_gives_its_text() {
+        let raw = r#"{"text":"Rain parka is \"low\": 4 left.\nChore coat has 7. Order by"#;
+        assert_eq!(
+            text_of_cut_reply(raw).as_deref(),
+            Some("Rain parka is \"low\": 4 left.\nChore coat has 7. Order by")
+        );
+        assert_eq!(
+            text_of_cut_reply(r#"{"text":"Done.""#).as_deref(),
+            Some("Done.")
+        );
+        assert_eq!(text_of_cut_reply("Plain words."), None);
+        assert_eq!(text_of_cut_reply(r#"{"other":"x"#), None);
+    }
+
+    #[test]
+    fn a_cut_reply_keeps_its_finished_sentences() {
+        assert_eq!(
+            whole_sentences("Refund $2,463.00 for 9. Ask for photos on 2. With a 7-day lead")
+                .as_deref(),
+            Some("Refund $2,463.00 for 9. Ask for photos on 2.")
+        );
+        assert_eq!(whole_sentences("Refund $2,463.00 on"), None);
+        assert_eq!(
+            whole_sentences("Is it low? Yes!").as_deref(),
+            Some("Is it low? Yes!")
+        );
+    }
+
+    #[test]
+    fn a_reply_that_repeats_the_whole_request_is_narrating() {
+        let asked = "Cushioned ankle socks is selling fast. Draft a reorder for the sizes that will run out.";
+        assert!(repeats_request(
+            "Cushioned ankle socks is selling fast.  Draft a reorder for the sizes that will run out. The results show a search…",
+            asked
+        ));
+        assert!(!repeats_request(
+            "Cushioned ankle socks is selling fast, but nothing needs ordering yet: every size lasts 24 days or more.",
+            asked
+        ));
+        assert!(!repeats_request("Hi there. Hi!", "Hi!"));
     }
 }

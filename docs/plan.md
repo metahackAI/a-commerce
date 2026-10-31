@@ -1,6 +1,6 @@
 # A-Commerce build plan
 
-Status: rewritten Oct 30, 2026; milestones added Oct 30. This file says **what we ship and by when**. Why we build it this way is in [design.md](design.md) and [architecture.md](architecture.md); how each part is built is in [backend/](backend/README.md), [backend/database.md](backend/database.md), and [frontend/](frontend/README.md); the operations are in [api/](api/README.md); the demo store, people, and expected results are in [scenarios.md](scenarios.md). Change this file by pull request.
+Status: rewritten Oct 30, 2026; milestones added Oct 30; status updated Oct 31 (M5 done, every specified operation built). This file says **what we ship and by when**. Why we build it this way is in [design.md](design.md) and [architecture.md](architecture.md); how each part is built is in [backend/](backend/README.md), [backend/database.md](backend/database.md), and [frontend/](frontend/README.md); the operations are in [api/](api/README.md); the demo store, people, and expected results are in [scenarios.md](scenarios.md). Change this file by pull request.
 
 Contents: 1 direction · 2 MVP scope · 3 tools · 4 milestones · 5 work tracks · 6 definition of done · 7 risks · 8 changes
 
@@ -12,7 +12,7 @@ Contents: 1 direction · 2 MVP scope · 3 tools · 4 milestones · 5 work tracks
 | Front end | Next.js (App Router, latest stable), `/bo` and `/fo`, types generated from the Rust contract, components from Meta Astryx ([frontend-ui.md](frontend-ui.md)). Every element is an AI target: people can ask about it or ask to change it, and the agent can point at it ([frontend/](frontend/README.md)) |
 | Data | PostgreSQL with schema.org table and column names, a comment with the schema.org term on every table and column, one prefixed id, words for states ([backend/database.md](backend/database.md)) |
 | Storage | PostgreSQL 17 + pgvector, one database for the MVP |
-| Contract | Operations defined once in Rust; REST, MCP, the agent's tool manifest, OpenAPI, and TS types are generated from that definition; `cargo xtask check-docs` keeps it equal to [api/](api/README.md) |
+| Contract | Operations defined once in Rust; the REST routes and the agent's tool manifest are generated from that definition (MCP, OpenAPI and TS types were planned and are not built); the registry test and `cargo xtask check-docs` keep it equal to [api/](api/README.md) |
 | Trust boundary | The agent plans and previews; only `commerce` runs approved change sets; person-only actions need scopes a chat turn never has |
 | Models | Muse Glimmer 30B (self-hosted, OpenAI-compatible vLLM) as the worker; Muse Spark (Meta Model API) as the planner and fallback |
 | Scenario data | From the mockups in [design/](../design), with disagreements settled in [scenarios.md](scenarios.md) §8 |
@@ -34,9 +34,9 @@ The demo video is the product. Scenes are ranked by whether they carry the story
 | P2 | F4 gift for Dad | `gift_picker`, nothing saved to the profile, $76.20 | |
 | P2 | B3 sales question | `sales_explainer`, read only | |
 | P2 | B4 supplier sheet, B5 home tasks | `product_drafts`, `task_list` | |
-| P2 | Outside agents | MCP with reads, cart, `prepare_order` | One outside client finds a product and prepares an order |
+| P2 | Outside agents | MCP with reads, cart, `prepare_order` | Not built: the `mcp` crate is a placeholder (out of scope for the showcase) |
 
-Out of scope: real payments and carriers (stubs that succeed), settlement, sellers, taxes, multiple stores in the demo (row-level security is still on).
+Out of scope: everything outside the store. Payment providers, bank deposits, tax receipts, carriers, outside channels, message delivery, business-registry checks, payouts and image or copy generation are deterministic stand-ins that say so in their output and still go through preview → change set → run. Also out: settlement, taxes, multiple stores in the demo (row-level security is still on). The product is a showcase of AI-native commerce inside the store.
 
 ## 3. Tools
 
@@ -52,7 +52,7 @@ Tools are the operations in [api/](api/README.md); bold there marks the MVP set.
 
 ## 4. Milestones
 
-Each milestone ends with something that can be checked without a person explaining it. Unit and contract tests run in every milestone; **tests that need a running database or several services together (integration tests) run only when asked**. Nothing is deployed or served; the demo runs locally.
+Each milestone ends with something that can be checked without a person explaining it. Unit and contract tests run in every milestone; **tests that need a running database or several services together (integration tests) run only when asked**. Since Oct 30 every merge to main also deploys to the demo server (`https://a-commerce.ailism.team`, [infra/deploy/](../infra/deploy/README.md)).
 
 Every milestone is held to the same AI-native bar:
 - **Back end:** each new operation has a closed schema with a description and example per field, a preview for writes, checks that name the policy key and the fix tool, errors with a class and a next tool, and a schema.org action type.
@@ -67,8 +67,8 @@ Every milestone is held to the same AI-native bar:
 | **M2** ✓ | Oct 30 | **Commerce P0** | Seed generator and loader (`xtask db reset`, from `seed/demo/generate.yml`); API JSON-LD context from the contract types; `acom-http` (registry → routes, manifest, errors); typed policy views and P0 checks; `calculate_benefits`; P0 reads and writes; preview store; change-set engine; person-only order placement and memory undo; `describe_data` | Contract tests per operation; B1 and F2 replay tests written (run on request) |
 | **M3** ✓ | Oct 30 | **Gateway and agent** | Demo login, internal tokens, routing, SSE passthrough; model client with guided JSON and argument repair; tool search; planner with slot binding; executor; intent check; blocks with `suggested_intents`; `ui.command`; `agents/*.yml` | Unit tests for parsing, repair, tool search, binding, and blocks against recorded model outputs; the B1 request produces v1 → v2 against a model (run on request) |
 | **M4** ✓ | Oct 30 | **Web** | Next.js app with Meta Astryx (pinned versions, our theme, [frontend-ui.md](frontend-ui.md)); AI layer (`AiProvider`, `useAiTarget`, `AskAbout`, `NaturalInput`, `commands`); blocks for P0 (`change_set`, `task_list`, `looking_for`, `compare_table`, `look_gallery`, `product_list`, `cart`, `checkout_card`, `memory_note`); `PersonButton`; JSON-LD on product pages | Component tests on fixtures; every element registers `data-acom-*`; `person` buttons ignore `ui.command` |
-| M5 | Nov 3 | P1 and evaluation | Returns (B2, F5), fit check (F3), layout change (F6); facade and task set | Replay tests for P1; design-set numbers |
-| M6 | Nov 4–5 | Story | Held-out evaluation, README numbers, video recorded from a local run | Submitted by Nov 5, 10:00 KST |
+| **M5** ✓ | Oct 31 | **P1 and evaluation** | Returns (B2, F5), fit check (F3), layout change (F6), gifts (F4), sales explainer (B3), supplier sheet (B4), task list (B5); facade and task set; then every remaining operation of [api/](api/README.md) | Replay tests for P1; design-set numbers ([design.md](design.md) §7); `check-coverage` and `check-layout` pass in CI |
+| M6 | Nov 4–5 | Story | Held-out evaluation, README numbers, video recorded from the live demo or a local run | Submitted by Nov 5, 10:00 KST |
 
 **Where M2–M4 stand (Oct 30).** Built and merged:
 - 100 commerce tools (72 reads, 28 writes) and 6 person-only endpoints in 9 domains (platform, catalog, search, promotion, merchandising, sales, customer, fulfillment, messaging), each checked against its `docs/api` section;
@@ -79,25 +79,19 @@ Every milestone is held to the same AI-native bar:
 
 Unit tests reproduce the B1, B2, F1, F2 and F5 numbers. The SQL paths have database tests that are written but not yet run (`#[ignore]`, integration); they run on request together with bringing the stack up, which is the next check.
 
-**Where M5 stands (Oct 31).** Since M4, built and merged:
-- **Scale:** 125 commerce tools (77 reads, 48 writes) in 10 domains, plus the 22 screen-shaped tools of the evaluation's facade (`?set=facade`, demo mode only).
-- **The demo server** (`https://a-commerce.ailism.team`, back office at `/bo`) deploys every merge to main. It reloads the demo store when the seed rows change, and an admin can reset the store from the back office.
-- **Database tests:** the `#[ignore]` integration tests run against a real database and pass crate by crate.
-- **Scenes now built:**
-  - returns triage (B2);
-  - the sales explainer (B3);
-  - fit check (F3);
-  - gifts, including the recipient's link page (F4);
-  - layout by profile (F6);
-  - the task list.
-- **Reorders:** the Inbox's first item, the Linen shirt reorder (#1041), is a real change set a person can approve.
-- **Reviewing a change set:** checks are grouped by rule and name their item; amounts show as money; a finished task says how it ended.
-- **Finding things by the human value:** orders by number, and customers by email or name.
-- **Evaluation:** `cargo xtask eval` runs the task set against a live stack (`--tool-set acom|facade|both`, `--repeat`, `--logs`). All 12 design tasks are ready, with no data gaps left. The best live design run before the outage passed 5 of 12.
-- **Blocked:** the model endpoint (Glimmer) has not answered since Oct 31 01:37 KST, so the design and held-out numbers wait for it. Until it answers, the assistant says plainly that its model is down instead of timing out.
-- **Open:**
-  - expiring gifts nobody accepted and unpaid orders (the policies exist; no job applies them yet);
-  - the held-out run and the README numbers (M6).
+**Where it stands (Oct 31, evening).** M5 is done, and the back end is complete for the showcase.
+- **Operations:** all 291 tools of [api/](api/README.md) in 13 domains (132 reads, 119 writes, 40 writes that move money or reach customers) and all 18 person-only endpoints are built. Each lives in `crates/domains/{domain}/src/{resource}/{tool}.rs`; CI runs `check-layout` and `check-coverage`, so an operation that is missing or out of place fails the build.
+- **Background work:** 3 watchers (price under cost, stock-out forecast, returns over the refund limit) and 8 scheduled jobs (promotion start and end, points expiry, tier evaluation, subscription renewal, campaign sending, seller status changes, held outside events). The gateway hands a watcher's new task to the operations agent in the name of the store's operator (`task_pickup` in `platform.yml`), so a draft waits before anyone opens the task.
+- **Scenes:** B1–B5 and F1–F6 run on the demo server (`https://a-commerce.ailism.team`, back office at `/bo`), which deploys every merge to main and reloads the demo store when the seed changes.
+- **Evaluation:** design set, 12 tasks × 3 runs on Glimmer: A-Commerce tools 58% (21 of 36), the screen-shaped facade 0% (0 of 36); pass^3 50% against 0% ([design.md](design.md) §7, [eval/results](../eval/results)).
+- **Look:** the web app is **Ailism Commerce**, with the Ailism theme, logo and voice ([frontend-ui.md](frontend-ui.md)).
+
+**Open work.** Everything left is inside the store; the list with the eval task behind each item is the TODO section of the [README](../README.md#todo).
+- Agent quality on the design set: bind later change-set items to earlier ones' results, look up what a person names instead of asking for its id, say the exact times the results hold.
+- The domains added on Oct 31 in the agents (no profile lists `community`, `partner` or `integration` yet) and on screen (UI blocks and back-office pages).
+- More watchers (reported posts, seller grades, failed campaigns) and the expiry of unaccepted gifts and unpaid orders (the policies exist; no job applies them).
+- Small spec gaps: publishing a post held for review, linking a product to a seller, issuing the codes for withdrawal and sign-in id recovery.
+- M6: the held-out run, its numbers in the README, the video.
 
 ## 5. Work tracks
 
@@ -143,6 +137,7 @@ A piece of work is done when:
 
 | Date | Change |
 |---|---|
+| Oct 31 | Status: M5 done; every specified operation built in the API hierarchy and held by CI; design-set numbers in; open work moved to the README's TODO. Out of scope restated: everything outside the store is a stand-in (a showcase). |
 | Oct 30 | M1b done: infrastructure base ([infra/README.md](../infra/README.md)). |
 | Oct 30 | M1 done: 12 migrations (57 tables and one view, every table and column commented with its schema.org or `acom:` term), `check-schema` (rules, data dictionary, generated vocabulary `vocab/acom.jsonld`), `check-seed`, demo seed (812 rows), enums and ids in `acom-core`, principals in `acom-auth`, `acom-store`. Extension terms are schema.org `@type` + `additionalType` ([api/vocabulary.md](api/vocabulary.md)). |
 | Oct 30 | Milestones M0–M6 with the AI-native bar for back end, data, and front end; database design ([backend/database.md](backend/database.md)); front-end design ([frontend/](frontend/README.md)). Integration tests run only on request. |
