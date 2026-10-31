@@ -1,17 +1,22 @@
 //! The `messaging` domain: customer messages, templates, campaigns, notifications.
 //!
 //! Operations, inputs, outputs, checks, and errors are specified in `docs/api/messaging.md`.
-//! Layout: `model` (pure rules: quiet hours, reachability, subjects, template variables), one
-//! module per resource with one type per operation (`message`, `template`, `notification`),
-//! `repo` (SQL). Other domains are reached only through their `service` modules, never
-//! through their tables.
+//! Layout: the folders follow the API hierarchy `messaging.{resource}.{operation}`, one folder
+//! per resource (`message`, `template`, `campaign`, `notification`) and one file per operation,
+//! named after its tool (`message/send_customer_message.rs`). Domain-wide: `model` (pure rules:
+//! quiet hours, reachability, subjects, template variables), `repo` (SQL), `schedule` (the
+//! scheduled campaign send, a job). Other domains are reached only through their `service`
+//! modules, never through their tables; promotion's segments come through
+//! `service::providers`, which the registry fills.
 
 pub mod model;
 pub mod service;
 
+mod campaign;
 mod message;
 mod notification;
 mod repo;
+mod schedule;
 mod template;
 #[cfg(test)]
 mod tests;
@@ -24,9 +29,15 @@ use serde_json::json;
 /// Adds every operation of this domain to the registry.
 pub fn register(b: &mut RegistryBuilder<Cx>) {
     b.write(message::SendCustomerMessage)
+        .write(message::SendBulk)
         .write(template::CreateMessageTemplate)
         .read(template::ListMessageTemplates)
+        .write(campaign::CreateCampaign)
+        .read(campaign::SearchCampaigns)
+        .read(campaign::GetCampaign)
         .read(notification::ListNotifications);
+    // Scheduled work (platform.job): a campaign booked for a time goes out then.
+    b.job(schedule::SendScheduledCampaign);
 }
 
 /// A time filter in store time.

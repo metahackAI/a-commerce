@@ -1,4 +1,4 @@
-//! SQL over this domain's own read models, the `analytics` views (migrations 0011 and 0016).
+//! SQL over this domain's own read models, the `analytics` views (migrations 0011, 0016, 0028).
 //! Nothing here reads another domain's tables; the views are the read model, and what they
 //! cannot hold without naming people comes from `acom_sales::service::for_analytics`.
 
@@ -320,6 +320,46 @@ pub async fn tier_counts(tx: &mut TxCx) -> Result<Vec<(String, i64)>, ToolError>
          WHERE tenant_id = $1 ORDER BY member_tier",
     )
     .bind(tx.tenant.as_str())
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// Customer inquiries of a period, whole or by type (`analytics.inquiry_summary`).
+#[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
+pub struct InquiryFigures {
+    /// `None` for the whole period.
+    pub inquiry_type: Option<String>,
+    pub received: i64,
+    pub unresolved: i64,
+    pub resolved: i64,
+    /// Average minutes from an inquiry coming in to its first answer, over the answered ones.
+    pub response_minutes: Option<Decimal>,
+}
+
+/// The inquiries that came in on the store days `[from, through]`, one row per type when
+/// `by_type`; no row when none came in.
+pub async fn inquiry_figures(
+    tx: &mut TxCx,
+    from: NaiveDate,
+    through: NaiveDate,
+    by_type: bool,
+) -> Result<Vec<InquiryFigures>, ToolError> {
+    sqlx::query_as(
+        "SELECT CASE WHEN $4 THEN inquiry_type END AS inquiry_type,
+                count(*) AS received,
+                count(*) FILTER (WHERE inquiry_status <> 'resolved') AS unresolved,
+                count(*) FILTER (WHERE inquiry_status = 'resolved') AS resolved,
+                (avg(EXTRACT(EPOCH FROM (first_response_time - date_received)) / 60))::numeric
+                  AS response_minutes
+         FROM analytics.inquiry_summary
+         WHERE tenant_id = $1 AND observation_date BETWEEN $2 AND $3
+         GROUP BY 1 ORDER BY 1",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(from)
+    .bind(through)
+    .bind(by_type)
     .fetch_all(&mut *tx.tx)
     .await
     .map_err(db)
