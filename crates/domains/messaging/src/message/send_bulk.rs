@@ -18,8 +18,8 @@ use serde_json::{Map, Value, json};
 use super::{NOT_REVOCABLE, QUIET_HOURS};
 use crate::campaign::{
     ALREADY_SENT, CAMPAIGN_NOT_FOUND, CAMPAIGN_NOT_READY, DAILY_SEND_CAP_EXCEEDED,
-    NO_CONSENTED_RECIPIENTS, NOT_DELIVERED, Recipient, Target, daily_cap, greeting, message_for,
-    message_id, reach, send_now, stored_values, thousands, under_cap, variable_values,
+    NO_CONSENTED_RECIPIENTS, NOT_DELIVERED, Recipient, Target, daily_cap, message_for, message_id,
+    reach, send_now, stored_values, thousands, under_cap, variable_values,
 };
 use crate::model::QuietHours;
 use crate::repo::{self, CampaignRow, TemplateRow};
@@ -88,12 +88,11 @@ pub(crate) async fn ready(
 ) -> Result<(TemplateRow, BTreeMap<String, String>), ToolError> {
     match c.campaign_status.as_str() {
         "sent" | "sending" => {
-            return Err(ToolError::new(
-                ALREADY_SENT,
-                format!("{} has already been sent.", c.name),
-            )
-            .detail(json!({"entity": "campaign", "id": c.id, "status": c.campaign_status}))
-            .next("get_campaign"));
+            return Err(
+                ToolError::new(ALREADY_SENT, format!("{} has already been sent.", c.name))
+                    .detail(json!({"entity": "campaign", "id": c.id, "status": c.campaign_status}))
+                    .next("get_campaign"),
+            );
         }
         "cancelled" => return Err(not_ready(c, format!("{} was cancelled.", c.name))),
         _ => {}
@@ -350,7 +349,6 @@ impl WriteOp<Cx> for SendBulk {
     }
 }
 
-/// The name a preview greets the sample shopper by (masked) and a sent message by (in full).
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -363,7 +361,7 @@ mod tests {
             given_name: Some("Jamie".into()),
             family_name: Some("Chen".into()),
         };
-        assert_eq!(greeting(&r), "Jamie");
+        assert_eq!(crate::campaign::greeting(&r), "Jamie");
         assert_eq!(r.masked(), "J*** C***");
         assert_eq!(SendBulk::META.kind, Kind::WriteApproval);
         assert!(matches!(SendBulk::UNDO, UndoSupport::NotSupported));

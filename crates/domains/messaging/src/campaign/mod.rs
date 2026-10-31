@@ -41,8 +41,7 @@ pub const TEMPLATE_CHANNEL_MISMATCH: ErrorCode =
     ErrorCode::new("template_channel_mismatch", ErrorClass::Domain);
 pub const NO_CONSENTED_RECIPIENTS: ErrorCode =
     ErrorCode::new("no_consented_recipients", ErrorClass::Domain);
-pub const CAMPAIGN_NOT_READY: ErrorCode =
-    ErrorCode::new("campaign_not_ready", ErrorClass::Domain);
+pub const CAMPAIGN_NOT_READY: ErrorCode = ErrorCode::new("campaign_not_ready", ErrorClass::Domain);
 pub const ALREADY_SENT: ErrorCode = ErrorCode::new("already_sent", ErrorClass::InvalidState);
 pub const DAILY_SEND_CAP_EXCEEDED: ErrorCode =
     ErrorCode::new("daily_send_cap_exceeded", ErrorClass::LimitExceeded);
@@ -217,11 +216,12 @@ pub(crate) async fn reach(
         Some(AudienceMode::Tier) => {
             let tier = target.tier.as_deref().unwrap_or_default();
             if !customer::tier_exists(tx, tier).await? {
-                return Err(
-                    ToolError::new(ErrorCode::NOT_FOUND, format!("There is no tier {tier}."))
-                        .detail(json!({"entity": "tier", "id": tier}))
-                        .next("list_tiers"),
-                );
+                return Err(ToolError::new(
+                    ErrorCode::NOT_FOUND,
+                    format!("There is no tier {tier}."),
+                )
+                .detail(json!({"entity": "tier", "id": tier}))
+                .next("list_tiers"));
             }
             customer::Audience::Tier(tier)
         }
@@ -280,8 +280,10 @@ pub(crate) async fn under_cap(
             .and_then(|t| t.and_local_timezone(zone).earliest())
             .map(|t| t.with_timezone(&Utc))
     };
-    let (Some(from), Some(to)) = (start(day), day.checked_add_days(Days::new(1)).and_then(start))
-    else {
+    let (Some(from), Some(to)) = (
+        start(day),
+        day.checked_add_days(Days::new(1)).and_then(start),
+    ) else {
         return Ok((recipients, 0));
     };
     let ids: Vec<String> = recipients.iter().map(|r| r.customer_id.clone()).collect();
@@ -462,7 +464,10 @@ mod tests {
             ],
             ..Reached::default()
         };
-        assert_eq!(r.consent_detail("email"), "1,198 of 1,284 opted in to email; 86 left out");
+        assert_eq!(
+            r.consent_detail("email"),
+            "1,198 of 1,284 opted in to email; 86 left out"
+        );
         assert_eq!(r.consented[0].masked(), "J*** C***");
         assert_eq!(greeting(&r.consented[0]), "Jamie");
         assert_eq!(

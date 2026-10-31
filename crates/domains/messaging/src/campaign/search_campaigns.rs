@@ -67,7 +67,8 @@ impl ReadOp<Cx> for SearchCampaigns {
     async fn read(&self, cx: &Cx, input: SearchCampaignsInput) -> Result<Value, ToolError> {
         let page = Page::new(input.limit, input.cursor.as_deref())?;
         let from = crate::parse_time(cx, "scheduled_from", input.scheduled_from.as_deref())?;
-        let through = crate::parse_time(cx, "scheduled_through", input.scheduled_through.as_deref())?;
+        let through =
+            crate::parse_time(cx, "scheduled_through", input.scheduled_through.as_deref())?;
         if let (Some(f), Some(t)) = (from, through)
             && t < f
         {

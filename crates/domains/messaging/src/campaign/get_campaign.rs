@@ -53,7 +53,9 @@ pub(crate) fn stats(c: &CampaignRow, s: SendStats) -> Value {
         "sent" if s.messages > 0 => {
             json!({"sent": s.messages, "delivered": null, "opened": s.opened, "failed": 0})
         }
-        "sent" => json!({"sent": c.recipient_count, "delivered": null, "opened": null, "failed": 0}),
+        "sent" => {
+            json!({"sent": c.recipient_count, "delivered": null, "opened": null, "failed": 0})
+        }
         "failed" => json!({"sent": 0, "delivered": 0, "opened": 0, "failed": null}),
         _ => json!({"sent": 0, "delivered": 0, "opened": 0, "failed": 0}),
     }

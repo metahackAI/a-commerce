@@ -395,7 +395,10 @@ pub struct NewCampaign<'a> {
 
 /// A campaign already set up with the same name, channel, audience and time that is not
 /// cancelled: the same send is never booked twice.
-pub async fn same_campaign(tx: &mut TxCx, c: &NewCampaign<'_>) -> Result<Option<String>, ToolError> {
+pub async fn same_campaign(
+    tx: &mut TxCx,
+    c: &NewCampaign<'_>,
+) -> Result<Option<String>, ToolError> {
     sqlx::query_scalar(
         "SELECT id FROM messaging.campaign
          WHERE tenant_id = $1 AND name = $2 AND message_channel = $3
@@ -423,8 +426,8 @@ pub async fn insert_campaign(tx: &mut TxCx, c: &NewCampaign<'_>) -> Result<(), T
     sqlx::query(
         "INSERT INTO messaging.campaign (tenant_id, id, name, message_channel, template_id,
            valid_for_member_tier, segment_id, recipient_ids, variable_values, campaign_status,
-           scheduled_time, recipient_count)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           scheduled_time, recipient_count, change_set_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          ON CONFLICT (tenant_id, id) DO NOTHING",
     )
     .bind(tx.tenant.as_str())
@@ -439,6 +442,7 @@ pub async fn insert_campaign(tx: &mut TxCx, c: &NewCampaign<'_>) -> Result<(), T
     .bind(c.status)
     .bind(c.scheduled_time)
     .bind(c.recipient_count)
+    .bind(tx.change_set_id.clone())
     .execute(&mut *tx.tx)
     .await
     .map_err(db)?;
@@ -548,8 +552,8 @@ pub async fn insert_campaign_messages(
     let sender = tx.principal.subject.clone();
     let done = sqlx::query(
         "INSERT INTO messaging.message (tenant_id, id, recipient_id, message_kind,
-           message_channel, headline, text, sender_id, date_sent, campaign_id)
-         SELECT $1, m.id, m.recipient_id, 'campaign', $6, m.headline, m.text, $7, $8, $9
+           message_channel, headline, text, sender_id, date_sent, campaign_id, change_set_id)
+         SELECT $1, m.id, m.recipient_id, 'campaign', $6, m.headline, m.text, $7, $8, $9, $10
          FROM unnest($2::text[], $3::text[], $4::text[], $5::text[])
               AS m(id, recipient_id, headline, text)
          ON CONFLICT (tenant_id, id) DO NOTHING",
@@ -563,6 +567,7 @@ pub async fn insert_campaign_messages(
     .bind(&sender)
     .bind(now)
     .bind(campaign_id)
+    .bind(tx.change_set_id.clone())
     .execute(&mut *tx.tx)
     .await
     .map_err(db)?;

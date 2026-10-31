@@ -276,12 +276,33 @@ mod tests {
             ("headline_item".to_owned(), "the wool overcoat".to_owned()),
         ]);
         assert_eq!(
-            render("Hi {{customer_name}}, see {{ headline_item }}. {{other}}", &values),
+            render(
+                "Hi {{customer_name}}, see {{ headline_item }}. {{other}}",
+                &values
+            ),
             "Hi Jamie, see the wool overcoat. {{other}}"
         );
-        assert_eq!(render("Broken {{customer_name", &values), "Broken {{customer_name");
-        assert!(marketing_reachable("email", Some("j@example.com"), None, "dormant"));
-        assert!(!marketing_reachable("email", Some("j@example.com"), None, "blocked"));
-        assert!(!marketing_reachable("sms", Some("j@example.com"), None, "active"));
+        assert_eq!(
+            render("Broken {{customer_name", &values),
+            "Broken {{customer_name"
+        );
+        assert!(marketing_reachable(
+            "email",
+            Some("j@example.com"),
+            None,
+            "dormant"
+        ));
+        assert!(!marketing_reachable(
+            "email",
+            Some("j@example.com"),
+            None,
+            "blocked"
+        ));
+        assert!(!marketing_reachable(
+            "sms",
+            Some("j@example.com"),
+            None,
+            "active"
+        ));
     }
 }

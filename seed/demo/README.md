@@ -15,7 +15,7 @@ members and sales history) under fixed counts and a fixed random seed.
 | `05_merchandising.yml` | 24 standard and 3 display categories, placement of the named products, the four main-page slots, hero banners and bookings (October edit ended 09:59; Fall layers for everyone from 10:00) |
 | `06_sales.yml` | 21 named orders with items, payments and events |
 | `07_fulfillment.yml` | Deliveries of those orders, the 12 B2 return requests (`requested`), cus_4431's three completed returns with inspections and refunds |
-| `08_messaging.yml` | Refund notices for cus_4431's completed returns; the weekly email template `tpl_weekly_email` and its sends: four sent Thursdays (Oct 8–29) and `cmp_weekly_1105`, failed Thu Nov 5 08:00 (list import failed) |
+| `08_messaging.yml` | Refund notices for cus_4431's completed returns; the weekly email template `tpl_weekly_email` and its sends: four sent Thursdays (Oct 8–29) and `cmp_weekly_1105`, failed Thu Nov 5 08:00 (list import failed); the VIP weekend reminder template `tpl_vip_weekend` and its draft campaign `cmp_vip_weekend` for the vip tier (no send time) |
 | `09_supplier_sheet.yml` | Scene B4's supplier sheet `upl_fw26_supplier` (`fw26_supplier.xlsx`, 30 rows); the scene imports it |
 | `generate.yml` | Spec for the generator (not data) |
 

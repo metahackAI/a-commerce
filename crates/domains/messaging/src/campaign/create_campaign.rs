@@ -4,9 +4,8 @@
 //! It reaches customers, so a person always approves it.
 
 use acom_contract::{
-    ActionType, ApprovalNeed, Audience, Change, ChangeOp, Check, Committed, ErrorCode,
-    Group, Kind, Method, OpMeta, Operation, Planned, Slot, ToolError, UndoSupport, Verification,
-    WriteOp,
+    ActionType, ApprovalNeed, Audience, Change, ChangeOp, Check, Committed, ErrorCode, Group, Kind,
+    Method, OpMeta, Operation, Planned, Slot, ToolError, UndoSupport, Verification, WriteOp,
 };
 use acom_core::enums::MessageChannel;
 use acom_store::{Cx, TxCx};
@@ -176,7 +175,16 @@ impl WriteOp<Cx> for CreateCampaign {
         let target = target(&input)?;
         let channel = input.channel.as_str();
         let now = cx.clock.now();
-        let scheduled = crate::parse_time(cx, "scheduled_time", input.scheduled_time.as_deref())?;
+        let scheduled = input
+            .scheduled_time
+            .as_deref()
+            .map(|s| {
+                cx.time.parse(s).map_err(|e| {
+                    ToolError::invalid_input(e.to_string())
+                        .detail(json!({"field": "scheduled_time", "reason": "format"}))
+                })
+            })
+            .transpose()?;
         if let Some(at) = scheduled
             && at <= now
         {
@@ -190,7 +198,9 @@ impl WriteOp<Cx> for CreateCampaign {
         let send_at = scheduled.unwrap_or(now);
         let local = send_at.with_timezone(&cx.time.zone).time();
         let quiet = QuietHours::from_policy(&cx.policy).filter(|q| q.applies("marketing"));
+        // A draft is sent later by send_bulk, which checks quiet hours itself.
         if let Some(q) = &quiet
+            && scheduled.is_some()
             && q.contains(local)
         {
             return Err(ToolError::new(
@@ -272,9 +282,11 @@ impl WriteOp<Cx> for CreateCampaign {
                     reached.consent_detail(channel)
                 ),
             )
-            .detail(json!({"rule": "consent.marketing_gate", "addressed": reached.addressed,
+            .detail(
+                json!({"rule": "consent.marketing_gate", "addressed": reached.addressed,
                            "not_consented": reached.not_consented,
-                           "unreachable": reached.unreachable}))
+                           "unreachable": reached.unreachable}),
+            )
             .next("preview_segment"));
         }
 
@@ -432,7 +444,12 @@ impl WriteOp<Cx> for CreateCampaign {
     }
 
     /// Cancels the campaign while nothing has gone out; the scheduled send then does nothing.
-    async fn undo(&self, tx: &mut TxCx, _: &CampaignPlan, done: &Committed) -> Result<(), ToolError> {
+    async fn undo(
+        &self,
+        tx: &mut TxCx,
+        _: &CampaignPlan,
+        done: &Committed,
+    ) -> Result<(), ToolError> {
         let Some(c) = repo::campaign_for_send(tx, &done.id).await? else {
             return Ok(());
         };
