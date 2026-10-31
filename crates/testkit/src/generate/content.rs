@@ -13,8 +13,9 @@ use super::util::decimal;
 use crate::SeedRows;
 
 /// The measurement names `catalog.measurement` takes, in the order a size chart lists them.
-const MEASUREMENTS: [&str; 9] = [
+const MEASUREMENTS: [&str; 10] = [
     "chest",
+    "underbust",
     "shoulder",
     "sleeve",
     "length",
@@ -304,6 +305,23 @@ products:
             "{:#?}",
             &problems[..problems.len().min(20)]
         );
+    }
+
+    #[test]
+    fn bra_size_charts_take_the_underbust() {
+        let mut rows = demo();
+        let bra = r#"
+products:
+  - id: prd_activewear_03
+    name_check: Mesh sports bra
+    measurements:
+      S: {chest: 84, underbust: 70}
+      M: {chest: 89, underbust: 75}
+    measurement_technique: Body measurements.
+"#;
+        assert_eq!(overlay(&mut rows, bra).unwrap(), 1);
+        let problems = schema_check::check(&schema_check::parse(&repo().join("migrations")), &rows);
+        assert!(problems.is_empty(), "{problems:#?}");
     }
 
     #[test]

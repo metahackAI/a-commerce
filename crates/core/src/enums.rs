@@ -490,8 +490,9 @@ word_enum! {
 word_enum! {
     /// acom:measurementName, which body or garment measurement a value is.
     MeasurementName = "measurement_name" {
-        Chest = "chest", Shoulder = "shoulder", Sleeve = "sleeve", Length = "length", Waist = "waist",
-        Hip = "hip", Inseam = "inseam", Rise = "rise", FootLength = "foot_length",
+        Chest = "chest", Underbust = "underbust", Shoulder = "shoulder", Sleeve = "sleeve",
+        Length = "length", Waist = "waist", Hip = "hip", Inseam = "inseam", Rise = "rise",
+        FootLength = "foot_length",
     }
 }
 

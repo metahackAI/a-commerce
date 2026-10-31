@@ -79,6 +79,13 @@ catalog:
     default_sizes: [XS, S, M, L, XL]   # categories above without sizes
   placement: "one product_group_category row per generated product (is_primary true, its category); 20% of summer_outerwear and outerwear also in cat_travel or cat_fall_layers"
   autumn_knit_prices: "for every variant offer of a generated knitwear product: one unit_price_specification, promotion promo_autumn_knit, sale_price, price = list × 0.85, percent_off 15, valid 2026-11-01 00:00 to 2026-11-15 23:59, valid_for_member_tier null"
+  renames:                       # drawn names that contradict the product; fixed after every product is drawn, without dice, so no other row changes. None is named in eval/ or docs/scenarios.md
+    prd_hats_01: {name: Corduroy flap cap}               # was Corduroy wool cap: read as two materials
+    prd_hats_03: {name: Fleece bucket cap}               # was Fleece sun hat: fleece is for cold
+    prd_hats_06: {name: Ribbed knit beanie}              # was Ribbed knit sun hat: a knit hat is not a sun hat
+    prd_scarves_08: {name: Lambswool neckerchief}        # was Lambswool bandana: bandanas are cotton
+    prd_underwear_06: {name: Bamboo rayon boxer briefs, material: Bamboo rayon}   # US fiber labeling: rayon made from bamboo
+    prd_underwear_09: {name: Bamboo rayon bralette, material: Bamboo rayon}
 
 members:                         # program_membership in prg_rewards; tier counts include the 13 named people (02_customer.yml)
   tiers:

@@ -14,7 +14,7 @@ const SHAPES: &[(&str, &[&str])] = &[
             "shell jacket",
         ],
     ),
-    ("parka", &["parka", "puffer"]),
+    ("parka", &["parka", "puffer", "puffer jacket"]),
     (
         "chore",
         &[
@@ -109,7 +109,14 @@ const SHAPES: &[(&str, &[&str])] = &[
     (
         "scarf",
         &[
-            "scarf", "stole", "snood", "bandana", "wrap", "neck", "gloves",
+            "scarf",
+            "stole",
+            "snood",
+            "bandana",
+            "neckerchief",
+            "wrap",
+            "neck",
+            "gloves",
         ],
     ),
 ];
@@ -117,12 +124,17 @@ const SHAPES: &[(&str, &[&str])] = &[
 /// The shape a product name draws as; `fold` when no word matches.
 pub fn shape(name: &str) -> &'static str {
     let name = name.to_lowercase();
+    // The word a name ends with says what the garment is ("belt bag" is a bag, "dress socks"
+    // are socks); a word inside the name counts only when no ending matches.
+    let ends = |w: &str| name == w || name.ends_with(&format!(" {w}"));
+    let inside = |w: &str| name.contains(&format!(" {w} "));
     SHAPES
         .iter()
-        .find(|(_, words)| {
-            words.iter().any(|w| {
-                name == *w || name.ends_with(&format!(" {w}")) || name.contains(&format!(" {w} "))
-            })
+        .find(|(_, words)| words.iter().any(|w| ends(w)))
+        .or_else(|| {
+            SHAPES
+                .iter()
+                .find(|(_, words)| words.iter().any(|w| inside(w)))
         })
         .map_or("fold", |(s, _)| s)
 }
@@ -146,6 +158,12 @@ mod tests {
         assert_eq!(shape("Merino fisherman sweater"), "knit");
         assert_eq!(shape("Terry trail shorts"), "shorts");
         assert_eq!(shape("Leather belt"), "belt");
+        assert_eq!(shape("Lambswool neckerchief"), "scarf");
+        assert_eq!(shape("Ribbed knit beanie"), "hat");
+        assert_eq!(shape("Canvas belt bag"), "bag");
+        assert_eq!(shape("Cotton dress socks"), "socks");
+        assert_eq!(shape("Knit shirt dress"), "dress");
+        assert_eq!(shape("Waxed cotton puffer jacket"), "parka");
         assert_eq!(shape("Umbrella"), "fold");
         assert_eq!(
             garment_image("Packable windbreaker", "Heather grey"),
