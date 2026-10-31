@@ -327,6 +327,7 @@ mod tests {
                     request_text: vec!["Run a 20% weekend sale on summer outerwear for VIP members.".into()],
                     interpretation: vec![],
                     conversation_id: None,
+                    task_id: None,
                 },
             )
             .await

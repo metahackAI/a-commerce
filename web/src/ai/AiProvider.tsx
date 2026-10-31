@@ -17,7 +17,8 @@ interface AiState {
   isBusy: boolean;
   /** Elements the person picked as "this" for the next message. */
   picked: ElementContext[];
-  send: (text: string) => Promise<void>;
+  /** `taskId`: the task this message works on ("Ask the agent to work on it"). */
+  send: (text: string, taskId?: string) => Promise<void>;
   /** A block's `say` button: sends its intent as `ui_event`, shown as `label` in the transcript. */
   sendEvent: (blockId: string, actionId: string, label: string, args?: Record<string, unknown>) => Promise<void>;
   /** Steps of the current (or last) turn. */
@@ -153,11 +154,11 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
   );
 
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, taskId?: string) => {
       const context = picked;
       setMessages(m => [...m, {id: nextId('msg'), sender: 'user', text, context}]);
       setPicked([]);
-      await runTurn({message: text, context});
+      await runTurn({message: text, context, task_id: taskId});
     },
     [picked, runTurn],
   );

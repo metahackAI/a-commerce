@@ -229,7 +229,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 
 | 엔드포인트 | 본문 | 응답 | 에러 |
 |---|---|---|---|
-| `POST /v1/platform/change-sets` | `{title, request_text, interpretation[], conversation_id}` | `{id, number, version: 1, state: "drafting"}` | `invalid_input` |
+| `POST /v1/platform/change-sets` | `{title, request_text, interpretation[], conversation_id, task_id?}` — `task_id`: 이 변경셋이 답하는 할 일. 열려 있고 변경셋이 없을 때만 묶임 | `{id, number, version: 1, state: "drafting", task_id}` (`task_id`: 묶인 할 일, 없으면 `null`) | `invalid_input` |
 | `PATCH /v1/platform/change-sets/{id}` | `{title?, append_request_text?, interpretation?[]}` — 대화로 고친 요청: 문장을 `request_text`에 덧붙이고 해석을 바꿈. 항목은 아래 교체로 | `{id, version, state, item_count}` | `change_set_not_found`, `invalid_state`(끝 상태·실행 중) |
 | `POST /v1/platform/change-sets/{id}/items` | `{preview_id, depends_on?: [preview_id]}` | `{id, version, state, item_count}` | `change_set_not_found`, `preview_not_found`, `preview_expired`, `invalid_state`(끝 상태·실행 중), `already_exists`(같은 프리뷰) |
 | `PUT /v1/platform/change-sets/{id}/items` | `{items: [{preview_id, depends_on?}]}` — 대화로 고친 항목 전체로 교체 | `{id, version, state: "drafting", superseded: [preview_id]}` | `change_set_not_found`, `preview_not_found`, `preview_expired`, `invalid_state` |
@@ -272,7 +272,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 
 ## task
 
-할 일(`acom:Task`)은 운영자 홈(`task_list` 블록, [chat.md](chat.md) §3.3)에 보이는 일 단위입니다. 상태는 `acom:task_state`(`needs_you` \| `working` \| `done` \| `dismissed`, [enums.md](enums.md) §1.14), 출처 `origin`은 셋 중 하나입니다. 묶인 변경셋이 `live`나 `rejected`가 되면 할 일은 `done`이 되고 `summary`는 그 끝을 말합니다(`"#1041 ran: Reorder linen shirt: 3 sizes, 240 units"`, `"#1041 was rejected: …"`).
+할 일(`acom:Task`)은 운영자 홈(`task_list` 블록, [chat.md](chat.md) §3.3)에 보이는 일 단위입니다. 상태는 `acom:task_state`(`needs_you` \| `working` \| `done` \| `dismissed`, [enums.md](enums.md) §1.14), 출처 `origin`은 셋 중 하나입니다. 에이전트가 할 일을 맡아 변경셋을 만들면(턴의 `task_id`, [chat.md](chat.md) §1) 할 일은 그 변경셋과 대화에 묶여 `working`("Drafting change set #N")이 되고, 변경셋이 제출되면 `needs_you`("Change set #N is waiting for your approval")가 됩니다. 묶인 변경셋이 `live`나 `rejected`가 되면 할 일은 `done`이 되고 `summary`는 그 끝을 말합니다(`"#1041 ran: Reorder linen shirt: 3 sizes, 240 units"`, `"#1041 was rejected: …"`).
 
 | `origin` | 어떻게 생기나 | 예(장면 B2·B5) |
 |---|---|---|
@@ -280,7 +280,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 | `agent_noticed` | 감시 작업이 기준을 넘는 것을 찾고 운영 에이전트가 맡음 | "$200 넘는 반품 요청 12건 대기"(10:40), "Linen shirt 약 4일 뒤 품절"(08:40) |
 | `automation` | 감시 작업이 찾은 것을 미리 승인된 자동 조치로 처리 | "원가 이하 상품 4개를 하한으로"(07:55 → 08:31, Nov 7까지 되돌리기) |
 
-**감시 작업(watcher).** `commerce`의 예약 작업(`platform.job`)이 정해진 주기마다 정책 기준을 읽어 데이터를 확인하고, 기준을 넘으면 할 일을 만들거나 갱신합니다. 기준과 주기는 코드가 아니라 [platform.yml](../../policies/platform.yml) `watchers`에 있습니다: 환불 임계(`approval.yml` `thresholds.refund`)를 넘는 반품 요청이 기다리는지(`returns_over_refund_threshold`), 최근 판매 속도로 며칠 안에 품절될 변형이 있는지(`stock_out_forecast`), 정가가 원가보다 낮은 상품이 있는지(`price_below_cost`). 같은 원인으로 열린 할 일이 있으면 새로 만들지 않고 그 할 일을 갱신합니다. 감지는 결정적이고 처리는 대화입니다: 할 일마다 요청 문장(`request`)이 있고, 운영자가 항목을 열면(`agent_noticed`는 감시 작업이 바로) 에이전트가 그 문장으로 새 턴을 시작합니다([../backend/agent.md](../backend/agent.md) §10). 할 일이 만든 쓰기는 모두 변경셋으로 가고(`change_set_id`), 할 일은 변경셋이 `live`·`rejected`가 되면 `done`이 됩니다(엔진이 옮기고 `task.updated`를 보냄). 운영자는 필요 없는 할 일을 사람 전용 `dismiss`로 치웁니다.
+**감시 작업(watcher).** `commerce`의 예약 작업(`platform.job`)이 정해진 주기마다 정책 기준을 읽어 데이터를 확인하고, 기준을 넘으면 할 일을 만들거나 갱신합니다. 기준과 주기는 코드가 아니라 [platform.yml](../../policies/platform.yml) `watchers`에 있습니다: 환불 임계(`approval.yml` `thresholds.refund`)를 넘는 반품 요청이 기다리는지(`returns_over_refund_threshold`), 최근 판매 속도로 며칠 안에 품절될 변형이 있는지(`stock_out_forecast`), 정가가 원가보다 낮은 상품이 있는지(`price_below_cost`). 같은 원인으로 열린 할 일이 있으면 새로 만들지 않고 그 할 일을 갱신합니다. 감지는 결정적이고 처리는 대화입니다: 할 일마다 요청 문장(`request`)이 있고, 운영자가 항목을 열면 에이전트가 그 문장으로 새 턴을 시작합니다([../backend/agent.md](../backend/agent.md) §10). 스토어가 `platform.yml` `task_pickup`을 켜면 감시 작업이 새로 연 `agent_noticed` 할 일은 사람이 열기 전에 게이트웨이가 `acts_as` 운영자의 위임 토큰으로 바로 넘깁니다([../backend/gateway.md](../backend/gateway.md) §5). 초안은 승인 대기에서 멈춥니다. 할 일이 만든 쓰기는 모두 변경셋으로 가고(`change_set_id`), 할 일은 변경셋이 `live`·`rejected`가 되면 `done`이 됩니다(엔진이 옮기고 `task.updated`를 보냄). 운영자는 필요 없는 할 일을 사람 전용 `dismiss`로 치웁니다.
 
 **감시 작업이 할 일을 쓰는 방식.** 감지기는 데이터를 가진 도메인에 있습니다: 반품 요청은 `fulfillment`, 품절 예측은 `sales`(판매량, 재고는 `catalog`가 내놓는 `product_stock`), 원가 아래 정가는 `catalog`. 감지기는 할 일 초안만 돌려주고 `platform.task`는 작업 실행기(`acom-changeset::jobs`, [예약 작업](#예약-작업))가 씁니다. 원인은 `stock_out_forecast`가 상품 하나, 나머지 둘은 감시 작업 전체입니다. 같은 감시 작업·같은 원인의 열린 할 일(`needs_you`·`working`)이 있으면 그 할 일의 `title`·관찰값(`watcher.observed`)·관련 엔티티만 새로 쓰고(상태·요약·요청 문장·변경셋은 그대로, 버전 +1), 없을 때만 새로 만듭니다(`needs_you`로 시작). 기준을 넘는 것이 없으면 아무것도 바꾸지 않습니다. 데모 시계 Fri Nov 6 11:00에 세 감시 작업을 돌리면 시드의 할 일 둘이 같은 관찰값으로 갱신됩니다: 반품 요청 12건(가장 오래된 것 2026-11-04T09:12-05:00), Linen shirt 재고 38·최근 7일 61개 판매·4.4일. 원가 아래 상품은 없습니다(#1040이 08:31에 고침).
 
@@ -825,4 +825,4 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 |---|---|---|
 | `GET /v1/platform/store` | 토큰만 | 요청 문맥의 스토어: `{store_id, currency, time_zone, now}`. `now`는 데모 모드면 데모 시계. agent 서비스가 턴마다 스토어 시각·통화를 여기서 받습니다(commerce 테이블을 직접 읽지 않음) |
 | `GET /v1/platform/previews/{preview_id}` | `changeset:draft` 또는 `tools:read:platform` | 저장된 프리뷰 하나: `{preview_id, operation, input, changes[], checks[], needs_approval, approval_reason, expires_at, state, change_set_id, policy_version, created_at}`. `state`는 [enums.md](enums.md) §1.9. 런타임이 실행 전 확인하거나 화면이 프리뷰를 다시 그릴 때 |
-| `GET /v1/platform/events` (SSE) | `tools:read:platform` | 스토어의 진행 이벤트: `change_set.updated {change_set_id, version, state}`, `task.updated {task_id, state, change_set_id?}`, `job.updated {job_id, kind, state, run_at}`([예약 작업](#예약-작업)). 각 이벤트는 `id:`(스토어 안 순번)를 가지며 `Last-Event-ID`로 이어 받음. agent 서비스가 구독해 대화의 `change_set.updated`([chat.md](chat.md) §2)로 흘림 |
+| `GET /v1/platform/events` (SSE) | `tools:read:platform` | 스토어의 진행 이벤트: `change_set.updated {change_set_id, version, state}`, `task.updated {task_id, state, change_set_id?, created?, origin?}`(`created: true`와 `origin`은 감시 작업이 할 일을 새로 만들 때만), `job.updated {job_id, kind, state, run_at}`([예약 작업](#예약-작업)). 각 이벤트는 `id:`(스토어 안 순번)를 가지며 `Last-Event-ID`로 이어 받음. agent 서비스가 구독해 대화의 `change_set.updated`([chat.md](chat.md) §2)로 흘림 |

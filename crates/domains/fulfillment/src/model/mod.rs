@@ -4,7 +4,9 @@
 
 pub mod cancel;
 pub mod delivery;
+pub mod exchange;
 pub mod returns;
+pub mod zone;
 
 use std::collections::BTreeMap;
 use std::str::FromStr;

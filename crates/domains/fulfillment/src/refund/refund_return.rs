@@ -1,10 +1,10 @@
-//! `refund_return` (money back for one return claim; a person approves over
-//! `approval.yml thresholds.refund`) and `get_refund`.
+//! `refund_return`: money back for one return claim; a person approves over
+//! `approval.yml thresholds.refund`.
 
 use acom_contract::{
     ActionType, ApprovalNeed, Audience, Basis, Change, ChangeOp, Check, Committed, ErrorCode,
-    Group, Kind, Method, OpMeta, Operation, Planned, ReadOp, Slot, ToolError, UndoSupport,
-    Verification, WriteOp,
+    Group, Kind, Method, OpMeta, Operation, Planned, Slot, ToolError, UndoSupport, Verification,
+    WriteOp,
 };
 use acom_core::Money;
 use acom_core::ids::RefundId;
@@ -19,12 +19,12 @@ use serde_json::{Map, Value, json};
 use crate::claim::{claim_lines, claim_not_found, visible_claim};
 use crate::errors::{
     ALREADY_REFUNDED, AMOUNT_OVER_PAYMENT, CLAIM_NOT_FOUND, COUPON_NOT_DEDUCTED, NOT_A_RETURN,
-    NOT_REVOCABLE, PAYMENT_GATEWAY_ERROR, REFUND_NOT_FOUND,
+    NOT_REVOCABLE, PAYMENT_GATEWAY_ERROR,
 };
 use crate::model::returns::{refund_amount, refund_limit};
 use crate::model::{money_short, money_text};
 use crate::repo::{self, ClaimEvent, NewRefund};
-use crate::{broken, original_payment, payment_label, rules, shopper};
+use crate::{broken, original_payment, payment_label, rules};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -395,94 +395,5 @@ impl WriteOp<Cx> for RefundReturn {
                 plan.refund_id
             ),
         ))
-    }
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct GetRefundInput {
-    /// The refund.
-    #[schemars(regex(pattern = r"^rfd_[a-z0-9_]+$"), example = &"rfd_20402")]
-    pub refund_id: String,
-    /// Top-level fields to return, for example only the status.
-    #[schemars(example = ["refund_status", "events"])]
-    pub fields: Option<Vec<String>>,
-}
-
-pub struct GetRefund;
-
-impl Operation for GetRefund {
-    const META: OpMeta = OpMeta {
-        address: "fulfillment.refund.get",
-        tool: "get_refund",
-        group: Group::Transact,
-        kind: Kind::Read,
-        method: Method::Get,
-        path: "/v1/fulfillment/refunds/{refund_id}",
-        summary: "One refund: amount, where the money goes, and its status as the payment provider confirms it (requested, completed, failed).",
-        consumes: &[Slot::one("refund_id")],
-        produces: &[Slot::one("claim_id")],
-        checks: &[],
-        errors: &[REFUND_NOT_FOUND],
-        audience: Audience::Both,
-        action_type: ActionType::SEARCH,
-        person_scope: "",
-    };
-    type Input = GetRefundInput;
-    type Output = Value;
-}
-
-impl ReadOp<Cx> for GetRefund {
-    async fn read(&self, cx: &Cx, input: GetRefundInput) -> Result<Value, ToolError> {
-        let not_found = || {
-            ToolError::new(
-                REFUND_NOT_FOUND,
-                format!("There is no refund {}.", input.refund_id),
-            )
-            .detail(json!({"entity": "refund", "id": input.refund_id}))
-            .next("search_claims")
-        };
-        let mut tx = cx.read().await.map_err(ToolError::from)?;
-        let r = repo::refund(&mut tx, &input.refund_id)
-            .await?
-            .ok_or_else(not_found)?;
-        if let Some(me) = shopper(&cx.principal) {
-            let owner = repo::claim(&mut tx, &r.claim_id)
-                .await?
-                .map(|c| c.customer_id);
-            if owner.as_deref() != Some(me.as_str()) {
-                return Err(not_found());
-            }
-        }
-        let payments = sales::payments(&mut tx, &r.order_id).await?;
-        tx.commit().await.map_err(ToolError::from)?;
-        let to = match r.refund_method.as_str() {
-            "original_payment" => r
-                .payment_id
-                .as_ref()
-                .and_then(|id| payments.iter().find(|p| &p.id == id))
-                .map(payment_label)
-                .unwrap_or_else(|| "the original payment".to_owned()),
-            other => other.replace('_', " "),
-        };
-        let mut events =
-            vec![json!({"refund_status": "requested", "at": cx.time.format(r.start_time)})];
-        if let Some(end) = r.end_time
-            && r.refund_status != "requested"
-        {
-            events.push(json!({"refund_status": r.refund_status, "at": cx.time.format(end)}));
-        }
-        let out = json!({
-            "id": r.id,
-            "claim_id": r.claim_id,
-            "order_id": r.order_id,
-            "amount": r.amount()?,
-            "refund_method": r.refund_method,
-            "refund_type": r.refund_type,
-            "to": to,
-            "refund_status": r.refund_status,
-            "events": events,
-        });
-        Ok(crate::select(out, &input.fields.unwrap_or_default()))
     }
 }
