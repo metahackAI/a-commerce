@@ -1,6 +1,6 @@
 'use client';
 
-// memory_note: one line saying what Northwind remembered, with the shopper's own Undo (chat.md
+// memory_note: one line saying what Ailism remembered, with the shopper's own Undo (chat.md
 // §3.3, customer.md preference). Undo is person-only (POST /v1/customer/me/memories/{id}/undo);
 // the agent cannot press it.
 
@@ -36,7 +36,7 @@ export function MemoryNoteBlock({block}: BlockProps) {
           label: 'Undo',
           method: 'POST',
           path: `/v1/customer/me/memories/${encodeURIComponent(data.memory_id)}/undo`,
-          confirm: 'Forget this? Northwind stops using it.',
+          confirm: 'Forget this? Ailism stops using it.',
         }
       : null);
   const others = block.actions.filter(a => a !== own);

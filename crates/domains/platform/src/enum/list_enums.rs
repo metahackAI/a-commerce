@@ -1,9 +1,7 @@
-//! `list_enums`: every word list with readable labels. The lists themselves are
-//! `acom_core::enums::LISTS`, the same ones the database `CHECK`s and the input schemas use.
+//! `list_enums` (`platform.enum.list`): every word list with labels and order.
 
 use acom_contract::{
-    ActionType, Audience, ErrorClass, ErrorCode, Group, Kind, Method, OpMeta, Operation, ReadOp,
-    ReadResult, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, ReadResult, ToolError,
 };
 use acom_core::enums::LISTS;
 use acom_store::Cx;
@@ -11,57 +9,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-pub const ENUM_NOT_FOUND: ErrorCode = ErrorCode::new("enum_not_found", ErrorClass::NotFound);
-
-/// Lists whose last values end the life of a record.
-const TERMINAL: &[(&str, &[&str])] = &[
-    ("order_status", &["returned", "cancelled"]),
-    ("availability", &["discontinued"]),
-    ("change_set_state", &["failed", "rejected", "undone"]),
-    ("preview_state", &["committed", "expired", "superseded"]),
-    ("task_state", &["done", "dismissed"]),
-];
-
-/// Labels that are not just the word with spaces.
-const LABELS: &[(&str, &str)] = &[
-    ("problem", "Needs attention"),
-    ("needs_you", "Needs you"),
-    ("waiting_for_approval", "Waiting for approval"),
-    ("you_asked", "You asked"),
-    ("agent_noticed", "Agent noticed"),
-    ("bo", "Back office"),
-    ("fo", "Storefront"),
-];
-
-fn label(word: &str) -> String {
-    if let Some((_, l)) = LABELS.iter().find(|(w, _)| *w == word) {
-        return (*l).to_owned();
-    }
-    let spaced = word.replace('_', " ");
-    let mut c = spaced.chars();
-    c.next()
-        .map(|f| f.to_uppercase().chain(c).collect())
-        .unwrap_or_default()
-}
-
-/// The tables whose columns use a list, from the data dictionary.
-fn applies_to(list: &str) -> Vec<String> {
-    let mut out: Vec<String> = Vec::new();
-    for t in crate::schema::describe(&crate::schema::DescribeDataInput {
-        term: None,
-        schema: None,
-        table: None,
-        api_name: None,
-    }) {
-        let uses = t["columns"]
-            .as_array()
-            .is_some_and(|cs| cs.iter().any(|c| c["values_list"] == list));
-        if uses && let Some(name) = t["table"].as_str() {
-            out.push(name.to_owned());
-        }
-    }
-    out
-}
+use super::{ENUM_NOT_FOUND, TERMINAL, applies_to, label};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -147,16 +95,5 @@ impl ReadOp<Cx> for ListEnums {
             })
             .collect();
         Ok(ReadResult::all(items))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn labels_read_like_words() {
-        assert_eq!(label("in_transit"), "In transit");
-        assert_eq!(label("problem"), "Needs attention");
     }
 }

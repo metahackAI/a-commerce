@@ -314,7 +314,7 @@ export function GiftCheckoutFlow({cart}: {cart: Cart}) {
                     }}
                   />
                   <Text type="supporting" color="secondary">
-                    Northwind can prepare a gift, but only you can send it.
+                    Ailism can prepare a gift, but only you can send it.
                     {prepared.expires_at ? ` Prepared until ${dateTime(prepared.expires_at)}.` : ''}
                   </Text>
                 </VStack>

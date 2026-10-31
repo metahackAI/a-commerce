@@ -1,6 +1,6 @@
 'use client';
 
-// profile_card: "What Northwind knows about you" (chat.md §3.3, get_my_profile). Each fact is an
+// profile_card: "What Ailism knows about you" (chat.md §3.3, get_my_profile). Each fact is an
 // AI target so the shopper can ask why it is there; changes go through the block's buttons
 // (`say` to correct, `person` to delete).
 
@@ -77,7 +77,7 @@ export function ProfileCardBlock({block}: BlockProps) {
   );
   const rest = {...block, actions: block.actions.filter(a => !perFact.has(a.action_id))};
   return (
-    <BlockFrame block={{...block, title: block.title ?? 'What Northwind knows about you'}} footer={<BlockActions block={rest} />}>
+    <BlockFrame block={{...block, title: block.title ?? 'What Ailism knows about you'}} footer={<BlockActions block={rest} />}>
       {facts.length === 0 ? (
         <Text type="supporting" color="secondary">
           Nothing remembered yet.

@@ -23,6 +23,7 @@ import {Token} from '@astryxdesign/core/Token';
 
 import {useAi} from '@/ai/AiProvider';
 
+import {AILISM, AilismAvatar} from '@/components/brand/Ailism';
 import {BlockView} from './BlockView';
 
 interface DockState {
@@ -103,7 +104,7 @@ function AgentDrawer({isOpen, onOpenChange}: {isOpen: boolean; onOpenChange: (op
     <Drawer isOpen={isOpen} onOpenChange={onOpenChange} label="Ask the agent" width={480} hasScrim={false} padding={0}>
       <VStack height="100%">
         <DrawerHeader
-          title="Ask the agent"
+          title="Ask Ailism"
           subtitle="Press Ask on anything on the page, then say what you want to know or change."
           onOpenChange={onOpenChange}
           hasDivider
@@ -131,21 +132,35 @@ function AgentDrawer({isOpen, onOpenChange}: {isOpen: boolean; onOpenChange: (op
                   description="The agent can explain anything here and prepare changes. Nothing changes in the store until a person approves."
                 />
               }>
-              {ai.messages.map(m =>
-                m.sender === 'system' ? (
-                  <ChatSystemMessage key={m.id}>{m.text}</ChatSystemMessage>
-                ) : (
-                  <ChatMessage key={m.id} sender={m.sender}>
-                    <ChatMessageBubble>{m.text}</ChatMessageBubble>
-                  </ChatMessage>
+              {/* One flat list: ChatMessageList shows its empty state only when its children are
+                  an empty array. */}
+              {[
+                ...ai.messages.map(m =>
+                  m.sender === 'system' ? (
+                    <ChatSystemMessage key={m.id}>{m.text}</ChatSystemMessage>
+                  ) : (
+                    <ChatMessage
+                      key={m.id}
+                      sender={m.sender}
+                      name={m.sender === 'assistant' ? AILISM.assistant : undefined}
+                      avatar={m.sender === 'assistant' ? <AilismAvatar size="sm" /> : undefined}>
+                      <ChatMessageBubble>{m.text}</ChatMessageBubble>
+                    </ChatMessage>
+                  ),
                 ),
-              )}
-              {ai.blocks.length > 0 ? <ChatSystemMessage variant="divider">Results</ChatSystemMessage> : null}
-              {ai.blocks.map(b => (
-                <ChatMessage key={b.block_id} sender="assistant">
-                  <BlockView block={b} />
-                </ChatMessage>
-              ))}
+                ...(ai.blocks.length > 0
+                  ? [
+                      <ChatSystemMessage key="results" variant="divider">
+                        Results
+                      </ChatSystemMessage>,
+                    ]
+                  : []),
+                ...ai.blocks.map(b => (
+                  <ChatMessage key={b.block_id} sender="assistant">
+                    <BlockView block={b} />
+                  </ChatMessage>
+                )),
+              ]}
             </ChatMessageList>
           </ChatLayout>
         </StackItem>

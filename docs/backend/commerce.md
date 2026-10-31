@@ -135,6 +135,8 @@ pub struct Cx {
 
 실행은 한 트랜잭션입니다: `commit` → 프리뷰 `committed` → 도메인 이벤트 append → 아웃박스 → 액션 로그(`CompletedActionStatus`). 같은 `preview_id`로 다시 오면 저장된 결과를 그대로 돌려줍니다(멱등). `Idempotency-Key` 헤더는 프리뷰 없이 실행되는 사람 전용 엔드포인트의 재시도 보호에 씁니다.
 
+**비밀은 저장하지 않습니다.** 입력 스키마가 `"writeOnly": true`로 표시한 필드(클라이언트 비밀 값, 리프레시 토큰)는 프리뷰 저장소·변경셋 항목·입력 해시에 `"(not stored)"`로 남습니다. 오퍼레이션의 `preview`는 진짜 값을 봅니다. 실행이 만든 비밀(새 API 키의 비밀 값, 클라이언트 토큰)은 `Committed.produced["shown_once"]`에 담고, 엔진이 저장·로그 전에 빼서 그 실행을 부른 요청에만 돌려줍니다: 단독 실행이면 실행 응답에 펼쳐서, 변경셋이면 `approve` 응답의 `shown_once[]`로. `Idempotency-Key` 기록에도 남기지 않으므로 같은 요청을 다시 보내거나 같은 `preview_id`를 다시 실행하면 비밀 없이 첫 결과를 돌려줍니다.
+
 ### 2.3 모델이 보는 툴과 전선 위의 툴
 
 | | 모델에게 보이는 툴(에이전트 매니페스트) | 전선 위(REST·MCP) |

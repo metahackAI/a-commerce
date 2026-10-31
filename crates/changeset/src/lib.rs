@@ -45,6 +45,47 @@ pub const ALREADY_EXISTS: ErrorCode = ErrorCode::new("already_exists", ErrorClas
 /// The system actor the change-set runner acts as.
 pub const RUNNER: &str = "sys_runner";
 
+/// The slot of `Committed::produced` that a run shows its caller once and never keeps: a new API
+/// key's secret, a client's tokens. It is taken out before the result is stored in the preview,
+/// the change set or the action log, and answers only the request that ran the write (the run
+/// response, or the approval response for a change set). Running the same preview again answers
+/// without it.
+pub const SHOWN_ONCE: &str = "shown_once";
+
+/// What a stored input holds in place of a field its schema marks `writeOnly` (a secret).
+pub const NOT_STORED: &str = "(not stored)";
+
+/// Takes the [`SHOWN_ONCE`] values out of a run's result.
+pub(crate) fn take_shown_once(
+    done: &mut acom_contract::Committed,
+) -> Option<serde_json::Map<String, Value>> {
+    match done.produced.remove(SHOWN_ONCE) {
+        Some(Value::Object(m)) if !m.is_empty() => Some(m),
+        _ => None,
+    }
+}
+
+/// The input as the preview store keeps it: every top-level field the operation's input schema
+/// marks `"writeOnly": true` (a client secret, a refresh token) is replaced by [`NOT_STORED`].
+/// The operation's preview saw the real value; nothing stored or logged holds it.
+pub fn storable_input(schema: &Value, input: &Value) -> Value {
+    let mut out = input.clone();
+    let props = schema.get("properties").and_then(Value::as_object);
+    if let (Some(props), Some(fields)) = (props, out.as_object_mut()) {
+        for (name, value) in fields.iter_mut() {
+            let secret = props
+                .get(name)
+                .and_then(|p| p.get("writeOnly"))
+                .and_then(Value::as_bool)
+                == Some(true);
+            if secret {
+                *value = Value::String(NOT_STORED.to_owned());
+            }
+        }
+    }
+    out
+}
+
 pub(crate) fn db_err(e: sqlx::Error) -> ToolError {
     ToolError::from(acom_store::StoreError::from(e))
 }
@@ -200,5 +241,30 @@ mod tests {
         assert!(same_changes(&stored, &seeded));
         assert!(!same_changes(&stored, &raised));
         assert!(!same_changes(&stored, &more));
+    }
+
+    #[test]
+    fn secrets_are_neither_stored_nor_kept() {
+        let schema = json!({"type": "object", "properties": {
+            "client_id": {"type": "string"},
+            "client_secret_ref": {"type": "string", "writeOnly": true}}});
+        let input = json!({"client_id": "key_31", "client_secret_ref": "ak_live_3f9c"});
+        assert_eq!(
+            storable_input(&schema, &input),
+            json!({"client_id": "key_31", "client_secret_ref": NOT_STORED})
+        );
+        let mut done = acom_contract::Committed {
+            id: "key_31".into(),
+            produced: serde_json::from_value(
+                json!({"api_key_id": "key_31", "shown_once": {"secret": "ak_live_3f9c"}}),
+            )
+            .unwrap(),
+        };
+        assert_eq!(
+            take_shown_once(&mut done).map(Value::Object),
+            Some(json!({"secret": "ak_live_3f9c"}))
+        );
+        assert_eq!(json!(done.produced), json!({"api_key_id": "key_31"}));
+        assert_eq!(take_shown_once(&mut done), None);
     }
 }

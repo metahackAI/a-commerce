@@ -1,6 +1,6 @@
 'use client';
 
-// "What Northwind knows about you" and the shopper's own lists: remembered preferences (each with
+// "What Ailism knows about you" and the shopper's own lists: remembered preferences (each with
 // a person-only Undo), addresses, wishlist, coupons and loyalty balance. Everything shown is what
 // get_my_profile, get_preferences, list_addresses, list_wishlist, list_member_coupons and
 // get_loyalty_balance returned.
@@ -47,7 +47,7 @@ function MemoryRow({memory}: {memory: Preference}) {
                 label: 'Undo',
                 method: 'POST',
                 path: `/v1/customer/me/memories/${encodeURIComponent(memory.id)}/undo`,
-                confirm: `Forget “${memory.text}”? Northwind stops using it.`,
+                confirm: `Forget “${memory.text}”? Ailism stops using it.`,
               }}
               variant="secondary"
               onDone={() => {
@@ -64,7 +64,7 @@ function MemoryRow({memory}: {memory: Preference}) {
 
 export function MemoryList({memories}: {memories: Preference[]}) {
   if (memories.length === 0) {
-    return <Text color="secondary">Nothing yet. When you tell Northwind your size or what matters to you, it shows up here and you can undo it.</Text>;
+    return <Text color="secondary">Nothing yet. When you tell Ailism your size or what matters to you, it shows up here and you can undo it.</Text>;
   }
   return (
     <List hasDividers>

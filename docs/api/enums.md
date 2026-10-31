@@ -144,12 +144,14 @@
 | 리뷰의 사이즈 평가 `acom:fit_vote` | `true_to_size`, `runs_small`, `runs_large` |
 | 실측 항목 `acom:measurement_name` | `chest`, `shoulder`, `sleeve`, `length`, `waist`, `hip`, `inseam`, `rise`, `foot_length` |
 | 판매자 | `applied`, `under_review`, `approved`, `active`, `suspended`, `terminated` |
-| API 키 | `active`, `revoked` |
+| API 키 `acom:api_key_status` | `active`, `revoked` |
 | 채널 연결 | `connected`, `degraded`, `disconnected` |
 | 할 일 `acom:task_state` | `needs_you`, `working`, `done`, `dismissed` |
 | 할 일 출처 `acom:task_origin` | `you_asked`, `agent_noticed`, `automation` |
 | 예약 작업 `acom:job_state` (`job.updated` 이벤트, 열에서 계산) | `scheduled`, `retrying`, `done` |
 | 운영자 계정 `acom:admin_status` | `active`, `suspended`, `locked` |
+| 스토어 `acom:store_status` (API `acom:status`) | `active`, `suspended` |
+| 조직 종류 `acom:organization_type` (API `acom:org_type`) | `department`, `vendor`, `branch` |
 
 ### 1.15 에이전트
 

@@ -383,6 +383,21 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:storeStatus of a store (tenant): open for business or suspended.
+    StoreStatus = "store_status" { Active = "active", Suspended = "suspended" }
+}
+
+word_enum! {
+    /// acom:organizationType of an organization operators belong to.
+    OrganizationType = "organization_type" { Department = "department", Vendor = "vendor", Branch = "branch" }
+}
+
+word_enum! {
+    /// acom:apiKeyStatus of an API key: it can sign in, or it was revoked.
+    ApiKeyStatus = "api_key_status" { Active = "active", Revoked = "revoked" }
+}
+
+word_enum! {
     /// schema:creativeWorkStatus of a review: whether shoppers see it.
     ReviewStatus = "review_status" { Visible = "visible", Hidden = "hidden", Reported = "reported" }
 }
@@ -497,6 +512,9 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (PreferenceKey::LIST, PreferenceKey::WORDS),
     (ActorKind::LIST, ActorKind::WORDS),
     (AdminStatus::LIST, AdminStatus::WORDS),
+    (StoreStatus::LIST, StoreStatus::WORDS),
+    (OrganizationType::LIST, OrganizationType::WORDS),
+    (ApiKeyStatus::LIST, ApiKeyStatus::WORDS),
     (ReviewStatus::LIST, ReviewStatus::WORDS),
     (FitVote::LIST, FitVote::WORDS),
     (MeasurementName::LIST, MeasurementName::WORDS),
