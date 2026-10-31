@@ -12,6 +12,7 @@
 //! outside agents and integration clients that sign in with an API key.
 
 pub mod rules;
+pub mod service;
 
 mod action_log;
 mod admin_user;

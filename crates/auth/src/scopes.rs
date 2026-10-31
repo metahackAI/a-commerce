@@ -86,6 +86,8 @@ pub fn shopper() -> BTreeSet<String> {
 }
 
 /// A guest: browse and keep a cart tied to the browser session. Signing in is needed to order.
+/// `human:account` lets a person who cannot sign in ask for a password reset or their sign-in id
+/// (docs/api/customer.md, person-only endpoints); agents never get it.
 pub fn guest() -> BTreeSet<String> {
     set(&[
         "tools:read:search",
@@ -96,6 +98,7 @@ pub fn guest() -> BTreeSet<String> {
         "tools:write:sales",
         "tools:read:customer",
         "tools:write:customer",
+        "human:account",
     ])
 }
 
