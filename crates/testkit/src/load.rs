@@ -28,6 +28,7 @@ pub const SCHEMAS: &[&str] = &[
     "messaging",
     "search",
     "analytics",
+    "integration",
     "agent",
 ];
 

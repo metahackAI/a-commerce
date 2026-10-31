@@ -152,7 +152,7 @@
 | 실측 항목 `acom:measurement_name` | `chest`, `shoulder`, `sleeve`, `length`, `waist`, `hip`, `inseam`, `rise`, `foot_length` |
 | 판매자 | `applied`, `under_review`, `approved`, `active`, `suspended`, `terminated` |
 | API 키 `acom:api_key_status` | `active`, `revoked` |
-| 채널 연결 | `connected`, `degraded`, `disconnected` |
+| 채널 연결 `acom:connection_status` | `connected`, `degraded`, `disconnected` (§1.17) |
 | 할 일 `acom:task_state` | `needs_you`, `working`, `done`, `dismissed` |
 | 할 일 출처 `acom:task_origin` | `you_asked`, `agent_noticed`, `automation` |
 | 예약 작업 `acom:job_state` (`job.updated` 이벤트, 열에서 계산) | `scheduled`, `retrying`, `done` |
@@ -170,6 +170,18 @@
 | 주소 용도 `acom:address_usage` | `shipping`, `billing`, `return` |
 | 기억 키 `acom:preference_key` | `size`, `fit_note`, `fabric_preference`, `compares_specs`, `layout_preference`, `travel_priority`, `other` |
 | 메시지 종류 `acom:message_kind` | `ask_for_photos`, `decline`, `refund_done`, `custom` |
+
+### 1.17 연계 (integration)
+
+| 목록 | 값 |
+|---|---|
+| 채널 종류 `acom:channel_type` | `marketplace`(상품을 파는 마켓플레이스), `carrier`(택배사), `payment`(결제사), `fulfillment`(외부 물류 창고) |
+| 채널 연결 `acom:connection_status` | `connected`, `degraded`(느리거나 일부만 응답), `disconnected` |
+| 가져오기 방식 `acom:import_mode` (`import_products`, 목록 이름 `feed_import_mode`) | `upsert`(새 상품은 초안으로 만들고 아는 상품은 가격·재고·판매 상태를 고침), `price_only`, `stock_only`, `status_only`. `batch_import`의 `create`/`upsert`(§1.10)와는 다른 목록 |
+| 가져온 행 `acom:item_status` | `accepted`, `rejected` |
+| 동기화 방향 `acom:direction` (목록 이름 `sync_direction`) | `inbound`(채널의 상태를 스토어로), `outbound`(스토어의 상태를 채널로) |
+| 택배사 이벤트 `acom:event_type` (`receive_carrier_event`, 목록 이름 `carrier_event_type`) | `label_created`, `picked_up`, `in_transit`, `delivered`, `delivery_failed` |
+| 결제사 이벤트 `acom:event_type` (`receive_payment_event`, 목록 이름 `payment_event_type`) | `authorized`, `deposit_confirmed`, `cancelled`, `refund_completed`, `refund_failed` |
 
 ---
 

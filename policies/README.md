@@ -52,7 +52,7 @@
 | [search.yml](search.yml) | search | 검색 모드와 확장, 스토어 격리, 등급 필터를 쿼리 안에서, 랭킹 신호, 색인 교체, 비교 속성 |
 | [community.yml](community.yml) | community | 게시판 쓰기 권한, 금칙어·스팸·첨부, 신고·블라인드 |
 | [partner.yml](partner.yml) | partner | 입점 서류·금지 업종, 판매자 상태 전이, 수수료 범위, 계약 기간, 등급 |
-| [integration.yml](integration.yml) | integration | 가져오기 배치 한도·필수 필드, 외부 상태 매핑, 자격 증명 보관, 이벤트 서명·재생 창 |
+| [integration.yml](integration.yml) | integration | 가져오기 배치 한도·필수 필드, 외부 상태 매핑, 자격 증명 보관, 이벤트 서명·재생 창, 대상이 없는 이벤트의 재시도 간격·포기 시간 |
 | [platform.yml](platform.yml) | platform | **할 일 감시 작업(`watchers`)**, 역할·관리자·조직·API 키 규칙 |
 
 `acom-policy::FILES`는 현재 앞의 8개 파일을 읽습니다. `community`·`partner`·`integration`·`platform`은 그 도메인의 오퍼레이션을 구현할 때 로더 목록에 더합니다.

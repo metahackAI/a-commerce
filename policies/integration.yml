@@ -22,3 +22,6 @@ events:
   signature_required: true               # 인바운드 이벤트는 채널의 서명 키로 검증(실패 시 unauthenticated)
   replay_window:
     minutes: 15                          # 발생 시각이 이보다 오래된 이벤트는 저장만 하고 반영하지 않음
+  pending:                               # 반영 대상(송장의 배송·결제·환불)이 아직 기록되지 않은 이벤트 (작업 integration.apply_event)
+    retry_every_minutes: 10              # 이 간격으로 다시 반영을 시도
+    give_up_after_minutes: 1440          # 받은 뒤 이만큼 지나도 대상이 없으면 반영하지 않고 failed로 남김

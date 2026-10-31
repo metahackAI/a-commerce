@@ -17,6 +17,7 @@ members and sales history) under fixed counts and a fixed random seed.
 | `07_fulfillment.yml` | Deliveries of those orders, the 12 B2 return requests (`requested`), cus_4431's three completed returns with inspections and refunds, and the three delivery zones of `list_shipping_zones` (contiguous US with the policy's default values; Alaska and Hawaii, +$12.00; Puerto Rico and US territories, +$15.00) |
 | `08_messaging.yml` | Refund notices for cus_4431's completed returns; the weekly email template `tpl_weekly_email` and its sends: four sent Thursdays (Oct 8–29) and `cmp_weekly_1105`, failed Thu Nov 5 08:00 (list import failed) |
 | `09_supplier_sheet.yml` | Scene B4's supplier sheet `upl_fw26_supplier` (`fw26_supplier.xlsx`, 30 rows); the scene imports it |
+| `12_integration.yml` | The outside channels (UPS `chn_carrier_ups`, `chn_marketplace_a`, the card processor `chn_payment_cards`; secrets as hashes only, status mappings), the marketplace's last copy of three orders and a return request not in the store yet, the card and carrier events behind #20402, and `imp_1107` (the store's own feed on Nov 5: the merino tee's codes taken, one row rejected for an unmapped category) |
 | `generate.yml` | Spec for the generator (not data) |
 | `flow.yml` | What shoppers do after the scene clock, for `cargo xtask sim` (not data; see below) |
 

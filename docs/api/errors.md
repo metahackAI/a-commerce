@@ -69,7 +69,7 @@
 | messaging | `no_consented_recipients`, `template_channel_mismatch`, `campaign_not_ready` |
 | search | `circular_synonym`, `reindex_pending` |
 | merchandising | `slot_taken`·`item_discontinued`·`product_discontinued`·`empty_curation`·`priority_conflict`(policy_violation), `too_many_popups`(limit_exceeded), `cross_set_violation`, `primary_needs_reassign`, `cycle_detected`, `slot_type_mismatch`, `empty_slot` |
-| integration | `status_unmapped`, `category_unmapped` |
+| integration | `status_unmapped`, `category_unmapped`, `amount_mismatch`(결제사 이벤트의 금액이 결제·환불 금액과 다름), `seller_not_active`(invalid_state), `invalid_transition`(invalid_state, 코어 도메인이 허용하지 않는 상태 이동), `order_not_mapped`·`claim_not_mapped`·`channel_not_registered`·`unknown_channel`·`import_not_found`(not_found), `duplicate_channel`·`duplicate_sku`(already_exists), `mapping_incomplete`·`missing_required_field`(invalid_input), `batch_too_large`(limit_exceeded), `connection_failed`·`external_lookup_failed`(upstream_unavailable), `invalid_signature`(unauthenticated) |
 | platform | `change_set_not_found`, `preview_not_found`, `irreversible_change`(되돌릴 수 없는 항목이 있는 변경셋 되돌리기), `demo_mode_off`(invalid_state, 데모 모드가 아닌 스토어에서 데모 시계 옮기기, 또는 평가용 화면형 파사드 쓰기: `GET /v1/tools?set=facade`, 턴의 `tool_set: facade`), `demo_reset_unavailable`(invalid_state, 데모 스택이 아닌 곳에서 데모 스토어 다시 적재) |
 | analytics | `no_data_for_period`(비교할 날에 매출이 없음), `invalid_period`·`invalid_granularity`·`dimension_not_supported`(invalid_input) |
 

@@ -33,9 +33,10 @@ A-Commerce의 DB는 **AI가 읽는 DB**입니다. 에이전트(인사이트 에�
 | `fulfillment` | 배송(ParcelDelivery), 클레임, 검수, 환불 |
 | `messaging` | 메시지 |
 | `analytics` | 읽기 전용 뷰(일별 매출 등) |
+| `integration` | 외부 채널(자격 증명·서명 키는 해시만), 채널이 가진 주문·클레임 사본, 외부 피드 가져오기와 행별 결과, 받은 택배사·결제사 이벤트 |
 | `agent` | 대화, 턴, 단계, 모델 호출 (agent 서비스 소유) |
 
-나머지 도메인(community, partner, integration)의 스키마는 착수할 때 같은 규칙으로 추가합니다.
+나머지 도메인(community, partner)의 스키마는 착수할 때 같은 규칙으로 추가합니다.
 
 ## 3. 이름 규칙
 
@@ -242,6 +243,10 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `analytics.order_summary`, `analytics.order_line_summary` | - (뷰) | — | 주문·주문 줄 하나에 한 행: 날짜, 상태, 등급, 캠페인, 금액. 누가 샀는지는 없음 |
 | `analytics.variant_stock_out`, `analytics.campaign_send` | - (뷰) | — | 지금 품절인 변형과 품절 시각, 캠페인 발송 여부·실패 이유 |
 | `analytics.member_tier_count`, `analytics.daily_new_members` | - (뷰) | — | 등급별 회원 수, 일별 신규 가입 수 |
+| `integration.channel` | schema:WebAPI/acom:Channel | `chn` | 외부 채널: 종류, 주소, 연결 상태, 상태 매핑(jsonb), 자격 증명·서명 키는 SHA-256 해시만 |
+| `integration.external_order`, `integration.external_claim` | schema:Order/acom:ExternalOrder, schema:ReturnAction/acom:ExternalClaim | — | 채널이 마지막으로 보낸 주문·클레임 사본. 키는 채널 + 채널의 참조, 매핑된 `order_id`·`claim_id` |
+| `integration.webhook_event` | schema:ReceiveAction/acom:WebhookEvent | `whk` | 받은 이벤트 한 건(중복 키 `event_key`), 반영 대상과 결과. 대상이 없으면 `potential`로 기다림 |
+| `integration.product_import`, `integration.product_import_item` | schema:CreateAction/acom:ProductImport, schema:DataFeedItem | `imp` | `import_products` 한 번과 행별 결과·변형 매핑. 새 상품 초안은 같은 id로 `catalog.product_import`에도 |
 | `agent.conversation`, `agent.turn`, `agent.step`, `agent.model_call` | schema:Conversation, schema:Message, schema:Action | `conv`, `turn` | agent 서비스 |
 
 ## 13. 마이그레이션 규칙과 검사

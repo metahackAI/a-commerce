@@ -627,6 +627,55 @@ word_enum! {
     RecoveryKind = "recovery_kind" { PasswordReset = "password_reset", LoginId = "login_id" }
 }
 
+// ── integration (docs/api/enums.md §1.17) ───────────────────────────────────────────────
+
+word_enum! {
+    /// acom:channelType, what kind of outside system a channel connects.
+    ChannelType = "channel_type" {
+        Marketplace = "marketplace", Carrier = "carrier", Payment = "payment", Fulfillment = "fulfillment",
+    }
+}
+
+word_enum! {
+    /// acom:connectionStatus of an outside channel.
+    ConnectionStatus = "connection_status" {
+        Connected = "connected", Degraded = "degraded", Disconnected = "disconnected",
+    }
+}
+
+word_enum! {
+    /// acom:importMode of `import_products`: what an outside feed may change.
+    FeedImportMode = "feed_import_mode" {
+        Upsert = "upsert", PriceOnly = "price_only", StockOnly = "stock_only", StatusOnly = "status_only",
+    }
+}
+
+word_enum! {
+    /// acom:itemStatus, whether one row of an import was taken.
+    ItemStatus = "item_status" { Accepted = "accepted", Rejected = "rejected" }
+}
+
+word_enum! {
+    /// acom:direction of a status sync with an outside channel.
+    SyncDirection = "sync_direction" { Inbound = "inbound", Outbound = "outbound" }
+}
+
+word_enum! {
+    /// acom:carrierEventType, what a carrier reports about a parcel.
+    CarrierEventType = "carrier_event_type" {
+        LabelCreated = "label_created", PickedUp = "picked_up", InTransit = "in_transit",
+        Delivered = "delivered", DeliveryFailed = "delivery_failed",
+    }
+}
+
+word_enum! {
+    /// acom:paymentEventType, what a payment provider reports about a payment or a refund.
+    PaymentEventType = "payment_event_type" {
+        Authorized = "authorized", DepositConfirmed = "deposit_confirmed", Cancelled = "cancelled",
+        RefundCompleted = "refund_completed", RefundFailed = "refund_failed",
+    }
+}
+
 /// Every word list, by name. `cargo xtask check-schema` compares database `CHECK` lists with these.
 pub const LISTS: &[(&str, &[&str])] = &[
     (OrderStatus::LIST, OrderStatus::WORDS),
@@ -710,6 +759,13 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (TierChangeCause::LIST, TierChangeCause::WORDS),
     (DiscountLimitPeriod::LIST, DiscountLimitPeriod::WORDS),
     (RecoveryKind::LIST, RecoveryKind::WORDS),
+    (ChannelType::LIST, ChannelType::WORDS),
+    (ConnectionStatus::LIST, ConnectionStatus::WORDS),
+    (FeedImportMode::LIST, FeedImportMode::WORDS),
+    (ItemStatus::LIST, ItemStatus::WORDS),
+    (SyncDirection::LIST, SyncDirection::WORDS),
+    (CarrierEventType::LIST, CarrierEventType::WORDS),
+    (PaymentEventType::LIST, PaymentEventType::WORDS),
 ];
 
 /// The words of one list, by name.
