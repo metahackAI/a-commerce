@@ -10,8 +10,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
-use super::product_not_found;
-use crate::{PRODUCT_NOT_FOUND, repo, write};
+use crate::{PRODUCT_NOT_FOUND, product_not_found, repo, write};
 
 /// A safety stock under zero.
 pub const NEGATIVE_VALUE: ErrorCode = ErrorCode::new("negative_value", ErrorClass::InvalidInput);
@@ -210,7 +209,7 @@ impl WriteOp<Cx> for SetSafetyStock {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ops::testing;
+    use crate::testing;
 
     #[tokio::test]
     async fn negative_levels_are_refused() {

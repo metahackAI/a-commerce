@@ -531,7 +531,7 @@ impl WriteOp<Cx> for BatchImport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ops::testing;
+    use crate::testing;
 
     #[test]
     fn import_ids_follow_the_sheet() {

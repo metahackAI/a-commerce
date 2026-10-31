@@ -9,11 +9,9 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::product::visible_group;
-use super::product_not_found;
 use crate::model::change_type;
 use crate::repo::{self, HistoryRow};
-use crate::{PRODUCT_NOT_FOUND, list};
+use crate::{PRODUCT_NOT_FOUND, list, product_not_found, visible_group};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -105,7 +103,7 @@ impl ReadOp<Cx> for GetChangeHistory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ops::testing;
+    use crate::testing;
 
     #[test]
     fn a_price_fix_reads_as_a_structural_change_by_the_system() {

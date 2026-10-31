@@ -1,29 +1,31 @@
-//! `submit_for_review`, `approve_product`, `reject_product` (docs/api/catalog.md#approval): a
-//! draft goes to review, and a person publishes it in a change set or sends it back.
+//! The `approval` resource (docs/api/catalog.md#approval): a draft goes to review
+//! (`submit_for_review`), and a person publishes it in a change set (`approve_product`) or sends it
+//! back (`reject_product`). The checks and status moves the three share are here.
 //!
 //! ```text
 //! draft ─submit─▶ pending_review ─approve (W$)─▶ active
 //!   ▲                   └─reject─▶ rejected ─submit─┘
 //! ```
 
+pub mod approve_product;
+pub mod get_change_history;
+pub mod reject_product;
+pub mod submit_for_review;
+
 use acom_contract::{
-    ActionType, ApprovalNeed, Audience, Basis, Change, ChangeOp, Check, Committed, ErrorClass,
-    ErrorCode, Group, Kind, Method, OpMeta, Operation, Planned, Slot, ToolError, UndoSupport,
-    Verification, WriteOp,
+    Basis, Change, ChangeOp, Check, Committed, ErrorClass, ErrorCode, ToolError, Verification,
 };
 use acom_policy::PolicySet;
 use acom_store::{Cx, TxCx};
 use chrono::NaiveDate;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
-use super::product_not_found;
 use crate::model::{Variant, money_text};
 use crate::repo::{self, Group as GroupRow};
 use crate::rules::{PriceFloorRule, ProductRules};
 use crate::write::{self, DraftItem};
-use crate::{BELOW_PRICE_FLOOR, PRODUCT_NOT_FOUND, neighbors, parse_time};
+use crate::{neighbors, product_not_found};
 
 /// A product with nothing that could be reviewed: no variants yet.
 pub const NOTHING_TO_REVIEW: ErrorCode = ErrorCode::new("nothing_to_review", ErrorClass::Domain);
@@ -340,364 +342,6 @@ fn note_of(s: Option<String>) -> Option<String> {
     s.map(|n| n.trim().to_owned()).filter(|n| !n.is_empty())
 }
 
-// ---------------------------------------------------------------------------------------------
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct SubmitForReviewInput {
-    /// The draft (or rejected) product to send to review.
-    #[schemars(regex(pattern = r"^prd_[a-z0-9_]+$"), example = &"prd_fw26_ot_014_chr")]
-    pub product_id: String,
-    /// A line for the reviewer.
-    #[schemars(length(max = 500), example = &"Description written; ready to publish.")]
-    pub note: Option<String>,
-}
-
-/// Send a product to review.
-#[derive(Debug)]
-pub struct SubmitForReview;
-
-impl Operation for SubmitForReview {
-    const META: OpMeta = OpMeta {
-        address: "catalog.approval.submit",
-        tool: "submit_for_review",
-        group: Group::Offer,
-        kind: Kind::Write,
-        method: Method::Post,
-        path: "/v1/catalog/products/{product_id}/submit",
-        summary: "Send a draft (or rejected) product to review, once it has everything publishing needs. Publishing it is approve_product.",
-        consumes: &[Slot::one("product_id")],
-        produces: &[Slot::one("product_id")],
-        checks: &["product.publish_requires", "price_floor"],
-        errors: &[
-            ErrorCode::INVALID_STATE,
-            NOTHING_TO_REVIEW,
-            PRODUCT_NOT_FOUND,
-        ],
-        audience: Audience::Operator,
-        action_type: ActionType::UPDATE,
-        person_scope: "",
-    };
-    type Input = SubmitForReviewInput;
-    type Output = Value;
-}
-
-impl WriteOp<Cx> for SubmitForReview {
-    type Plan = StatusPlan;
-    const UNDO: UndoSupport = UndoSupport::Supported;
-
-    async fn preview(
-        &self,
-        cx: &Cx,
-        input: SubmitForReviewInput,
-    ) -> Result<Planned<StatusPlan>, ToolError> {
-        let rules = ProductRules::from_policy(&cx.policy)?;
-        let floor = PriceFloorRule::from_policy(&cx.policy)?;
-        let mut tx = cx.read().await.map_err(ToolError::from)?;
-        let f = load(&mut tx, &input.product_id).await?;
-        tx.commit().await.map_err(ToolError::from)?;
-        let from = f.group.approval_status.clone();
-        if from != "draft" && from != "rejected" {
-            return Err(invalid_state(
-                &f.group.id,
-                &from,
-                &["draft", "rejected"],
-                "get_product_group",
-            ));
-        }
-        if f.variants.is_empty() {
-            return Err(ToolError::new(
-                NOTHING_TO_REVIEW,
-                format!(
-                    "{} has no variants yet, so there is nothing to review.",
-                    f.group.id
-                ),
-            )
-            .detail(json!({"entity": "product", "id": f.group.id}))
-            .next("set_variants"));
-        }
-        let plan = StatusPlan {
-            product_id: f.group.id.clone(),
-            from,
-            to: "pending_review".into(),
-            release_date: None,
-            from_release_date: None,
-            note: note_of(input.note),
-        };
-        let approval = cx
-            .policy
-            .approval_for(Self::META.tool, &json!({"change_type": "content"}));
-        Ok(Planned {
-            changes: vec![status_change(&plan)],
-            checks: vec![publish_check(&rules, &f), floor_check(&floor, &f)],
-            basis: basis(&f.group),
-            approval: match approval.reason {
-                Some(reason) if approval.needed => ApprovalNeed::Needed { reason },
-                _ => ApprovalNeed::NotNeeded,
-            },
-            plan,
-        })
-    }
-
-    async fn commit(&self, tx: &mut TxCx, plan: &StatusPlan) -> Result<Committed, ToolError> {
-        move_status(tx, plan, false).await
-    }
-
-    async fn verify(
-        &self,
-        cx: &Cx,
-        plan: &StatusPlan,
-        _d: &Committed,
-    ) -> Result<Verification, ToolError> {
-        verify_status(cx, plan).await
-    }
-
-    async fn undo(
-        &self,
-        tx: &mut TxCx,
-        plan: &StatusPlan,
-        _d: &Committed,
-    ) -> Result<(), ToolError> {
-        undo_status(tx, plan, false).await
-    }
-}
-
-// ---------------------------------------------------------------------------------------------
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct ApproveProductInput {
-    /// The product under review to publish.
-    #[schemars(regex(pattern = r"^prd_[a-z0-9_]+$"), example = &"prd_fw26_ot_014_chr")]
-    pub product_id: String,
-    /// The release date shoppers sort "newest" by, in store time. Default today. The product is
-    /// shown as soon as the change set runs.
-    #[schemars(example = &"2026-11-09T00:00")]
-    pub valid_from: Option<String>,
-    /// A line for the change history.
-    #[schemars(length(max = 500), example = &"FW26 drop")]
-    pub note: Option<String>,
-}
-
-/// Publish a reviewed product.
-#[derive(Debug)]
-pub struct ApproveProduct;
-
-impl Operation for ApproveProduct {
-    const META: OpMeta = OpMeta {
-        address: "catalog.approval.approve",
-        tool: "approve_product",
-        group: Group::Offer,
-        kind: Kind::WriteApproval,
-        method: Method::Post,
-        path: "/v1/catalog/products/{product_id}/approve",
-        summary: "Publish a product under review so shoppers can find and buy it. It reaches customers, so it always runs in a change set a person approves.",
-        consumes: &[Slot::one("product_id")],
-        produces: &[Slot::one("product_id")],
-        checks: &[
-            "price_floor",
-            "product.required_on_create",
-            "product.publish_requires",
-            "gift_card.disallow",
-        ],
-        errors: &[
-            ErrorCode::INVALID_STATE,
-            BELOW_PRICE_FLOOR,
-            PRODUCT_NOT_FOUND,
-        ],
-        audience: Audience::Operator,
-        action_type: ActionType::AUTHORIZE,
-        person_scope: "",
-    };
-    type Input = ApproveProductInput;
-    type Output = Value;
-}
-
-impl WriteOp<Cx> for ApproveProduct {
-    type Plan = StatusPlan;
-    const UNDO: UndoSupport = UndoSupport::Supported;
-
-    async fn preview(
-        &self,
-        cx: &Cx,
-        input: ApproveProductInput,
-    ) -> Result<Planned<StatusPlan>, ToolError> {
-        let rules = ProductRules::from_policy(&cx.policy)?;
-        let floor = PriceFloorRule::from_policy(&cx.policy)?;
-        let release = parse_time(cx, "valid_from", input.valid_from.as_deref())?
-            .unwrap_or_else(|| cx.clock.now());
-        let release_date = release.with_timezone(&cx.time.zone).date_naive();
-        let mut tx = cx.read().await.map_err(ToolError::from)?;
-        let f = load(&mut tx, &input.product_id).await?;
-        tx.commit().await.map_err(ToolError::from)?;
-        if f.group.approval_status != "pending_review" {
-            return Err(invalid_state(
-                &f.group.id,
-                &f.group.approval_status,
-                &["pending_review"],
-                "submit_for_review",
-            ));
-        }
-        let plan = StatusPlan {
-            product_id: f.group.id.clone(),
-            from: "pending_review".into(),
-            to: "active".into(),
-            release_date: Some(release_date),
-            from_release_date: f.group.release_date,
-            note: note_of(input.note),
-        };
-        let mut change = status_change(&plan);
-        change.to["release_date"] = json!(release_date.to_string());
-        change.to["variants"] = json!(f.variants.len());
-        Ok(Planned {
-            changes: vec![change],
-            checks: vec![
-                floor_check(&floor, &f),
-                required_check(&rules, &f),
-                publish_check(&rules, &f),
-                gift_card_check(&cx.policy, &f),
-            ],
-            basis: basis(&f.group),
-            approval: ApprovalNeed::Needed {
-                reason: format!("Publishes 1 product: {}", f.group.name),
-            },
-            plan,
-        })
-    }
-
-    async fn commit(&self, tx: &mut TxCx, plan: &StatusPlan) -> Result<Committed, ToolError> {
-        move_status(tx, plan, true).await
-    }
-
-    async fn verify(
-        &self,
-        cx: &Cx,
-        plan: &StatusPlan,
-        _d: &Committed,
-    ) -> Result<Verification, ToolError> {
-        verify_status(cx, plan).await
-    }
-
-    async fn undo(
-        &self,
-        tx: &mut TxCx,
-        plan: &StatusPlan,
-        _d: &Committed,
-    ) -> Result<(), ToolError> {
-        undo_status(tx, plan, true).await
-    }
-}
-
-// ---------------------------------------------------------------------------------------------
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct RejectProductInput {
-    /// The product under review to send back.
-    #[schemars(regex(pattern = r"^prd_[a-z0-9_]+$"), example = &"prd_fw26_pt_011_snd")]
-    pub product_id: String,
-    /// Why, for whoever edits it next.
-    #[schemars(length(min = 1, max = 500), example = &"The photo shows two trousers; shoot this color alone.")]
-    pub reason: String,
-}
-
-/// Send a product under review back for editing.
-#[derive(Debug)]
-pub struct RejectProduct;
-
-impl Operation for RejectProduct {
-    const META: OpMeta = OpMeta {
-        address: "catalog.approval.reject",
-        tool: "reject_product",
-        group: Group::Offer,
-        kind: Kind::Write,
-        method: Method::Post,
-        path: "/v1/catalog/products/{product_id}/reject",
-        summary: "Send a product under review back with a reason; it can be edited and submitted again.",
-        consumes: &[Slot::one("product_id")],
-        produces: &[Slot::one("product_id")],
-        checks: &[],
-        errors: &[ErrorCode::INVALID_STATE, PRODUCT_NOT_FOUND],
-        audience: Audience::Operator,
-        action_type: ActionType::REJECT,
-        person_scope: "",
-    };
-    type Input = RejectProductInput;
-    type Output = Value;
-}
-
-impl WriteOp<Cx> for RejectProduct {
-    type Plan = StatusPlan;
-    const UNDO: UndoSupport = UndoSupport::Supported;
-
-    async fn preview(
-        &self,
-        cx: &Cx,
-        input: RejectProductInput,
-    ) -> Result<Planned<StatusPlan>, ToolError> {
-        let Some(reason) = note_of(Some(input.reason)) else {
-            return Err(ToolError::invalid_input("Say why the product goes back.")
-                .detail(json!({"field": "reason", "reason": "missing"})));
-        };
-        let mut tx = cx.read().await.map_err(ToolError::from)?;
-        let g = repo::group(&mut tx, &input.product_id)
-            .await?
-            .ok_or_else(|| {
-                product_not_found("product", &input.product_id, "search_product_groups")
-            })?;
-        tx.commit().await.map_err(ToolError::from)?;
-        if g.approval_status != "pending_review" {
-            return Err(invalid_state(
-                &g.id,
-                &g.approval_status,
-                &["pending_review"],
-                "get_change_history",
-            ));
-        }
-        let plan = StatusPlan {
-            product_id: g.id.clone(),
-            from: "pending_review".into(),
-            to: "rejected".into(),
-            release_date: None,
-            from_release_date: None,
-            note: Some(reason),
-        };
-        Ok(Planned {
-            changes: vec![status_change(&plan)],
-            checks: Vec::new(),
-            basis: basis(&g),
-            approval: crate::policy_approval(
-                cx,
-                Self::META.tool,
-                &json!({"change_type": "content"}),
-            ),
-            plan,
-        })
-    }
-
-    async fn commit(&self, tx: &mut TxCx, plan: &StatusPlan) -> Result<Committed, ToolError> {
-        move_status(tx, plan, false).await
-    }
-
-    async fn verify(
-        &self,
-        cx: &Cx,
-        plan: &StatusPlan,
-        _d: &Committed,
-    ) -> Result<Verification, ToolError> {
-        verify_status(cx, plan).await
-    }
-
-    async fn undo(
-        &self,
-        tx: &mut TxCx,
-        plan: &StatusPlan,
-        _d: &Committed,
-    ) -> Result<(), ToolError> {
-        undo_status(tx, plan, false).await
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -817,22 +461,5 @@ mod tests {
         let c = gift_card_check(&policies(), &facts(Some("x"), &[], vec![gift, pre]));
         assert!(!c.passed);
         assert_eq!(c.rule, "gift_card.disallow");
-    }
-
-    #[test]
-    fn approving_always_waits_for_a_person_and_rejecting_needs_a_reason() {
-        assert_eq!(ApproveProduct::META.kind, Kind::WriteApproval);
-        assert!(
-            serde_json::from_value::<RejectProductInput>(json!({"product_id": "prd_x"})).is_err()
-        );
-        let undo = StatusPlan {
-            product_id: "prd_x".into(),
-            from: "pending_review".into(),
-            to: "active".into(),
-            release_date: NaiveDate::from_ymd_opt(2026, 11, 6),
-            from_release_date: None,
-            note: None,
-        };
-        assert_eq!(status_change(&undo).to["approval_status"], "active");
     }
 }

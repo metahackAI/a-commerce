@@ -1,11 +1,13 @@
 //! The `catalog` domain: products, variants, offers, inventory, brands, reviews, questions.
 //!
 //! Operations, inputs, outputs, checks, and errors are specified in `docs/api/catalog.md`.
-//! Layout: `model` (pure business logic: availability, prices, floors, stock rules, review
-//! summaries), `rules` (the catalog policy values the model needs), `ops` (one type per
-//! operation implementing `ReadOp`/`WriteOp`), `repo` (SQL). Other domains are reached only
-//! through their service functions, never through their tables; the ones above catalog in the
-//! crate graph come in through [`neighbors`].
+//! Layout: the folders follow the API hierarchy `catalog.{resource}.{operation}`: one folder per
+//! resource (`product`, `offer`, `review`, …) and one file per operation, named after its tool
+//! (`review/create_review.rs`); what a resource's operations share is in its `mod.rs`.
+//! Domain-wide code: `model` (pure business logic: availability, prices, floors, stock rules,
+//! review summaries), `rules` (the catalog policy values the model needs), `repo` and `write`
+//! (SQL). Other domains are reached only through their service functions, never through their
+//! tables; the ones above catalog in the crate graph come in through [`neighbors`].
 
 pub mod import;
 pub mod model;
@@ -14,16 +16,24 @@ pub mod rules;
 pub mod service;
 
 mod cards;
-mod ops;
 mod repo;
 mod viewer;
 mod watch;
 mod write;
 
+mod approval;
+mod brand;
+mod inventory;
+mod offer;
+mod product;
+mod product_group;
+mod reorder;
+mod review;
+
 use acom_auth::Principal;
 use acom_contract::{ErrorClass, ErrorCode, RegistryBuilder, ToolError};
 use acom_core::enums::ActorKind;
-use acom_store::{Cx, StoreError};
+use acom_store::{Cx, StoreError, TxCx};
 use serde_json::{Value, json};
 
 pub use viewer::Viewer;
@@ -83,42 +93,89 @@ pub fn slug(text: &str) -> String {
 
 /// Adds every operation of this domain to the registry.
 pub fn register(b: &mut RegistryBuilder<Cx>) {
-    b.read(ops::product_group::SearchProductGroups)
-        .read(ops::product_group::GetProductGroup)
-        .read(ops::product::GetProduct)
-        .read(ops::product::GetProductMeasurements)
-        .read(ops::product::GetReturnPolicy)
-        .read(ops::product::GetDeliveryPolicy)
-        .write(ops::product::DiscontinueProduct)
-        .read(ops::offer::GetPriceBreakdown)
-        .write(ops::offer::SetPrice)
-        .read(ops::inventory::GetInventory)
-        .write(ops::inventory::SetVariantStock)
-        .write(ops::reorder::CreateReorder)
-        .write(ops::reorder::ReceiveReorder)
-        .read(ops::history::GetChangeHistory)
-        .read(ops::brand::ListBrands)
-        .read(ops::brand::GetBrand)
-        .read(ops::review::GetReviewSummary)
-        .read(ops::review::ListReviews)
-        .write(ops::review::CreateReview)
-        .write(ops::review::VoteReviewHelpful)
-        .write(ops::import::BatchImport)
-        .write(ops::group_write::CreateProductGroup)
-        .write(ops::group_write::UpdateProductGroup)
-        .write(ops::variant::CreateProduct)
-        .write(ops::variant::UpdateProduct)
-        .write(ops::variant::SetVariants)
-        .write(ops::approval::SubmitForReview)
-        .write(ops::approval::ApproveProduct)
-        .write(ops::approval::RejectProduct)
-        .write(ops::brand_write::CreateBrand)
-        .write(ops::brand_write::UpdateBrand)
-        .write(ops::safety::SetSafetyStock)
-        .write(ops::schedule::SchedulePriceChange)
-        .write(ops::moderate::ModerateReview);
+    // product_group
+    b.read(product_group::search_product_groups::SearchProductGroups)
+        .read(product_group::get_product_group::GetProductGroup)
+        .write(product_group::create_product_group::CreateProductGroup)
+        .write(product_group::update_product_group::UpdateProductGroup);
+    // product
+    b.read(product::get_product::GetProduct)
+        .read(product::get_product_measurements::GetProductMeasurements)
+        .write(product::create_product::CreateProduct)
+        .write(product::update_product::UpdateProduct)
+        .write(product::set_variants::SetVariants)
+        .write(product::discontinue_product::DiscontinueProduct)
+        .read(product::get_return_policy::GetReturnPolicy)
+        .read(product::get_delivery_policy::GetDeliveryPolicy)
+        .write(product::batch_import::BatchImport);
+    // offer
+    b.read(offer::get_price_breakdown::GetPriceBreakdown)
+        .write(offer::set_price::SetPrice)
+        .write(offer::schedule_price_change::SchedulePriceChange);
+    // inventory
+    b.read(inventory::get_inventory::GetInventory)
+        .write(inventory::set_variant_stock::SetVariantStock)
+        .write(inventory::set_safety_stock::SetSafetyStock);
+    // reorder
+    b.write(reorder::create_reorder::CreateReorder)
+        .write(reorder::receive_reorder::ReceiveReorder);
+    // approval
+    b.write(approval::submit_for_review::SubmitForReview)
+        .write(approval::approve_product::ApproveProduct)
+        .write(approval::reject_product::RejectProduct)
+        .read(approval::get_change_history::GetChangeHistory);
+    // brand
+    b.read(brand::list_brands::ListBrands)
+        .read(brand::get_brand::GetBrand)
+        .write(brand::create_brand::CreateBrand)
+        .write(brand::update_brand::UpdateBrand);
+    // review
+    b.read(review::get_review_summary::GetReviewSummary)
+        .read(review::list_reviews::ListReviews)
+        .write(review::moderate_review::ModerateReview)
+        .write(review::create_review::CreateReview)
+        .write(review::vote_review_helpful::VoteReviewHelpful);
     // Scheduled work (platform.job): the watcher over prices under cost.
     b.job(watch::PriceBelowCost);
+}
+
+/// `product_not_found` for a product (`prd_`) or a variant (`var_`).
+pub(crate) fn product_not_found(entity: &str, id: &str, next: &'static str) -> ToolError {
+    let what = if entity == "variant" {
+        "variant"
+    } else {
+        "product"
+    };
+    ToolError::new(
+        PRODUCT_NOT_FOUND,
+        format!("There is no {what} {id} in this store."),
+    )
+    .detail(json!({"entity": entity, "id": id}))
+    .next(next)
+}
+
+/// The spec's plain `not_found` with the entity named in `detail`.
+pub(crate) fn not_found(entity: &str, id: &str, next: &'static str) -> ToolError {
+    ToolError::new(
+        ErrorCode::NOT_FOUND,
+        format!(
+            "There is no {} {id} in this store.",
+            entity.replace('_', " ")
+        ),
+    )
+    .detail(json!({"entity": entity, "id": id}))
+    .next(next)
+}
+
+/// A product the caller may see: shoppers only see active ones.
+pub(crate) async fn visible_group(
+    cx: &Cx,
+    tx: &mut TxCx,
+    product_id: &str,
+) -> Result<Option<repo::Group>, ToolError> {
+    Ok(repo::group(tx, product_id)
+        .await?
+        .filter(|g| is_operator(&cx.principal) || g.approval_status == "active"))
 }
 
 pub(crate) fn db(e: sqlx::Error) -> ToolError {
@@ -197,8 +254,12 @@ pub(crate) fn list(items: Vec<Value>, total: i64, page: &acom_store::Page) -> Va
 
 #[cfg(test)]
 pub(crate) mod testing {
+    use acom_auth::{Principal, Surface, scopes};
+    use acom_core::enums::ActorKind;
+    use acom_core::{FixedClock, StoreTime, TenantId};
     use acom_policy::{FILES, PolicySet};
-
+    use acom_store::{Cx, Db};
+    use std::sync::Arc;
     /// The default policies in `policies/`.
     pub fn policies() -> PolicySet {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../policies");
@@ -213,6 +274,69 @@ pub(crate) mod testing {
             .collect();
         PolicySet::from_defaults(texts.iter().map(|(f, t)| (*f, t.as_str())))
             .unwrap_or_else(|e| panic!("policies: {e}"))
+    }
+
+    /// A context whose database is never reached: for checks that fail before any query.
+    pub fn cx(kind: ActorKind, subject: &str) -> Cx {
+        let tenant = TenantId::parse("store_northwind").unwrap_or_else(|e| panic!("{e}"));
+        let now = StoreTime::new(chrono_tz::America::New_York)
+            .parse("2026-11-07T10:00")
+            .unwrap_or_else(|e| panic!("{e}"));
+        Cx {
+            principal: Arc::new(Principal {
+                subject: subject.into(),
+                kind,
+                tenant: tenant.clone(),
+                surface: Surface::Fo,
+                scopes: scopes::shopper(),
+                name: Some("Jamie".into()),
+                session_id: None,
+            }),
+            tenant,
+            request_id: "req_test".into(),
+            clock: Arc::new(FixedClock::at(now)),
+            time: StoreTime::new(chrono_tz::America::New_York),
+            currency: acom_core::Currency::parse("USD").unwrap_or_else(|e| panic!("{e}")),
+            policy: Arc::new(crate::testing::policies()),
+            db: Db::connect_lazy("postgres://nobody@127.0.0.1:1/none", 1)
+                .unwrap_or_else(|e| panic!("{e}")),
+        }
+    }
+
+    /// Jamie, a signed-in VIP shopper.
+    pub fn shopper() -> Cx {
+        cx(ActorKind::Shopper, "cus_jamie")
+    }
+
+    /// A guest without an account.
+    pub fn guest() -> Cx {
+        cx(ActorKind::Shopper, "ses_guest")
+    }
+
+    /// A context on a real database (`DATABASE_URL`) as the demo store's operator SJ, for the
+    /// integration tests (`cargo test -- --ignored`).
+    pub async fn operator_db() -> Cx {
+        let url = std::env::var("DATABASE_URL").unwrap_or_else(|_| panic!("DATABASE_URL"));
+        let mut cx = cx(ActorKind::Operator, "adm_sj");
+        cx.db = Db::connect(&url, 2).await.unwrap_or_else(|e| panic!("{e}"));
+        let mut p = (*cx.principal).clone();
+        p.surface = Surface::Bo;
+        p.scopes = scopes::admin();
+        cx.principal = Arc::new(p);
+        let now = cx
+            .time
+            .parse("2026-11-06T11:00")
+            .unwrap_or_else(|e| panic!("{e}"));
+        cx.clock = Arc::new(FixedClock::at(now));
+        cx
+    }
+
+    /// The same, as Jamie on Saturday morning.
+    pub async fn shopper_db() -> Cx {
+        let url = std::env::var("DATABASE_URL").unwrap_or_else(|_| panic!("DATABASE_URL"));
+        let mut cx = shopper();
+        cx.db = Db::connect(&url, 2).await.unwrap_or_else(|e| panic!("{e}"));
+        cx
     }
 }
 
