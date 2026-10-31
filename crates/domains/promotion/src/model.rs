@@ -142,6 +142,42 @@ impl SaleRules {
         }
     }
 
+    /// The tiers other than `tier` whose limit (`max_discount.by_tier`) allows `asked` percent,
+    /// with their limit as a percentage, lowest limit first.
+    pub fn tiers_allowing(&self, asked: Decimal, tier: Option<&str>) -> Vec<(String, Decimal)> {
+        let mut out: Vec<(String, Decimal)> = self
+            .max_discount_by_tier
+            .iter()
+            .filter(|(t, _)| Some(t.as_str()) != tier)
+            .map(|(t, cap)| (t.clone(), *cap * Decimal::ONE_HUNDRED))
+            .filter(|(_, cap)| *cap >= asked)
+            .collect();
+        out.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.cmp(&b.0)));
+        out
+    }
+
+    /// A failed `max_discount` detail: "25% is over the 20% limit for everyone; vip allows up
+    /// to 30%". The tiers that would allow the percent come from `max_discount.by_tier`, so the
+    /// agent can offer the discount limited to them; without any, the plain sentence.
+    pub fn over_limit_words(&self, asked: Decimal, tier: Option<&str>, cap: Decimal) -> String {
+        let plain = format!(
+            "{}% is over the {}% limit for {}",
+            percent_text(asked),
+            percent_text(cap * Decimal::ONE_HUNDRED),
+            tier.unwrap_or("everyone")
+        );
+        let allowing: Vec<String> = self
+            .tiers_allowing(asked, tier)
+            .iter()
+            .map(|(t, cap)| format!("{t} allows up to {}%", percent_text(*cap)))
+            .collect();
+        if allowing.is_empty() {
+            plain
+        } else {
+            format!("{plain}; {}", and_list(&allowing))
+        }
+    }
+
     /// "cost + 15%", from the floor multiplier.
     pub fn floor_words(&self) -> String {
         format!(
@@ -405,12 +441,7 @@ pub fn check_max_discount(rules: &SaleRules, ask: &SaleAsk, plan: &SalePlan) -> 
             percent_text(cap_percent)
         )
     } else {
-        format!(
-            "Highest is {}% ({}); policy allows {}% for {audience}",
-            percent_text(highest.percent_off),
-            highest.name,
-            percent_text(cap_percent)
-        )
+        rules.over_limit_words(highest.percent_off, ask.tier.as_deref(), cap)
     };
     Check {
         rule: "max_discount".into(),
@@ -805,13 +836,42 @@ mod tests {
             c.detail.as_deref(),
             Some("Highest is 20%; policy allows 30% for vip")
         );
+        // Over the limit: the detail names the tiers whose limit would allow it.
         ask.tier = Some("gold".into());
         ask.percent_off = d("25");
         let c = check_max_discount(&r, &ask, &plan_sale(&r, &ask, &products));
         assert!(!c.passed);
         assert_eq!(
             c.detail.as_deref(),
-            Some("Highest is 25% (Packable windbreaker); policy allows 20% for gold")
+            Some("25% is over the 20% limit for gold; vip allows up to 30%")
+        );
+        ask.tier = None;
+        let c = check_max_discount(&r, &ask, &plan_sale(&r, &ask, &products));
+        assert!(!c.passed);
+        assert_eq!(
+            c.detail.as_deref(),
+            Some("25% is over the 20% limit for everyone; vip allows up to 30%")
+        );
+        // No tier allows it: the plain sentence.
+        ask.percent_off = d("35");
+        let c = check_max_discount(&r, &ask, &plan_sale(&r, &ask, &products));
+        assert_eq!(
+            c.detail.as_deref(),
+            Some("35% is over the 20% limit for everyone")
+        );
+        // The asked tier itself is never offered as the way out.
+        ask.tier = Some("vip".into());
+        let c = check_max_discount(&r, &ask, &plan_sale(&r, &ask, &products));
+        assert_eq!(
+            c.detail.as_deref(),
+            Some("35% is over the 30% limit for vip")
+        );
+        // Several tiers that would allow it, lowest limit first.
+        let mut more = r.clone();
+        more.max_discount_by_tier.insert("gold".into(), d("0.25"));
+        assert_eq!(
+            more.over_limit_words(d("25"), None, d("0.20")),
+            "25% is over the 20% limit for everyone; gold allows up to 25% and vip allows up to 30%"
         );
     }
 

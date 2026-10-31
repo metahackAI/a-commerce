@@ -131,3 +131,53 @@ pub async fn members_entered_tier_since(
     .await
     .map_err(db)
 }
+
+/// Active members in any of `tier_ids`, or every active person when `tier_ids` is empty, by id:
+/// who a segment can hold.
+pub async fn active_members(tx: &mut TxCx, tier_ids: &[String]) -> Result<Vec<Member>, ToolError> {
+    sqlx::query_as::<_, Member>(sqlx::AssertSqlSafe(format!(
+        "{MEMBER_QUERY} AND p.member_state = 'active'
+           AND (cardinality($2::text[]) = 0 OR m.tier_id = ANY($2))
+         ORDER BY p.id"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(tier_ids)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// Where each of `customer_ids` that has one gets parcels by default (`(customer, address id)`):
+/// the primary shipping address, else the first shipping address saved. Who can be sent a
+/// product reward.
+pub async fn shipping_addresses(
+    tx: &mut TxCx,
+    customer_ids: &[String],
+) -> Result<Vec<(String, String)>, ToolError> {
+    sqlx::query_as(
+        "SELECT DISTINCT ON (customer_id) customer_id, id FROM customer.postal_address
+         WHERE tenant_id = $1 AND customer_id = ANY($2) AND 'shipping' = ANY(address_usage)
+         ORDER BY customer_id, is_primary DESC, created_at, id",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(customer_ids)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// The member type (`individual`, `business`) of each of `customer_ids` that exists: who an
+/// event open to some member types lets in.
+pub async fn member_types(
+    tx: &mut TxCx,
+    customer_ids: &[String],
+) -> Result<Vec<(String, String)>, ToolError> {
+    sqlx::query_as(
+        "SELECT id, member_type FROM customer.person WHERE tenant_id = $1 AND id = ANY($2)",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(customer_ids)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
