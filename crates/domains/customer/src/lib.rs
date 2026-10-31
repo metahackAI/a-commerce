@@ -20,6 +20,7 @@ mod membership;
 mod person;
 mod preference;
 mod progress;
+mod remedy;
 mod repo;
 mod secret;
 #[cfg(test)]
@@ -204,7 +205,10 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .write(inquiry::CreateInquiry)
         .write(inquiry::AssignInquiry)
         .write(inquiry::RespondInquiry)
-        .write(inquiry::CloseInquiry);
+        .write(inquiry::CloseInquiry)
+        .write(remedy::RequestRemedy)
+        .write(remedy::ApproveRemedy)
+        .write(remedy::PayRemedy);
 }
 
 #[cfg(test)]
@@ -216,7 +220,7 @@ mod tests {
         let mut b = RegistryBuilder::default();
         super::register(&mut b);
         let registry = b.build().unwrap_or_else(|e| panic!("{e:#?}"));
-        assert_eq!(registry.len(), 32);
+        assert_eq!(registry.len(), 35);
         for op in registry.iter() {
             let m = op.meta();
             assert_eq!(m.domain(), "customer", "{}", m.tool);
