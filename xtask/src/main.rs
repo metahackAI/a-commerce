@@ -14,6 +14,8 @@
 //!   are built or specified; prints each task's derived coverage (`eval/README.md`).
 //! - `eval --base <url> [--set design|held_out] [--tool-set acom|facade|both] [--repeat N] [--reset]`:
 //!   runs the task set through a running stack's chat API and scores it (eval/README.md §8).
+//! - `sim --base <url> (--until <store time> | --hours N) [--seed N] [--dry-run]`: plays the demo
+//!   store's shoppers forward in store time (orders, return requests) from `seed/demo/flow.yml`.
 //! - `hash-password <password>`: an argon2id hash for seed accounts.
 //! - `dev-token <persona> [--agent]`: an internal token signed with the local key
 //!   (`infra/secrets/gateway_signing_key.pem`), to call commerce without the gateway while
@@ -25,6 +27,7 @@ mod layout;
 mod run_eval;
 mod schema;
 mod seed;
+mod sim;
 mod vocab;
 
 use std::collections::BTreeMap;
@@ -46,6 +49,7 @@ fn main() -> ExitCode {
             layout::check_coverage(&repo_root(), &std::env::args().skip(2).collect::<Vec<_>>())
         }
         "eval" => run_eval::eval(&repo_root()),
+        "sim" => sim::sim(&repo_root()),
         "hash-password" => match std::env::args().nth(2) {
             Some(pw) => match acom_auth::password::hash(&pw) {
                 Ok(h) => {
@@ -69,7 +73,7 @@ fn main() -> ExitCode {
         ),
         _ => {
             eprintln!(
-                "usage: cargo xtask check-docs | check-schema [--write] | check-seed | check-eval | eval --base <url> | hash-password <password> | dev-token <admin|jamie|alex|guest> [--agent]"
+                "usage: cargo xtask check-docs | check-schema [--write] | check-seed | check-eval | eval --base <url> | sim --base <url> --hours N | hash-password <password> | dev-token <admin|jamie|alex|guest> [--agent]"
             );
             ExitCode::FAILURE
         }
