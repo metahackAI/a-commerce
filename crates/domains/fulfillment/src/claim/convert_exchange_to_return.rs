@@ -381,7 +381,7 @@ impl WriteOp<Cx> for ConvertExchangeToReturn {
         if c.claim_status != plan.from_status {
             return Err(state_error(
                 &c,
-                &[plan.from_status.clone()],
+                std::slice::from_ref(&plan.from_status),
                 "it changed since the preview",
             ));
         }

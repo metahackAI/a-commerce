@@ -152,6 +152,13 @@ pub struct ExchangeCost {
     pub you_pay: Money,
 }
 
+/// An amount written in the currency's minor units (`12.00`, `0.00`).
+fn cents(m: Money) -> Money {
+    let mut value = m.rounded().value;
+    value.rescale(m.currency.minor_units());
+    Money::new(value, m.currency)
+}
+
 /// `exchange.shipping_cost`: the store pays both legs when it is at fault; otherwise a size
 /// exchange costs `size_exchange_fee` plus any remote-area surcharge, and any other exchange
 /// costs a round trip (each leg at its zone's rate and surcharge).
@@ -171,10 +178,10 @@ pub fn exchange_cost(
         || (liability != "customer_fault" && rules.store_pays_return(liability));
     if store_pays {
         return ExchangeCost {
-            pickup: zero,
-            reship: zero,
-            fee: zero,
-            you_pay: zero,
+            pickup: cents(zero),
+            reship: cents(zero),
+            fee: cents(zero),
+            you_pay: cents(zero),
         };
     }
     let size_fee = (reason == "wrong_size")
@@ -192,10 +199,10 @@ pub fn exchange_cost(
     };
     let you_pay = Money::new(pickup.value + reship.value + fee.value, currency).rounded();
     ExchangeCost {
-        pickup,
-        reship,
-        fee,
-        you_pay,
+        pickup: cents(pickup),
+        reship: cents(reship),
+        fee: cents(fee),
+        you_pay: cents(you_pay),
     }
 }
 

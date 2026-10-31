@@ -122,13 +122,13 @@ async fn with_fixture() -> Cx {
 }
 
 async fn scalar(tx: &mut TxCx, sql: &str) -> Value {
-    let v: Option<Value> = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
+    let v: Option<Option<Value>> = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
         "SELECT to_jsonb(x) FROM ({sql}) AS t(x)"
     )))
     .fetch_optional(&mut *tx.tx)
     .await
     .unwrap();
-    v.unwrap_or(Value::Null)
+    v.flatten().unwrap_or(Value::Null)
 }
 
 #[tokio::test]
@@ -189,8 +189,9 @@ async fn zones_list_and_set_transit_days_and_surcharges() {
             &mut tx,
             "SELECT surcharge_value FROM fulfillment.shipping_zone WHERE id = 'zone_canada'"
         )
-        .await,
-        json!(9.00)
+        .await
+        .to_string(),
+        "9.00"
     );
     drop(tx);
     let clash = ManageShippingZone
@@ -232,8 +233,9 @@ async fn zones_list_and_set_transit_days_and_surcharges() {
         .await
         .unwrap();
     assert_eq!(
-        scalar(&mut tx, "SELECT shipping_rate_value FROM fulfillment.shipping_zone WHERE id = 'zone_us_contiguous'").await,
-        json!(6.00)
+        scalar(&mut tx, "SELECT shipping_rate_value FROM fulfillment.shipping_zone WHERE id = 'zone_us_contiguous'").await
+            .to_string(),
+        "6.00"
     );
 }
 
@@ -518,8 +520,9 @@ async fn the_store_ships_labels_runs_short_and_cancels_lines() {
             &mut tx,
             "SELECT total_payment_due_value FROM sales.sales_order WHERE id = 'ord_t9001'"
         )
-        .await,
-        json!(89.00)
+        .await
+        .to_string(),
+        "89.00"
     );
     assert_eq!(
         scalar(
@@ -534,15 +537,16 @@ async fn the_store_ships_labels_runs_short_and_cancels_lines() {
             &mut tx,
             "SELECT amount_value FROM fulfillment.refund WHERE order_id = 'ord_t9001'"
         )
-        .await,
-        json!(58.00)
+        .await
+        .to_string(),
+        "58.00"
     );
     drop(tx);
     let shipped = CancelOrderLines
         .preview(
             &cx,
-            input(json!({"order_id": "ord_20402", "reason": "store_cancelled",
-                         "items": [{"order_item_id": "oln_20402_1", "quantity": 1}]})),
+            input(json!({"order_id": "ord_20381", "reason": "store_cancelled",
+                         "items": [{"order_item_id": "oln_20381_1", "quantity": 1}]})),
         )
         .await
         .unwrap_err();

@@ -55,7 +55,7 @@ impl Operation for GetExchangeOptions {
         path: "/v1/fulfillment/orders/{order_id}/items/{order_item_id}/exchange-options",
         summary: "Prepare an exchange of one of the shopper's order lines: the sizes and colors it can be swapped for (stock, price difference), the pickup window, when the replacement ships and arrives, and what the shopper pays. Only the shopper's button sends it.",
         consumes: &[Slot::one("order_id"), Slot::one("order_item_id")],
-        produces: &[Slot::many("variant_id")],
+        produces: &[],
         checks: &[],
         errors: &[
             ORDER_NOT_FOUND,

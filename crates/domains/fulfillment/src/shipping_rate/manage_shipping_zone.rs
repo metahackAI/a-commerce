@@ -80,7 +80,7 @@ impl Operation for ManageShippingZone {
         method: Method::Post,
         path: "/v1/fulfillment/shipping-zones",
         summary: "Define a delivery zone or change one: its regions, remote-area surcharge and transit days. No region may be in two zones. Set its rate with set_shipping_rate.",
-        consumes: &[Slot::one("zone_id")],
+        consumes: &[],
         produces: &[Slot::one("zone_id")],
         checks: &["delivery.zone_overlap", "delivery.remote_area_surcharge"],
         errors: &[OVERLAPPING_ZONE, ZONE_NOT_FOUND],
