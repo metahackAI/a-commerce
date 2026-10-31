@@ -21,6 +21,8 @@ jobs:
       - run: cargo xtask check-docs
       - run: cargo xtask check-schema
       - run: cargo xtask check-seed
+      - run: cargo xtask check-layout
+      - run: cargo xtask check-coverage
 
   web:
     runs-on: ubuntu-latest
