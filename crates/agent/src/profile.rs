@@ -204,6 +204,8 @@ pub struct PlannerConfig {
 #[serde(deny_unknown_fields)]
 pub struct ContextConfig {
     pub recent_turns: usize,
+    /// Characters of JSON one tool result may take in the planner's and the reply's prompts.
+    pub result_chars: usize,
 }
 
 #[derive(Debug, Clone, Deserialize)]
