@@ -156,15 +156,3 @@ pub(crate) fn check_id_or_placeholder(
     }
     check_id(field, prefix, s).map(|()| false)
 }
-
-/// Keeps only the asked fields (`fields` in an input); `id` always stays.
-pub(crate) fn pick(v: Value, fields: Option<&[String]>) -> Value {
-    match (v, fields) {
-        (Value::Object(o), Some(f)) if !f.is_empty() => Value::Object(
-            o.into_iter()
-                .filter(|(k, _)| k == "id" || f.iter().any(|x| x == k))
-                .collect(),
-        ),
-        (v, _) => v,
-    }
-}

@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use acom_catalog::service::for_merchandising::{ProductCard, product_cards};
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_core::enums::DisplayStatus;
 use acom_store::Cx;
@@ -15,7 +15,7 @@ use serde_json::{Value, json};
 use super::*;
 use crate::model::{DisplayRules, display_status};
 use crate::repo::{self, BookingRow, SlotRow};
-use crate::{check_id, parse_time, pick};
+use crate::{check_id, parse_time};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -166,6 +166,6 @@ impl ReadOp<Cx> for GetDisplaySlot {
             "hidden_items": hidden,
             "as_of": cx.time.format(at),
         });
-        Ok(pick(out, input.fields.as_deref()))
+        fields::keep(out, &input.fields.unwrap_or_default())
     }
 }

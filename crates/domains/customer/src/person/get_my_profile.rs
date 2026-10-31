@@ -1,10 +1,10 @@
 //! `get_my_profile`.
 
 use super::{address_json, memory_json};
-use crate::access::{not_signed_in, only_fields, signed_in_shopper};
+use crate::access::{not_signed_in, signed_in_shopper};
 use crate::{NOT_SIGNED_IN, repo};
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_store::{Cx, Page};
 use schemars::JsonSchema;
@@ -114,7 +114,7 @@ impl ReadOp<Cx> for GetMyProfile {
             .iter()
             .map(|f| f.word().to_owned())
             .collect();
-        Ok(only_fields(profile, &fields))
+        Ok(fields::pick(profile, &fields))
     }
 }
 

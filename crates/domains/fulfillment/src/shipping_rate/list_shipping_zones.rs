@@ -2,7 +2,7 @@
 //! surcharge and transit days.
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_store::{Cx, Page};
 use schemars::JsonSchema;
@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 
 use super::{zone_json, zones};
 use crate::errors::INVALID_FILTER;
-use crate::{rules, select};
+use crate::rules;
 
 /// The fields a zone has, for `fields`.
 const FIELDS: &[&str] = &[
@@ -84,8 +84,9 @@ impl ReadOp<Cx> for ListShippingZones {
             .iter()
             .skip(usize::try_from(page.offset).unwrap_or(0))
             .take(usize::try_from(page.limit).unwrap_or(0))
-            .map(|z| select(zone_json(z), &fields))
+            .map(zone_json)
             .collect();
+        let items = fields::keep_each(items, &fields)?;
         let mut out = json!({"items": items, "total": total});
         if let Some(next) = page.next_cursor(items.len(), total) {
             out["next_cursor"] = json!(next);

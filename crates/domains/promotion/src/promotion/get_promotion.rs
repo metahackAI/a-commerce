@@ -2,7 +2,7 @@
 
 use acom_contract::{
     ActionType, Audience, ErrorCode, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot,
-    ToolError,
+    ToolError, fields,
 };
 use acom_store::Cx;
 use schemars::JsonSchema;
@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 
 use super::{applies_to, product_counts, summary};
 use crate::repo;
-use crate::{check_id, not_found, percent, pick};
+use crate::{check_id, not_found, percent};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -71,6 +71,6 @@ impl ReadOp<Cx> for GetPromotion {
         out["coupon_ids"] = json!(coupons);
         out["change_set_id"] = json!(r.change_set_id);
         out["version"] = json!(r.version);
-        Ok(pick(out, input.fields.as_deref()))
+        fields::keep(out, &input.fields.unwrap_or_default())
     }
 }

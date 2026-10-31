@@ -1,7 +1,7 @@
 //! `list_categories` (docs/api/merchandising.md#category).
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_core::enums::TermSet;
 use acom_store::{Cx, Page};
@@ -10,8 +10,8 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::category_json;
+use crate::check_id;
 use crate::repo;
-use crate::{check_id, pick};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -81,10 +81,8 @@ impl ReadOp<Cx> for ListCategories {
         )
         .await?;
         tx.commit().await.map_err(ToolError::from)?;
-        let items: Vec<Value> = rows
-            .iter()
-            .map(|c| pick(category_json(c), input.fields.as_deref()))
-            .collect();
+        let items: Vec<Value> = rows.iter().map(category_json).collect();
+        let items = fields::keep_each(items, &input.fields.unwrap_or_default())?;
         let mut out = json!({"items": items, "total": total});
         if let Some(c) = page.next_cursor(rows.len(), total) {
             out["next_cursor"] = json!(c);

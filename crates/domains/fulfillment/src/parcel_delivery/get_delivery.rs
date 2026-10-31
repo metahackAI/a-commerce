@@ -1,7 +1,7 @@
 //! `get_delivery`: one parcel with its state, tracking and history.
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError, fields,
 };
 use acom_store::Cx;
 use schemars::JsonSchema;
@@ -12,7 +12,6 @@ use super::{events, visible_delivery};
 use crate::errors::DELIVERY_NOT_FOUND;
 use crate::model::delivery::local_date;
 use crate::repo;
-use crate::select;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -93,6 +92,6 @@ impl ReadOp<Cx> for GetDelivery {
             "expected_arrival_until": d.expected_arrival_until.map(|t| local_date(t, zone).to_string()),
             "events": history,
         });
-        Ok(select(out, &input.fields.unwrap_or_default()))
+        fields::keep(out, &input.fields.unwrap_or_default())
     }
 }

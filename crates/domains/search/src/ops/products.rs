@@ -2,10 +2,10 @@
 //! operators and shoppers.
 
 use acom_catalog::service::for_search::{self, ProductQuery, ProductSort, Viewer};
-use acom_catalog::{TIER_NOT_FOUND, is_operator, project};
+use acom_catalog::{TIER_NOT_FOUND, is_operator};
 use acom_contract::{
     ActionType, Audience, ErrorCode, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot,
-    ToolError,
+    ToolError, fields,
 };
 use acom_core::Money;
 use acom_core::enums::Availability;
@@ -237,9 +237,9 @@ impl ReadOp<Cx> for SearchProducts {
         let fields = input.fields.unwrap_or_default();
         let items = cards
             .iter()
-            .map(|c| project(c.item_json(&viewer, &cx.time), &fields))
+            .map(|c| c.item_json(&viewer, &cx.time))
             .collect();
-        Ok(list(items, total, &page))
+        Ok(list(fields::keep_each(items, &fields)?, total, &page))
     }
 }
 
