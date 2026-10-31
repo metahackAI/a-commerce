@@ -685,6 +685,73 @@
   },
   {
     "schema": "analytics",
+    "table": "inquiry_summary",
+    "kind": "view",
+    "term": "schema:Observation/acom:InquirySummary",
+    "description": "one row per customer inquiry: the store day it came in, its type and state, when staff or the agent first answered and when it was resolved; never who asked or what they wrote.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "",
+        "nullable": true,
+        "term": "-",
+        "description": "store (tenant) the inquiry belongs to."
+      },
+      {
+        "name": "inquiry_id",
+        "type": "",
+        "nullable": true,
+        "term": "acom:inquiryId",
+        "description": "the inquiry (inq_ id)."
+      },
+      {
+        "name": "observation_date",
+        "type": "",
+        "nullable": true,
+        "term": "schema:observationDate",
+        "description": "calendar day in the store's time zone on which the inquiry came in."
+      },
+      {
+        "name": "inquiry_type",
+        "type": "",
+        "nullable": true,
+        "term": "acom:inquiryType",
+        "description": "what the inquiry is about. values: inquiry_type",
+        "values_list": "inquiry_type"
+      },
+      {
+        "name": "inquiry_status",
+        "type": "",
+        "nullable": true,
+        "term": "acom:inquiryStatus",
+        "description": "where the inquiry is now. values: inquiry_status",
+        "values_list": "inquiry_status"
+      },
+      {
+        "name": "date_received",
+        "type": "",
+        "nullable": true,
+        "term": "schema:dateReceived",
+        "description": "when the inquiry came in."
+      },
+      {
+        "name": "first_response_time",
+        "type": "",
+        "nullable": true,
+        "term": "acom:firstResponseTime",
+        "description": "when staff or the agent first wrote in the thread; NULL while nobody has."
+      },
+      {
+        "name": "resolved_at",
+        "type": "",
+        "nullable": true,
+        "term": "acom:resolvedAt",
+        "description": "when the inquiry was resolved; NULL while it is open."
+      }
+    ]
+  },
+  {
+    "schema": "analytics",
     "table": "member_tier_count",
     "kind": "view",
     "term": "schema:Observation/acom:TierCount",
@@ -7723,7 +7790,7 @@
         "type": "text",
         "nullable": true,
         "term": "schema:validForMemberTier",
-        "description": "tier the campaign goes to; NULL means every member who agreed to marketing messages.",
+        "description": "tier the campaign goes to; NULL when it goes to a segment, a list of shoppers, or every member who agreed to marketing messages.",
         "references": "customer.member_program_tier"
       },
       {
@@ -7798,6 +7865,27 @@
         "nullable": false,
         "term": "-",
         "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      },
+      {
+        "name": "segment_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:segmentId",
+        "description": "segment the campaign goes to (seg_ id); NULL unless it was set up for a segment."
+      },
+      {
+        "name": "recipient_ids",
+        "type": "text[]",
+        "nullable": true,
+        "term": "schema:recipient",
+        "description": "shoppers the campaign goes to when it was set up for a list (cus_ ids); NULL otherwise."
+      },
+      {
+        "name": "variable_values",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "acom:variableValues",
+        "description": "values of the template variables that are the same for every shopper, as [{name, value}]; per-shopper ones (customer_name) are filled at sending."
       }
     ]
   },
@@ -7806,7 +7894,7 @@
     "table": "message",
     "kind": "table",
     "term": "schema:Message",
-    "description": "a transactional message to one shopper about an order or claim; a sent message cannot be taken back. id prefix msg_.",
+    "description": "a message to one shopper: a transactional one about an order or claim, or one shopper's copy of a campaign; a sent message cannot be taken back. id prefix msg_.",
     "id_prefix": "msg",
     "columns": [
       {
@@ -7849,7 +7937,8 @@
           "ask_for_photos",
           "decline",
           "refund_done",
-          "custom"
+          "custom",
+          "campaign"
         ],
         "values_list": "message_kind"
       },
@@ -7938,6 +8027,14 @@
         "nullable": false,
         "term": "-",
         "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      },
+      {
+        "name": "campaign_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:campaignId",
+        "description": "campaign this message is one shopper's copy of (cmp_ id); NULL for a transactional message.",
+        "references": "messaging.campaign"
       }
     ]
   },
@@ -13079,6 +13176,243 @@
         "nullable": false,
         "term": "-",
         "description": "when the subscription started."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "search",
+    "table": "lexicon",
+    "kind": "table",
+    "term": "schema:DefinedTermSet/acom:Lexicon",
+    "description": "one version of the store's search dictionary for one language: synonyms, new words and boost or exclude rules; a version takes effect when a reindex uses it. id prefix lex_.",
+    "id_prefix": "lex",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix lex_; the same value the API, logs and events use."
+      },
+      {
+        "name": "in_language",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:inLanguage",
+        "description": "language the dictionary is for, as a two- or three-letter code, for example en."
+      },
+      {
+        "name": "analyzer_version",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:analyzerVersion",
+        "description": "version of the dictionary, v1 being the store policy's default; it goes up by one with every change."
+      },
+      {
+        "name": "synonyms",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:synonyms",
+        "description": "the whole synonym set, as [{terms, bidirectional}]; a one-way entry widens its first term to the others."
+      },
+      {
+        "name": "neologisms",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:neologisms",
+        "description": "new words and what they mean in common words, as [{surface, normalize}]."
+      },
+      {
+        "name": "boost_rules",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:boostRules",
+        "description": "words that raise products in the ranking or exclude them, as [{term, effect}]; an excluded word finds nothing."
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "who saved this version (adm_ or sys_ id)."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "search",
+    "table": "reindex_job",
+    "kind": "table",
+    "term": "schema:UpdateAction/acom:ReindexJob",
+    "description": "one rebuild of the store's search documents, whole or only what changed, with the dictionary version it used; the documents switch over when it commits. id prefix rij_.",
+    "id_prefix": "rij",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix rij_; the same value the API, logs and events use."
+      },
+      {
+        "name": "reindex_mode",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:reindexMode",
+        "description": "full rebuilds every document; incremental only the products named, changed since a time, or out of date. values: reindex_mode",
+        "values": [
+          "full",
+          "incremental"
+        ],
+        "values_list": "reindex_mode"
+      },
+      {
+        "name": "in_language",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:inLanguage",
+        "description": "language of the index, for example en."
+      },
+      {
+        "name": "analyzer_version",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:analyzerVersion",
+        "description": "dictionary version the index uses from this job on (search.lexicon, or v1 for the policy default)."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "name of the index, after search.yml index.naming, for example products-store_northwind-en-v3."
+      },
+      {
+        "name": "product_group_ids",
+        "type": "text[]",
+        "nullable": true,
+        "term": "schema:object",
+        "description": "products an incremental job was limited to (prd_ ids; API product_ids); NULL when not limited to a list."
+      },
+      {
+        "name": "changed_since",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:changedSince",
+        "description": "an incremental job rebuilt the products changed at or after this time; NULL when not limited by time."
+      },
+      {
+        "name": "action_status",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:actionStatus",
+        "description": "active while it runs, then completed or failed. values: action_status",
+        "values": [
+          "potential",
+          "active",
+          "completed",
+          "failed"
+        ],
+        "values_list": "action_status"
+      },
+      {
+        "name": "document_count",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:documentCount",
+        "description": "search documents written."
+      },
+      {
+        "name": "result",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "schema:result",
+        "description": "what the job reports besides the counts, for example that no embedding model is connected."
+      },
+      {
+        "name": "error",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "schema:error",
+        "description": "why the job failed, as {code, message}; NULL unless action_status is failed."
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "who ran it (adm_ or sys_ id)."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the job started."
+      },
+      {
+        "name": "end_time",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:endTime",
+        "description": "when it finished; NULL while it runs."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
       },
       {
         "name": "updated_at",

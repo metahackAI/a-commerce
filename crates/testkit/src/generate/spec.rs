@@ -32,6 +32,10 @@ pub(crate) mod prose {
     pub(crate) const GOLD_COUPON: &str = "cpn_gold_10";
     pub(crate) const GOLD_COUPON_MONTH: (i32, u32) = (2026, 11);
     pub(crate) const GOLD_COUPON_STATUS: &str = "available";
+    /// `members.marketing_consent`: "every 15th generated member of a tier, from the 8th, declines".
+    pub(crate) const CONSENT_TYPE: &str = "marketing_email";
+    pub(crate) const DECLINE_EVERY: usize = 15;
+    pub(crate) const DECLINE_FROM: usize = 7;
     /// `orders.customers`: "weighted: vip 3, gold 2, member 1 per member".
     pub(crate) const TIER_WEIGHTS: &[(&str, u64)] = &[("vip", 3), ("gold", 2), ("member", 1)];
     /// `orders.shipping`: "6.00 when the subtotal before discounts is under 80.00".

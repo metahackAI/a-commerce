@@ -375,6 +375,31 @@ fn generated_prices_costs_skus_and_emails() {
 }
 
 #[test]
+fn most_members_opted_in_to_marketing_email() {
+    // The newest marketing_email record of each person decides (consent.marketing_gate).
+    let mut newest: BTreeMap<&str, (&str, bool)> = BTreeMap::new();
+    for r in all("customer.consent_record").filter(|r| s(r, "consent_type") == "marketing_email") {
+        let at = s(r, "recorded_at");
+        let granted = r["granted"].as_bool().unwrap();
+        let e = newest.entry(s(r, "customer_id")).or_insert((at, granted));
+        if at >= e.0 {
+            *e = (at, granted);
+        }
+    }
+    let vip: Vec<&str> = all("customer.program_membership")
+        .filter(|m| s(m, "tier_id") == "vip")
+        .map(|m| s(m, "customer_id"))
+        .collect();
+    let opted = vip
+        .iter()
+        .filter(|c| newest.get(*c).is_some_and(|e| e.1))
+        .count();
+    // The figure docs/api/messaging.md shows for a VIP campaign.
+    assert_eq!((opted, vip.len()), (1198, 1284));
+    assert!(newest["cus_jamie"].1);
+}
+
+#[test]
 fn tier_counts_include_the_named_people() {
     let mut tiers: BTreeMap<&str, usize> = BTreeMap::new();
     for m in all("customer.program_membership") {
@@ -728,7 +753,8 @@ fn generated_ids_follow_their_patterns() {
             assert!(word(rest), "{table}: {id}");
             assert!(
                 [
-                    "prd", "var", "off", "ups", "cus", "adr", "mcp", "ord", "oln", "pay", "dlv"
+                    "prd", "var", "off", "ups", "cus", "adr", "cns", "mcp", "ord", "oln", "pay",
+                    "dlv"
                 ]
                 .contains(&prefix),
                 "{table}: {id}"
@@ -959,6 +985,7 @@ fn rows_reference_only_earlier_rows_in_table_order() {
             "customer.person",
             "customer.postal_address",
             "customer.program_membership",
+            "customer.consent_record",
             "promotion.member_coupon",
             "sales.sales_order",
             "sales.order_item",

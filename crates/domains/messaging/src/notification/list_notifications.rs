@@ -107,7 +107,8 @@ impl ReadOp<Cx> for ListNotifications {
             .iter()
             .map(|m| {
                 json!({"id": m.id, "channel": m.message_channel, "kind": m.message_kind,
-                       "headline": m.headline, "text": m.text, "about": m.about_id,
+                       "headline": m.headline, "text": m.text,
+                       "about": m.about_id.as_ref().or(m.campaign_id.as_ref()),
                        "date_sent": m.date_sent.map(|t| cx.time.format(t)),
                        "read": m.date_read.is_some()})
             })

@@ -103,6 +103,7 @@ members:                         # program_membership in prg_rewards; tier count
   card_last4: "4 random digits"
   addresses: "one home address each, US north-east states (NY, NJ, CT, MA, RI, VT, ME, PA), usage [shipping, billing], is_primary true"
   gold_coupons: "every gold member gets a member_coupon of cpn_gold_10 for 2026-11: coupon_status available, owned_from 2026-11-01 00:00, owned_through 2026-11-30 23:59"
+  marketing_consent: "one marketing_email consent_record per member at registered_at (instrument register_member): granted, except every 15th generated member of a tier, from the 8th, in member order, who declines (vip: 86 of 1283 decline, so with Jamie 1,198 of 1,284 opted in, docs/api/messaging.md send_bulk)"
 
 orders:
   customers: "generated members only (weighted: vip 3, gold 2, member 1 per member)"

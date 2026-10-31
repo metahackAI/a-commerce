@@ -29,7 +29,19 @@ pub fn build() -> Result<Registry<Cx>, Vec<String>> {
         acom_sales::service::for_promotion::order_facts,
         acom_sales::service::for_promotion::member_purchases,
     );
+    // Messaging sends campaigns to promotion's segments; it does not depend on promotion, so
+    // the reader is handed over here.
+    acom_messaging::service::providers::provide_segment_members(segment_members);
     b.build()
+}
+
+fn segment_members<'a>(
+    tx: &'a mut acom_store::TxCx,
+    segment_id: &'a str,
+) -> acom_messaging::service::providers::Reading<'a, Option<Vec<String>>> {
+    Box::pin(acom_promotion::service::for_messaging::segment_members(
+        tx, segment_id,
+    ))
 }
 
 #[cfg(test)]
