@@ -324,6 +324,15 @@
       "rdfs:comment": "A set of sale prices for some products, for some shoppers, for a period. Used as additionalType on an OfferCatalog."
     },
     {
+      "@id": "acom:Receipt",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Receipt",
+      "rdfs:subClassOf": {
+        "@id": "schema:Invoice"
+      },
+      "rdfs:comment": "a receipt or tax document issued for a paid order; one live receipt per order and type. id prefix rct_. API: receipt_id."
+    },
+    {
       "@id": "acom:RecoveryRequest",
       "@type": "rdfs:Class",
       "rdfs:label": "RecoveryRequest",
@@ -403,6 +412,15 @@
         "@id": "schema:Offer"
       },
       "rdfs:comment": "one row per variant that is out of stock now, with when it ran out and when it is expected back."
+    },
+    {
+      "@id": "acom:Subscription",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Subscription",
+      "rdfs:subClassOf": {
+        "@id": "schema:Order"
+      },
+      "rdfs:comment": "a standing order: the same lines ordered and charged to the saved card every billing cycle. id prefix sub_. API: subscription_id."
     },
     {
       "@id": "acom:Task",
@@ -883,6 +901,22 @@
       "rdfs:comment": "ISO 4217 code of benefit_recorded_value."
     },
     {
+      "@id": "acom:billingCycle",
+      "@type": "rdf:Property",
+      "rdfs:label": "billingCycle",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Subscription"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:BillingCycle"
+        }
+      ],
+      "rdfs:comment": "how often an order is placed; the length of each cycle is order.yml subscription.cycle_length. values: billing_cycle"
+    },
+    {
       "@id": "acom:blockReason",
       "@type": "rdf:Property",
       "rdfs:label": "blockReason",
@@ -1026,10 +1060,48 @@
       "rdfs:comment": "Why an order is cancelled."
     },
     {
+      "@id": "acom:cancelReasonText",
+      "@type": "rdf:Property",
+      "rdfs:label": "cancelReasonText",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Subscription"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "why the shopper cancelled, in their words; NULL when not given."
+    },
+    {
+      "@id": "acom:cancelledAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "cancelledAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Receipt"
+        },
+        {
+          "@id": "acom:Subscription"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when it was cancelled; NULL while it runs or is paused."
+    },
+    {
       "@id": "acom:cardLast4",
       "@type": "rdf:Property",
       "rdfs:label": "cardLast4",
       "schema:domainIncludes": [
+        {
+          "@id": "acom:Subscription"
+        },
         {
           "@id": "schema:PayAction"
         },
@@ -3076,6 +3148,22 @@
       "rdfs:comment": "false hides the entry from every operator without removing it."
     },
     {
+      "@id": "acom:issuedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "issuedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Receipt"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the receipt was issued."
+    },
+    {
       "@id": "acom:keyPrefix",
       "@type": "rdf:Property",
       "rdfs:label": "keyPrefix",
@@ -3477,6 +3565,22 @@
       "rdfs:comment": "true when only an approved change set may run it."
     },
     {
+      "@id": "acom:nextChargeDate",
+      "@type": "rdf:Property",
+      "rdfs:label": "nextChargeDate",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Subscription"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Date"
+        }
+      ],
+      "rdfs:comment": "store-time day the next order is placed and charged."
+    },
+    {
       "@id": "acom:noticeStatus",
       "@type": "rdf:Property",
       "rdfs:label": "noticeStatus",
@@ -3788,6 +3892,22 @@
       "rdfs:comment": "when the password was last set; NULL when it never was."
     },
     {
+      "@id": "acom:pausedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "pausedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Subscription"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when it was last paused; NULL when it never was."
+    },
+    {
       "@id": "acom:paymentId",
       "@type": "rdf:Property",
       "rdfs:label": "paymentId",
@@ -3931,6 +4051,9 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:Refund"
+        },
+        {
+          "@id": "acom:Subscription"
         },
         {
           "@id": "schema:Action"
@@ -4201,6 +4324,22 @@
         }
       ],
       "rdfs:comment": "the reasons the member picked; every element is a word from the list. values: withdrawal_reason"
+    },
+    {
+      "@id": "acom:receiptType",
+      "@type": "rdf:Property",
+      "rdfs:label": "receiptType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Receipt"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ReceiptType"
+        }
+      ],
+      "rdfs:comment": "what kind of document: deduction (income deduction), proof (proof of expense) or tax_invoice (needs the buyer's tax id). values: receipt_type"
     },
     {
       "@id": "acom:recipientContact",
@@ -5255,6 +5394,22 @@
       "rdfs:comment": "when the latest version was submitted for approval."
     },
     {
+      "@id": "acom:subscriptionStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "subscriptionStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Subscription"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:SubscriptionStatus"
+        }
+      ],
+      "rdfs:comment": "active orders every cycle, paused skips cycles until resumed, cancelled is final. values: subscription_status"
+    },
+    {
       "@id": "acom:subtotal",
       "@type": "rdf:Property",
       "rdfs:label": "subtotal",
@@ -6018,6 +6173,16 @@
       "acom:wireList": "author_type"
     },
     {
+      "@id": "acom:BillingCycle",
+      "@type": "rdfs:Class",
+      "rdfs:label": "BillingCycle",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the billing_cycle list (docs/api/enums.md).",
+      "acom:wireList": "billing_cycle"
+    },
+    {
       "@id": "acom:BusinessVerification",
       "@type": "rdfs:Class",
       "rdfs:label": "BusinessVerification",
@@ -6448,6 +6613,16 @@
       "acom:wireList": "question_status"
     },
     {
+      "@id": "acom:ReceiptType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ReceiptType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the receipt_type list (docs/api/enums.md).",
+      "acom:wireList": "receipt_type"
+    },
+    {
       "@id": "acom:RecoveryKind",
       "@type": "rdfs:Class",
       "rdfs:label": "RecoveryKind",
@@ -6586,6 +6761,16 @@
       },
       "rdfs:comment": "Values of the store_status list (docs/api/enums.md).",
       "acom:wireList": "store_status"
+    },
+    {
+      "@id": "acom:SubscriptionStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "SubscriptionStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the subscription_status list (docs/api/enums.md).",
+      "acom:wireList": "subscription_status"
     },
     {
       "@id": "acom:TaskOrigin",
@@ -6792,6 +6977,27 @@
       "@type": "acom:AuthorType",
       "rdfs:label": "Agent",
       "acom:wireWord": "agent",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:BillingCycleEveryWeek",
+      "@type": "acom:BillingCycle",
+      "rdfs:label": "EveryWeek",
+      "acom:wireWord": "every_week",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:BillingCycleEvery2Weeks",
+      "@type": "acom:BillingCycle",
+      "rdfs:label": "Every2Weeks",
+      "acom:wireWord": "every_2_weeks",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:BillingCycleEveryMonth",
+      "@type": "acom:BillingCycle",
+      "rdfs:label": "EveryMonth",
+      "acom:wireWord": "every_month",
       "schema:position": 3
     },
     {
@@ -8265,6 +8471,27 @@
       "schema:position": 2
     },
     {
+      "@id": "acom:ReceiptTypeDeduction",
+      "@type": "acom:ReceiptType",
+      "rdfs:label": "Deduction",
+      "acom:wireWord": "deduction",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:ReceiptTypeProof",
+      "@type": "acom:ReceiptType",
+      "rdfs:label": "Proof",
+      "acom:wireWord": "proof",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:ReceiptTypeTaxInvoice",
+      "@type": "acom:ReceiptType",
+      "rdfs:label": "TaxInvoice",
+      "acom:wireWord": "tax_invoice",
+      "schema:position": 3
+    },
+    {
       "@id": "acom:RecoveryKindPasswordReset",
       "@type": "acom:RecoveryKind",
       "rdfs:label": "PasswordReset",
@@ -8662,6 +8889,27 @@
       "rdfs:label": "Suspended",
       "acom:wireWord": "suspended",
       "schema:position": 2
+    },
+    {
+      "@id": "acom:SubscriptionStatusActive",
+      "@type": "acom:SubscriptionStatus",
+      "rdfs:label": "Active",
+      "acom:wireWord": "active",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:SubscriptionStatusPaused",
+      "@type": "acom:SubscriptionStatus",
+      "rdfs:label": "Paused",
+      "acom:wireWord": "paused",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:SubscriptionStatusCancelled",
+      "@type": "acom:SubscriptionStatus",
+      "rdfs:label": "Cancelled",
+      "acom:wireWord": "cancelled",
+      "schema:position": 3
     },
     {
       "@id": "acom:TaskOriginYouAsked",

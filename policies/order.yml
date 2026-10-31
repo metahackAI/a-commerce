@@ -78,6 +78,10 @@ gift:                                    # 선물 주문 (prepare_gift_order)
 
 subscription:                            # 정기 주문 (prepare_subscription)
   billing_cycles: [every_week, every_2_weeks, every_month]
+  cycle_length:                          # 회차 사이 간격(스토어 시간대 날짜). 다음 결제일 = 이전 결제일 + 간격
+    every_week: { days: 7 }
+    every_2_weeks: { days: 14 }
+    every_month: { months: 1 }           # 같은 날짜. 그달에 그 날짜가 없으면 그달 마지막 날
   discount_layers: [item_price]          # 정기 주문에는 회원가·기간가 층만 적용 (promotion.yml discount_layers)
   loyalty_usable: false                  # 적립금 사용 불가
 

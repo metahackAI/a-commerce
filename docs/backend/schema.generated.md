@@ -2139,6 +2139,24 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `sales.guest_lookup`
+
+`-` — tries to open an order without signing in, by order number (verify_guest): wrong tries counted toward a lock, and the short-lived token the last right try was given, kept only as a hash. Unknown numbers are counted like known ones.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `order_number` | text |  | `-` | order number as tried (digits, without #), whether or not such an order exists. |
+| `failed_attempt_count` | integer |  | `-` | wrong tries since the last right one or since the lock lifted (order.yml guest_lookup.max_attempts). |
+| `first_failed_at` | timestamptz | ✓ | `-` | when the first of the counted wrong tries happened; NULL when none is counted. |
+| `locked_until` | timestamptz | ✓ | `-` | no try is checked before this time (order.yml guest_lookup.lock_minutes); NULL when not locked. |
+| `order_id` | text | ✓ | `-` | the order the last token opens (ord_ id); NULL before a right try. → `sales.sales_order` |
+| `token_hash` | text | ✓ | `-` | SHA-256 of the last token handed out; the token itself is shown once and never stored. |
+| `token_expires_at` | timestamptz | ✓ | `-` | when the last token stops opening the order (order.yml guest_lookup.token_ttl_seconds). |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change. |
+
 ### `sales.order_event`
 
 `schema:Action` — one state change of an order; rows are only added.
@@ -2209,6 +2227,25 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `sales.receipt`
+
+`schema:Invoice/acom:Receipt` — a receipt or tax document issued for a paid order; one live receipt per order and type. id prefix rct_. API: receipt_id. · id `rct_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix rct_; the same value the API, logs and events use. |
+| `order_id` | text |  | `schema:referencesOrder` | the order the receipt is for (ord_ id). → `sales.sales_order` |
+| `receipt_type` | text |  | `acom:receiptType` | what kind of document: deduction (income deduction), proof (proof of expense) or tax_invoice (needs the buyer's tax id). values: receipt_type Values: `deduction` · `proof` · `tax_invoice`. |
+| `tax_id` | text | ✓ | `schema:taxID` | the buyer's business tax id a tax invoice is made out to; NULL for other types. |
+| `total_payment_due_value` | numeric(12,2) |  | `schema:totalPaymentDue` | the amount the receipt states, the order's total when issued, in major units of the currency. |
+| `total_payment_due_currency` | char(3) |  | `schema:totalPaymentDue` | ISO 4217 code of total_payment_due_value. |
+| `issued_at` | timestamptz |  | `acom:issuedAt` | when the receipt was issued. |
+| `cancelled_at` | timestamptz | ✓ | `acom:cancelledAt` | when it was cancelled to be issued again for a changed amount (order.yml receipt.after_claim); NULL while it stands. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `sales.sales_order`
 
 `schema:Order` — an order a shopper placed; order_number is what people see. id prefix ord_. API: order_id. · id `ord_…`
@@ -2242,6 +2279,32 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 | `campaign_id` | text | ✓ | `acom:campaignId` | campaign whose message the shopper followed to place the order (cmp_ id); NULL when the order came from anywhere else. → `messaging.campaign` |
+
+### `sales.subscription`
+
+`schema:Order/acom:Subscription` — a standing order: the same lines ordered and charged to the saved card every billing cycle. id prefix sub_. API: subscription_id. · id `sub_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix sub_; the same value the API, logs and events use. |
+| `customer_id` | text |  | `schema:customer` | shopper who subscribed (cus_ id). → `customer.person` |
+| `subscription_status` | text |  | `acom:subscriptionStatus` | active orders every cycle, paused skips cycles until resumed, cancelled is final. values: subscription_status Values: `active` · `paused` · `cancelled`. |
+| `billing_cycle` | text |  | `acom:billingCycle` | how often an order is placed; the length of each cycle is order.yml subscription.cycle_length. values: billing_cycle Values: `every_week` · `every_2_weeks` · `every_month`. |
+| `next_charge_date` | date |  | `acom:nextChargeDate` | store-time day the next order is placed and charged. |
+| `ordered_item` | jsonb |  | `schema:orderedItem` | the lines every order repeats: [{variant_id, product_id, name, size, color, quantity, price: {value, currency}, discount: {value, currency}}], price per unit and discount per line. |
+| `order_delivery` | jsonb |  | `schema:orderDelivery` | where every order goes: {address_id (NULL for an address given for this subscription only), delivery_address: {name, street_address, address_locality, address_region, postal_code, address_country}, address_label}. |
+| `payment_method` | text |  | `schema:paymentMethod` | how every order is paid; a saved card (order.yml payment.subscription_card_only). values: payment_method Values: `credit_card` · `bank_transfer` · `virtual_account` · `loyalty_points` · `store_credit`. |
+| `card_last4` | text | ✓ | `acom:cardLast4` | last four digits of the card charged; NULL for other methods. |
+| `total_payment_due_value` | numeric(12,2) |  | `schema:totalPaymentDue` | what each order comes to: subtotal − subscription discounts + shipping, in major units of the currency. |
+| `total_payment_due_currency` | char(3) |  | `schema:totalPaymentDue` | ISO 4217 code of total_payment_due_value. |
+| `preview_id` | text | ✓ | `acom:previewId` | prepare_subscription preview the shopper confirmed (pv_ id); NULL for subscriptions made before previews. → `platform.preview` |
+| `paused_at` | timestamptz | ✓ | `acom:pausedAt` | when it was last paused; NULL when it never was. |
+| `cancelled_at` | timestamptz | ✓ | `acom:cancelledAt` | when it was cancelled; NULL while it runs or is paused. |
+| `cancel_reason_text` | text | ✓ | `acom:cancelReasonText` | why the shopper cancelled, in their words; NULL when not given. |
+| `created_at` | timestamptz |  | `-` | when the subscription started. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
 ## `search`
 

@@ -278,14 +278,15 @@
 
 ### `verify_guest` — Kind: W
 - 논리주소/REST: `sales.order.verify_guest` · `POST /v1/sales/orders/verify-guest`
-- 요약: 비회원 주문 조회 인증(주문 번호 + 연락처, 설정 시 주문 비밀번호). 성공하면 그 주문만 볼 수 있는 짧은 토큰을 줍니다. 상태를 바꾸지 않는 인증이라 프리뷰 없이 바로 실행합니다.
-- consumes → produces: `order_number`, `telephone` → guest token
-- 입력: `order_number`(Text, ✓, 예 `"20518"`), `telephone`(Text, ✓), `order_password`(Text, 주문 때 정했으면 ✓)
-- 출력: `{"ok": true, "id": "ord_20518", "guest_token": "…", "expires_in": 1800, "undo": null}`
-- 프리뷰: 없음
-- 정책: `guest_lookup.max_attempts`, `guest_lookup.lock_minutes`, `guest_lookup.token_ttl_seconds`
-- 에러: `guest_match_failed`(번호·연락처가 맞지 않음, 다시 입력) → `verify_guest` · `too_many_attempts`(`guest_lookup.max_attempts` 초과로 잠김, `detail.until`) → null
-- 멱등성: 토큰 발급은 상태가 없어 멱등 키가 필요 없음.
+- 요약: 로그인하지 않은 사람이 주문 번호와 그 주문의 연락처(이메일 또는 전화번호)로 주문 하나를 엽니다. 성공하면 그 주문만 볼 수 있는 짧은 토큰을 줍니다. 틀린 짝은 그런 주문이 있든 없든 **같은 답**이고 같은 방식으로 셉니다(주문이 있는지 알려 주지 않음). 다른 쓰기처럼 프리뷰 → 실행이며 승인은 없습니다(`no_approval` 대상은 아니지만 임계가 없음): 프리뷰가 연락처를 확인하고 내줄 토큰을 보여 주며, 틀린 시도는 그때 바로 셉니다(`login`의 틀린 비밀처럼, 추측을 막는 기록). 실행이 토큰을 한 번만 보여 주고(`shown_once`) 해시만 남깁니다(`sales.guest_lookup`).
+- consumes → produces: `order_number`, `email` 또는 `telephone` → `guest_token`
+- 입력: `order_number`(Text, `^#?[0-9]{1,12}$`, ✓, 예 `"20402"`), `email`(Text, 예 `"alex.kim@example.com"`, 대소문자·앞뒤 공백 무시), `telephone`(Text, 숫자만 비교). `email`과 `telephone` 중 하나 이상 ✓.
+- 출력(프리뷰): `changes: [{"op": "create", "entity": "guest_token", "id": null, "from": null, "to": {"order_id": "ord_20402", "order_number": "20402", "expires_in": 1800}}]`, checks `guest_lookup.max_attempts`(앞선 틀린 시도 수), `needs_approval: false`
+- 출력(실행): `{"ok": true, "id": "ord_20402", "order_number": "20402", "guest_token": "gt_…", "expires_in": 1800, "undo": null}` — 토큰은 이 응답에만 있습니다.
+- 정책: `guest_lookup.max_attempts`(같은 번호에 `lock_minutes` 안의 연속 틀린 시도), `guest_lookup.lock_minutes`, `guest_lookup.token_ttl_seconds`
+- 에러: `guest_match_failed`(번호·연락처가 맞지 않음, `detail.attempts_left`) → `verify_guest` · `too_many_attempts`(class `locked`, `guest_lookup.max_attempts` 초과로 잠김, `detail.until`) → null
+- 멱등성: 같은 `preview_id` 재실행은 첫 결과(토큰 없이). 다시 인증하면 새 토큰이 이전 토큰을 대신합니다.
+- 메모: 주문의 연락처는 주문한 회원(`customer.person`)의 이메일·전화번호입니다. 이 스토어의 체크아웃은 비회원 주문과 주문 비밀번호를 받지 않으므로 예전 입력 `order_password`는 두지 않습니다.
 
 ### `change_shipping_address` — Kind: W
 - 논리주소/REST: `sales.order.change_shipping_address` · `POST /v1/sales/orders/{order_id}/delivery-address`
@@ -293,10 +294,11 @@
 - consumes → produces: `order_id` → `order_id`
 - 입력: `order_id`(`^ord_`, ✓), `delivery_mode`(✓, `saved` \| `one_time`), `delivery_address_id`(saved일 때 ✓), `delivery_address`(PostalAddress, one_time일 때 ✓)
 - 출력(프리뷰): `{"preview_id": "pv_a3d1", "expires_at": "2026-11-07T11:15:00-05:00", "changes": [{"op": "update", "entity": "order", "id": "ord_20518", "from": {"delivery_address": "12 Harbor St, Apt 3, Brooklyn, NY 11201"}, "to": {"delivery_address": "40 Pier Rd, Brooklyn, NY 11231"}}], "checks": [{"rule": "change.allowed_before", "passed": true, "detail": "Not shipped yet", "fix_tool": null}, {"rule": "remote_area_surcharge", "passed": true, "detail": "No surcharge for this address", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
-- 출력(실행): `{"ok": true, "id": "ord_20518", "undo": null}` — 되돌리려면 이전 주소로 다시 `change_shipping_address`(출고 전까지).
-- 프리뷰: `update order`. checks `change.allowed_before`, `remote_area_surcharge`.
+- 출력(실행): `{"ok": true, "id": "ord_20518", "undo": null}` — 되돌리려면 이전 주소로 다시 `change_shipping_address`(출고 전까지). 변경셋 안에서는 셋 되돌리기로도 이전 주소로 돌아갑니다(출고 전까지).
+- 프리뷰: `update order`. checks `change.allowed_before`(품목의 `acom:fulfillment_stage`와 배송이 `shipped` 전), `remote_area_surcharge`(배송 지역 데이터 전에는 `fulfillment.delivery.default_zone`의 추가비; 새 주소가 더 비싸면 주문 뒤에는 받을 수 없어 `policy_violation`).
+- 동작: 주소는 주문 이벤트(`UpdateAction`, `result.delivery`)로 남고 이전 주소도 그대로 남습니다. `get_order`와 출고(fulfillment)는 마지막으로 기록된 주소를 씁니다. 받는 사람이 수락할 선물(`recipient_accepts`, 대기 중)은 받는 사람이 주소를 정하므로 `invalid_state`.
 - 정책: `change.allowed_before`, `remote_area_surcharge`([fulfillment.yml](../../policies/fulfillment.yml))
-- 에러: `already_shipped` → `get_order` · `address_not_deliverable` → `list_addresses` · `invalid_state` → `get_order`
+- 에러: `already_shipped` → `get_order` · `address_not_deliverable` → `list_addresses` · `not_found`(`detail.entity: postal_address`, 그 쇼퍼의 저장 주소가 아님) → `list_addresses` · `invalid_state`(취소·문제 주문, 수락 대기 선물) → `get_order`
 - 멱등성: `Idempotency-Key`. 같은 주소로 다시 보내면 같은 결과.
 
 ---
@@ -316,14 +318,15 @@
 
 ### `confirm_virtual_account_deposit` — Kind: W$
 - 논리주소/REST: `sales.payment.confirm_deposit` · `POST /v1/sales/orders/{order_id}/payment/confirm-deposit`
-- 요약: 가상계좌 입금을 운영자가 수동으로 확인합니다. 결제 상태 `payment_due → payment_complete`. 돈이 움직이므로 항상 사람 승인.
+- 요약: 가상계좌 입금을 운영자가 수동으로 확인합니다(운영자만). 결제 상태 `payment_due → payment_complete`, 주문 `payment_due → processing`(출고 가능). 돈이 움직이므로 항상 사람 승인. 은행은 이 시스템 밖이라 묻지 않으며, 운영자의 확인을 그대로 기록하고 실행 결과의 `outside_system`(`{"system": "bank", "connected": false, …}`)이 그렇게 말합니다.
 - consumes → produces: `order_id` → `payment_id`
 - 입력: `order_id`(`^ord_`, ✓), `amount`(MonetaryAmount, ✓, 예 `{"value": 71.20, "currency": "USD"}`)
 - 출력(프리뷰): `{"preview_id": "pv_v01d", "expires_at": "2026-11-06T11:30:00-05:00", "changes": [{"op": "update", "entity": "payment", "id": "pay_20519", "from": "payment_due", "to": "payment_complete"}], "checks": [{"rule": "payment.virtual_account_hold_days", "passed": true, "detail": "Deposit within 3 days", "fix_tool": null}], "needs_approval": true, "approval_reason": "Confirms a $71.20 payment", "change_set_id": "cs_1047"}`
-- 출력(실행): `{"ok": true, "id": "pay_20519", "undo": null}` — 결제 확정은 출고 지시로 이어지므로 되돌리지 않습니다.
-- 프리뷰: `update payment`. 항상 `needs_approval: true`.
-- 정책: `payment.virtual_account_hold_days`
-- 에러: `deadline_passed`(입금 기한 경과) → `get_order` · `invalid_state`(이미 `payment_complete`) → `get_payment` · `amount_mismatch` → `get_payment`
+- 출력(실행): `{"ok": true, "id": "pay_20519", "order_status": "processing", "outside_system": {"system": "bank", "connected": false, "note": "…"}, "undo": null}` — 결제 확정은 출고 지시로 이어지므로 되돌리지 않습니다.
+- 프리뷰: `update payment`(`payment_due → payment_complete`)와 `update order`(`payment_due → processing`). 항상 `needs_approval: true`, `approval_reason`은 approval.yml 임계가 없으면 "Confirms a 71.20 USD payment".
+- 정책: `payment.virtual_account_hold_days`(주문 시각 + 일수까지)
+- 에러: `deadline_passed`(입금 기한 경과) → `get_order` · `invalid_state`(이미 `payment_complete`, 가상계좌가 아님, 수락 대기 선물) → `get_payment` · `amount_mismatch` → `get_payment` · `forbidden`(쇼퍼) → `get_payment`
+- 예: 시드의 Priya #29001(가상계좌 $128.00, Thu Nov 5 16:20 주문, Sun Nov 8 16:20까지).
 - 멱등성: `Idempotency-Key`. 이미 `payment_complete`면 첫 결과.
 
 ---
@@ -332,22 +335,22 @@
 
 ### `issue_receipt` — Kind: W
 - 논리주소/REST: `sales.receipt.issue` · `POST /v1/sales/orders/{order_id}/receipt`
-- 요약: 영수증·증빙을 발급합니다.
+- 요약: 결제가 끝난 주문의 영수증·증빙을 발급합니다. 종류마다 주문에 하나(취소되지 않은 것). 소득공제(`deduction`)·세금계산서(`tax_invoice`)를 신고할 세무 시스템은 이 시스템 밖이라 여기 기록만 하고, 결과의 `tax_filing`(`{"system": "tax_service", "connected": false, …}`)이 그렇게 말합니다. 쇼퍼는 본인 주문, 운영자는 모든 주문.
 - consumes → produces: `order_id` → `receipt_id`
 - 입력: `order_id`(`^ord_`, ✓), `receipt_type`(✓, `deduction` \| `proof` \| `tax_invoice`), `tax_id`(Text, `tax_invoice`일 때 ✓)
 - 출력(프리뷰): `{"preview_id": "pv_r7c2", "expires_at": "2026-11-07T11:48:00-05:00", "changes": [{"op": "create", "entity": "receipt", "id": null, "from": null, "to": {"order_id": "ord_20518", "receipt_type": "proof"}}], "checks": [{"rule": "receipt.same_month_only", "passed": true, "detail": "Ordered this month", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
-- 출력(실행): `{"ok": true, "id": "rct_20518", "undo": null}` — 발급한 증빙은 되돌리지 않고, 금액이 바뀌면 취소 후 다시 발급(`receipt.after_claim`).
-- 프리뷰: `create receipt`.
-- 정책: `receipt.types`, `receipt.same_month_only`, `receipt.after_claim`
-- 에러: `business_id_required`(`tax_invoice`에 `tax_id` 없음) → `issue_receipt` · `already_issued`(같은 종류 발급됨) → `get_receipt`
+- 출력(실행): `{"ok": true, "id": "rct_01jd…", "receipt_type": "proof", "amount": {"value": 71.20, "currency": "USD"}, "tax_filing": null, "undo": null}` — 발급한 증빙은 되돌리지 않고, 금액이 바뀌면 취소 후 다시 발급(`receipt.after_claim`).
+- 프리뷰: `create receipt`. 같은 종류가 있고 주문 금액이 그때와 다르면 `update receipt`(취소)가 앞에 붙고 check `receipt.after_claim`.
+- 정책: `receipt.types`, `receipt.same_month_only`(스토어 시간대로 주문한 달), `receipt.after_claim`
+- 에러: `business_id_required`(`tax_invoice`에 `tax_id` 없음) → `issue_receipt` · `already_issued`(같은 종류 발급됨, `detail.existing_id`) → `get_receipt` · `invalid_state`(결제 전, `detail.reason: not_paid`) → `get_payment` · `policy_violation`(`detail.rule: receipt.same_month_only`, 주문한 달이 지남) → `get_receipt`
 - 멱등성: `(order_id, receipt_type)` 한 건.
 
 ### `get_receipt` — Kind: R
 - 논리주소/REST: `sales.receipt.get` · `GET /v1/sales/orders/{order_id}/receipt`
-- 요약: 발급된 영수증·증빙 조회.
+- 요약: 발급된 영수증·증빙 조회. 쇼퍼는 본인 주문, 운영자는 모든 주문.
 - consumes → produces: `order_id` → `receipt_id`
-- 입력: `order_id`(`^ord_`, ✓)
-- 출력: `{"id": "rct_20518", "order_id": "ord_20518", "receipt_type": "proof", "issued_at": "2026-11-07T11:20:00-05:00", "amount": {"value": 71.20, "currency": "USD"}}`
+- 입력: `order_id`(`^ord_`, ✓), `receipt_type`(enum `deduction` \| `proof` \| `tax_invoice`, 생략하면 가장 최근 것)
+- 출력: `{"id": "rct_20381", "order_id": "ord_20381", "order_number": "20381", "receipt_type": "proof", "issued_at": "2026-10-24T16:20:00-04:00", "amount": {"value": 64.00, "currency": "USD"}, "tax_id": null, "tax_filing": null, "other_receipts": []}` — 시드의 Jamie #20381
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음
 - 에러: `not_found`(`detail.entity: receipt`) → `issue_receipt`
@@ -359,7 +362,7 @@
 
 ### `prepare_subscription` — Kind: W (프리뷰만)
 - 논리주소/REST: `sales.subscription.prepare` · `POST /v1/sales/subscriptions/prepare`
-- 요약: 호출한 쇼퍼의 장바구니로 정기 주문을 **준비만** 합니다(주기, 첫 결제일, 결제 카드). 프리뷰만 만들고 `needs_approval`은 항상 `false`이며, 구독 시작은 쇼퍼의 사람 전용 `POST /v1/sales/subscriptions {preview_id}`뿐입니다.
+- 요약: 호출한 쇼퍼의 장바구니로 정기 주문을 **준비만** 합니다(주기, 첫 결제일, 결제 카드). 프리뷰만 만들고 `needs_approval`은 항상 `false`이며, 구독 시작은 쇼퍼의 사람 전용 `POST /v1/sales/subscriptions {preview_id}`뿐입니다. 장바구니의 줄 전부가 회차마다 반복됩니다(이 스토어의 카탈로그에는 `sale_type: subscription` 상품이 없으므로 상품 종류로 거르지 않음. 구독·일반 상품이 섞이면 `mixed_order_type`). 회차 금액은 소계 − `subscription.discount_layers`의 할인 + 배송비(`free_shipping_min_subtotal`)입니다.
 - consumes → produces: `cart_id` → `preview_id`
 - 입력:
   | 필드 | 타입 | 필수 | 설명 | 예 |
@@ -369,22 +372,27 @@
   | delivery_mode | enum | ✓ | `saved` \| `one_time` | `"saved"` |
   | delivery_address_id | Text, `^adr_` | saved일 때 ✓ | 저장된 주소 | `"adr_home"` |
   | delivery_address | PostalAddress | one_time일 때 ✓ | 이번 구독에만 쓰는 주소 | — |
-  | client_total | MonetaryAmount | ✓ | 쇼퍼가 본 회차 금액 | `{"value": 58.00, "currency": "USD"}` |
-- 출력(프리뷰): `{"preview_id": "pv_2210", "expires_at": "2026-11-07T11:00:00-05:00", "changes": [{"op": "create", "entity": "subscription", "id": null, "from": null, "to": {"billing_cycle": "every_month", "next_charge_date": "2026-12-01", "amount": {"value": 58.00, "currency": "USD"}, "payment": {"payment_method": "credit_card", "label": "Card ending 4821"}}}], "checks": [{"rule": "payment.subscription_card_only", "passed": true, "detail": "Card ending 4821", "fix_tool": null}, {"rule": "checkout_validation.stock_available", "passed": true, "detail": "In stock", "fix_tool": null}, {"rule": "checkout_validation.server_total_matches_client", "passed": true, "detail": "58.00 as shown", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
+  | client_total | MonetaryAmount | ✓ | 쇼퍼가 본 회차 금액 | `{"value": 64.00, "currency": "USD"}` |
+- 출력(프리뷰): `{"preview_id": "pv_2210", "expires_at": "2026-11-07T11:00:00-05:00", "changes": [{"op": "create", "entity": "subscription", "id": null, "from": null, "to": {"billing_cycle": "every_month", "next_charge_date": "2026-12-01", "amount": {"value": 64.00, "currency": "USD"}, "lines": [{"variant_id": "var_merino_tee_m_charcoal", "name": "Merino trail tee", "size": "M", "color": "Charcoal", "quantity": 1, "price": {"value": 58.00, "currency": "USD"}, "discount": {"value": 0.00, "currency": "USD"}}], "delivery": {"address_id": "adr_home", "address_label": "Home · 12 Harbor St, Apt 3, Brooklyn, NY 11201"}, "payment": {"payment_method": "credit_card", "label": "Card ending 4821"}}}], "checks": [{"rule": "payment.subscription_card_only", "passed": true, "detail": "Card ending 4821", "fix_tool": null}, {"rule": "checkout_validation.stock_available", "passed": true, "detail": "Merino trail tee M Charcoal is in stock", "fix_tool": null}, {"rule": "checkout_validation.server_total_matches_client", "passed": true, "detail": "64.00 as shown", "fix_tool": null}], "needs_approval": false, "approval_reason": null}` — merino tee $58.00는 무료 배송 기준($80.00) 아래라 배송비 $6.00이 회차마다 붙습니다.
 - 프리뷰: `create subscription`(`id: null`). 할인은 `subscription.discount_layers`(회원가·기간가 층)만, 적립금 사용 불가.
-- 정책: `payment.subscription_card_only`, `subscription.billing_cycles`, `subscription.discount_layers`, `subscription.loyalty_usable`, [approval.yml](../../policies/approval.yml) `preview_only`
-- 에러: `not_card_payment`(저장된 카드 없음) → `get_payment_methods` · `invalid_input`(`next_charge_date`가 과거, `detail.reason: past`) → `prepare_subscription` · `cart_empty` → `add_to_cart`
+- 정책: `payment.subscription_card_only`, `subscription.billing_cycles`, `subscription.cycle_length`, `subscription.discount_layers`, `subscription.loyalty_usable`, [approval.yml](../../policies/approval.yml) `preview_only`
+- 에러: `not_card_payment`(저장된 카드 없음) → `get_payment_methods` · `invalid_input`(`next_charge_date`가 오늘이거나 과거 `detail.reason: past`, 형식 `format`, 스토어가 내지 않는 주기 `detail.field: billing_cycle`) → `prepare_subscription` · `cart_empty` → `add_to_cart` · `mixed_order_type` → `remove_cart_item` · `not_found`(`detail.entity: postal_address`) → `get_my_profile`
 - 멱등성: 상태를 바꾸지 않음. 다시 부르면 이전 프리뷰는 `superseded`.
 
 ### `POST /v1/sales/subscriptions` — 사람 전용
-- 경로·스코프: `POST /v1/sales/subscriptions` `{"preview_id": "pv_2210"}` · `human:order`. **툴이 아니며 모델은 보지 못합니다.** 쇼퍼가 확인 카드의 버튼으로만 보냅니다.
-- 요약: 쇼퍼가 준비된 정기 주문을 시작합니다. 이후 주기마다 주문이 자동으로 만들어집니다.
+- 경로·스코프: `POST /v1/sales/subscriptions` `{"preview_id": "pv_2210"}` · `human:order`. **툴이 아니며 모델은 보지 못합니다.** 쇼퍼가 확인 카드의 버튼으로만 보냅니다. 레지스트리 이름 `sales.subscription.start`(`start_subscription`).
+- 요약: 쇼퍼가 준비된 정기 주문을 시작합니다. 서버가 다시 계산해 회차 금액이 다르면 `estimate_changed`, 구독한 줄은 장바구니에서 빠지고, 지금은 아무것도 결제하지 않습니다. 이후 결제일마다 예약 작업 `subscription.renew`가 주문을 만들고 저장된 카드로 결제합니다(아래).
 - consumes → produces: `preview_id` → `subscription_id`
 - 입력: 본문 `preview_id`(`^pv_`, ✓). 헤더 `Idempotency-Key`, `X-CSRF-Token`.
-- 출력: `{"ok": true, "id": "sub_3301", "undo": null}` — 해지는 `cancel_subscription`.
+- 출력: `{"ok": true, "id": "sub_01jd…", "next_charge_date": "2026-12-01", "undo": null}` — 해지는 `cancel_subscription`.
 - 정책: `payment.subscription_card_only`
-- 에러(모두 `next_tool: null`): `preview_expired` → null · `estimate_changed` → null · `payment_declined` → null
+- 에러(모두 `next_tool: null`): `preview_expired` → null · `estimate_changed` → null · `payment_declined`(저장된 카드가 없어짐) → null
 - 멱등성: 같은 `preview_id`로 다시 보내면 첫 결과.
+
+#### 예약 작업 `subscription.renew`
+- **툴이 아니며 모델은 보지 못합니다**([platform.md](platform.md#예약-작업)). `payload {subscription_id, charge_date}`, 결제일의 스토어 시간 0시에 실행.
+- 동작: 구독이 `active`이고 `next_charge_date`가 그 날이면 구독한 줄·할인·금액 그대로 주문(`processing`)을 만들고 재고를 잡고(`inventory.reserve_on`) 저장된 카드로 결제합니다(카드사는 이 시스템 밖이라 승인된 것으로 기록하고 주문 이벤트의 `outside_system`에 그렇게 남김). 그 뒤 `next_charge_date`를 `subscription.cycle_length` 한 주기 뒤로 옮기고 그 날의 작업을 예약합니다. 멈춘·해지된 구독, 날짜가 바뀐 구독의 작업은 아무것도 만들지 않습니다. 재고가 없으면 작업이 실패하고 실행기가 나중에 다시 시도합니다(아무것도 남지 않음). outbox에 `subscription.renewed`.
+- 예약: `start_subscription`, `resume_subscription`, `update_schedule`(날짜를 바꿀 때), 이전 회차.
 
 ### `pause_subscription` — Kind: W
 - 논리주소/REST: `sales.subscription.pause` · `POST /v1/sales/subscriptions/{subscription_id}/pause`
@@ -394,17 +402,17 @@
 - 출력(프리뷰): `{"preview_id": "pv_s1p0", "expires_at": "2026-11-07T11:30:00-05:00", "changes": [{"op": "update", "entity": "subscription", "id": "sub_3301", "from": "active", "to": "paused"}], "checks": [], "needs_approval": false, "approval_reason": null}` · 출력(실행): `{"ok": true, "id": "sub_3301", "undo": null}` — 다시 시작은 `resume_subscription`.
 - 프리뷰: `update subscription`. `needs_approval: false`.
 - 정책: 없음(상태 전이는 [enums.md](enums.md) §1.14)
-- 에러: `invalid_state` → `list_subscriptions` · `not_found`(`detail.entity: subscription`) → `list_subscriptions`
-- 멱등성: 이미 `paused`면 같은 결과.
+- 에러: `invalid_state`(이미 `cancelled`) → `list_subscriptions` · `not_found`(`detail.entity: subscription`) → `list_subscriptions` · `forbidden`(남의 구독) → `list_subscriptions`
+- 멱등성: 이미 `paused`면 같은 결과(변경 없음). 변경셋 안에서는 되돌리기(다시 `active`)가 됩니다.
 
 ### `resume_subscription` — Kind: W
 - 논리주소/REST: `sales.subscription.resume` · `POST /v1/sales/subscriptions/{subscription_id}/resume`
 - 요약: 멈춘 정기 주문을 다시 시작합니다(`paused → active`). 다음 결제일은 오늘 이후의 가장 가까운 회차.
 - consumes → produces: `subscription_id` → `subscription_id`
 - 입력: `subscription_id`(`^sub_`, ✓)
-- 출력(프리뷰): `changes: [{"op": "update", "entity": "subscription", "id": "sub_3301", "from": "paused", "to": "active"}]`, `needs_approval: false` · 출력(실행): `{"ok": true, "id": "sub_3301", "undo": null}`
-- 프리뷰: `update subscription`.
-- 정책: `payment.subscription_card_only`(카드가 여전히 유효한지)
+- 출력(프리뷰): `changes: [{"op": "update", "entity": "subscription", "id": "sub_3302", "from": "paused", "to": "active", "note": "Next charge 2026-11-13"}]`, checks `payment.subscription_card_only`, `needs_approval: false` · 출력(실행): `{"ok": true, "id": "sub_3302", "undo": null}` — 예: 시드의 Grace(격주, Oct 30 결제 대기 중 멈춤)를 Sat Nov 7에 다시 시작하면 Nov 13.
+- 프리뷰: `update subscription`. 다음 결제일은 저장된 결제일에서 `subscription.cycle_length`씩 더해 오늘 이후의 첫 날(스토어 시간대). 그 날의 `subscription.renew`를 예약.
+- 정책: `payment.subscription_card_only`(카드가 여전히 유효한지), `subscription.cycle_length`
 - 에러: `invalid_state`(이미 `cancelled`) → `list_subscriptions` · `not_card_payment` → `get_payment_methods`
 - 멱등성: 이미 `active`면 같은 결과.
 
@@ -413,7 +421,7 @@
 - 요약: 정기 주문을 해지합니다(`active | paused → cancelled`, 끝 상태). 이미 만들어진 회차 주문은 그대로입니다.
 - consumes → produces: `subscription_id` → `subscription_id`
 - 입력: `subscription_id`(`^sub_`, ✓), `reason`(Text, 선택)
-- 출력(프리뷰): `changes: [{"op": "update", "entity": "subscription", "id": "sub_3301", "from": "active", "to": "cancelled"}]`, `needs_approval: false` · 출력(실행): `{"ok": true, "id": "sub_3301", "undo": null}` — 해지는 되돌릴 수 없고 다시 하려면 새로 `prepare_subscription`.
+- 출력(프리뷰): `changes: [{"op": "update", "entity": "subscription", "id": "sub_3301", "from": "active", "to": "cancelled"}]`, `needs_approval: false` · 출력(실행): `{"ok": true, "id": "sub_3301", "undo": null}` — 해지는 되돌릴 수 없고 다시 하려면 새로 `prepare_subscription`. `reason`은 구독에 남습니다(`cancel_reason_text`).
 - 프리뷰: `update subscription`.
 - 정책: 없음
 - 에러: `invalid_state`(이미 `cancelled`) → `list_subscriptions` · `not_found`(`detail.entity: subscription`) → `list_subscriptions`
@@ -423,11 +431,11 @@
 - 논리주소/REST: `sales.subscription.update_schedule` · `PATCH /v1/sales/subscriptions/{subscription_id}/schedule`
 - 요약: 정기 주문의 주기·다음 결제일·수량·배송지를 바꿉니다(다음 회차부터).
 - consumes → produces: `subscription_id` → `subscription_id`
-- 입력: `subscription_id`(`^sub_`, ✓), `billing_cycle`(enum `every_week` \| `every_2_weeks` \| `every_month`), `next_charge_date`(Date), `order_quantity`(Integer ≥ 1), `delivery_address_id`(`^adr_`). 바꿀 것 하나 이상.
+- 입력: `subscription_id`(`^sub_`, ✓), `billing_cycle`(enum `every_week` \| `every_2_weeks` \| `every_month`), `next_charge_date`(Date, 오늘 이후), `order_quantity`(Integer 1–`cart.max_quantity_per_line`, 줄이 하나인 구독만; 오늘 가격과 구독 할인으로 회차 금액을 다시 계산), `delivery_address_id`(`^adr_`, 구독한 쇼퍼의 저장 주소). 바꿀 것 하나 이상.
 - 출력(프리뷰): `changes: [{"op": "update", "entity": "subscription", "id": "sub_3301", "from": {"billing_cycle": "every_month"}, "to": {"billing_cycle": "every_2_weeks"}}]`, `needs_approval: false` · 출력(실행): `{"ok": true, "id": "sub_3301", "undo": null}`
 - 프리뷰: `update subscription`.
 - 정책: `subscription.billing_cycles`, `payment.subscription_card_only`
-- 에러: `invalid_input`(`detail.field: billing_cycle` 또는 과거 `next_charge_date`) → `update_schedule` · `not_found`(`detail.entity: subscription`) → `list_subscriptions`
+- 에러: `invalid_input`(`detail.field: billing_cycle` 또는 과거 `next_charge_date`, 줄이 여럿인 구독의 `order_quantity` `detail.reason: several_items`) → `update_schedule` · `not_found`(`detail.entity: subscription`) → `list_subscriptions` · `not_found`(`detail.entity: postal_address`) → `list_addresses` · `address_not_deliverable` → `list_addresses` · `invalid_state`(해지됨) → `list_subscriptions` · `not_card_payment` → `get_payment_methods`
 - 멱등성: `Idempotency-Key`. 같은 값이면 같은 결과.
 
 ### `list_subscriptions` — Kind: R
@@ -435,10 +443,10 @@
 - 요약: 정기 주문 목록. 쇼퍼는 본인 것만(`customer_id` 생략 또는 `me`).
 - consumes → produces: → `subscription_id[]`
 - 입력: `customer_id`(`^cus_` 또는 `me`), `status`(enum[] `active` \| `paused` \| `cancelled`), `limit`(기본 20), `cursor`
-- 출력: `{"items": [{"id": "sub_3301", "customer_id": "cus_jamie", "status": "active", "billing_cycle": "every_month", "next_charge_date": "2026-12-01", "amount": {"value": 58.00, "currency": "USD"}}], "total": 1}`
+- 출력: `{"items": [{"id": "sub_3301", "customer_id": "cus_jamie", "status": "active", "billing_cycle": "every_month", "next_charge_date": "2026-12-01", "amount": {"value": 64.00, "currency": "USD"}, "lines": [{"variant_id": "var_merino_tee_m_charcoal", "product_id": "prd_merino_tee", "name": "Merino trail tee", "size": "M", "color": "Charcoal", "quantity": 1}], "delivery": {"address_id": "adr_home", "address_label": "Home · 12 Harbor St, Apt 3, Brooklyn, NY 11201"}, "payment": {"payment_method": "credit_card", "label": "Card ending 4821"}, "paused_at": null, "cancelled_at": null}], "total": 1}` — 시드의 Jamie
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음
-- 에러: `invalid_filter` → `list_enums`
+- 에러: `invalid_filter`(운영자가 `me`) → `search_members` · `forbidden`(쇼퍼가 남의 `customer_id`) → `list_subscriptions`
 - 멱등성: 읽기.
 
 ---
@@ -447,15 +455,16 @@
 
 ### `set_installment` — Kind: W
 - 논리주소/REST: `sales.installment.set` · `POST /v1/sales/orders/{order_id}/installment`
-- 요약: 신용카드 할부 개월 수를 정합니다(결제 확정 전). 가능한 개월 수는 `get_payment_methods`의 `installment_months`.
+- 요약: 신용카드 할부 개월 수를 정합니다(결제 확정 전). 가능한 개월 수는 `get_payment_methods`의 `installment_months`. 카드사는 주문이 출고될 때 결제를 확정하므로, "결제 확정 전"은 주문이 출고되기 전(`order.change.allowed_before`)입니다. 카드사는 이 시스템 밖이라 할부 계획은 여기 기록만 하고, 결과의 `outside_system`(`{"system": "card_provider", "connected": false, …}`)이 그렇게 말합니다.
 - consumes → produces: `order_id` → `payment_id`
 - 입력: `order_id`(`^ord_`, ✓), `installment_months`(Integer, ✓, `payment.installment.months`의 값, 0은 일시불)
-- 출력(프리뷰): `{"preview_id": "pv_i3m1", "expires_at": "2026-11-07T11:40:00-05:00", "changes": [{"op": "update", "entity": "payment", "id": "pay_20521", "from": {"installment_months": 0}, "to": {"installment_months": 3}}], "checks": [{"rule": "payment.installment.min_amount", "passed": true, "detail": "Order $213.60 is over the $50.00 minimum; 3 × $71.20", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
+- 출력(프리뷰): `{"preview_id": "pv_i3m1", "expires_at": "2026-11-07T11:40:00-05:00", "changes": [{"op": "update", "entity": "payment", "id": "pay_20521", "from": {"installment_months": 0}, "to": {"installment_months": 3}}], "checks": [{"rule": "payment.installment.min_amount", "passed": true, "detail": "Order 213.60 USD is over the 50.00 USD minimum; 3 × 71.20", "fix_tool": null}], "needs_approval": false, "approval_reason": null}`
 - 출력(실행): `{"ok": true, "id": "pay_20521", "undo": null}` — 결제 확정 전까지는 다시 `set_installment`로 바꿀 수 있습니다.
 - 프리뷰: `update payment`.
 - 정책: `payment.installment.methods`, `payment.installment.min_amount`, `payment.installment.months`
-- 에러: `months_not_available` → `get_payment_methods` · `below_min_amount` → `get_payment_methods` · `not_card_payment` → `get_payment_methods`
-- 멱등성: `Idempotency-Key`.
+- 에러: `months_not_available` → `get_payment_methods` · `below_min_amount` → `get_payment_methods` · `not_card_payment` → `get_payment_methods` · `already_shipped` → `get_payment` · `invalid_state`(취소된 주문, 거절된 결제) → `get_payment`
+- 멱등성: `Idempotency-Key`. 같은 개월 수면 같은 결과. 변경셋 안에서는 되돌리기(이전 개월 수)가 됩니다(출고 전까지).
+- 예: 시드의 Owen #29002(받는 사람 수락을 기다리는 선물, 카드 $89.00) → 3 × 29.67.
 
 ---
 
