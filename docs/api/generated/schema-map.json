@@ -9461,6 +9461,103 @@
   },
   {
     "schema": "promotion",
+    "table": "conditional_gift",
+    "kind": "table",
+    "term": "schema:Offer/acom:ConditionalGift",
+    "description": "a gift added to an order whose subtotal before member benefits reaches a threshold, with one gift per threshold. id prefix cgf_.",
+    "id_prefix": "cgf",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix cgf_; the same value the API, logs and events use."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "name people read, for example Holiday gift over $120."
+      },
+      {
+        "name": "gift_tiers",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:giftTiers",
+        "description": "thresholds in ascending order, each with its gift: [{trigger_threshold: {value, currency}, gift_product_id}]."
+      },
+      {
+        "name": "valid_for_member_tier",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:validForMemberTier",
+        "description": "tier the gift is for; NULL means everyone (the reserved word everyone is never stored).",
+        "references": "customer.member_program_tier"
+      },
+      {
+        "name": "sales_channels",
+        "type": "text[]",
+        "nullable": true,
+        "term": "acom:salesChannel",
+        "description": "channels where the gift applies; NULL means every channel. values: sales_channel",
+        "values_list": "sales_channel"
+      },
+      {
+        "name": "valid_from",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:validFrom",
+        "description": "first moment the gift applies."
+      },
+      {
+        "name": "valid_through",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:validThrough",
+        "description": "last moment it applies (inclusive, minute precision)."
+      },
+      {
+        "name": "change_set_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:changeSetId",
+        "description": "change set that created it; NULL for seeded ones."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "promotion",
     "table": "coupon",
     "kind": "table",
     "term": "schema:Offer/acom:Coupon",
@@ -9558,6 +9655,783 @@
         "nullable": true,
         "term": "schema:validThrough",
         "description": "last moment it can be used; NULL follows the promotion."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "promotion",
+    "table": "draw_record",
+    "kind": "table",
+    "term": "schema:ChooseAction/acom:DrawRecord",
+    "description": "the audit record of one draw run: method, seed, entrant snapshot and result, so anyone can repeat it. Rows are only added. id prefix drw_.",
+    "id_prefix": "drw",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix drw_; the same value the API, logs and events use."
+      },
+      {
+        "name": "event_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:object",
+        "description": "event drawn (evt_ id).",
+        "references": "promotion.event"
+      },
+      {
+        "name": "draw_position",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:drawPosition",
+        "description": "which run of the event's draws this is, from 1; part of the shuffle key."
+      },
+      {
+        "name": "draw_mode",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:drawMode",
+        "description": "what the run did, one of promotion.yml event.draw.modes: draw, redraw, cancel_winner, promote_waitlist, add_waitlist or manual_select."
+      },
+      {
+        "name": "rank",
+        "type": "integer",
+        "nullable": true,
+        "term": "acom:rank",
+        "description": "the reward rank drawn; NULL for every rank."
+      },
+      {
+        "name": "method",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:method",
+        "description": "how winners were chosen, from promotion.yml event.draw.fairness.method, for example seeded_shuffle."
+      },
+      {
+        "name": "seed_commitment",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:seedCommitment",
+        "description": "sha256 of the seed, as published before entries closed."
+      },
+      {
+        "name": "seed",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:seed",
+        "description": "the seed the shuffle used, revealed by the draw."
+      },
+      {
+        "name": "entrant_snapshot_digest",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:entrantSnapshotDigest",
+        "description": "sha256 of the entry ids the draw chose from, in order."
+      },
+      {
+        "name": "entrant_count",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:entrantCount",
+        "description": "how many entries the draw chose from."
+      },
+      {
+        "name": "excluded",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:excluded",
+        "description": "entries left out and why: {previous_winners, invalid_entries}."
+      },
+      {
+        "name": "result",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "schema:result",
+        "description": "[{rank, winners[], waitlist[], cancelled[]}] with entry ids."
+      },
+      {
+        "name": "reason",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:reason",
+        "description": "why a person redrew, cancelled a winner or chose by hand."
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "who asked for the draw (adm_ or sys_ id)."
+      },
+      {
+        "name": "change_set_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:changeSetId",
+        "description": "change set whose approval ran the draw; its approver is the person who approved it."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the draw ran, on the store clock."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version; draw records are never changed."
+      }
+    ]
+  },
+  {
+    "schema": "promotion",
+    "table": "event",
+    "kind": "table",
+    "term": "schema:Event",
+    "description": "a promotion event: shoppers enter by an entry mechanic and winners are chosen by a selection method, with rewards by rank. id prefix evt_.",
+    "id_prefix": "evt",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix evt_; the same value the API, logs and events use."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "name people read, for example Fall check-in week."
+      },
+      {
+        "name": "event_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:eventStatus",
+        "description": "stored status; scheduled and running follow the entry period and the store clock, closed after it ends. values: event_status",
+        "values": [
+          "draft",
+          "scheduled",
+          "running",
+          "paused",
+          "closed",
+          "drawing",
+          "announced",
+          "fulfilling",
+          "completed",
+          "cancelled"
+        ],
+        "values_list": "event_status"
+      },
+      {
+        "name": "start_date",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startDate",
+        "description": "first moment entries are taken."
+      },
+      {
+        "name": "end_date",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:endDate",
+        "description": "last moment entries are taken (inclusive, minute precision)."
+      },
+      {
+        "name": "display_valid_from",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:displayValidFrom",
+        "description": "when shoppers start seeing the event; NULL means from start_date."
+      },
+      {
+        "name": "display_valid_through",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:displayValidThrough",
+        "description": "when shoppers stop seeing it; NULL means until end_date."
+      },
+      {
+        "name": "entry_mechanic",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:entryMechanic",
+        "description": "how shoppers enter, an id of the store registry promotion.yml event.entry_mechanics, for example check_in."
+      },
+      {
+        "name": "selection_method",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:selectionMethod",
+        "description": "how winners are chosen, an id of the store registry promotion.yml event.selection_methods, for example random_draw."
+      },
+      {
+        "name": "entry_payload_schema",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "acom:entryPayloadSchema",
+        "description": "fields an entry must send, {field: type}; NULL when an entry needs no data."
+      },
+      {
+        "name": "reward_tiers",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:rewardTiers",
+        "description": "rewards by rank: [{rank, reward_type, reward_ref, reward_value: {value, currency}, winner_count, waitlist_count, odds, round}]."
+      },
+      {
+        "name": "eligibility",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:eligibility",
+        "description": "who may enter: {valid_for_member_tier, segment_id, member_types[], purchase_condition: {min_subtotal, window, scope}, channels[]}."
+      },
+      {
+        "name": "valid_for_member_tier",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:validForMemberTier",
+        "description": "tier allowed to enter, the same as eligibility.valid_for_member_tier; NULL means everyone.",
+        "references": "customer.member_program_tier"
+      },
+      {
+        "name": "entry_limit",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:entryLimit",
+        "description": "entries one member may make: {count, period: day, week, event or unlimited}."
+      },
+      {
+        "name": "draw_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:drawAt",
+        "description": "when the draw is planned; NULL when not planned."
+      },
+      {
+        "name": "announce_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:announceAt",
+        "description": "when winners are announced; NULL when not planned."
+      },
+      {
+        "name": "dispatch_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:dispatchAt",
+        "description": "when rewards are sent; NULL when not planned."
+      },
+      {
+        "name": "compliance_jurisdictions",
+        "type": "text[]",
+        "nullable": false,
+        "term": "acom:complianceJurisdictions",
+        "description": "store-defined jurisdiction ids whose rules apply; empty means chosen by promotion.yml event.compliance.jurisdiction_from."
+      },
+      {
+        "name": "seed_commitment",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:seedCommitment",
+        "description": "sha256 of the draw seed, published when the event is created so the draw can be checked afterwards."
+      },
+      {
+        "name": "draw_seed",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:seed",
+        "description": "the secret draw seed; shown only in draw records once a draw ran."
+      },
+      {
+        "name": "change_set_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:changeSetId",
+        "description": "change set that created the event; NULL for seeded ones."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "promotion",
+    "table": "event_entry",
+    "kind": "table",
+    "term": "schema:JoinAction/acom:EventEntry",
+    "description": "one entry of a member in an event, and whether it won. id prefix ent_.",
+    "id_prefix": "ent",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix ent_; the same value the API, logs and events use."
+      },
+      {
+        "name": "event_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:object",
+        "description": "event entered (evt_ id).",
+        "references": "promotion.event"
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:agent",
+        "description": "member who entered (cus_ id).",
+        "references": "customer.person"
+      },
+      {
+        "name": "entry_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:entryStatus",
+        "description": "entered until a draw or an instant result decides it. values: entry_status",
+        "values": [
+          "entered",
+          "invalid",
+          "won",
+          "lost",
+          "waitlist",
+          "cancelled"
+        ],
+        "values_list": "entry_status"
+      },
+      {
+        "name": "entry_payload",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:entryPayload",
+        "description": "what the member sent, following the event's entry_payload_schema (answers, a caption, a code)."
+      },
+      {
+        "name": "entry_consent",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:entryConsent",
+        "description": "consents given when entering, {consent type: true}."
+      },
+      {
+        "name": "order_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:orderId",
+        "description": "order the entry is based on for purchase_triggered events (ord_ id); NULL otherwise."
+      },
+      {
+        "name": "period_bucket",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:periodBucket",
+        "description": "the entry-limit period the entry counts in: a store date for day, an ISO week for week, event or unlimited."
+      },
+      {
+        "name": "entry_number",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:entryNumber",
+        "description": "which entry of the member in that period it is, from 1."
+      },
+      {
+        "name": "rank",
+        "type": "integer",
+        "nullable": true,
+        "term": "acom:rank",
+        "description": "reward rank won or waited for; NULL until decided."
+      },
+      {
+        "name": "waitlist_position",
+        "type": "integer",
+        "nullable": true,
+        "term": "acom:waitlistPosition",
+        "description": "place on the waitlist of its rank, from 1; NULL when not waiting."
+      },
+      {
+        "name": "draw_record_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:drawRecordId",
+        "description": "draw that last decided the entry (drw_ id); NULL for instant results."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the member entered, on the store clock."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "promotion",
+    "table": "event_reward",
+    "kind": "table",
+    "term": "schema:Offer/acom:EventReward",
+    "description": "the reward of one winning entry and how it is sent. id prefix rwd_.",
+    "id_prefix": "rwd",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix rwd_; the same value the API, logs and events use."
+      },
+      {
+        "name": "event_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:eventId",
+        "description": "event the reward belongs to (evt_ id).",
+        "references": "promotion.event"
+      },
+      {
+        "name": "entry_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:entryId",
+        "description": "winning entry (ent_ id).",
+        "references": "promotion.event_entry"
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:customer",
+        "description": "member who gets the reward (cus_ id).",
+        "references": "customer.person"
+      },
+      {
+        "name": "rank",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:rank",
+        "description": "reward rank won."
+      },
+      {
+        "name": "reward_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:rewardType",
+        "description": "kind of reward, an id of the store registry promotion.yml event.reward_types, for example product."
+      },
+      {
+        "name": "reward_ref",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:rewardRef",
+        "description": "what is given: a product (prd_), a coupon (cpn_) or free text; NULL when the type needs none."
+      },
+      {
+        "name": "reward_value",
+        "type": "numeric(12,2)",
+        "nullable": true,
+        "term": "acom:rewardValue",
+        "description": "value of the reward, in major units of the currency; NULL when the type has no value."
+      },
+      {
+        "name": "reward_currency",
+        "type": "char(3)",
+        "nullable": true,
+        "term": "acom:rewardValue",
+        "description": "ISO 4217 code of reward_value."
+      },
+      {
+        "name": "fulfillment",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:fulfillment",
+        "description": "how it is sent: ship, issue, grant, email or manual (promotion.yml event.reward_types.fulfillment_methods)."
+      },
+      {
+        "name": "reward_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:rewardStatus",
+        "description": "compliance_pending while a store rule waits for the winner. values: reward_status",
+        "values": [
+          "pending",
+          "compliance_pending",
+          "ready",
+          "dispatched",
+          "delivered",
+          "failed",
+          "forfeited"
+        ],
+        "values_list": "reward_status"
+      },
+      {
+        "name": "compliance_requirements",
+        "type": "text[]",
+        "nullable": false,
+        "term": "acom:complianceRequirements",
+        "description": "what the winner still has to provide (legal_name, address, tax_id); empty when nothing."
+      },
+      {
+        "name": "fulfillment_ref",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:fulfillmentRef",
+        "description": "what sending made: a member coupon (mcp_), a ledger entry (lyt_), or the reference of a stubbed shipment or email."
+      },
+      {
+        "name": "reward_batch_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:rewardBatchId",
+        "description": "the dispatch run that made it (rwb_ id)."
+      },
+      {
+        "name": "dispatched_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:dispatchedAt",
+        "description": "when it was sent; NULL while held or pending."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "promotion",
+    "table": "loyalty_transaction",
+    "kind": "table",
+    "term": "schema:MoneyTransfer/acom:LoyaltyTransaction",
+    "description": "one entry of a member's store-point ledger; entries are only added and the balance is their sum. id prefix lyt_.",
+    "id_prefix": "lyt",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix lyt_; the same value the API, logs and events use."
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:customer",
+        "description": "member whose points these are (cus_ id).",
+        "references": "customer.person"
+      },
+      {
+        "name": "transaction_type",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:loyaltyTransactionType",
+        "description": "accrual, grant and restore add points; spend, expire and reversal take them away. values: loyalty_transaction_type",
+        "values": [
+          "accrual",
+          "spend",
+          "expire",
+          "grant",
+          "restore",
+          "reversal"
+        ],
+        "values_list": "loyalty_transaction_type"
+      },
+      {
+        "name": "amount_value",
+        "type": "numeric(12,2)",
+        "nullable": false,
+        "term": "schema:amount",
+        "description": "points as money, always positive (the type says which way), in major units of the currency."
+      },
+      {
+        "name": "amount_currency",
+        "type": "char(3)",
+        "nullable": false,
+        "term": "schema:amount",
+        "description": "ISO 4217 code of amount_value."
+      },
+      {
+        "name": "order_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:orderId",
+        "description": "order that earned, spent or gave back the points (ord_ id); NULL for grants and expiries."
+      },
+      {
+        "name": "source_transaction_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:sourceTransaction",
+        "description": "earlier entry this one expires or reverses (lyt_ id); NULL otherwise.",
+        "references": "promotion.loyalty_transaction"
+      },
+      {
+        "name": "expires",
+        "type": "date",
+        "nullable": true,
+        "term": "schema:expires",
+        "description": "last day (store time) the points of an accrual, grant or restore can be spent; NULL for entries that take points away."
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:description",
+        "description": "why, in a sentence, for example the reason a person gave for a grant."
+      },
+      {
+        "name": "agent_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:agent",
+        "description": "who recorded it: an operator (adm_), a shopper (cus_) or the system (sys_)."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the entry happened on the store clock."
       },
       {
         "name": "created_at",
@@ -9859,6 +10733,109 @@
         "nullable": false,
         "term": "-",
         "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      },
+      {
+        "name": "promotion_type",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:promotionType",
+        "description": "kind of benefit a promotion made by create_promotion gives; NULL for member and sale prices (set_sale_prices). values: promotion_type",
+        "values": [
+          "bogo",
+          "bundle",
+          "threshold",
+          "amount_off"
+        ],
+        "values_list": "promotion_type"
+      },
+      {
+        "name": "promotion_terms",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:promotionTerms",
+        "description": "parameters of the type: {threshold_benefit: amount_off or free_shipping, buy_quantity, get_quantity, bundle_price: {value, currency}, cost_share: {store, seller} rates 0-1}."
+      },
+      {
+        "name": "sales_channels",
+        "type": "text[]",
+        "nullable": true,
+        "term": "acom:salesChannel",
+        "description": "channels where the promotion applies; NULL means every channel. values: sales_channel",
+        "values_list": "sales_channel"
+      }
+    ]
+  },
+  {
+    "schema": "promotion",
+    "table": "segment",
+    "kind": "table",
+    "term": "schema:Audience/acom:Segment",
+    "description": "a group of customers defined by conditions, used to issue coupons, send messages and limit events; the row version is the segment version. id prefix seg_.",
+    "id_prefix": "seg",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix seg_; the same value the API, logs and events use."
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "name people read, for example Lapsed knit buyers."
+      },
+      {
+        "name": "condition_rules",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:conditions",
+        "description": "who is in it: {member_tiers[], purchased_category_ids[], last_order_within_days, min_spend: {value, currency}, exclude_segment_ids[]}; every given condition must hold."
+      },
+      {
+        "name": "estimated_size",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:estimatedSize",
+        "description": "how many active members matched when the segment was last defined."
+      },
+      {
+        "name": "estimated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "acom:estimatedAt",
+        "description": "store-clock time estimated_size was counted."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version and segment version, +1 on every change; previews record it in basis and execution compares it."
       }
     ]
   },

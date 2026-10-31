@@ -207,6 +207,11 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `promotion.unit_price_specification` | schema:UnitPriceSpecification | `ups` | 회원가·기간가 |
 | `promotion.coupon` | schema:Offer/acom:Coupon | `cpn` | `code`, 적용 방식, 중복 규칙 |
 | `promotion.member_coupon` | schema:OwnershipInfo/acom:MemberCoupon | `mcp` | 발급된 쿠폰 |
+| `promotion.loyalty_transaction` | schema:MoneyTransfer/acom:LoyaltyTransaction | `lyt` | 적립금 원장(추가만), 잔액은 합계 |
+| `promotion.conditional_gift` | schema:Offer/acom:ConditionalGift | `cgf` | 금액 조건 사은품 |
+| `promotion.segment` | schema:Audience/acom:Segment | `seg` | 조건으로 정의한 고객 묶음 |
+| `promotion.event`, `promotion.event_entry` | schema:Event, schema:JoinAction/acom:EventEntry | `evt`, `ent` | 이벤트와 응모 |
+| `promotion.draw_record`, `promotion.event_reward` | schema:ChooseAction/acom:DrawRecord, schema:Offer/acom:EventReward | `drw`, `rwd` | 추첨 기록(추가만), 보상 |
 | `customer.person` | schema:Person | `cus` | `given_name`, `family_name`, `email`, `telephone`, `member_state` |
 | `customer.postal_address` | schema:PostalAddress | `adr` | `street_address`, `address_locality`, `address_region`, `postal_code`, `address_country` |
 | `customer.member_program` | schema:MemberProgram | `prg` | |

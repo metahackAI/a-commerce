@@ -1,5 +1,7 @@
-//! SQL for the promotion tables (`migrations/0005_promotion.sql`). Every query filters
-//! `tenant_id`; values are bind parameters and the few dynamic parts are fixed strings.
+//! SQL for the promotion tables the whole domain shares (`migrations/0005_promotion.sql`,
+//! `0022_promotion_engage.sql`); the tables of one resource (ledger, events, segments, gifts) have
+//! their SQL in that resource's `mod.rs`. Every query filters `tenant_id`; values are bind
+//! parameters and the few dynamic parts are fixed strings.
 
 use acom_contract::ToolError;
 use acom_store::{Page, StoreError, TxCx};
@@ -644,4 +646,142 @@ pub(crate) async fn revoke_unused(
     .await
     .map_err(db)?
     .rows_affected())
+}
+
+/// What a promotion holds beyond [`PromotionRow`]: its type and terms (`create_promotion`), the
+/// minimum subtotal, and the channels.
+#[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
+pub(crate) struct PromotionExtras {
+    pub promotion_type: Option<String>,
+    pub promotion_terms: Value,
+    pub sales_channels: Option<Vec<String>>,
+    pub eligible_transaction_volume_value: Option<Decimal>,
+    pub eligible_transaction_volume_currency: Option<String>,
+}
+
+pub(crate) async fn promotion_extras(
+    tx: &mut TxCx,
+    id: &str,
+) -> Result<Option<PromotionExtras>, ToolError> {
+    sqlx::query_as::<_, PromotionExtras>(
+        "SELECT promotion_type, promotion_terms, sales_channels,
+                eligible_transaction_volume_value,
+                eligible_transaction_volume_currency::text AS eligible_transaction_volume_currency
+         FROM promotion.promotion WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// A promotion as `create_promotion` creates it.
+#[derive(Debug)]
+pub(crate) struct NewTypedPromotion<'a> {
+    pub id: &'a str,
+    pub name: &'a str,
+    pub description: &'a str,
+    pub status: &'a str,
+    pub promotion_type: &'a str,
+    pub discount_layer: &'a str,
+    pub tier: Option<&'a str>,
+    pub valid_from: DateTime<Utc>,
+    pub valid_through: DateTime<Utc>,
+    pub amount_off: Option<(Decimal, &'a str)>,
+    pub min_subtotal: Option<(Decimal, &'a str)>,
+    pub applies_to: &'a Value,
+    pub terms: &'a Value,
+    pub channels: Option<&'a [String]>,
+    pub change_set_id: Option<&'a str>,
+}
+
+/// Inserts a promotion of a type; nothing happens when it is already there.
+pub(crate) async fn insert_typed_promotion(
+    tx: &mut TxCx,
+    p: &NewTypedPromotion<'_>,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "INSERT INTO promotion.promotion (tenant_id, id, name, description, promotion_status,
+           discount_layer, valid_for_member_tier, valid_from, valid_through, amount_off_value,
+           amount_off_currency, eligible_transaction_volume_value,
+           eligible_transaction_volume_currency, applies_to, change_set_id, promotion_type,
+           promotion_terms, sales_channels)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+         ON CONFLICT (tenant_id, id) DO NOTHING",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(p.id)
+    .bind(p.name)
+    .bind(p.description)
+    .bind(p.status)
+    .bind(p.discount_layer)
+    .bind(p.tier)
+    .bind(p.valid_from)
+    .bind(p.valid_through)
+    .bind(p.amount_off.map(|a| a.0))
+    .bind(p.amount_off.map(|a| a.1))
+    .bind(p.min_subtotal.map(|a| a.0))
+    .bind(p.min_subtotal.map(|a| a.1))
+    .bind(p.applies_to)
+    .bind(p.change_set_id)
+    .bind(p.promotion_type)
+    .bind(p.terms)
+    .bind(p.channels)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// The fields `update_promotion` changes.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct PromotionFields {
+    pub name: String,
+    pub valid_from: DateTime<Utc>,
+    pub valid_through: Option<DateTime<Utc>>,
+    pub applies_to: Value,
+}
+
+/// Sets name, period and scope; the sale prices of the promotion follow its period. Returns
+/// whether the promotion was there.
+pub(crate) async fn set_promotion_fields(
+    tx: &mut TxCx,
+    id: &str,
+    f: &PromotionFields,
+) -> Result<bool, ToolError> {
+    let done = sqlx::query(
+        "UPDATE promotion.promotion SET name = $3, valid_from = $4, valid_through = $5,
+           applies_to = $6, updated_at = now(), version = version + 1
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(&f.name)
+    .bind(f.valid_from)
+    .bind(f.valid_through)
+    .bind(&f.applies_to)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?
+    .rows_affected();
+    sqlx::query(
+        "UPDATE promotion.unit_price_specification SET valid_from = $3, valid_through = $4,
+           updated_at = now(), version = version + 1
+         WHERE tenant_id = $1 AND promotion_id = $2
+           AND (valid_from <> $3 OR valid_through IS DISTINCT FROM $4)",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(f.valid_from)
+    .bind(f.valid_through)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(done == 1)
+}
+
+/// The store's next id with `prefix` (`lyt`, `evt`…): a lower-case ULID suffix.
+pub(crate) fn new_id(prefix: &str) -> String {
+    format!("{prefix}_{}", acom_core::id::new_suffix())
 }

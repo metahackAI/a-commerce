@@ -10,12 +10,13 @@ use acom_customer::service::for_promotion::Tier;
 use chrono::{DateTime, Days, Utc};
 use serde_json::json;
 
-use crate::coupon::coupon_reason;
+use crate::coupon::create_coupon::coupon_reason;
 use crate::model::{
     LeftOut, SaleAsk, SalePlan, SaleRules, check_max_discount, check_min_stock, check_overlap,
     check_price_floor, plan_sale,
 };
-use crate::offer::{SaleRun, as_other, sale_changes};
+use crate::offer::as_other;
+use crate::offer::set_sale_prices::{SaleRun, sale_changes};
 use crate::testing::{d, member_count, placed_in, policies, products_with_offers, promotions};
 
 fn store_time() -> StoreTime {

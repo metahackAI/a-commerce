@@ -23,6 +23,12 @@ pub fn build() -> Result<Registry<Cx>, Vec<String>> {
     acom_community::register(&mut b);
     acom_partner::register(&mut b);
     acom_integration::register(&mut b);
+    // Promotion reads orders (coupon redemption, purchase-triggered entries, segments) through
+    // readers sales provides; sales depends on promotion, so they are handed over here.
+    acom_promotion::service::for_sales::provide_order_history(
+        acom_sales::service::for_promotion::order_facts,
+        acom_sales::service::for_promotion::member_purchases,
+    );
     b.build()
 }
 
