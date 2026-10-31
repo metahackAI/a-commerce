@@ -243,8 +243,9 @@ enum SeedWhen {
     Reset,
 }
 
-/// Loads the demo store: the named rows in `dir`, then the history `dir/generate.yml` describes,
-/// and records the fingerprint of those rows on the store.
+/// Loads the demo store: the named rows in `dir`, then the history `dir/generate.yml` describes
+/// with `dir/catalog_content.yml` laid over its products, and records the fingerprint of those
+/// rows on the store.
 async fn seed(db: &Db, dir: &str, when: SeedWhen) -> Result<(), String> {
     use acom_testkit::{generate, load, named};
     let rows = named::load(std::path::Path::new(dir))?;
@@ -259,6 +260,10 @@ async fn seed(db: &Db, dir: &str, when: SeedWhen) -> Result<(), String> {
     let generated = generate::generate(&rows, &spec)?;
     let mut all = rows;
     all.extend(generated);
+    if let Ok(text) = std::fs::read_to_string(format!("{dir}/catalog_content.yml")) {
+        let products = generate::content::overlay(&mut all, &text)?;
+        tracing::info!(products, "catalog content laid over the generated products");
+    }
     let fingerprint = load::fingerprint(&all)?;
     let loaded = load::seeded_fingerprint(db.pool(), &tenant).await?;
     let reset = match (when, &loaded) {

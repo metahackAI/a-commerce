@@ -153,7 +153,7 @@
 | 리뷰 노출 `review_status` (schema:creativeWorkStatus) | `visible`, `hidden`, `reported` |
 | 상품 문의 노출 `question_status` (schema:creativeWorkStatus) | `visible`, `hidden`(운영자가 숨김, 또는 `question.profanity_filter: hold_for_review`로 보류. 문의와 답이 함께 숨음) |
 | 리뷰의 사이즈 평가 `acom:fit_vote` | `true_to_size`, `runs_small`, `runs_large` |
-| 실측 항목 `acom:measurement_name` | `chest`, `shoulder`, `sleeve`, `length`, `waist`, `hip`, `inseam`, `rise`, `foot_length` |
+| 실측 항목 `acom:measurement_name` | `chest`, `underbust`(밑가슴, 브라·비키니 탑·브라렛), `shoulder`, `sleeve`, `length`, `waist`, `hip`, `inseam`, `rise`, `foot_length` |
 | 판매자 `acom:seller_status` | §1.16 |
 | API 키 `acom:api_key_status` | `active`, `revoked` |
 | 채널 연결 `acom:connection_status` | `connected`, `degraded`, `disconnected` (§1.17) |

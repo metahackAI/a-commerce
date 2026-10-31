@@ -82,6 +82,17 @@ pub(crate) struct CatalogSpec {
     pub safety_stock: i64,
     /// Summer outerwear first, then the other categories in the order written.
     pub categories: Vec<CategorySpec>,
+    /// Names fixed after every product is drawn (`catalog.renames`), in the order written.
+    pub renames: Vec<Rename>,
+}
+
+/// A generated product whose drawn name reads wrong, renamed without using the dice.
+#[derive(Debug)]
+pub(crate) struct Rename {
+    pub id: String,
+    pub name: String,
+    /// The main material shown to shoppers, when the new name changes it.
+    pub material: Option<String>,
 }
 
 #[derive(Debug)]
@@ -396,6 +407,21 @@ impl Spec {
                 attributes: None,
             });
         }
+        let mut renames = Vec::new();
+        if let Some(map) = v.get("catalog").and_then(|c| c.get("renames")) {
+            let map = map
+                .as_object()
+                .ok_or("generate.yml: `catalog.renames` is not a map")?;
+            for (id, r) in map {
+                renames.push(Rename {
+                    id: id.clone(),
+                    name: text(r, "name").map_err(|_| {
+                        format!("generate.yml: `catalog.renames.{id}` needs a name")
+                    })?,
+                    material: r.get("material").and_then(Value::as_str).map(str::to_owned),
+                });
+            }
+        }
         Ok(CatalogSpec {
             total_products: int(v, "catalog.total_products")? as usize,
             approval_status: text(v, "catalog.all_generated.approval_status")?,
@@ -403,6 +429,7 @@ impl Spec {
             return_policy: text(v, "catalog.all_generated.has_merchant_return_policy_id")?,
             safety_stock: int(v, "catalog.all_generated.safety_stock")?,
             categories,
+            renames,
         })
     }
 

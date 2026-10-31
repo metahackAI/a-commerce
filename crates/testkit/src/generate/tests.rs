@@ -995,3 +995,54 @@ fn rows_reference_only_earlier_rows_in_table_order() {
         ]
     );
 }
+
+#[test]
+fn renames_change_only_the_renamed_products_names() {
+    let seed = seed();
+    let mut spec: Value = serde_norway::from_str(&seed.spec).unwrap();
+    let renamed: Vec<String> = spec["catalog"]["renames"]
+        .as_object()
+        .map(|m| m.keys().cloned().collect())
+        .unwrap_or_default();
+    assert_eq!(renamed.len(), 6);
+    spec["catalog"].as_object_mut().unwrap().remove("renames");
+    let drawn = generate(&seed.named, &serde_norway::to_string(&spec).unwrap()).unwrap();
+
+    // Same rows in the same order; a row may differ only if it belongs to a renamed product,
+    // and then only in the fields that follow the name.
+    assert_eq!(seed.generated.len(), drawn.len());
+    let follows_name = ["name", "description", "material", "image"];
+    let of_renamed = |row: &Value| {
+        renamed.iter().any(|id| {
+            let variants = format!("var_{}_", id.trim_start_matches("prd_"));
+            ["id", "product_group_id", "product_id"]
+                .iter()
+                .any(|k| s(row, k) == id || s(row, k).starts_with(&variants))
+        })
+    };
+    let mut changed = 0;
+    for ((table, now), (_, before)) in seed.generated.iter().zip(&drawn) {
+        if now == before {
+            continue;
+        }
+        changed += 1;
+        assert!(
+            of_renamed(now),
+            "{table} row changed but is not a renamed product's: {now}"
+        );
+        for (k, v) in now.as_object().unwrap() {
+            if before.get(k) != Some(v) {
+                assert!(
+                    follows_name.contains(&k.as_str()),
+                    "{table}.{k} changed: {now}"
+                );
+            }
+        }
+    }
+    assert!(changed > 0);
+    let names: BTreeMap<&str, &str> = rows(&seed.generated, "catalog.product_group")
+        .map(|r| (s(r, "id"), s(r, "name")))
+        .collect();
+    assert_eq!(names["prd_hats_03"], "Fleece bucket cap");
+    assert_eq!(names["prd_underwear_09"], "Bamboo rayon bralette");
+}

@@ -21,12 +21,14 @@ members and sales history) under fixed counts and a fixed random seed.
 | `11_partner.yml` | Marketplace sellers (no scene uses them): Fieldstone Boot Co. `slr_fieldstone` (vendor organization `org_fieldstone`, sells the chelsea boots; contract `ctr_fieldstone` versions 1–2, monthly payouts; silver for October and November, kept above the computed watch while two return requests are open) and Ridgeline Outdoor `slr_ridgeline` (fleece, merino tee, hiking socks; `ctr_ridgeline`, biweekly; gold for November against a computed platinum), both active; Harbor Goods LLC `slr_harbor_goods` under review since Nov 3; their status history |
 | `12_integration.yml` | The outside channels (UPS `chn_carrier_ups`, `chn_marketplace_a`, the card processor `chn_payment_cards`; secrets as hashes only, status mappings), the marketplace's last copy of three orders and a return request not in the store yet, the card and carrier events behind #20402, and `imp_1107` (the store's own feed on Nov 5: the merino tee's codes taken, one row rejected for an unmapped category) |
 | `generate.yml` | Spec for the generator (not data) |
+| `catalog_content.yml` | Content for the 382 generated products, laid over the generator's rows: fiber content, fit, weight per size, care and other facts in `additional_property`, size charts (`catalog.measurement`), descriptions and tags. Never changes ids, names, prices or stock. Generated, not written by hand |
 | `flow.yml` | What shoppers do after the scene clock, for `cargo xtask sim` (not data; see below) |
 
 Load the files in name order, and the tables inside each file in the order written; foreign keys are
 satisfied in that order. Run everything in one transaction with
 `SELECT set_config('app.tenant_id', 'store_northwind', true)` first, since every table forces row-level
-security. Then run the generator.
+security. Then run the generator, then lay `catalog_content.yml` over its products
+(`acom_testkit::generate::content::overlay`; the commerce service does this when it loads the seed).
 
 Row format: keys are exactly the column names in `migrations/*.sql`. A missing key takes the column
 default (usually NULL), so `created_at`, `updated_at` and `version` are never written. Every row has
