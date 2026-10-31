@@ -168,7 +168,7 @@ pub async fn index_facts(
          LEFT JOIN catalog.product p ON p.tenant_id = g.tenant_id AND p.product_group_id = g.id
          LEFT JOIN catalog.offer o ON o.tenant_id = p.tenant_id AND o.product_id = p.id
          WHERE g.tenant_id = $1 AND ($2::text[] IS NULL OR g.id = ANY($2))
-         GROUP BY g.id
+         GROUP BY g.tenant_id, g.id
          ORDER BY g.id",
     )
     .bind(tx.tenant.as_str())
