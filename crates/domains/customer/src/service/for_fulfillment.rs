@@ -1,5 +1,5 @@
 //! What `fulfillment` reads from customer: a shopper's saved addresses, for delivery-date
-//! estimates. Return history is counted from fulfillment's own claims.
+//! estimates, exchanges and shipments. Return history is counted from fulfillment's own claims.
 
 use acom_contract::ToolError;
 use acom_store::{StoreError, TxCx};
@@ -42,6 +42,46 @@ pub async fn address(
     )
     .bind(tx.tenant.as_str())
     .bind(address_id)
+    .bind(customer_id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(|e| ToolError::from(StoreError::from(e)))?;
+    Ok(row.map(|r| Address {
+        id: r.0,
+        customer_id: r.1,
+        name: r.2,
+        street_address: r.3,
+        address_locality: r.4,
+        address_region: r.5,
+        postal_code: r.6,
+        address_country: r.7.trim().to_owned(),
+    }))
+}
+
+/// Where the shopper's parcels go when an order recorded no address: the primary shipping
+/// address, else the first shipping address they saved.
+pub async fn default_shipping_address(
+    tx: &mut TxCx,
+    customer_id: &str,
+) -> Result<Option<Address>, ToolError> {
+    #[allow(clippy::type_complexity)]
+    let row: Option<(
+        String,
+        String,
+        Option<String>,
+        String,
+        String,
+        Option<String>,
+        String,
+        String,
+    )> = sqlx::query_as(
+        "SELECT id, customer_id, name, street_address, address_locality, address_region,
+                postal_code, address_country::text
+         FROM customer.postal_address
+         WHERE tenant_id = $1 AND customer_id = $2 AND 'shipping' = ANY(address_usage)
+         ORDER BY is_primary DESC, created_at, id LIMIT 1",
+    )
+    .bind(tx.tenant.as_str())
     .bind(customer_id)
     .fetch_optional(&mut *tx.tx)
     .await

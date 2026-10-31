@@ -45,9 +45,20 @@ pub struct ClaimRow {
     pub start_time: DateTime<Utc>,
     pub end_time: Option<DateTime<Utc>>,
     pub version: i32,
+    pub charge_value: Option<Decimal>,
+    pub charge_currency: Option<String>,
+    pub charge_paid_at: Option<DateTime<Utc>>,
 }
 
 impl ClaimRow {
+    /// The extra cost the shopper pays before the claim goes ahead, if any.
+    pub fn charge(&self) -> Result<Option<Money>, ToolError> {
+        match (self.charge_value, &self.charge_currency) {
+            (Some(v), Some(c)) => money(v, c).map(Some),
+            _ => Ok(None),
+        }
+    }
+
     pub fn amount(&self) -> Result<Money, ToolError> {
         money(self.amount_value, &self.amount_currency)
     }
@@ -68,7 +79,8 @@ const CLAIM_COLUMNS: &str = "id, order_id, customer_id, claim_type, claim_status
     claim_reason, cancel_reason, reason_text, liability, return_fees, send_back_method,
     pickup_window, evidence, amount_value, amount_currency::text AS amount_currency,
     refund_estimate_value, refund_estimate_currency::text AS refund_estimate_currency,
-    start_time, end_time, version";
+    start_time, end_time, version, charge_value, charge_currency::text AS charge_currency,
+    charge_paid_at";
 
 pub async fn claim(tx: &mut TxCx, claim_id: &str) -> Result<Option<ClaimRow>, ToolError> {
     sqlx::query_as::<_, ClaimRow>(sqlx::AssertSqlSafe(format!(
@@ -257,12 +269,13 @@ pub async fn claim_items(
 pub struct ClaimEventRow {
     pub to_state: Option<String>,
     pub start_time: DateTime<Utc>,
+    pub result: Option<Value>,
 }
 
 /// A claim's state changes in order.
 pub async fn claim_events(tx: &mut TxCx, claim_id: &str) -> Result<Vec<ClaimEventRow>, ToolError> {
     sqlx::query_as::<_, ClaimEventRow>(
-        "SELECT to_state, start_time FROM fulfillment.claim_event
+        "SELECT to_state, start_time, result FROM fulfillment.claim_event
          WHERE tenant_id = $1 AND claim_id = $2 ORDER BY position",
     )
     .bind(tx.tenant.as_str())
@@ -409,10 +422,34 @@ pub struct DeliveryRow {
     pub delivered_at: Option<DateTime<Utc>>,
     pub updated_at: DateTime<Utc>,
     pub version: i32,
+    /// The exchange claim this parcel reships, if it is a reshipment.
+    pub claim_id: Option<String>,
+}
+
+impl DeliveryRow {
+    /// The order lines in the parcel and their units; `None` means every line of the order.
+    pub fn lines(&self) -> Option<Vec<(String, i32)>> {
+        let Some(Value::Array(l)) = &self.item_shipped else {
+            return None;
+        };
+        Some(
+            l.iter()
+                .filter_map(|x| {
+                    let id = x.get("order_item_id")?.as_str()?.to_owned();
+                    let q = x
+                        .get("order_quantity")
+                        .and_then(Value::as_i64)
+                        .and_then(|q| i32::try_from(q).ok())
+                        .unwrap_or(1);
+                    Some((id, q))
+                })
+                .collect(),
+        )
+    }
 }
 
 const DELIVERY_COLUMNS: &str = "id, order_id, item_shipped, delivery_state, delivery_address,
-    has_delivery_method, carrier, tracking_number, tracking_url, expected_arrival_until, shipped_at, delivered_at, updated_at, version";
+    has_delivery_method, carrier, tracking_number, tracking_url, expected_arrival_until, shipped_at, delivered_at, updated_at, version, claim_id";
 
 pub async fn delivery(tx: &mut TxCx, delivery_id: &str) -> Result<Option<DeliveryRow>, ToolError> {
     sqlx::query_as::<_, DeliveryRow>(sqlx::AssertSqlSafe(format!(
@@ -507,6 +544,8 @@ pub struct NewClaim<'a> {
     pub evidence: Value,
     pub amount: Money,
     pub refund_estimate: Option<Money>,
+    /// The extra cost due before the claim goes ahead (`charge_due`), if any.
+    pub charge: Option<Money>,
     /// `(order_item_id, quantity, replacement variant)`.
     pub items: Vec<(String, i32, Option<String>)>,
 }
@@ -518,9 +557,10 @@ pub async fn insert_claim(tx: &mut TxCx, c: &NewClaim<'_>) -> Result<(), ToolErr
         "INSERT INTO fulfillment.claim (tenant_id, id, order_id, customer_id, claim_type,
            claim_status, claim_path, claim_reason, cancel_reason, reason_text, liability,
            return_fees, send_back_method, pickup_window, evidence, amount_value, amount_currency,
-           refund_estimate_value, refund_estimate_currency, start_time, end_time)
+           refund_estimate_value, refund_estimate_currency, start_time, end_time, charge_value,
+           charge_currency)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-                 $18, $19, $20, $21)",
+                 $18, $19, $20, $21, $22, $23)",
     )
     .bind(tx.tenant.as_str())
     .bind(c.id)
@@ -543,6 +583,8 @@ pub async fn insert_claim(tx: &mut TxCx, c: &NewClaim<'_>) -> Result<(), ToolErr
     .bind(c.refund_estimate.map(|m| m.currency.as_str().to_owned()))
     .bind(now)
     .bind(closed.then_some(now))
+    .bind(c.charge.map(|m| m.value))
+    .bind(c.charge.map(|m| m.currency.as_str().to_owned()))
     .execute(&mut *tx.tx)
     .await
     .map_err(db)?;
@@ -655,4 +697,479 @@ pub async fn append_event(
     .await
     .map_err(db)?;
     Ok(())
+}
+
+/// Appends evidence entries (`[{id, evidence_type, …}]`) to a claim; nothing is ever removed.
+pub async fn append_evidence(
+    tx: &mut TxCx,
+    claim_id: &str,
+    entries: &Value,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE fulfillment.claim SET evidence = evidence || $3, updated_at = now(),
+           version = version + 1
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(claim_id)
+    .bind(entries)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// Records when the shopper paid the claim's extra charge.
+pub async fn set_charge_paid(
+    tx: &mut TxCx,
+    claim_id: &str,
+    at: DateTime<Utc>,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE fulfillment.claim SET charge_paid_at = $3, updated_at = now(),
+           version = version + 1
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(claim_id)
+    .bind(at)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// A new inspection record.
+#[derive(Debug, Clone)]
+pub struct NewInspection<'a> {
+    pub id: &'a str,
+    pub claim_id: &'a str,
+    pub condition: &'a str,
+    pub liability: Option<&'a str>,
+    pub description: Option<&'a str>,
+    pub agent_id: &'a str,
+    pub at: DateTime<Utc>,
+}
+
+pub async fn insert_inspection(tx: &mut TxCx, i: &NewInspection<'_>) -> Result<(), ToolError> {
+    sqlx::query(
+        "INSERT INTO fulfillment.inspection (tenant_id, id, claim_id, inspection_condition,
+           liability, description, agent_id, end_time)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (tenant_id, id) DO NOTHING",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(i.id)
+    .bind(i.claim_id)
+    .bind(i.condition)
+    .bind(i.liability)
+    .bind(i.description)
+    .bind(i.agent_id)
+    .bind(i.at)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// Removes an inspection recorded by mistake (undo); the claim's events keep the history.
+pub async fn delete_inspection(tx: &mut TxCx, inspection_id: &str) -> Result<(), ToolError> {
+    sqlx::query("DELETE FROM fulfillment.inspection WHERE tenant_id = $1 AND id = $2")
+        .bind(tx.tenant.as_str())
+        .bind(inspection_id)
+        .execute(&mut *tx.tx)
+        .await
+        .map_err(db)?;
+    Ok(())
+}
+
+/// The refund, locked for the rest of the transaction.
+pub async fn refund_for_update(
+    tx: &mut TxCx,
+    refund_id: &str,
+) -> Result<Option<RefundRow>, ToolError> {
+    sqlx::query_as::<_, RefundRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {REFUND_COLUMNS} FROM fulfillment.refund WHERE tenant_id = $1 AND id = $2
+         FOR UPDATE"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(refund_id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// Moves a refund from `from` to `to`. A refund sent again is open (no end time); a confirmed
+/// or failed one ends now. Returns false when the refund was no longer in `from`.
+pub async fn move_refund(
+    tx: &mut TxCx,
+    refund_id: &str,
+    from: &str,
+    to: &str,
+) -> Result<bool, ToolError> {
+    let now = tx.clock.now();
+    let moved = sqlx::query(
+        "UPDATE fulfillment.refund SET refund_status = $4,
+           end_time = CASE WHEN $4 = 'requested' THEN NULL ELSE $5 END,
+           updated_at = now(), version = version + 1
+         WHERE tenant_id = $1 AND id = $2 AND refund_status = $3",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(refund_id)
+    .bind(from)
+    .bind(to)
+    .bind(now)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?
+    .rows_affected();
+    Ok(moved == 1)
+}
+
+/// One recorded change of a refund or a parcel.
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct EventRow {
+    pub instrument: Option<String>,
+    pub to_state: Option<String>,
+    pub result: Option<Value>,
+    pub start_time: DateTime<Utc>,
+}
+
+/// A refund's recorded changes in order.
+pub async fn refund_events(tx: &mut TxCx, refund_id: &str) -> Result<Vec<EventRow>, ToolError> {
+    sqlx::query_as::<_, EventRow>(
+        "SELECT instrument, to_state, result, start_time
+         FROM fulfillment.refund_event WHERE tenant_id = $1 AND refund_id = $2
+         ORDER BY position",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(refund_id)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// A parcel's recorded changes in order.
+pub async fn delivery_events(tx: &mut TxCx, delivery_id: &str) -> Result<Vec<EventRow>, ToolError> {
+    sqlx::query_as::<_, EventRow>(
+        "SELECT instrument, to_state, result, start_time
+         FROM fulfillment.parcel_delivery_event WHERE tenant_id = $1 AND parcel_delivery_id = $2
+         ORDER BY position",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(delivery_id)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// Appends one change to the event table of a refund (`refund_event`) or a parcel
+/// (`parcel_delivery_event`), with the same columns as a claim's events.
+async fn append_to(
+    tx: &mut TxCx,
+    table: &str,
+    key: &str,
+    id: &str,
+    e: &ClaimEvent<'_>,
+) -> Result<(), ToolError> {
+    let now = tx.clock.now();
+    let agent = tx.principal.subject.clone();
+    let agent_name = tx.principal.name.clone();
+    sqlx::query(sqlx::AssertSqlSafe(format!(
+        "INSERT INTO fulfillment.{table} (tenant_id, {key}, position, action_type,
+           action_status, agent_id, agent_name, instrument, from_state, to_state, result,
+           start_time, end_time, request_id)
+         SELECT $1, $2, coalesce(max(position), 0) + 1, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+                $11, $12
+         FROM fulfillment.{table} WHERE tenant_id = $1 AND {key} = $2"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(e.action_type)
+    .bind(e.action_status)
+    .bind(&agent)
+    .bind(agent_name.as_deref())
+    .bind(e.instrument)
+    .bind(e.from_state)
+    .bind(e.to_state)
+    .bind(&e.result)
+    .bind(now)
+    .bind(&tx.request_id)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+pub async fn append_refund_event(
+    tx: &mut TxCx,
+    refund_id: &str,
+    e: &ClaimEvent<'_>,
+) -> Result<(), ToolError> {
+    append_to(tx, "refund_event", "refund_id", refund_id, e).await
+}
+
+pub async fn append_delivery_event(
+    tx: &mut TxCx,
+    delivery_id: &str,
+    e: &ClaimEvent<'_>,
+) -> Result<(), ToolError> {
+    append_to(
+        tx,
+        "parcel_delivery_event",
+        "parcel_delivery_id",
+        delivery_id,
+        e,
+    )
+    .await
+}
+
+/// The parcel, locked for the rest of the transaction.
+pub async fn delivery_for_update(
+    tx: &mut TxCx,
+    delivery_id: &str,
+) -> Result<Option<DeliveryRow>, ToolError> {
+    sqlx::query_as::<_, DeliveryRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {DELIVERY_COLUMNS} FROM fulfillment.parcel_delivery
+         WHERE tenant_id = $1 AND id = $2 FOR UPDATE"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(delivery_id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// A new parcel, as `schedule_shipment` creates it.
+#[derive(Debug, Clone)]
+pub struct NewDelivery<'a> {
+    pub id: &'a str,
+    pub order_id: &'a str,
+    /// `[{order_item_id, order_quantity}]`, plus `variant_id` for a reshipped replacement.
+    pub item_shipped: Value,
+    pub delivery_state: &'a str,
+    pub delivery_address_id: Option<&'a str>,
+    pub delivery_address: Value,
+    pub method: &'a str,
+    pub carrier: Option<&'a str>,
+    pub expected_arrival_until: Option<DateTime<Utc>>,
+    pub claim_id: Option<&'a str>,
+}
+
+pub async fn insert_delivery(tx: &mut TxCx, d: &NewDelivery<'_>) -> Result<(), ToolError> {
+    sqlx::query(
+        "INSERT INTO fulfillment.parcel_delivery (tenant_id, id, order_id, item_shipped,
+           delivery_state, delivery_address_id, delivery_address, has_delivery_method, carrier,
+           expected_arrival_until, claim_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(d.id)
+    .bind(d.order_id)
+    .bind(&d.item_shipped)
+    .bind(d.delivery_state)
+    .bind(d.delivery_address_id)
+    .bind(&d.delivery_address)
+    .bind(d.method)
+    .bind(d.carrier)
+    .bind(d.expected_arrival_until)
+    .bind(d.claim_id)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// Writes (or, with `None`, clears) the label of a parcel: carrier and tracking number.
+pub async fn set_delivery_label(
+    tx: &mut TxCx,
+    delivery_id: &str,
+    carrier: Option<&str>,
+    tracking_number: Option<&str>,
+) -> Result<(), ToolError> {
+    sqlx::query(
+        "UPDATE fulfillment.parcel_delivery SET carrier = $3, tracking_number = $4,
+           updated_at = now(), version = version + 1
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(delivery_id)
+    .bind(carrier)
+    .bind(tracking_number)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+/// The parcel that already carries this carrier's tracking number, other than `except`.
+pub async fn tracking_taken(
+    tx: &mut TxCx,
+    carrier: &str,
+    tracking_number: &str,
+    except: &str,
+) -> Result<Option<String>, ToolError> {
+    sqlx::query_scalar(
+        "SELECT id FROM fulfillment.parcel_delivery
+         WHERE tenant_id = $1 AND lower(carrier) = lower($2) AND tracking_number = $3
+           AND id <> $4
+         LIMIT 1",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(carrier)
+    .bind(tracking_number)
+    .bind(except)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// One stored shipping zone (`fulfillment.shipping_zone`).
+#[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
+pub struct ZoneRow {
+    pub id: String,
+    pub name: String,
+    pub zone_type: String,
+    pub shipping_destination: Value,
+    pub fee_type: String,
+    pub shipping_rate_value: Decimal,
+    pub shipping_rate_currency: String,
+    pub free_shipping_threshold_value: Option<Decimal>,
+    pub free_shipping_threshold_currency: Option<String>,
+    pub surcharge_value: Decimal,
+    pub surcharge_currency: String,
+    pub transit_business_days: i32,
+    pub version: i32,
+}
+
+const ZONE_COLUMNS: &str = "id, name, zone_type, shipping_destination, fee_type,
+    shipping_rate_value, shipping_rate_currency::text AS shipping_rate_currency,
+    free_shipping_threshold_value,
+    free_shipping_threshold_currency::text AS free_shipping_threshold_currency,
+    surcharge_value, surcharge_currency::text AS surcharge_currency, transit_business_days,
+    version";
+
+/// Every stored shipping zone of the store, by name.
+pub async fn zones(tx: &mut TxCx) -> Result<Vec<ZoneRow>, ToolError> {
+    sqlx::query_as::<_, ZoneRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {ZONE_COLUMNS} FROM fulfillment.shipping_zone WHERE tenant_id = $1
+         ORDER BY zone_type DESC, name, id"
+    )))
+    .bind(tx.tenant.as_str())
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+pub async fn zone(tx: &mut TxCx, zone_id: &str) -> Result<Option<ZoneRow>, ToolError> {
+    sqlx::query_as::<_, ZoneRow>(sqlx::AssertSqlSafe(format!(
+        "SELECT {ZONE_COLUMNS} FROM fulfillment.shipping_zone WHERE tenant_id = $1 AND id = $2"
+    )))
+    .bind(tx.tenant.as_str())
+    .bind(zone_id)
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)
+}
+
+/// A shipping zone as written: every column but the bookkeeping ones.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct ZoneValues {
+    pub name: String,
+    pub zone_type: String,
+    pub shipping_destination: Value,
+    pub fee_type: String,
+    pub shipping_rate: Money,
+    pub free_over: Option<Money>,
+    pub surcharge: Money,
+    pub transit_business_days: i32,
+}
+
+pub async fn insert_zone(tx: &mut TxCx, id: &str, z: &ZoneValues) -> Result<(), ToolError> {
+    sqlx::query(
+        "INSERT INTO fulfillment.shipping_zone (tenant_id, id, name, zone_type,
+           shipping_destination, fee_type, shipping_rate_value, shipping_rate_currency,
+           free_shipping_threshold_value, free_shipping_threshold_currency, surcharge_value,
+           surcharge_currency, transit_business_days)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(&z.name)
+    .bind(&z.zone_type)
+    .bind(&z.shipping_destination)
+    .bind(&z.fee_type)
+    .bind(z.shipping_rate.value)
+    .bind(z.shipping_rate.currency.as_str())
+    .bind(z.free_over.map(|m| m.value))
+    .bind(z.free_over.map(|m| m.currency.as_str().to_owned()))
+    .bind(z.surcharge.value)
+    .bind(z.surcharge.currency.as_str())
+    .bind(z.transit_business_days)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    Ok(())
+}
+
+pub async fn update_zone(tx: &mut TxCx, id: &str, z: &ZoneValues) -> Result<bool, ToolError> {
+    let n = sqlx::query(
+        "UPDATE fulfillment.shipping_zone SET name = $3, zone_type = $4,
+           shipping_destination = $5, fee_type = $6, shipping_rate_value = $7,
+           shipping_rate_currency = $8, free_shipping_threshold_value = $9,
+           free_shipping_threshold_currency = $10, surcharge_value = $11,
+           surcharge_currency = $12, transit_business_days = $13, updated_at = now(),
+           version = version + 1
+         WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(id)
+    .bind(&z.name)
+    .bind(&z.zone_type)
+    .bind(&z.shipping_destination)
+    .bind(&z.fee_type)
+    .bind(z.shipping_rate.value)
+    .bind(z.shipping_rate.currency.as_str())
+    .bind(z.free_over.map(|m| m.value))
+    .bind(z.free_over.map(|m| m.currency.as_str().to_owned()))
+    .bind(z.surcharge.value)
+    .bind(z.surcharge.currency.as_str())
+    .bind(z.transit_business_days)
+    .execute(&mut *tx.tx)
+    .await
+    .map_err(db)?
+    .rows_affected();
+    Ok(n == 1)
+}
+
+pub async fn delete_zone(tx: &mut TxCx, id: &str) -> Result<(), ToolError> {
+    sqlx::query("DELETE FROM fulfillment.shipping_zone WHERE tenant_id = $1 AND id = $2")
+        .bind(tx.tenant.as_str())
+        .bind(id)
+        .execute(&mut *tx.tx)
+        .await
+        .map_err(db)?;
+    Ok(())
+}
+
+impl ZoneRow {
+    /// The zone's values, with money read from the value + currency pairs.
+    pub fn values(&self) -> Result<ZoneValues, ToolError> {
+        Ok(ZoneValues {
+            name: self.name.clone(),
+            zone_type: self.zone_type.clone(),
+            shipping_destination: self.shipping_destination.clone(),
+            fee_type: self.fee_type.clone(),
+            shipping_rate: money(self.shipping_rate_value, &self.shipping_rate_currency)?,
+            free_over: match (
+                self.free_shipping_threshold_value,
+                &self.free_shipping_threshold_currency,
+            ) {
+                (Some(v), Some(c)) => Some(money(v, c)?),
+                _ => None,
+            },
+            surcharge: money(self.surcharge_value, &self.surcharge_currency)?,
+            transit_business_days: self.transit_business_days,
+        })
+    }
 }
