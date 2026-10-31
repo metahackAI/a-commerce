@@ -1,4 +1,4 @@
--- 0029_catalog_content.sql
+-- 0031_catalog_content.sql
 -- Catalog: what product content needs. A size chart can give the underbust (bras, bikini tops,
 -- bralettes), and additional_property holds the product's facts, not only the comparison
 -- attributes.
