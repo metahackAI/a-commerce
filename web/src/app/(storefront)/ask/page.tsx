@@ -2,7 +2,7 @@ import type {Metadata} from 'next';
 
 import {Workspace} from '@/components/workspace/Workspace';
 
-export const metadata: Metadata = {title: 'Ask Northwind'};
+export const metadata: Metadata = {title: 'Ask Ailism'};
 
 // The full conversation + canvas workspace (F1, F2, F6). The same conversation shows in the
 // assistant drawer on every other page.

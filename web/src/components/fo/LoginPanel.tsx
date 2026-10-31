@@ -18,6 +18,7 @@ import {useEffect, useState} from 'react';
 import type {ApiErrorBody} from '@/lib/api';
 import {continueAsGuest, demoSignIn, listPersonas, signOut, type Persona} from '@/lib/session';
 
+import {AilismAvatar} from '@/components/brand/Ailism';
 import {errorBody} from './write';
 import {useStorefront} from './StorefrontContext';
 
@@ -54,8 +55,9 @@ export function LoginPanel({next}: {next: string}) {
 
   return (
     <VStack gap={4} width="100%" maxWidth={440}>
-      <VStack gap={1} hAlign="center">
-        <Heading level={1}>Sign in to Northwind</Heading>
+      <VStack gap={2} hAlign="center">
+        <AilismAvatar size="xl" />
+        <Heading level={1}>Sign in to Ailism Commerce</Heading>
         <Text type="body" color="secondary" justify="center">
           Members see their own prices, saved sizes and orders. Guests can browse and keep a cart.
         </Text>

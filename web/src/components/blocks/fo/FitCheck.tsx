@@ -1,7 +1,7 @@
 'use client';
 
 // fit_check: which size, why, and what the answer rests on (chat.md §3.3, scene F3): the size
-// options, measurements side by side, what reviews say, and what Northwind used and did not use.
+// options, measurements side by side, what reviews say, and what Ailism used and did not use.
 
 import {Card} from '@astryxdesign/core/Card';
 import {Grid} from '@astryxdesign/core/Grid';

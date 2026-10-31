@@ -51,7 +51,7 @@ export function ErrorNotice({
       <HStack gap={2} wrap="wrap">
         {needsSignIn ? <Button label="Sign in" size="sm" variant="primary" href="/login" /> : null}
         {next ? <Button label={next.label} size="sm" href={next.href} /> : null}
-        {askAbout ? <Button label="Ask Northwind" size="sm" variant="ghost" onClick={() => say(askAbout)} /> : null}
+        {askAbout ? <Button label="Ask Ailism" size="sm" variant="ghost" onClick={() => say(askAbout)} /> : null}
       </HStack>
     ) : undefined;
   return (

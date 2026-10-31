@@ -228,7 +228,7 @@ export function CheckoutFlow({cart, addresses, methods}: {cart: Cart; addresses:
                     }}
                   />
                   <Text type="supporting" color="secondary">
-                    Northwind can prepare your order, but only you can place it.
+                    Ailism can prepare your order, but only you can place it.
                     {prepared.expires_at ? ` Prepared until ${dateTime(prepared.expires_at)}.` : ''}
                   </Text>
                 </VStack>
