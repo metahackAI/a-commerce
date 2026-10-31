@@ -314,7 +314,10 @@ impl ToolClient for Commerce {
         &'a self,
         new: &'a NewChangeSet,
     ) -> BoxFuture<'a, Result<ChangeSetHead, ToolError>> {
-        self.log(format!("create_change_set {}", new.title));
+        match &new.task_id {
+            Some(task) => self.log(format!("create_change_set {} for {task}", new.title)),
+            None => self.log(format!("create_change_set {}", new.title)),
+        }
         Box::pin(async move {
             Ok(ChangeSetHead {
                 id: "cs_1042".into(),
@@ -1668,4 +1671,59 @@ async fn a_facade_grid_is_shown_as_a_table_and_a_plan_naming_a_store_tool_is_ref
     assert_eq!(b[0].data["rows"].as_array().unwrap().len(), 2);
     assert_eq!(message(&events), "Here are the running promotions.");
     assert_eq!(log.ended()[0].usage["tool_set"], "facade");
+}
+
+#[tokio::test]
+async fn a_turn_for_a_task_drafts_its_change_set_for_that_task() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            (
+                "route",
+                json!({"agent": "promotion", "confidence": 0.93}).to_string(),
+            ),
+            ("plan", b1_plan()),
+            ("reply", "I drafted change set #1042.".into()),
+        ],
+    );
+    let log = Arc::new(MemoryLog::default());
+    let rt = runtime(std::slice::from_ref(&glimmer), log.clone());
+    let commerce = Commerce::new();
+    let request = TurnRequest {
+        task_id: Some("task_vip_weekend".into()),
+        ..say(B1)
+    };
+    turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        request,
+        commerce.clone(),
+    )
+    .await;
+    assert!(
+        commerce
+            .calls()
+            .contains(&"create_change_set VIP weekend for task_vip_weekend".to_owned()),
+        "{:?}",
+        commerce.calls()
+    );
+}
+
+#[test]
+fn a_task_id_must_look_like_one() {
+    for bad in ["cs_1042", "task_", "task_A1", "task_1; drop"] {
+        let req = TurnRequest {
+            task_id: Some(bad.into()),
+            ..say("Draft a reorder.")
+        };
+        let e = req.validate().unwrap_err();
+        assert_eq!(e.detail.as_ref().unwrap()["field"], "task_id", "{bad}");
+    }
+    let ok = TurnRequest {
+        task_id: Some("task_01m680dqrxx6rt0rz5tcxs1n2d".into()),
+        ..say("Draft a reorder.")
+    };
+    assert!(ok.validate().is_ok());
 }

@@ -17,9 +17,12 @@ Accept: text/event-stream
   "conversation_id": "conv_01jc8...",     // 없으면 새 대화
   "message": "Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.",
   "attachments": [{"kind": "image", "upload_id": "upl_..."}],   // 선택. 업로드는 POST /api/uploads
-  "ui_event": null                          // 블록 버튼이 보낸 의도일 때 (아래)
+  "ui_event": null,                         // 블록 버튼이 보낸 의도일 때 (아래)
+  "task_id": "task_linen_reorder"           // 선택. 이 턴이 맡은 할 일 (아래)
 }
 ```
+
+`task_id`(선택, `bo`만)는 이 턴이 맡은 할 일입니다. 할 일 화면의 "Ask the agent to work on it"이 할 일의 요청 문장과 함께 보냅니다. 이 턴이 변경셋을 만들면 런타임이 생성 요청에 `task_id`를 실어, 아직 변경셋이 없는 열린 할 일이 그 변경셋과 이 대화에 묶입니다([platform.md](platform.md) §task). 형식이 틀리면 `invalid_input`이고, 닫혔거나 이미 변경셋이 있는 할 일이면 변경셋만 따로 만들어집니다. 변경셋을 만들지 않은 턴은 할 일을 바꾸지 않습니다.
 
 `tool_set`(선택)은 이 턴이 쓸 툴 세트입니다. 기본은 `commerce`(A-Commerce 툴)이고, `facade`는 평가용 화면형 파사드([README.md](README.md) §7)입니다. `facade`는 데모 모드에서만 받고, 아니면 `demo_mode_off`(409)로 거절합니다. 그 턴은 같은 라우팅·툴 검색·계획·실행을 파사드의 매니페스트로 하고, 쓰기는 프리뷰·변경셋 없이 바로 실행됩니다. 어느 세트를 썼는지는 턴 기록의 `usage.tool_set`(`commerce` | `facade`)에 남아 `?log=true` 조회로 읽습니다. 게이트웨이는 턴 본문을 그대로 넘깁니다.
 
