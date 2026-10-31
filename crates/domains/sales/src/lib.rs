@@ -1,18 +1,20 @@
 //! The `sales` domain: cart, order preparation, orders, payments, receipts, subscriptions, gift orders.
 //!
 //! Operations, inputs, outputs, checks, and errors are specified in `docs/api/sales.md`.
-//! Layout: one module per resource (`cart`, `checkout`, `order`, `payment`), each operation one
-//! type implementing `ReadOp`/`WriteOp`/`PersonOp`; `pricing` reads the shopper's cart with
-//! every benefit from promotion's `calculate_benefits`; `repo` holds the SQL; `owner`, `merge`,
-//! `delivery` and `rules` are pure rules with unit tests. Other domains are reached only through
-//! their `service` modules.
+//! Layout follows the API hierarchy `sales.{resource}.{operation}`: one folder per resource
+//! (`cart`, `checkout`, `order`, `payment`, `gift_order`), one file per operation
+//! (`src/{resource}/{tool}.rs`), each operation one type implementing `ReadOp`/`WriteOp`/
+//! `PersonOp`; what a resource's operations share is in its `mod.rs`. Domain-wide: `pricing`
+//! reads the shopper's cart with every benefit from promotion's `calculate_benefits`; `repo` holds
+//! the SQL; `owner`, `merge`, `delivery` and `rules` are pure rules with unit tests; `watch` holds
+//! the scheduled jobs. Other domains are reached only through their `service` modules.
 
 pub mod service;
 
 mod cart;
 mod checkout;
 mod delivery;
-mod gift;
+mod gift_order;
 mod merge;
 mod order;
 mod owner;
@@ -58,21 +60,21 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
     acom_promotion::service::for_sales::provide_cart_reader(service::for_promotion::benefit_cart);
     acom_customer::service::providers::provide_member_orders(service::for_customer::member_orders);
     acom_customer::service::providers::provide_product_cards(service::for_customer::product_cards);
-    b.read(cart::GetCart)
-        .write(cart::AddToCart)
-        .write(cart::UpdateCartItem)
-        .write(cart::RemoveCartItem)
-        .write(cart::ClearCart)
-        .read(checkout::GetPaymentMethods)
-        .write(order::PrepareOrder)
-        .person(order::PlaceOrder)
-        .read(order::GetMyOrders)
-        .read(order::GetOrder)
-        .read(order::SearchOrders)
-        .read(payment::GetPayment)
-        .write(gift::PrepareGiftOrder)
-        .read(gift::GetGiftOrder)
-        .person(gift::AcceptGiftOrder);
+    b.read(cart::get_cart::GetCart)
+        .write(cart::add_to_cart::AddToCart)
+        .write(cart::update_cart_item::UpdateCartItem)
+        .write(cart::remove_cart_item::RemoveCartItem)
+        .write(cart::clear_cart::ClearCart)
+        .read(checkout::get_payment_methods::GetPaymentMethods)
+        .write(order::prepare_order::PrepareOrder)
+        .person(order::place_order::PlaceOrder)
+        .read(order::get_my_orders::GetMyOrders)
+        .read(order::get_order::GetOrder)
+        .read(order::search_orders::SearchOrders)
+        .read(payment::get_payment::GetPayment)
+        .write(gift_order::prepare_gift_order::PrepareGiftOrder)
+        .read(gift_order::get_gift_order::GetGiftOrder)
+        .person(gift_order::accept_gift_order::AcceptGiftOrder);
     // Scheduled work (platform.job): the stock-out forecast over recent sales.
     b.job(watch::StockOutForecast);
 }
