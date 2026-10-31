@@ -117,6 +117,15 @@
       "rdfs:comment": "A store-defined rule for prize reporting, withholding, or winner information in a jurisdiction."
     },
     {
+      "@id": "acom:ConsentRecord",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ConsentRecord",
+      "rdfs:subClassOf": {
+        "@id": "schema:Action"
+      },
+      "rdfs:comment": "one consent given or withdrawn; records are only added, never changed. id prefix cns_. API: consent."
+    },
+    {
       "@id": "acom:ContentReport",
       "@type": "rdfs:Class",
       "rdfs:label": "ContentReport",
@@ -142,6 +151,15 @@
         "@id": "schema:Offer"
       },
       "rdfs:comment": "A discount a shopper can apply to an order, identified by schema:discountCode. Used as additionalType on an Offer. It records a benefit on the order; it does not add a second discount on top of a member price."
+    },
+    {
+      "@id": "acom:CustomerInquiry",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CustomerInquiry",
+      "rdfs:subClassOf": {
+        "@id": "schema:Message"
+      },
+      "rdfs:comment": "a customer service inquiry and its state; the thread is in customer.comment. id prefix inq_. API: inquiry."
     },
     {
       "@id": "acom:DailySales",
@@ -187,6 +205,15 @@
         "@id": "schema:AcceptAction"
       },
       "rdfs:comment": "a gift waiting for its recipient to accept it and give an address; id prefix gift_. API: gift_order."
+    },
+    {
+      "@id": "acom:IdentityVerification",
+      "@type": "rdfs:Class",
+      "rdfs:label": "IdentityVerification",
+      "rdfs:subClassOf": {
+        "@id": "schema:CheckAction"
+      },
+      "rdfs:comment": "one identity check by a method from customer.yml identity_verification (one-time code, link, registry lookup). id prefix ivf_."
     },
     {
       "@id": "acom:MemberCoupon",
@@ -252,6 +279,15 @@
       "rdfs:comment": "one batch_import run that turned a supplier sheet into product drafts. id prefix imp_. API: import_id."
     },
     {
+      "@id": "acom:ProgramVersion",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ProgramVersion",
+      "rdfs:subClassOf": {
+        "@id": "schema:MemberProgram"
+      },
+      "rdfs:comment": "one saved definition of a tier program (define_tier_program); earlier versions stay so a change can be undone."
+    },
+    {
       "@id": "acom:Promotion",
       "@type": "rdfs:Class",
       "rdfs:label": "Promotion",
@@ -270,6 +306,15 @@
       "rdfs:comment": "a receipt or tax document issued for a paid order; one live receipt per order and type. id prefix rct_. API: receipt_id."
     },
     {
+      "@id": "acom:RecoveryRequest",
+      "@type": "rdfs:Class",
+      "rdfs:label": "RecoveryRequest",
+      "rdfs:subClassOf": {
+        "@id": "schema:Action"
+      },
+      "rdfs:comment": "a password reset or sign-in id request; made the same way whether an account matches or not. id prefix rcv_."
+    },
+    {
       "@id": "acom:Refund",
       "@type": "rdfs:Class",
       "rdfs:label": "Refund",
@@ -277,6 +322,15 @@
         "@id": "schema:MoneyTransfer"
       },
       "rdfs:comment": "Money paid back to a shopper for a claim. Used as additionalType on a MoneyTransfer."
+    },
+    {
+      "@id": "acom:Remedy",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Remedy",
+      "rdfs:subClassOf": {
+        "@id": "schema:Action"
+      },
+      "rdfs:comment": "compensation for a customer (points, coupon or cash) with its liability and step-by-step approval. id prefix rmd_."
     },
     {
       "@id": "acom:Reorder",
@@ -342,6 +396,15 @@
       "rdfs:comment": "Work proposed to an operator (by a person, an agent, or an automation), opened as a conversation. Used as additionalType on an Action."
     },
     {
+      "@id": "acom:TierChange",
+      "@type": "rdfs:Class",
+      "rdfs:label": "TierChange",
+      "rdfs:subClassOf": {
+        "@id": "schema:UpdateAction"
+      },
+      "rdfs:comment": "one change of a member's tier, only ever added (list_tier_history). Keyed by member, program and position."
+    },
+    {
       "@id": "acom:TierCount",
       "@type": "rdfs:Class",
       "rdfs:label": "TierCount",
@@ -349,6 +412,15 @@
         "@id": "schema:Observation"
       },
       "rdfs:comment": "members per tier now, leaving out blocked and withdrawn accounts."
+    },
+    {
+      "@id": "acom:TierEvaluation",
+      "@type": "rdfs:Class",
+      "rdfs:label": "TierEvaluation",
+      "rdfs:subClassOf": {
+        "@id": "schema:AssessAction"
+      },
+      "rdfs:comment": "one run of a program's tier evaluation and the moves it made. id prefix tev_. API: evaluation_id."
     },
     {
       "@id": "acom:TierRequirement",
@@ -367,6 +439,15 @@
         "@id": "schema:ListItem"
       },
       "rdfs:comment": "one product a shopper keeps for later; the product id names the item, there is no id of its own."
+    },
+    {
+      "@id": "acom:Withdrawal",
+      "@type": "rdfs:Class",
+      "rdfs:label": "Withdrawal",
+      "rdfs:subClassOf": {
+        "@id": "schema:Action"
+      },
+      "rdfs:comment": "a member leaving the store: why, what was settled, what is kept and until when, and the one-way fingerprints that block rejoining and id reuse for a while."
     },
     {
       "@id": "acom:acceptedAt",
@@ -485,6 +566,22 @@
         }
       ],
       "rdfs:comment": "true for generated content (catalog.yml content.ai_content_disclosure)."
+    },
+    {
+      "@id": "acom:amount",
+      "@type": "rdf:Property",
+      "rdfs:label": "amount",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Remedy"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:MonetaryAmount"
+        }
+      ],
+      "rdfs:comment": "ISO 4217 currency of amount_value."
     },
     {
       "@id": "acom:amountOff",
@@ -618,6 +715,57 @@
       "rdfs:comment": "approver_role values from approval.yml thresholds this role may approve, for example {merchandiser,operator}."
     },
     {
+      "@id": "acom:asOf",
+      "@type": "rdf:Property",
+      "rdfs:label": "asOf",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:TierEvaluation"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "the moment the members' results were measured at."
+    },
+    {
+      "@id": "acom:assignedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "assignedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerInquiry"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when an operator was assigned; NULL until then."
+    },
+    {
+      "@id": "acom:attempts",
+      "@type": "rdf:Property",
+      "rdfs:label": "attempts",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:IdentityVerification"
+        },
+        {
+          "@id": "acom:RecoveryRequest"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "wrong codes entered; at identity_verification.code.max_attempts the check fails."
+    },
+    {
       "@id": "acom:authorHeight",
       "@type": "rdf:Property",
       "rdfs:label": "authorHeight",
@@ -635,6 +783,22 @@
         }
       ],
       "rdfs:comment": "reviewer height."
+    },
+    {
+      "@id": "acom:authorType",
+      "@type": "rdf:Property",
+      "rdfs:label": "authorType",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Comment"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:AuthorType"
+        }
+      ],
+      "rdfs:comment": "who wrote it. values: author_type"
     },
     {
       "@id": "acom:bannerId",
@@ -701,6 +865,38 @@
       "rdfs:comment": "how often an order is placed; the length of each cycle is order.yml subscription.cycle_length. values: billing_cycle"
     },
     {
+      "@id": "acom:blockReason",
+      "@type": "rdf:Property",
+      "rdfs:label": "blockReason",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Person"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "why an operator blocked the member (member.block_reason_required); NULL when not blocked."
+    },
+    {
+      "@id": "acom:blockedUntil",
+      "@type": "rdf:Property",
+      "rdfs:label": "blockedUntil",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Person"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when a block ends; NULL for a block without end or when not blocked."
+    },
+    {
       "@id": "acom:blocks",
       "@type": "rdf:Property",
       "rdfs:label": "blocks",
@@ -731,6 +927,22 @@
         }
       ],
       "rdfs:comment": "parent category (cat_ id); NULL for a top-level category."
+    },
+    {
+      "@id": "acom:businessVerification",
+      "@type": "rdf:Property",
+      "rdfs:label": "businessVerification",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Person"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:BusinessVerification"
+        }
+      ],
+      "rdfs:comment": "whether the business details were checked (verify_business); turns on business pricing and tax receipts. values: business_verification"
     },
     {
       "@id": "acom:campaignId",
@@ -869,6 +1081,41 @@
       "rdfs:comment": "the cart (cart_ id)."
     },
     {
+      "@id": "acom:category",
+      "@type": "rdf:Property",
+      "rdfs:label": "category",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:NewsArticle"
+        },
+        {
+          "@id": "schema:Question"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the FAQ section, a lowercase word the store chooses, for example returns."
+    },
+    {
+      "@id": "acom:cause",
+      "@type": "rdf:Property",
+      "rdfs:label": "cause",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:TierChange"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:TierChangeCause"
+        }
+      ],
+      "rdfs:comment": "why the tier changed. values: tier_change_cause"
+    },
+    {
       "@id": "acom:changeSetId",
       "@type": "rdf:Property",
       "rdfs:label": "changeSetId",
@@ -942,6 +1189,22 @@
         }
       ],
       "rdfs:comment": "version of the set when the event happened."
+    },
+    {
+      "@id": "acom:changedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "changedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:TierChange"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the tier changed (store clock; API at)."
     },
     {
       "@id": "acom:changes",
@@ -1100,6 +1363,22 @@
       "rdfs:comment": "When the purchase was confirmed after delivery."
     },
     {
+      "@id": "acom:consentType",
+      "@type": "rdf:Property",
+      "rdfs:label": "consentType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ConsentRecord"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ConsentType"
+        }
+      ],
+      "rdfs:comment": "what was agreed to. values: consent_type"
+    },
+    {
       "@id": "acom:context",
       "@type": "rdf:Property",
       "rdfs:label": "context",
@@ -1243,6 +1522,102 @@
       "rdfs:comment": "button text, up to 24 characters."
     },
     {
+      "@id": "acom:dataRetention",
+      "@type": "rdf:Property",
+      "rdfs:label": "dataRetention",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Withdrawal"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "what is kept and until when: [{data, until, why}]."
+    },
+    {
+      "@id": "acom:decidedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "decidedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Remedy"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when it was approved or rejected; NULL until decided."
+    },
+    {
+      "@id": "acom:decidedBy",
+      "@type": "rdf:Property",
+      "rdfs:label": "decidedBy",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Remedy"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "who approved or rejected it (the approving person's id); NULL until decided."
+    },
+    {
+      "@id": "acom:decisionReason",
+      "@type": "rdf:Property",
+      "rdfs:label": "decisionReason",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Remedy"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "why it was rejected; NULL otherwise."
+    },
+    {
+      "@id": "acom:definedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "definedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ProgramVersion"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when this version took effect (store clock)."
+    },
+    {
+      "@id": "acom:definition",
+      "@type": "rdf:Property",
+      "rdfs:label": "definition",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ProgramVersion"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "the whole definition: {name, evaluation, movement, has_tiers[]}."
+    },
+    {
       "@id": "acom:deliveredAt",
       "@type": "rdf:Property",
       "rdfs:label": "deliveredAt",
@@ -1310,6 +1685,22 @@
       "rdfs:comment": "preview ids whose results this item consumes, for example a promotion_id placeholder."
     },
     {
+      "@id": "acom:destination",
+      "@type": "rdf:Property",
+      "rdfs:label": "destination",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:IdentityVerification"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the email or phone number the code or link goes to; NULL for registry lookups."
+    },
+    {
       "@id": "acom:discountLayer",
       "@type": "rdf:Property",
       "rdfs:label": "discountLayer",
@@ -1330,6 +1721,38 @@
         }
       ],
       "rdfs:comment": "Where a discount applies: item price, order, or add-on."
+    },
+    {
+      "@id": "acom:discountLimit",
+      "@type": "rdf:Property",
+      "rdfs:label": "discountLimit",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:EmployeeRole"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:MonetaryAmount"
+        }
+      ],
+      "rdfs:comment": "ISO 4217 currency of discount_limit_value."
+    },
+    {
+      "@id": "acom:discountLimitPeriod",
+      "@type": "rdf:Property",
+      "rdfs:label": "discountLimitPeriod",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:EmployeeRole"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:DiscountLimitPeriod"
+        }
+      ],
+      "rdfs:comment": "the period the limit renews over. values: discount_limit_period"
     },
     {
       "@id": "acom:displayCategory",
@@ -1412,6 +1835,54 @@
       "rdfs:comment": "when it should be done, if a watcher sets one."
     },
     {
+      "@id": "acom:effectiveAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "effectiveAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Withdrawal"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the withdrawal took effect (store clock)."
+    },
+    {
+      "@id": "acom:emailVerifiedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "emailVerifiedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Person"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the member proved they own the email; NULL when it was never verified. Recovery links go only to verified contacts."
+    },
+    {
+      "@id": "acom:employeeNumber",
+      "@type": "rdf:Property",
+      "rdfs:label": "employeeNumber",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:EmployeeRole"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the store's own number for the employee, unique in the store."
+    },
+    {
       "@id": "acom:endedAt",
       "@type": "rdf:Property",
       "rdfs:label": "endedAt",
@@ -1448,6 +1919,22 @@
         }
       ],
       "rdfs:comment": "when tiers are evaluated: {schedule: {every, on_day, at}, on_event[], settle_days}."
+    },
+    {
+      "@id": "acom:evaluationId",
+      "@type": "rdf:Property",
+      "rdfs:label": "evaluationId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:TierChange"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:TierEvaluation"
+        }
+      ],
+      "rdfs:comment": "the evaluation run that made the change (tev_ id); NULL for other causes."
     },
     {
       "@id": "acom:evidence",
@@ -1520,6 +2007,22 @@
       "rdfs:comment": "small header above the headline, up to 24 characters."
     },
     {
+      "@id": "acom:failedPasswordAttempts",
+      "@type": "rdf:Property",
+      "rdfs:label": "failedPasswordAttempts",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Person"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "wrong passwords since first_failed_password_at, counted for password.lockout."
+    },
+    {
       "@id": "acom:featureFlags",
       "@type": "rdf:Property",
       "rdfs:label": "featureFlags",
@@ -1534,6 +2037,22 @@
         }
       ],
       "rdfs:comment": "features switched on for this store, as {flag: true|false}; {} when none."
+    },
+    {
+      "@id": "acom:firstFailedPasswordAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "firstFailedPasswordAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Person"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "the first wrong password of the current lockout window; NULL when there is none."
     },
     {
       "@id": "acom:fitVote",
@@ -1572,6 +2091,22 @@
         }
       ],
       "rdfs:comment": "state before the event; NULL for the creating event. values: claim_status"
+    },
+    {
+      "@id": "acom:fromTierId",
+      "@type": "rdf:Property",
+      "rdfs:label": "fromTierId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:TierChange"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the tier before; NULL when the member entered the program. Not a foreign key: history outlives deleted tiers."
     },
     {
       "@id": "acom:fulfillmentStage",
@@ -1625,6 +2160,22 @@
       "rdfs:comment": "ISO 4217 code of gift_wrap_value."
     },
     {
+      "@id": "acom:granted",
+      "@type": "rdf:Property",
+      "rdfs:label": "granted",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ConsentRecord"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Boolean"
+        }
+      ],
+      "rdfs:comment": "true when consent was given, false when it was withdrawn."
+    },
+    {
       "@id": "acom:hasReturnRequest",
       "@type": "rdf:Property",
       "rdfs:label": "hasReturnRequest",
@@ -1639,6 +2190,22 @@
         }
       ],
       "rdfs:comment": "true when a return was asked for on the order and not declined or withdrawn."
+    },
+    {
+      "@id": "acom:identifierReusableAfter",
+      "@type": "rdf:Property",
+      "rdfs:label": "identifierReusableAfter",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Withdrawal"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "the email and sign-in id can be used again from this time; NULL when never (withdrawal.identifier_reuse)."
     },
     {
       "@id": "acom:imageColor",
@@ -1737,6 +2304,38 @@
       "rdfs:comment": "tokens sent."
     },
     {
+      "@id": "acom:inquiryStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "inquiryStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerInquiry"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:InquiryStatus"
+        }
+      ],
+      "rdfs:comment": "received, in progress with an operator, or resolved. values: inquiry_status"
+    },
+    {
+      "@id": "acom:inquiryType",
+      "@type": "rdf:Property",
+      "rdfs:label": "inquiryType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerInquiry"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:InquiryType"
+        }
+      ],
+      "rdfs:comment": "what the inquiry is about. values: inquiry_type"
+    },
+    {
       "@id": "acom:inspectionCondition",
       "@type": "rdf:Property",
       "rdfs:label": "inspectionCondition",
@@ -1783,6 +2382,22 @@
         }
       ],
       "rdfs:comment": "how the runtime understood the request: [{slot, text, value}], slot is who, products, benefit, when, where or other."
+    },
+    {
+      "@id": "acom:invalidatedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "invalidatedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:RecoveryRequest"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when a newer request or too many wrong codes made it stop working."
     },
     {
       "@id": "acom:inventoryCost",
@@ -1847,6 +2462,22 @@
         }
       ],
       "rdfs:comment": "true while the shopper marks the review helpful; false after they take the vote back."
+    },
+    {
+      "@id": "acom:isPinned",
+      "@type": "rdf:Property",
+      "rdfs:label": "isPinned",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:NewsArticle"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Boolean"
+        }
+      ],
+      "rdfs:comment": "shown above the other notices."
     },
     {
       "@id": "acom:isPrimary",
@@ -2058,6 +2689,9 @@
           "@id": "acom:Claim"
         },
         {
+          "@id": "acom:Remedy"
+        },
+        {
           "@id": "schema:CheckAction"
         }
       ],
@@ -2075,6 +2709,9 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:ApiKey"
+        },
+        {
+          "@id": "schema:Person"
         }
       ],
       "schema:rangeIncludes": [
@@ -2098,7 +2735,7 @@
           "@id": "schema:Text"
         }
       ],
-      "rdfs:comment": "what the operator types to sign in (for example admin); NULL means the account cannot sign in with a password."
+      "rdfs:comment": "the id the member signs in with besides the email; NULL when they sign in with the email only."
     },
     {
       "@id": "acom:managed",
@@ -2182,7 +2819,13 @@
           "@id": "acom:MessageTemplate"
         },
         {
+          "@id": "acom:RecoveryRequest"
+        },
+        {
           "@id": "acom:RestockAlert"
+        },
+        {
+          "@id": "schema:Comment"
         },
         {
           "@id": "schema:Message"
@@ -2260,6 +2903,22 @@
       "rdfs:comment": "how members move: {upgrade, downgrade, max_steps_down, grace_periods}."
     },
     {
+      "@id": "acom:moves",
+      "@type": "rdf:Property",
+      "rdfs:label": "moves",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:TierEvaluation"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "the tier moves made: [{customer_id, from_tier_id, to_tier_id, direction, reason, from_since}], kept so the run can be undone."
+    },
+    {
       "@id": "acom:needsApproval",
       "@type": "rdf:Property",
       "rdfs:label": "needsApproval",
@@ -2290,6 +2949,22 @@
         }
       ],
       "rdfs:comment": "store-time day the next order is placed and charged."
+    },
+    {
+      "@id": "acom:noticeStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "noticeStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:NewsArticle"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:NoticeStatus"
+        }
+      ],
+      "rdfs:comment": "draft until published. values: notice_status"
     },
     {
       "@id": "acom:notifiedAt",
@@ -2535,6 +3210,9 @@
       "rdfs:label": "paidAt",
       "schema:domainIncludes": [
         {
+          "@id": "acom:Remedy"
+        },
+        {
           "@id": "schema:PayAction"
         }
       ],
@@ -2544,6 +3222,22 @@
         }
       ],
       "rdfs:comment": "when the payment completed."
+    },
+    {
+      "@id": "acom:passwordChangedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "passwordChangedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Person"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the password was last set; NULL when it never was."
     },
     {
       "@id": "acom:pausedAt",
@@ -2576,6 +3270,22 @@
         }
       ],
       "rdfs:comment": "payment the money goes back to (pay_ id); NULL for store credit."
+    },
+    {
+      "@id": "acom:payout",
+      "@type": "rdf:Property",
+      "rdfs:label": "payout",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Remedy"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "how it was paid: {method, to, reference, delivered}; NULL until paid. Payments to outside accounts are a stub here."
     },
     {
       "@id": "acom:percentOff",
@@ -2817,6 +3527,9 @@
       "rdfs:label": "purpose",
       "schema:domainIncludes": [
         {
+          "@id": "acom:IdentityVerification"
+        },
+        {
           "@id": "schema:Action"
         }
       ],
@@ -2844,12 +3557,37 @@
       "rdfs:comment": "Order of a tier within its program; higher is better."
     },
     {
+      "@id": "acom:reason",
+      "@type": "rdf:Property",
+      "rdfs:label": "reason",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:RecoveryRequest"
+        },
+        {
+          "@id": "acom:Remedy"
+        },
+        {
+          "@id": "acom:TierChange"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "why it was requested, in a sentence."
+    },
+    {
       "@id": "acom:reasonText",
       "@type": "rdf:Property",
       "rdfs:label": "reasonText",
       "schema:domainIncludes": [
         {
           "@id": "acom:Claim"
+        },
+        {
+          "@id": "acom:Withdrawal"
         }
       ],
       "schema:rangeIncludes": [
@@ -2858,6 +3596,22 @@
         }
       ],
       "rdfs:comment": "the shopper's own words, up to 500 characters."
+    },
+    {
+      "@id": "acom:reasons",
+      "@type": "rdf:Property",
+      "rdfs:label": "reasons",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Withdrawal"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:WithdrawalReason"
+        }
+      ],
+      "rdfs:comment": "the reasons the member picked; every element is a word from the list. values: withdrawal_reason"
     },
     {
       "@id": "acom:receiptType",
@@ -2914,6 +3668,22 @@
       "rdfs:comment": "shoppers it was addressed to."
     },
     {
+      "@id": "acom:recordedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "recordedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ConsentRecord"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the member gave or withdrew it (store clock; API at)."
+    },
+    {
       "@id": "acom:recordsBenefitOnly",
       "@type": "rdf:Property",
       "rdfs:label": "recordsBenefitOnly",
@@ -2928,6 +3698,22 @@
         }
       ],
       "rdfs:comment": "true: the coupon records the promotion's benefit and adds no discount of its own."
+    },
+    {
+      "@id": "acom:recoveryKind",
+      "@type": "rdf:Property",
+      "rdfs:label": "recoveryKind",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:RecoveryRequest"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:RecoveryKind"
+        }
+      ],
+      "rdfs:comment": "a password reset or a sign-in id reminder. values: recovery_kind"
     },
     {
       "@id": "acom:refundEstimate",
@@ -3026,6 +3812,54 @@
       "rdfs:comment": "the reason the person gave when rejecting."
     },
     {
+      "@id": "acom:rejoinAfter",
+      "@type": "rdf:Property",
+      "rdfs:label": "rejoinAfter",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Withdrawal"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "the same person can sign up again from this time (withdrawal.rejoin.block_days)."
+    },
+    {
+      "@id": "acom:remedyStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "remedyStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Remedy"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:RemedyStatus"
+        }
+      ],
+      "rdfs:comment": "where it is in approval and payment. values: remedy_status"
+    },
+    {
+      "@id": "acom:remedyType",
+      "@type": "rdf:Property",
+      "rdfs:label": "remedyType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Remedy"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:RemedyType"
+        }
+      ],
+      "rdfs:comment": "what the customer gets. values: remedy_type"
+    },
+    {
       "@id": "acom:replacement",
       "@type": "rdf:Property",
       "rdfs:label": "replacement",
@@ -3093,6 +3927,28 @@
       "rdfs:comment": "the person's words, first request then each edit by conversation."
     },
     {
+      "@id": "acom:requestedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "requestedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:IdentityVerification"
+        },
+        {
+          "@id": "acom:RecoveryRequest"
+        },
+        {
+          "@id": "acom:Remedy"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when it was requested (store clock)."
+    },
+    {
       "@id": "acom:requiredScope",
       "@type": "rdf:Property",
       "rdfs:label": "requiredScope",
@@ -3107,6 +3963,38 @@
         }
       ],
       "rdfs:comment": "the scope an operator needs to see the entry, for example tools:read:promotion."
+    },
+    {
+      "@id": "acom:resolution",
+      "@type": "rdf:Property",
+      "rdfs:label": "resolution",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerInquiry"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "how it was resolved, in a sentence; NULL until resolved."
+    },
+    {
+      "@id": "acom:resolvedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "resolvedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerInquiry"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when it was closed as resolved; NULL until then."
     },
     {
       "@id": "acom:resultId",
@@ -3252,6 +4140,22 @@
       "rdfs:comment": "when the send was due."
     },
     {
+      "@id": "acom:scope",
+      "@type": "rdf:Property",
+      "rdfs:label": "scope",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:TierEvaluation"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "who was evaluated: {scope: all | segment | customers, segment_id?, customer_ids?}."
+    },
+    {
       "@id": "acom:scopes",
       "@type": "rdf:Property",
       "rdfs:label": "scopes",
@@ -3301,6 +4205,22 @@
         }
       ],
       "rdfs:comment": "gateway session the conversation runs in (ses_ id)."
+    },
+    {
+      "@id": "acom:settled",
+      "@type": "rdf:Property",
+      "rdfs:label": "settled",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Withdrawal"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "what was settled: [{type, action, amount?, count?}]."
     },
     {
       "@id": "acom:shippedAt",
@@ -3397,6 +4317,22 @@
         }
       ],
       "rdfs:comment": "What a display slot holds."
+    },
+    {
+      "@id": "acom:snapshot",
+      "@type": "rdf:Property",
+      "rdfs:label": "snapshot",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:TierChange"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "the result the change was based on: {metric, value}; NULL when none applies."
     },
     {
       "@id": "acom:soldOutAt",
@@ -3617,6 +4553,9 @@
           "@id": "acom:Task"
         },
         {
+          "@id": "acom:TierEvaluation"
+        },
+        {
           "@id": "schema:Action"
         }
       ],
@@ -3738,6 +4677,22 @@
         }
       ],
       "rdfs:comment": "Whether a task needs a person, is being worked on, or is done."
+    },
+    {
+      "@id": "acom:telephoneVerifiedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "telephoneVerifiedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Person"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the member proved they own the phone number; NULL when it was never verified."
     },
     {
       "@id": "acom:templateId",
@@ -3898,6 +4853,54 @@
       "rdfs:comment": "state after the event; NULL when the state did not change. values: claim_status"
     },
     {
+      "@id": "acom:toTierId",
+      "@type": "rdf:Property",
+      "rdfs:label": "toTierId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:TierChange"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the tier after; NULL when the member left (withdrawal)."
+    },
+    {
+      "@id": "acom:tokenExpires",
+      "@type": "rdf:Property",
+      "rdfs:label": "tokenExpires",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:IdentityVerification"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "the last moment the verification_token can be used (identity_verification.token_ttl_seconds)."
+    },
+    {
+      "@id": "acom:tokenUsedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "tokenUsedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:IdentityVerification"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when a sign-up or contact change used the token; a token works once."
+    },
+    {
       "@id": "acom:tone",
       "@type": "rdf:Property",
       "rdfs:label": "tone",
@@ -3977,6 +4980,9 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:MemberCoupon"
+        },
+        {
+          "@id": "acom:RecoveryRequest"
         }
       ],
       "schema:rangeIncludes": [
@@ -4044,6 +5050,9 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:ChangeSet"
+        },
+        {
+          "@id": "acom:IdentityVerification"
         }
       ],
       "schema:rangeIncludes": [
@@ -4051,7 +5060,7 @@
           "@id": "schema:DateTime"
         }
       ],
-      "rdfs:comment": "when the executor finished re-reading the results."
+      "rdfs:comment": "when the check succeeded; NULL until then."
     },
     {
       "@id": "acom:watcher",
@@ -4118,6 +5127,22 @@
       "rdfs:comment": "The snake_case word this member is written as in the API and database."
     },
     {
+      "@id": "acom:withdrawnAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "withdrawnAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Person"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the member withdrew; NULL for members who did not."
+    },
+    {
       "@id": "acom:ActorKind",
       "@type": "rdfs:Class",
       "rdfs:label": "ActorKind",
@@ -4168,6 +5193,16 @@
       "acom:wireList": "approval_status"
     },
     {
+      "@id": "acom:AuthorType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "AuthorType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the author_type list (docs/api/enums.md).",
+      "acom:wireList": "author_type"
+    },
+    {
       "@id": "acom:BillingCycle",
       "@type": "rdfs:Class",
       "rdfs:label": "BillingCycle",
@@ -4176,6 +5211,16 @@
       },
       "rdfs:comment": "Values of the billing_cycle list (docs/api/enums.md).",
       "acom:wireList": "billing_cycle"
+    },
+    {
+      "@id": "acom:BusinessVerification",
+      "@type": "rdfs:Class",
+      "rdfs:label": "BusinessVerification",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the business_verification list (docs/api/enums.md).",
+      "acom:wireList": "business_verification"
     },
     {
       "@id": "acom:CampaignStatus",
@@ -4258,6 +5303,16 @@
       "acom:wireList": "claim_type"
     },
     {
+      "@id": "acom:ConsentType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ConsentType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the consent_type list (docs/api/enums.md).",
+      "acom:wireList": "consent_type"
+    },
+    {
       "@id": "acom:CopyType",
       "@type": "rdfs:Class",
       "rdfs:label": "CopyType",
@@ -4318,6 +5373,16 @@
       "acom:wireList": "discount_layer"
     },
     {
+      "@id": "acom:DiscountLimitPeriod",
+      "@type": "rdfs:Class",
+      "rdfs:label": "DiscountLimitPeriod",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the discount_limit_period list (docs/api/enums.md).",
+      "acom:wireList": "discount_limit_period"
+    },
+    {
       "@id": "acom:DisplayStatus",
       "@type": "rdfs:Class",
       "rdfs:label": "DisplayStatus",
@@ -4376,6 +5441,26 @@
       },
       "rdfs:comment": "Values of the import_mode list (docs/api/enums.md).",
       "acom:wireList": "import_mode"
+    },
+    {
+      "@id": "acom:InquiryStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "InquiryStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the inquiry_status list (docs/api/enums.md).",
+      "acom:wireList": "inquiry_status"
+    },
+    {
+      "@id": "acom:InquiryType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "InquiryType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the inquiry_type list (docs/api/enums.md).",
+      "acom:wireList": "inquiry_type"
     },
     {
       "@id": "acom:InspectionCondition",
@@ -4448,6 +5533,16 @@
       "acom:wireList": "message_kind"
     },
     {
+      "@id": "acom:NoticeStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "NoticeStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the notice_status list (docs/api/enums.md).",
+      "acom:wireList": "notice_status"
+    },
+    {
       "@id": "acom:OrganizationType",
       "@type": "rdfs:Class",
       "rdfs:label": "OrganizationType",
@@ -4518,6 +5613,16 @@
       "acom:wireList": "receipt_type"
     },
     {
+      "@id": "acom:RecoveryKind",
+      "@type": "rdfs:Class",
+      "rdfs:label": "RecoveryKind",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the recovery_kind list (docs/api/enums.md).",
+      "acom:wireList": "recovery_kind"
+    },
+    {
       "@id": "acom:RefundMethod",
       "@type": "rdfs:Class",
       "rdfs:label": "RefundMethod",
@@ -4536,6 +5641,26 @@
       },
       "rdfs:comment": "Values of the refund_status list (docs/api/enums.md).",
       "acom:wireList": "refund_status"
+    },
+    {
+      "@id": "acom:RemedyStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "RemedyStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the remedy_status list (docs/api/enums.md).",
+      "acom:wireList": "remedy_status"
+    },
+    {
+      "@id": "acom:RemedyType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "RemedyType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the remedy_type list (docs/api/enums.md).",
+      "acom:wireList": "remedy_type"
     },
     {
       "@id": "acom:ReportReason",
@@ -4646,6 +5771,26 @@
       },
       "rdfs:comment": "Values of the term_set list (docs/api/enums.md).",
       "acom:wireList": "term_set"
+    },
+    {
+      "@id": "acom:TierChangeCause",
+      "@type": "rdfs:Class",
+      "rdfs:label": "TierChangeCause",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the tier_change_cause list (docs/api/enums.md).",
+      "acom:wireList": "tier_change_cause"
+    },
+    {
+      "@id": "acom:WithdrawalReason",
+      "@type": "rdfs:Class",
+      "rdfs:label": "WithdrawalReason",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the withdrawal_reason list (docs/api/enums.md).",
+      "acom:wireList": "withdrawal_reason"
     },
     {
       "@id": "acom:ActorKindOperator",
@@ -4774,6 +5919,27 @@
       "schema:position": 5
     },
     {
+      "@id": "acom:AuthorTypeCustomer",
+      "@type": "acom:AuthorType",
+      "rdfs:label": "Customer",
+      "acom:wireWord": "customer",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:AuthorTypeStaff",
+      "@type": "acom:AuthorType",
+      "rdfs:label": "Staff",
+      "acom:wireWord": "staff",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:AuthorTypeAgent",
+      "@type": "acom:AuthorType",
+      "rdfs:label": "Agent",
+      "acom:wireWord": "agent",
+      "schema:position": 3
+    },
+    {
       "@id": "acom:BillingCycleEveryWeek",
       "@type": "acom:BillingCycle",
       "rdfs:label": "EveryWeek",
@@ -4793,6 +5959,20 @@
       "rdfs:label": "EveryMonth",
       "acom:wireWord": "every_month",
       "schema:position": 3
+    },
+    {
+      "@id": "acom:BusinessVerificationUnverified",
+      "@type": "acom:BusinessVerification",
+      "rdfs:label": "Unverified",
+      "acom:wireWord": "unverified",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:BusinessVerificationVerified",
+      "@type": "acom:BusinessVerification",
+      "rdfs:label": "Verified",
+      "acom:wireWord": "verified",
+      "schema:position": 2
     },
     {
       "@id": "acom:CampaignStatusDraft",
@@ -5187,6 +6367,62 @@
       "schema:position": 3
     },
     {
+      "@id": "acom:ConsentTypeTerms",
+      "@type": "acom:ConsentType",
+      "rdfs:label": "Terms",
+      "acom:wireWord": "terms",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:ConsentTypePrivacy",
+      "@type": "acom:ConsentType",
+      "rdfs:label": "Privacy",
+      "acom:wireWord": "privacy",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:ConsentTypeMarketingEmail",
+      "@type": "acom:ConsentType",
+      "rdfs:label": "MarketingEmail",
+      "acom:wireWord": "marketing_email",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:ConsentTypeMarketingSms",
+      "@type": "acom:ConsentType",
+      "rdfs:label": "MarketingSms",
+      "acom:wireWord": "marketing_sms",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:ConsentTypeMarketingPush",
+      "@type": "acom:ConsentType",
+      "rdfs:label": "MarketingPush",
+      "acom:wireWord": "marketing_push",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:ConsentTypeMarketingInApp",
+      "@type": "acom:ConsentType",
+      "rdfs:label": "MarketingInApp",
+      "acom:wireWord": "marketing_in_app",
+      "schema:position": 6
+    },
+    {
+      "@id": "acom:ConsentTypeEntryTerms",
+      "@type": "acom:ConsentType",
+      "rdfs:label": "EntryTerms",
+      "acom:wireWord": "entry_terms",
+      "schema:position": 7
+    },
+    {
+      "@id": "acom:ConsentTypeWinnerContact",
+      "@type": "acom:ConsentType",
+      "rdfs:label": "WinnerContact",
+      "acom:wireWord": "winner_contact",
+      "schema:position": 8
+    },
+    {
       "@id": "acom:CopyTypeTitle",
       "@type": "acom:CopyType",
       "rdfs:label": "Title",
@@ -5383,6 +6619,20 @@
       "schema:position": 3
     },
     {
+      "@id": "acom:DiscountLimitPeriodMonth",
+      "@type": "acom:DiscountLimitPeriod",
+      "rdfs:label": "Month",
+      "acom:wireWord": "month",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:DiscountLimitPeriodYear",
+      "@type": "acom:DiscountLimitPeriod",
+      "rdfs:label": "Year",
+      "acom:wireWord": "year",
+      "schema:position": 2
+    },
+    {
       "@id": "acom:DisplayStatusDraft",
       "@type": "acom:DisplayStatus",
       "rdfs:label": "Draft",
@@ -5514,6 +6764,69 @@
       "rdfs:label": "Upsert",
       "acom:wireWord": "upsert",
       "schema:position": 2
+    },
+    {
+      "@id": "acom:InquiryStatusReceived",
+      "@type": "acom:InquiryStatus",
+      "rdfs:label": "Received",
+      "acom:wireWord": "received",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:InquiryStatusInProgress",
+      "@type": "acom:InquiryStatus",
+      "rdfs:label": "InProgress",
+      "acom:wireWord": "in_progress",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:InquiryStatusResolved",
+      "@type": "acom:InquiryStatus",
+      "rdfs:label": "Resolved",
+      "acom:wireWord": "resolved",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:InquiryTypeOrderStatus",
+      "@type": "acom:InquiryType",
+      "rdfs:label": "OrderStatus",
+      "acom:wireWord": "order_status",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:InquiryTypeReturn",
+      "@type": "acom:InquiryType",
+      "rdfs:label": "Return",
+      "acom:wireWord": "return",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:InquiryTypeProductQuestion",
+      "@type": "acom:InquiryType",
+      "rdfs:label": "ProductQuestion",
+      "acom:wireWord": "product_question",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:InquiryTypeAccount",
+      "@type": "acom:InquiryType",
+      "rdfs:label": "Account",
+      "acom:wireWord": "account",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:InquiryTypeCallback",
+      "@type": "acom:InquiryType",
+      "rdfs:label": "Callback",
+      "acom:wireWord": "callback",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:InquiryTypeOther",
+      "@type": "acom:InquiryType",
+      "rdfs:label": "Other",
+      "acom:wireWord": "other",
+      "schema:position": 6
     },
     {
       "@id": "acom:InspectionConditionAsNew",
@@ -5740,6 +7053,20 @@
       "schema:position": 4
     },
     {
+      "@id": "acom:NoticeStatusDraft",
+      "@type": "acom:NoticeStatus",
+      "rdfs:label": "Draft",
+      "acom:wireWord": "draft",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:NoticeStatusPublished",
+      "@type": "acom:NoticeStatus",
+      "rdfs:label": "Published",
+      "acom:wireWord": "published",
+      "schema:position": 2
+    },
+    {
       "@id": "acom:OrganizationTypeDepartment",
       "@type": "acom:OrganizationType",
       "rdfs:label": "Department",
@@ -5943,6 +7270,20 @@
       "schema:position": 3
     },
     {
+      "@id": "acom:RecoveryKindPasswordReset",
+      "@type": "acom:RecoveryKind",
+      "rdfs:label": "PasswordReset",
+      "acom:wireWord": "password_reset",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:RecoveryKindLoginId",
+      "@type": "acom:RecoveryKind",
+      "rdfs:label": "LoginId",
+      "acom:wireWord": "login_id",
+      "schema:position": 2
+    },
+    {
       "@id": "acom:RefundMethodOriginalPayment",
       "@type": "acom:RefundMethod",
       "rdfs:label": "OriginalPayment",
@@ -5982,6 +7323,69 @@
       "@type": "acom:RefundStatus",
       "rdfs:label": "Failed",
       "acom:wireWord": "failed",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:RemedyStatusRequested",
+      "@type": "acom:RemedyStatus",
+      "rdfs:label": "Requested",
+      "acom:wireWord": "requested",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:RemedyStatusApproved",
+      "@type": "acom:RemedyStatus",
+      "rdfs:label": "Approved",
+      "acom:wireWord": "approved",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:RemedyStatusRejected",
+      "@type": "acom:RemedyStatus",
+      "rdfs:label": "Rejected",
+      "acom:wireWord": "rejected",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:RemedyStatusPayoutPending",
+      "@type": "acom:RemedyStatus",
+      "rdfs:label": "PayoutPending",
+      "acom:wireWord": "payout_pending",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:RemedyStatusPaid",
+      "@type": "acom:RemedyStatus",
+      "rdfs:label": "Paid",
+      "acom:wireWord": "paid",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:RemedyStatusFailed",
+      "@type": "acom:RemedyStatus",
+      "rdfs:label": "Failed",
+      "acom:wireWord": "failed",
+      "schema:position": 6
+    },
+    {
+      "@id": "acom:RemedyTypeLoyaltyPoints",
+      "@type": "acom:RemedyType",
+      "rdfs:label": "LoyaltyPoints",
+      "acom:wireWord": "loyalty_points",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:RemedyTypeCoupon",
+      "@type": "acom:RemedyType",
+      "rdfs:label": "Coupon",
+      "acom:wireWord": "coupon",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:RemedyTypeCash",
+      "@type": "acom:RemedyType",
+      "rdfs:label": "Cash",
+      "acom:wireWord": "cash",
       "schema:position": 3
     },
     {
@@ -6277,6 +7681,111 @@
       "rdfs:label": "Display",
       "acom:wireWord": "display",
       "schema:position": 2
+    },
+    {
+      "@id": "acom:TierChangeCauseEntry",
+      "@type": "acom:TierChangeCause",
+      "rdfs:label": "Entry",
+      "acom:wireWord": "entry",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:TierChangeCauseEvaluation",
+      "@type": "acom:TierChangeCause",
+      "rdfs:label": "Evaluation",
+      "acom:wireWord": "evaluation",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:TierChangeCauseEvent",
+      "@type": "acom:TierChangeCause",
+      "rdfs:label": "Event",
+      "acom:wireWord": "event",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:TierChangeCauseManualOverride",
+      "@type": "acom:TierChangeCause",
+      "rdfs:label": "ManualOverride",
+      "acom:wireWord": "manual_override",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:TierChangeCauseOverrideExpired",
+      "@type": "acom:TierChangeCause",
+      "rdfs:label": "OverrideExpired",
+      "acom:wireWord": "override_expired",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:TierChangeCauseGraceStarted",
+      "@type": "acom:TierChangeCause",
+      "rdfs:label": "GraceStarted",
+      "acom:wireWord": "grace_started",
+      "schema:position": 6
+    },
+    {
+      "@id": "acom:TierChangeCauseGraceEnded",
+      "@type": "acom:TierChangeCause",
+      "rdfs:label": "GraceEnded",
+      "acom:wireWord": "grace_ended",
+      "schema:position": 7
+    },
+    {
+      "@id": "acom:TierChangeCauseProgramChange",
+      "@type": "acom:TierChangeCause",
+      "rdfs:label": "ProgramChange",
+      "acom:wireWord": "program_change",
+      "schema:position": 8
+    },
+    {
+      "@id": "acom:TierChangeCauseWithdrawal",
+      "@type": "acom:TierChangeCause",
+      "rdfs:label": "Withdrawal",
+      "acom:wireWord": "withdrawal",
+      "schema:position": 9
+    },
+    {
+      "@id": "acom:WithdrawalReasonNotUsing",
+      "@type": "acom:WithdrawalReason",
+      "rdfs:label": "NotUsing",
+      "acom:wireWord": "not_using",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:WithdrawalReasonTooManyMessages",
+      "@type": "acom:WithdrawalReason",
+      "rdfs:label": "TooManyMessages",
+      "acom:wireWord": "too_many_messages",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:WithdrawalReasonPrivacyConcern",
+      "@type": "acom:WithdrawalReason",
+      "rdfs:label": "PrivacyConcern",
+      "acom:wireWord": "privacy_concern",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:WithdrawalReasonPoorService",
+      "@type": "acom:WithdrawalReason",
+      "rdfs:label": "PoorService",
+      "acom:wireWord": "poor_service",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:WithdrawalReasonFoundAlternative",
+      "@type": "acom:WithdrawalReason",
+      "rdfs:label": "FoundAlternative",
+      "acom:wireWord": "found_alternative",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:WithdrawalReasonOther",
+      "@type": "acom:WithdrawalReason",
+      "rdfs:label": "Other",
+      "acom:wireWord": "other",
+      "schema:position": 6
     }
   ]
 }

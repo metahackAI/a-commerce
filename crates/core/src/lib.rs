@@ -3,6 +3,7 @@
 //! Nothing here does I/O. Rules for the wire formats are in `docs/api/conventions.md`.
 
 pub mod enums;
+pub mod handle;
 pub mod id;
 pub mod ids;
 pub mod money;

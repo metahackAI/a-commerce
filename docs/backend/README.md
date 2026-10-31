@@ -122,7 +122,8 @@ llm ◀── agent ◀── services/agent
 
    | 도메인 | 의존 |
    |---|---|
-   | catalog, customer, platform | (없음) |
+   | catalog, platform | (없음) |
+   | customer | platform(비밀번호를 바꾸거나 탈퇴할 때 그 사람의 세션 끝내기) |
    | search | catalog |
    | promotion | catalog, customer |
    | merchandising | catalog, promotion |

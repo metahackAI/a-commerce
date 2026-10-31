@@ -264,6 +264,339 @@ pub(crate) fn next_evaluation(
     candidates.into_iter().filter_map(at_day).find(|t| *t > now)
 }
 
+// ── tier evaluation (preview_tier_evaluation, run_tier_evaluation, define_tier_program) ──
+
+/// One tier as an evaluation sees it.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct TierDef {
+    pub id: String,
+    pub rank: i32,
+    pub requirements: Vec<Value>,
+    /// `any` (the default) or `all`.
+    pub any: bool,
+    pub benefits: Value,
+}
+
+impl TierDef {
+    pub(crate) fn from_stored(
+        id: &str,
+        rank: i32,
+        has_tier_requirement: &Value,
+        benefits: &Value,
+    ) -> Self {
+        Self {
+            id: id.to_owned(),
+            rank,
+            requirements: requirement_list(has_tier_requirement),
+            any: requirement_combine(has_tier_requirement).as_deref() != Some("all"),
+            benefits: benefits.clone(),
+        }
+    }
+}
+
+/// A member as an evaluation sees them.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct Member {
+    pub customer_id: String,
+    pub name: String,
+    pub tier_id: String,
+    /// A manual tier that still holds at the evaluation time.
+    pub override_active: bool,
+    /// The last tier change was `grace_started`.
+    pub in_grace: bool,
+}
+
+/// How members move (`tier.movement`, the program's or the policy's).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Movement {
+    pub upgrade: bool,
+    pub downgrade: bool,
+    pub max_steps_down: i32,
+    pub grace_periods: i32,
+}
+
+impl Movement {
+    pub(crate) fn from_values(program: &Value, policy: &Value) -> Self {
+        let get = |k: &str| program.get(k).or_else(|| policy.get(k));
+        Self {
+            upgrade: get("upgrade").and_then(Value::as_str) != Some("never"),
+            downgrade: get("downgrade").and_then(Value::as_str) != Some("never"),
+            max_steps_down: get("max_steps_down")
+                .and_then(Value::as_i64)
+                .and_then(|n| i32::try_from(n).ok())
+                .unwrap_or(i32::MAX),
+            grace_periods: get("grace_periods")
+                .and_then(Value::as_i64)
+                .and_then(|n| i32::try_from(n).ok())
+                .unwrap_or(0),
+        }
+    }
+}
+
+/// What the store measures results with (`tier.requirement`, `tier.evaluation`).
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct Measure {
+    pub default_window: Value,
+    pub default_channels: Vec<String>,
+    pub settle_days: i64,
+    pub as_of: DateTime<Utc>,
+    pub time: StoreTime,
+}
+
+/// `up`, `down`, `grace` (kept for now, with a warning), `same`, or `override` (a manual tier
+/// the evaluation leaves alone).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum Direction {
+    Up,
+    Down,
+    Grace,
+    Same,
+    Override,
+}
+
+impl Direction {
+    pub(crate) fn word(self) -> &'static str {
+        match self {
+            Self::Up => "up",
+            Self::Down => "down",
+            Self::Grace => "grace",
+            Self::Same => "same",
+            Self::Override => "override",
+        }
+    }
+}
+
+/// What an evaluation decides for one member.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct Move {
+    pub customer_id: String,
+    pub from_tier_id: String,
+    pub to_tier_id: String,
+    pub direction: Direction,
+    pub reason: String,
+    /// The result it was based on: `{metric, value}`.
+    pub snapshot: Option<Value>,
+}
+
+/// One requirement measured: `Some(true|false)`, or `None` when it cannot be measured from
+/// orders (`invite`, `manual`, `points_earned`, `custom`). `keep` uses `retain_threshold`.
+fn requirement_met(
+    req: &Value,
+    orders: &[MemberOrder],
+    m: &Measure,
+    keep: bool,
+) -> (Option<bool>, Option<Value>) {
+    let channels: Vec<String> = req
+        .pointer("/counts/channels")
+        .and_then(Value::as_array)
+        .map(|l| {
+            l.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_else(|| m.default_channels.clone());
+    let start = window_start(
+        req.get("window").unwrap_or(&m.default_window),
+        m.as_of,
+        m.time,
+    );
+    match req.get("metric").and_then(Value::as_str) {
+        Some("spend") => {
+            let threshold = if keep {
+                threshold_money(req, "retain_threshold")
+                    .or_else(|| threshold_money(req, "threshold"))
+            } else {
+                threshold_money(req, "threshold")
+            };
+            let Some(t) = threshold else {
+                return (None, None);
+            };
+            let tally = tally(orders, t.currency, &channels, start, m.as_of, m.settle_days);
+            let value = cents(tally.settled, t.currency);
+            (
+                Some(tally.settled >= t.value),
+                Some(json!({"metric": "spend", "value": value,
+                            "threshold": cents(t.value, t.currency)})),
+            )
+        }
+        Some("order_count") => {
+            let key = if keep && req.get("retain_threshold").is_some() {
+                "retain_threshold"
+            } else {
+                "threshold"
+            };
+            let Some(t) = req.get(key).and_then(Value::as_i64) else {
+                return (None, None);
+            };
+            // Orders in every currency count: an order is an order.
+            let count = orders
+                .iter()
+                .filter(|o| {
+                    o.delivered_at.is_some_and(|d| {
+                        d >= start
+                            && d + Duration::days(m.settle_days) <= m.as_of
+                            && (channels.is_empty() || channels.contains(&o.sales_channel))
+                    })
+                })
+                .count();
+            let count = i64::try_from(count).unwrap_or(i64::MAX);
+            (
+                Some(count >= t),
+                Some(json!({"metric": "order_count", "value": count, "threshold": t})),
+            )
+        }
+        _ => (None, None),
+    }
+}
+
+/// Whether a member meets a tier: `Some(true|false)`, or `None` when it depends on something
+/// orders cannot show (an invite, a manual grant).
+fn tier_met(
+    t: &TierDef,
+    orders: &[MemberOrder],
+    m: &Measure,
+    keep: bool,
+) -> (Option<bool>, Option<Value>) {
+    if t.requirements.is_empty() {
+        return (Some(true), None);
+    }
+    let results: Vec<(Option<bool>, Option<Value>)> = t
+        .requirements
+        .iter()
+        .map(|r| requirement_met(r, orders, m, keep))
+        .collect();
+    let snapshot = results.iter().find_map(|(_, s)| s.clone());
+    let met = if t.any {
+        if results.iter().any(|(r, _)| *r == Some(true)) {
+            Some(true)
+        } else if results.iter().any(|(r, _)| r.is_none()) {
+            None
+        } else {
+            Some(false)
+        }
+    } else if results.iter().any(|(r, _)| *r == Some(false)) {
+        Some(false)
+    } else if results.iter().any(|(r, _)| r.is_none()) {
+        None
+    } else {
+        Some(true)
+    };
+    (met, snapshot)
+}
+
+fn describe(snapshot: &Option<Value>, op: &str) -> String {
+    match snapshot {
+        Some(s) if s["metric"] == "spend" => format!(
+            "spend {} {op} {} {}",
+            s["value"]["value"],
+            s["threshold"]["value"],
+            s["threshold"]["currency"].as_str().unwrap_or_default()
+        ),
+        Some(s) => format!("{} orders {op} {}", s["value"], s["threshold"]),
+        None => "no measurable requirement".to_owned(),
+    }
+}
+
+/// Decides one member's tier. Tiers come highest rank first or in any order; the member's
+/// current tier must be one of them. `orders` is `None` when orders are not connected: nothing
+/// is measured and nobody moves.
+pub(crate) fn evaluate(
+    tiers: &[TierDef],
+    member: &Member,
+    orders: Option<&[MemberOrder]>,
+    m: &Measure,
+    movement: &Movement,
+) -> Move {
+    let stay = |direction: Direction, reason: String, snapshot: Option<Value>| Move {
+        customer_id: member.customer_id.clone(),
+        from_tier_id: member.tier_id.clone(),
+        to_tier_id: member.tier_id.clone(),
+        direction,
+        reason,
+        snapshot,
+    };
+    if member.override_active {
+        return stay(
+            Direction::Override,
+            "Set by an operator; evaluation leaves it until it expires".into(),
+            None,
+        );
+    }
+    let Some(orders) = orders else {
+        return stay(
+            Direction::Same,
+            "Orders are not connected; nothing measured".into(),
+            None,
+        );
+    };
+    let mut sorted: Vec<&TierDef> = tiers.iter().collect();
+    sorted.sort_by_key(|t| std::cmp::Reverse(t.rank));
+    let Some(current) = sorted.iter().find(|t| t.id == member.tier_id).copied() else {
+        return stay(
+            Direction::Same,
+            "The current tier is not in the program".into(),
+            None,
+        );
+    };
+    // The highest tier the results reach.
+    let best = sorted
+        .iter()
+        .find_map(|t| match tier_met(t, orders, m, false) {
+            (Some(true), s) => Some((*t, s)),
+            _ => None,
+        });
+    if let Some((b, s)) = &best
+        && b.rank > current.rank
+        && movement.upgrade
+    {
+        return Move {
+            customer_id: member.customer_id.clone(),
+            from_tier_id: current.id.clone(),
+            to_tier_id: b.id.clone(),
+            direction: Direction::Up,
+            reason: describe(s, ">="),
+            snapshot: s.clone(),
+        };
+    }
+    let (keep, snapshot) = tier_met(current, orders, m, true);
+    if keep != Some(false) || !movement.downgrade {
+        let why = match keep {
+            None => "Reached another way (invite or manual); kept".to_owned(),
+            _ if current.requirements.is_empty() => "Entry tier".to_owned(),
+            _ => format!("Keeps {}: {}", current.id, describe(&snapshot, ">=")),
+        };
+        return stay(Direction::Same, why, snapshot);
+    }
+    if movement.grace_periods > 0 && !member.in_grace {
+        return stay(
+            Direction::Grace,
+            format!("{}; grace period starts", describe(&snapshot, "<")),
+            snapshot,
+        );
+    }
+    let floor = current.rank.saturating_sub(movement.max_steps_down.max(1));
+    let target_rank = best.as_ref().map_or(i32::MIN, |(b, _)| b.rank).max(floor);
+    let target = sorted
+        .iter()
+        .filter(|t| t.rank <= target_rank)
+        .max_by_key(|t| t.rank)
+        .copied()
+        .unwrap_or(current);
+    if target.id == current.id {
+        return stay(Direction::Same, describe(&snapshot, "<"), snapshot);
+    }
+    Move {
+        customer_id: member.customer_id.clone(),
+        from_tier_id: current.id.clone(),
+        to_tier_id: target.id.clone(),
+        direction: Direction::Down,
+        reason: describe(&snapshot, "<"),
+        snapshot,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
@@ -394,5 +727,109 @@ mod tests {
         assert_eq!(requirement_combine(&wrapped).as_deref(), Some("any"));
         assert_eq!(requirement_list(&json!([gold()])).len(), 1);
         assert!(requirement_list(&json!({})).is_empty());
+    }
+
+    fn program() -> Vec<TierDef> {
+        vec![
+            TierDef::from_stored(
+                "member",
+                1,
+                &json!({"combine": "any", "requirements": []}),
+                &json!([]),
+            ),
+            TierDef::from_stored(
+                "gold",
+                2,
+                &json!({"combine": "any", "requirements": [gold()]}),
+                &json!([]),
+            ),
+            TierDef::from_stored(
+                "vip",
+                3,
+                &json!({"combine": "any", "requirements": [
+                    {"metric": "spend", "threshold": {"value": 800.00, "currency": "USD"},
+                     "retain_threshold": {"value": 600.00, "currency": "USD"}},
+                    {"metric": "invite"}]}),
+                &json!([]),
+            ),
+        ]
+    }
+
+    fn measure() -> Measure {
+        Measure {
+            default_window: json!({"type": "rolling", "length": 6, "unit": "month"}),
+            default_channels: vec!["web".into(), "app".into()],
+            settle_days: 14,
+            as_of: at("2026-12-01T03:00"),
+            time: time(),
+        }
+    }
+
+    fn member(tier: &str) -> Member {
+        Member {
+            customer_id: "cus_alex".into(),
+            name: "Alex".into(),
+            tier_id: tier.into(),
+            override_active: false,
+            in_grace: false,
+        }
+    }
+
+    #[test]
+    fn evaluates_up_down_grace_and_overrides() {
+        let movement = Movement::from_values(
+            &json!({"upgrade": "immediate", "downgrade": "at_schedule", "max_steps_down": 1,
+                    "grace_periods": 1}),
+            &json!({}),
+        );
+        // Alex's 312.00 settles by Dec 1: Member to Gold.
+        let up = evaluate(
+            &program(),
+            &member("member"),
+            Some(&alex_orders()),
+            &measure(),
+            &movement,
+        );
+        assert_eq!(
+            (up.direction, up.to_tier_id.as_str()),
+            (Direction::Up, "gold")
+        );
+        assert_eq!(up.reason, "spend 312.00 >= 300.00 USD");
+        // A Gold member with nothing: first a grace period, then one step down.
+        let grace = evaluate(
+            &program(),
+            &member("gold"),
+            Some(&[]),
+            &measure(),
+            &movement,
+        );
+        assert_eq!(grace.direction, Direction::Grace);
+        let in_grace = Member {
+            in_grace: true,
+            ..member("gold")
+        };
+        let down = evaluate(&program(), &in_grace, Some(&[]), &measure(), &movement);
+        assert_eq!(
+            (down.direction, down.to_tier_id.as_str()),
+            (Direction::Down, "member")
+        );
+        // VIP can also come by invite, which orders cannot show: kept.
+        let vip = evaluate(&program(), &member("vip"), Some(&[]), &measure(), &movement);
+        assert_eq!(vip.direction, Direction::Same);
+        // A manual tier is left alone; without orders nobody moves.
+        let manual = Member {
+            override_active: true,
+            ..member("member")
+        };
+        let kept = evaluate(
+            &program(),
+            &manual,
+            Some(&alex_orders()),
+            &measure(),
+            &movement,
+        );
+        assert_eq!(kept.direction, Direction::Override);
+        let none = evaluate(&program(), &member("member"), None, &measure(), &movement);
+        assert_eq!(none.direction, Direction::Same);
     }
 }

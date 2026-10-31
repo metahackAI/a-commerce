@@ -12,13 +12,16 @@ acom-auth.workspace = true
 acom-changeset.workspace = true
 acom-contract.workspace = true
 acom-core.workspace = true
+acom-platform.workspace = true
 acom-policy.workspace = true
 acom-store.workspace = true
 chrono.workspace = true
+rand = { workspace = true, features = ["std", "std_rng", "thread_rng"] }
 rust_decimal.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 sqlx.workspace = true
 tracing.workspace = true
 

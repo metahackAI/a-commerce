@@ -24,12 +24,9 @@ pub(crate) fn policies() -> PolicySet {
     PolicySet::from_defaults(texts.iter().map(|(f, t)| (*f, t.as_str()))).unwrap()
 }
 
-/// A context for `subject`: `cus_…` is a signed-in shopper, `ses_…` a guest, anything else an
-/// operator.
-pub(crate) async fn cx(subject: &str) -> Cx {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
-    let db = Db::connect(&url, 2).await.unwrap();
-    let time = StoreTime::new(chrono_tz::America::New_York);
+/// The principal for `subject`: `cus_…` is a signed-in shopper, `ses_…` a guest, anything else
+/// an operator.
+pub(crate) fn principal(subject: &str) -> Arc<Principal> {
     let (kind, set): (ActorKind, BTreeSet<String>) = if subject.starts_with("cus_") {
         (ActorKind::Shopper, scopes::shopper())
     } else if subject.starts_with("ses_") {
@@ -37,17 +34,25 @@ pub(crate) async fn cx(subject: &str) -> Cx {
     } else {
         (ActorKind::Operator, scopes::admin())
     };
+    Arc::new(Principal {
+        subject: subject.to_owned(),
+        kind,
+        tenant: TenantId::parse("store_northwind").unwrap(),
+        surface: Surface::Fo,
+        scopes: set,
+        name: None,
+        session_id: Some("ses_test".to_owned()),
+    })
+}
+
+/// A context for `subject` (see [`principal`]).
+pub(crate) async fn cx(subject: &str) -> Cx {
+    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
+    let db = Db::connect(&url, 2).await.unwrap();
+    let time = StoreTime::new(chrono_tz::America::New_York);
     Cx {
         tenant: TenantId::parse("store_northwind").unwrap(),
-        principal: Arc::new(Principal {
-            subject: subject.to_owned(),
-            kind,
-            tenant: TenantId::parse("store_northwind").unwrap(),
-            surface: Surface::Fo,
-            scopes: set,
-            name: None,
-            session_id: Some("ses_test".to_owned()),
-        }),
+        principal: principal(subject),
         request_id: "req_test".to_owned(),
         clock: Arc::new(FixedClock::at(time.parse("2026-11-07T10:00").unwrap())),
         time,
