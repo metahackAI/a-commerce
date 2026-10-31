@@ -9,12 +9,15 @@
 //! - `/mcp`, `/mcp/*` → commerce (outside agents)
 //! - everything else → web (Next.js)
 //!
+//! It also hands tasks a watcher opens to the agent when the store asks for that (`pickup`).
+//!
 //! Every request to commerce or the agent gets a fresh token signed here (Ed25519); a token the
 //! browser sends is dropped. State-changing requests from a session must carry the session's
 //! `X-CSRF-Token`. A browser without a session that changes something (a guest's first
 //! add-to-cart) gets a guest session on the spot.
 
 mod auth;
+mod pickup;
 mod session;
 
 use std::process::ExitCode;
@@ -418,6 +421,7 @@ async fn main() -> ExitCode {
         }
     };
     tracing::info!(store = %cli.store_id, demo_mode = cli.demo_mode, "gateway configured");
+    pickup::spawn(gw.clone());
     match acom_server::serve(SERVICE, &cli.addr, app(gw)).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {

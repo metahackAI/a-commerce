@@ -753,8 +753,13 @@ pub fn eval(root: &Path) -> ExitCode {
     let md = report(&set, &base, &runs, repeat);
     match arg("--out") {
         Some(path) => {
+            if let Some(dir) = Path::new(&path).parent() {
+                let _ = std::fs::create_dir_all(dir);
+            }
             if let Err(e) = std::fs::write(&path, &md) {
                 eprintln!("{path}: {e}");
+                // A run against the stack takes minutes; print the report rather than lose it.
+                println!("{md}");
                 return ExitCode::FAILURE;
             }
             println!("wrote {path}");

@@ -17,17 +17,20 @@ use acom_core::{FixedClock, StoreTime, TenantId};
 use acom_store::{Cx, Db};
 use serde_json::{Value, json};
 
-use crate::claim::{EvaluateReturnRequest, GetClaim, SearchClaims, SearchReturnRequests};
-use crate::decide::{ApproveClaim, RejectClaim};
-use crate::delivery::{GetDelivery, GetDeliveryDates, TrackShipment};
+use crate::claim::{
+    ApproveClaim, CancelMyOrder, EvaluateReturnRequest, GetCancelOptions, GetClaim,
+    GetReturnOptions, RejectClaim, SearchClaims, SearchReturnRequests, SendReturnRequest,
+    WithdrawClaim,
+};
 use crate::model::tests::policy;
-use crate::options::{GetCancelOptions, GetReturnOptions};
-use crate::person::{CancelMyOrder, SendReturnRequest, WithdrawClaim};
+use crate::parcel_delivery::{GetDelivery, GetDeliveryDates, TrackShipment};
 use crate::refund::{GetRefund, RefundReturn};
 
-const NY: chrono_tz::Tz = chrono_tz::America::New_York;
+mod operations;
 
-fn principal(subject: &str) -> Principal {
+pub(crate) const NY: chrono_tz::Tz = chrono_tz::America::New_York;
+
+pub(crate) fn principal(subject: &str) -> Principal {
     let (kind, surface) = if subject.starts_with("cus_") {
         (ActorKind::Shopper, Surface::Fo)
     } else {
@@ -45,7 +48,7 @@ fn principal(subject: &str) -> Principal {
 }
 
 /// A context for the demo store at a scene time, as `subject`.
-fn cx_on(db: Db, subject: &str, at: &str) -> Cx {
+pub(crate) fn cx_on(db: Db, subject: &str, at: &str) -> Cx {
     let time = StoreTime::new(NY);
     Cx {
         tenant: TenantId::parse("store_northwind").unwrap(),
@@ -60,7 +63,7 @@ fn cx_on(db: Db, subject: &str, at: &str) -> Cx {
 }
 
 /// A context whose pool never connects: for inputs refused before any query.
-fn offline(subject: &str) -> Cx {
+pub(crate) fn offline(subject: &str) -> Cx {
     cx_on(
         Db::connect_lazy("postgres://offline.invalid/acom", 1).unwrap(),
         subject,
@@ -68,7 +71,7 @@ fn offline(subject: &str) -> Cx {
     )
 }
 
-fn input<T: serde::de::DeserializeOwned>(v: Value) -> T {
+pub(crate) fn input<T: serde::de::DeserializeOwned>(v: Value) -> T {
     serde_json::from_value(v).unwrap()
 }
 
@@ -168,30 +171,32 @@ async fn track_shipment_refuses_a_cursor_it_did_not_make() {
 #[test]
 fn inputs_reject_unknown_fields_and_bad_words() {
     assert!(
-        serde_json::from_value::<crate::refund::RefundReturnInput>(
+        serde_json::from_value::<crate::refund::refund_return::RefundReturnInput>(
             json!({"claim_id": "clm_20402", "amount": 1})
         )
         .is_err()
     );
     assert!(
-        serde_json::from_value::<crate::options::GetReturnOptionsInput>(
+        serde_json::from_value::<crate::claim::get_return_options::GetReturnOptionsInput>(
             json!({"order_id": "ord_20402", "order_item_id": "oln_20402_1", "reason": "broken"})
         )
         .is_err()
     );
     assert!(
-        serde_json::from_value::<crate::person::SendReturnRequestInput>(json!({
-            "order_id": "ord_20402", "items": [{"order_item_id": "oln_20402_1", "quantity": 1}],
-            "reason": "defect", "kind": "refund", "send_back_method": "pickup",
-            "refund_to": {"type": "store_credit", "ref": null}
-        }))
+        serde_json::from_value::<crate::claim::send_return_request::SendReturnRequestInput>(
+            json!({
+                "order_id": "ord_20402", "items": [{"order_item_id": "oln_20402_1", "quantity": 1}],
+                "reason": "defect", "kind": "refund", "send_back_method": "pickup",
+                "refund_to": {"type": "store_credit", "ref": null}
+            })
+        )
         .is_ok()
     );
 }
 
 // ── Scenes B2 and F5 on the demo store (integration) ──────────────────────────
 
-async fn db(var: &str) -> Db {
+pub(crate) async fn db(var: &str) -> Db {
     let url = std::env::var(var).unwrap_or_else(|_| panic!("{var}"));
     Db::connect(&url, 2).await.expect("connect")
 }
@@ -410,12 +415,12 @@ async fn f5_alex_sends_the_refund_request() {
     .await
     .unwrap();
     let now = cx.clock.now();
-    let view = crate::options::return_view(&mut tx, "ord_20402", "oln_20402_1", None, now, NY)
+    let view = crate::claim::return_view(&mut tx, "ord_20402", "oln_20402_1", None, now, NY)
         .await
         .unwrap();
     let rules = crate::rules(&cx.policy).unwrap();
     let (_, options) =
-        crate::options::options_for(&rules, &cx.policy, &view, "defect", None, now, &cx.time)
+        crate::claim::options_for(&rules, &cx.policy, &view, "defect", None, now, &cx.time)
             .unwrap();
     assert_eq!(
         options[0].facts,

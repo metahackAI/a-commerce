@@ -525,6 +525,7 @@ mod tests {
                 request_text: vec!["Give the outside agent a key that can read.".into()],
                 interpretation: vec![],
                 conversation_id: None,
+                task_id: None,
             },
         )
         .await

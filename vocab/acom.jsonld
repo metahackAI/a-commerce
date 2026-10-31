@@ -414,6 +414,15 @@
       "rdfs:comment": "A group of customers defined by conditions. Used as additionalType on an Audience."
     },
     {
+      "@id": "acom:ShippingZone",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ShippingZone",
+      "rdfs:subClassOf": {
+        "@id": "schema:ShippingRateSettings"
+      },
+      "rdfs:comment": "a delivery area with its shipping rate, free-shipping minimum, surcharge and transit days. id prefix zone_."
+    },
+    {
       "@id": "acom:StockOut",
       "@type": "rdfs:Class",
       "rdfs:label": "StockOut",
@@ -515,7 +524,7 @@
           "@id": "schema:Text"
         }
       ],
-      "rdfs:comment": "the schema.org Action subtype (@type), for example UpdateAction."
+      "rdfs:comment": "the schema.org Action subtype (@type), for example PayAction."
     },
     {
       "@id": "acom:actorKind",
@@ -1284,6 +1293,38 @@
       "rdfs:comment": "changes[] as returned to the caller: [{op, entity, id, from, to}]."
     },
     {
+      "@id": "acom:charge",
+      "@type": "rdf:Property",
+      "rdfs:label": "charge",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Claim"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:MonetaryAmount"
+        }
+      ],
+      "rdfs:comment": "ISO 4217 code of charge_value."
+    },
+    {
+      "@id": "acom:chargePaidAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "chargePaidAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:Claim"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when the shopper paid the charge; NULL while it is due or when there is none."
+    },
+    {
       "@id": "acom:checks",
       "@type": "rdf:Property",
       "rdfs:label": "checks",
@@ -1315,6 +1356,9 @@
         },
         {
           "@id": "schema:CheckAction"
+        },
+        {
+          "@id": "schema:ParcelDelivery"
         }
       ],
       "schema:rangeIncludes": [
@@ -2548,6 +2592,22 @@
       "rdfs:comment": "features switched on for this store, as {flag: true|false}; {} when none."
     },
     {
+      "@id": "acom:feeType",
+      "@type": "rdf:Property",
+      "rdfs:label": "feeType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ShippingZone"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ShippingFeeType"
+        }
+      ],
+      "rdfs:comment": "how shipping is charged: paid, free, or free over a minimum subtotal. values: shipping_fee_type"
+    },
+    {
       "@id": "acom:firstFailedPasswordAt",
       "@type": "rdf:Property",
       "rdfs:label": "firstFailedPasswordAt",
@@ -2612,10 +2672,16 @@
           "@id": "acom:ClaimStatus"
         },
         {
+          "@id": "acom:DeliveryState"
+        },
+        {
+          "@id": "acom:RefundStatus"
+        },
+        {
           "@id": "schema:OrderStatus"
         }
       ],
-      "rdfs:comment": "state before the event; NULL for the creating event. values: claim_status"
+      "rdfs:comment": "state before the event. values: refund_status"
     },
     {
       "@id": "acom:fromTierId",
@@ -3841,6 +3907,22 @@
       "rdfs:comment": "when the payment completed."
     },
     {
+      "@id": "acom:parcelDeliveryId",
+      "@type": "rdf:Property",
+      "rdfs:label": "parcelDeliveryId",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Action"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:ParcelDelivery"
+        }
+      ],
+      "rdfs:comment": "the parcel that changed (dlv_ id), the object of the event."
+    },
+    {
       "@id": "acom:passwordChangedAt",
       "@type": "rdf:Property",
       "rdfs:label": "passwordChangedAt",
@@ -4372,6 +4454,22 @@
         }
       ],
       "rdfs:comment": "ISO 4217 code of refund_estimate_value."
+    },
+    {
+      "@id": "acom:refundId",
+      "@type": "rdf:Property",
+      "rdfs:label": "refundId",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:Action"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:Refund"
+        }
+      ],
+      "rdfs:comment": "the refund that changed (rfd_ id), the object of the event."
     },
     {
       "@id": "acom:refundMethod",
@@ -5451,6 +5549,22 @@
       "rdfs:comment": "the supplier's description, kept so the store can write its own copy in its tone; NULL when the sheet had none."
     },
     {
+      "@id": "acom:surcharge",
+      "@type": "rdf:Property",
+      "rdfs:label": "surcharge",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ShippingZone"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:MonetaryAmount"
+        }
+      ],
+      "rdfs:comment": "ISO 4217 code of surcharge_value."
+    },
+    {
       "@id": "acom:surface",
       "@type": "rdf:Property",
       "rdfs:label": "surface",
@@ -5699,10 +5813,16 @@
           "@id": "acom:ClaimStatus"
         },
         {
+          "@id": "acom:DeliveryState"
+        },
+        {
+          "@id": "acom:RefundStatus"
+        },
+        {
           "@id": "schema:OrderStatus"
         }
       ],
-      "rdfs:comment": "state after the event; NULL when the state did not change. values: claim_status"
+      "rdfs:comment": "state after the event. values: refund_status"
     },
     {
       "@id": "acom:toTierId",
@@ -5767,6 +5887,22 @@
         }
       ],
       "rdfs:comment": "the tone the draft was written in: the request's, or catalog.yml content.copy.tone."
+    },
+    {
+      "@id": "acom:transitBusinessDays",
+      "@type": "rdf:Property",
+      "rdfs:label": "transitBusinessDays",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ShippingZone"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "business days a parcel travels from ship day to arrival in this zone."
     },
     {
       "@id": "acom:undoUntil",
@@ -6025,6 +6161,22 @@
         }
       ],
       "rdfs:comment": "when the member withdrew; NULL for members who did not."
+    },
+    {
+      "@id": "acom:zoneType",
+      "@type": "rdf:Property",
+      "rdfs:label": "zoneType",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ShippingZone"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:ZoneType"
+        }
+      ],
+      "rdfs:comment": "standard or remote (remote zones usually carry a surcharge). values: zone_type"
     },
     {
       "@id": "acom:ActorKind",
@@ -6627,6 +6779,16 @@
       "acom:wireList": "sales_channel"
     },
     {
+      "@id": "acom:ShippingFeeType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ShippingFeeType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the shipping_fee_type list (docs/api/enums.md).",
+      "acom:wireList": "shipping_fee_type"
+    },
+    {
       "@id": "acom:SlotType",
       "@type": "rdfs:Class",
       "rdfs:label": "SlotType",
@@ -6705,6 +6867,16 @@
       },
       "rdfs:comment": "Values of the withdrawal_reason list (docs/api/enums.md).",
       "acom:wireList": "withdrawal_reason"
+    },
+    {
+      "@id": "acom:ZoneType",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ZoneType",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the zone_type list (docs/api/enums.md).",
+      "acom:wireList": "zone_type"
     },
     {
       "@id": "acom:ActorKindOperator",
@@ -8639,6 +8811,27 @@
       "schema:position": 4
     },
     {
+      "@id": "acom:ShippingFeeTypePaid",
+      "@type": "acom:ShippingFeeType",
+      "rdfs:label": "Paid",
+      "acom:wireWord": "paid",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:ShippingFeeTypeFree",
+      "@type": "acom:ShippingFeeType",
+      "rdfs:label": "Free",
+      "acom:wireWord": "free",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:ShippingFeeTypeFreeOverMinSubtotal",
+      "@type": "acom:ShippingFeeType",
+      "rdfs:label": "FreeOverMinSubtotal",
+      "acom:wireWord": "free_over_min_subtotal",
+      "schema:position": 3
+    },
+    {
       "@id": "acom:SlotTypeHero",
       "@type": "acom:SlotType",
       "rdfs:label": "Hero",
@@ -8889,6 +9082,20 @@
       "rdfs:label": "Other",
       "acom:wireWord": "other",
       "schema:position": 6
+    },
+    {
+      "@id": "acom:ZoneTypeStandard",
+      "@type": "acom:ZoneType",
+      "rdfs:label": "Standard",
+      "acom:wireWord": "standard",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:ZoneTypeRemote",
+      "@type": "acom:ZoneType",
+      "rdfs:label": "Remote",
+      "acom:wireWord": "remote",
+      "schema:position": 2
     }
   ]
 }

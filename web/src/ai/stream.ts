@@ -10,6 +10,8 @@ export interface TurnRequest {
   message?: string;
   context?: ElementContext[];
   ui_event?: {block_id: string; action_id: string; args?: Record<string, unknown>};
+  /** The task the turn works on: a change set it drafts is linked to the task. */
+  task_id?: string;
 }
 
 /** Parses an SSE byte stream into events. Handles events split across chunks. */

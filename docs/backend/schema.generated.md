@@ -1058,6 +1058,9 @@
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `charge_value` | numeric(12,2) | ✓ | `acom:charge` | extra cost the shopper pays before the claim goes ahead (cancel shipping over the refund, exchange shipping); NULL when there is none. |
+| `charge_currency` | char(3) | ✓ | `acom:charge` | ISO 4217 code of charge_value. |
+| `charge_paid_at` | timestamptz | ✓ | `acom:chargePaidAt` | when the shopper paid the charge; NULL while it is due or when there is none. |
 
 ### `fulfillment.claim_event`
 
@@ -1141,6 +1144,32 @@
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `claim_id` | text | ✓ | `acom:claimId` | exchange claim whose replacement this parcel reships (clm_ id); NULL for the order's own shipments. → `fulfillment.claim` |
+
+### `fulfillment.parcel_delivery_event`
+
+`schema:Action` — one state change of a parcel (scheduled, short of stock, labelled, carrier events); rows are only added.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `parcel_delivery_id` | text |  | `acom:parcelDeliveryId` | the parcel that changed (dlv_ id), the object of the event. → `fulfillment.parcel_delivery` |
+| `position` | integer |  | `schema:position` | 1-based order of this event within its aggregate. |
+| `action_type` | text |  | `acom:actionType` | the schema.org Action subtype (@type), for example CreateAction or UpdateAction. |
+| `action_status` | text |  | `schema:actionStatus` | lifecycle of the action. values: action_status Values: `potential` · `active` · `completed` · `failed`. |
+| `agent_id` | text | ✓ | `schema:agent` | person or system that acted (adm_ or sys_ id); NULL when only a model acted. |
+| `agent_name` | text | ✓ | `schema:agent` | name of the software agent (model) that acted; NULL for people. |
+| `instrument` | text | ✓ | `schema:instrument` | tool name or endpoint that caused the event. |
+| `from_state` | text | ✓ | `acom:fromState` | state before the event; NULL for the creating event. values: delivery_state Values: `awaiting_stock` · `ship_instructed` · `packed` · `label_created` · `picked_up` · `in_transit` · `delivered` · `delivery_failed` · `cancelled`. |
+| `to_state` | text | ✓ | `acom:toState` | state after the event; NULL when the state did not change. values: delivery_state Values: `awaiting_stock` · `ship_instructed` · `packed` · `label_created` · `picked_up` · `in_transit` · `delivered` · `delivery_failed` · `cancelled`. |
+| `result` | jsonb | ✓ | `schema:result` | what the action produced, as JSON (lines, tracking number, carrier). |
+| `error` | jsonb | ✓ | `schema:error` | failure as {code, class, message}; NULL when it succeeded. |
+| `start_time` | timestamptz |  | `schema:startTime` | when the action started. |
+| `end_time` | timestamptz | ✓ | `schema:endTime` | when the action ended; NULL while it runs. |
+| `request_id` | text | ✓ | `-` | request trace id (req_) from the gateway; joins agent turns and the action log. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
 ### `fulfillment.refund`
 
@@ -1163,6 +1192,54 @@
 | `change_set_id` | text | ✓ | `acom:changeSetId` | change set that approved the refund. → `platform.change_set` |
 | `start_time` | timestamptz |  | `schema:startTime` | when the refund was sent to the provider. |
 | `end_time` | timestamptz | ✓ | `schema:endTime` | when the provider confirmed or failed it. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `fulfillment.refund_event`
+
+`schema:Action` — one state change of a refund (sent, retried, confirmed or failed by the payment provider); rows are only added.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `refund_id` | text |  | `acom:refundId` | the refund that changed (rfd_ id), the object of the event. → `fulfillment.refund` |
+| `position` | integer |  | `schema:position` | 1-based order of this event within its aggregate. |
+| `action_type` | text |  | `acom:actionType` | the schema.org Action subtype (@type), for example PayAction. |
+| `action_status` | text |  | `schema:actionStatus` | lifecycle of the action. values: action_status Values: `potential` · `active` · `completed` · `failed`. |
+| `agent_id` | text | ✓ | `schema:agent` | person or system that acted (adm_ or sys_ id); NULL when only a model acted. |
+| `agent_name` | text | ✓ | `schema:agent` | name of the software agent (model) that acted; NULL for people. |
+| `instrument` | text | ✓ | `schema:instrument` | tool name or endpoint that caused the event, for example retry_refund. |
+| `from_state` | text | ✓ | `acom:fromState` | state before the event. values: refund_status Values: `requested` · `completed` · `failed`. |
+| `to_state` | text | ✓ | `acom:toState` | state after the event. values: refund_status Values: `requested` · `completed` · `failed`. |
+| `result` | jsonb | ✓ | `schema:result` | what the action produced, as JSON (attempt number, payment provider note). |
+| `error` | jsonb | ✓ | `schema:error` | the provider's failure as {code, class, message}; NULL when it succeeded. |
+| `start_time` | timestamptz |  | `schema:startTime` | when the action started. |
+| `end_time` | timestamptz | ✓ | `schema:endTime` | when the action ended; NULL while it runs. |
+| `request_id` | text | ✓ | `-` | request trace id (req_) from the gateway; joins agent turns and the action log. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
+### `fulfillment.shipping_zone`
+
+`schema:ShippingRateSettings/acom:ShippingZone` — a delivery area with its shipping rate, free-shipping minimum, surcharge and transit days. id prefix zone_. · id `zone_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix zone_; the same value the API, logs and events use. |
+| `name` | text |  | `schema:name` | name people use for the zone, for example Contiguous US. |
+| `zone_type` | text |  | `acom:zoneType` | standard or remote (remote zones usually carry a surcharge). values: zone_type Values: `standard` · `remote`. |
+| `shipping_destination` | jsonb |  | `schema:shippingDestination` | DefinedRegion list [{address_country, address_region}]; an entry without address_region covers the whole country except regions another zone names. |
+| `fee_type` | text |  | `acom:feeType` | how shipping is charged: paid, free, or free over a minimum subtotal. values: shipping_fee_type Values: `paid` · `free` · `free_over_min_subtotal`. |
+| `shipping_rate_value` | numeric(12,2) |  | `schema:shippingRate` | shipping charged per parcel when it is not free, in major units of the currency. |
+| `shipping_rate_currency` | char(3) |  | `schema:shippingRate` | ISO 4217 code of shipping_rate_value. |
+| `free_shipping_threshold_value` | numeric(12,2) | ✓ | `schema:freeShippingThreshold` | subtotal before member benefits from which shipping is free; set only for free_over_min_subtotal. |
+| `free_shipping_threshold_currency` | char(3) | ✓ | `schema:freeShippingThreshold` | ISO 4217 code of free_shipping_threshold_value. |
+| `surcharge_value` | numeric(12,2) |  | `acom:surcharge` | remote-area amount added to every parcel leg to this zone (fulfillment.yml delivery.remote_area_surcharge: by_zone), 0 for none. |
+| `surcharge_currency` | char(3) |  | `acom:surcharge` | ISO 4217 code of surcharge_value. |
+| `transit_business_days` | integer |  | `acom:transitBusinessDays` | business days a parcel travels from ship day to arrival in this zone. |
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |

@@ -206,6 +206,7 @@
 | 신고(리뷰·게시글 공통) `acom:report_reason` | `spam`, `abuse`, `obscene`, `advertisement`, `fake`, `irrelevant`, `other` |
 | 탈퇴 `acom:withdrawal_reason` | `not_using`, `too_many_messages`, `privacy_concern`, `poor_service`, `found_alternative`, `other` |
 | 반품·교환 불가 | `used`, `final_sale`, `gift_card`, `digital`, `product_not_exchangeable` |
+| 증빙 종류 `acom:evidence_type` (`upload_evidence`) | `damage_photo`, `delivery_photo`, `product_defect`, `receipt`, `other` |
 
 ### 2.5 검수 결과 `acom:inspection_condition`
 
@@ -222,6 +223,8 @@
 | 결제 수단 `acom:payment_method` | `credit_card`, `bank_transfer`, `virtual_account`, `loyalty_points`, `store_credit` | |
 | 반품 배송비 (schema.org `ReturnFeesEnumeration`) | `free_return`, `return_fees_customer_responsibility`, `return_shipping_fees` | |
 | 배송비 종류 | `paid`, `free`, `free_over_min_subtotal` | 예전 표기 `conditional_free` |
+| 배송비 종류 목록 이름 | `shipping_fee_type` (`acom:feeType`, `fulfillment.shipping_zone.fee_type`) | 위 줄의 값 |
+| 배송 지역 종류 `acom:zone_type` | `standard`, `remote` | `remote`는 보통 지역 추가 배송비가 있음 |
 | 배송 방법 | `standard` (schema.org `ParcelService`) | |
 
 ---

@@ -36,6 +36,10 @@ pub struct NewChangeSet {
     pub interpretation: Vec<Value>,
     #[serde(default)]
     pub conversation_id: Option<String>,
+    /// The open task this set answers (`task_…`): the task links to the set while it has none,
+    /// and asks for a person once the set is submitted (docs/api/platform.md §task).
+    #[serde(default)]
+    pub task_id: Option<String>,
 }
 
 /// One item in `POST …/items` and `PUT …/items`.
@@ -268,8 +272,45 @@ pub async fn create(cx: &Cx, new: NewChangeSet) -> Result<Value, ToolError> {
         None,
     )
     .await?;
+    let task = match new.task_id.as_deref() {
+        Some(task) => link_task(&mut tx, task, &id, number, new.conversation_id.as_deref()).await?,
+        None => None,
+    };
     tx.commit().await.map_err(ToolError::from)?;
-    Ok(json!({"id": id, "number": number, "version": 1, "state": "drafting"}))
+    Ok(json!({"id": id, "number": number, "version": 1, "state": "drafting", "task_id": task}))
+}
+
+/// Links an open task without a change set to the new set (and to the conversation drafting it).
+/// A task that is closed or already has a set keeps what it has; the set stands on its own.
+async fn link_task(
+    tx: &mut TxCx,
+    task: &str,
+    cs: &str,
+    number: i32,
+    conversation: Option<&str>,
+) -> Result<Option<String>, ToolError> {
+    let state: Option<String> = sqlx::query_scalar(
+        "UPDATE platform.task SET change_set_id = $3, summary = $4,
+           conversation_id = coalesce($5, conversation_id), task_state = 'working',
+           updated_at = $6, version = version + 1
+         WHERE tenant_id = $1 AND id = $2 AND change_set_id IS NULL
+           AND task_state IN ('needs_you', 'working')
+         RETURNING task_state",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(task)
+    .bind(cs)
+    .bind(format!("Drafting change set #{number}"))
+    .bind(conversation)
+    .bind(tx.clock.now())
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db_err)?;
+    let Some(state) = state else {
+        return Ok(None);
+    };
+    crate::jobs::task_event(tx, task, &state, Some(cs)).await?;
+    Ok(Some(task.to_owned()))
 }
 
 /// Puts a stored preview at the end of the set. A set that was submitted before goes back to
@@ -692,6 +733,31 @@ pub async fn submit(cx: &Cx, cs: &str, version: i32) -> Result<Value, ToolError>
         None,
     )
     .await?;
+    // The task this set answers now waits for a person.
+    let number: i32 = sqlx::query_scalar(
+        "SELECT number FROM platform.change_set WHERE tenant_id = $1 AND id = $2",
+    )
+    .bind(cx.tenant.as_str())
+    .bind(cs)
+    .fetch_one(&mut *tx.tx)
+    .await
+    .map_err(db_err)?;
+    let waiting: Vec<String> = sqlx::query_scalar(
+        "UPDATE platform.task SET task_state = 'needs_you', summary = $3, updated_at = $4,
+           version = version + 1
+         WHERE tenant_id = $1 AND change_set_id = $2 AND task_state IN ('needs_you', 'working')
+         RETURNING id",
+    )
+    .bind(cx.tenant.as_str())
+    .bind(cs)
+    .bind(format!("Change set #{number} is waiting for your approval"))
+    .bind(cx.clock.now())
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(db_err)?;
+    for id in waiting {
+        crate::jobs::task_event(&mut tx, &id, "needs_you", Some(cs)).await?;
+    }
     tx.commit().await.map_err(ToolError::from)?;
     Ok(json!({"id": cs, "version": version, "state": "waiting_for_approval"}))
 }
