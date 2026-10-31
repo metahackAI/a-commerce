@@ -219,6 +219,9 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 | `sales.order_item` | schema:OrderItem | `oln` | `order_item_status`, `order_quantity`, `acom:fulfillment_stage` |
 | `sales.payment` | schema:PayAction | `pay` | `payment_method`, `payment_status` |
 | `sales.order_event` | schema:Action | — | |
+| `sales.subscription` | schema:Order/acom:Subscription | `sub` | 정기 주문: `subscription_status`, `billing_cycle`, `next_charge_date`, 줄(`ordered_item`)과 배송지(`order_delivery`)는 jsonb |
+| `sales.receipt` | schema:Invoice/acom:Receipt | `rct` | `receipt_type`, `tax_id`, 주문·종류마다 취소되지 않은 것 하나 |
+| `sales.guest_lookup` | - | — | `verify_guest`의 주문 번호별 틀린 시도·잠금·토큰 해시 |
 | `fulfillment.parcel_delivery` | schema:ParcelDelivery | `dlv` | `delivery_state`, `expected_arrival_until`, `tracking_number` |
 | `fulfillment.claim` | schema:ReturnAction/acom:Claim (취소는 CancelAction) | `clm` | `claim_type`, `claim_status`, `claim_reason`, `liability` |
 | `fulfillment.claim_item` | schema:OrderItem | — | 클레임 하나가 여러 주문 품목을 담을 때(#20377) 품목별 수량·사유·환불 예상액 |
