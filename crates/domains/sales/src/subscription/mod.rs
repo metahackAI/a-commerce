@@ -236,16 +236,23 @@ pub(crate) fn charge_time(time: &StoreTime, date: NaiveDate) -> Result<DateTime<
         .map_err(|e| ToolError::new(ErrorCode::INTERNAL, e.to_string()))
 }
 
-/// Schedules the order of a subscription's charge date (`subscription.renew`). The job places
-/// nothing if the subscription is no longer active then, or its date moved.
+/// The job id of one charge date's order: one run per subscription and date, so booking it
+/// again (a resume before the date, a schedule changed back) adds nothing.
+pub(crate) fn renewal_job_id(subscription_id: &str, date: NaiveDate) -> String {
+    format!("job_renew_{subscription_id}_{}", date.format("%Y%m%d"))
+}
+
+/// Books the order of a subscription's charge date (`subscription.renew`) with the job engine.
+/// The job places nothing if the subscription is no longer active then, or its date moved.
 pub(crate) async fn schedule_renewal(
     tx: &mut TxCx,
     subscription_id: &str,
     date: NaiveDate,
 ) -> Result<(), ToolError> {
     let at = charge_time(&tx.time, date)?;
-    acom_changeset::jobs::schedule(
+    acom_changeset::jobs::book(
         tx,
+        &renewal_job_id(subscription_id, date),
         RENEW_JOB,
         at,
         &json!({"subscription_id": subscription_id,
@@ -384,6 +391,12 @@ mod tests {
             to: state("paused", "2026-12-01"),
         };
         assert_eq!(same.changes()[0].note.as_deref(), Some("Already paused"));
+    }
+
+    #[test]
+    fn one_job_per_subscription_and_charge_date() {
+        let d = NaiveDate::parse_from_str("2026-12-01", "%Y-%m-%d").unwrap();
+        assert_eq!(renewal_job_id("sub_3301", d), "job_renew_sub_3301_20261201");
     }
 
     #[test]

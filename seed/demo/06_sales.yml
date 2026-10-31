@@ -1741,4 +1741,4 @@ tables:
       paused_at: "2026-10-25T08:00:00-04:00"
   # Jamie's next merino tee order (subscription.renew on its charge date).
   platform.job:
-    - {tenant_id: store_northwind, id: job_sub_3301_renew, kind: subscription.renew, run_at: "2026-12-01T00:00:00-05:00", payload: {subscription_id: sub_3301, charge_date: "2026-12-01"}, attempts: 0}
+    - {tenant_id: store_northwind, id: job_renew_sub_3301_20261201, kind: subscription.renew, run_at: "2026-12-01T00:00:00-05:00", payload: {subscription_id: sub_3301, charge_date: "2026-12-01"}, attempts: 0}

@@ -12,7 +12,7 @@ use acom_contract::{
     ActionType, Audience, Change, ChangeOp, Check, Committed, ErrorCode, Group, Kind, Method,
     OpMeta, Operation, Planned, Slot, ToolError, UndoSupport, Verification, WriteOp,
 };
-use acom_customer::service::for_sales_guest as customer;
+use acom_customer::service::for_sales as customer;
 use acom_store::{Cx, TxCx};
 use chrono::{DateTime, Duration, Utc};
 use rand::RngCore;
