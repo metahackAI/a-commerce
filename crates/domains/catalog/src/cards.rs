@@ -99,7 +99,7 @@ impl ProductCard {
             self.material.as_deref(),
             &self.additional_property
         ));
-        out["has_variant"] = self.variants.iter().map(Variant::line_json).collect();
+        out["has_variant"] = self.variants.iter().map(Variant::page_json).collect();
         out
     }
 

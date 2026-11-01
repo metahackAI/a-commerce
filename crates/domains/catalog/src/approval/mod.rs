@@ -361,6 +361,7 @@ mod tests {
             name: "Coat".into(),
             color: None,
             size: Some("M".into()),
+            image: None,
             sale_type: "always".into(),
             is_managed: true,
             offer_id: price.map(|_| format!("off_{sku}")),

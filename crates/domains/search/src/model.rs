@@ -675,6 +675,7 @@ mod tests {
                 name: name.into(),
                 color: Some("Slate".into()),
                 size: Some("M".into()),
+                image: None,
                 sale_type: "always".into(),
                 is_managed: true,
                 offer_id: Some(format!("off_{id}_m")),

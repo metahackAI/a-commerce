@@ -402,6 +402,7 @@ mod tests {
             name: format!("Cotton chore coat, {color}, {size}"),
             color: Some(color.into()),
             size: Some(size.into()),
+            image: None,
             sale_type: "always".into(),
             is_managed: true,
             offer_id: Some(format!("off_{id}")),

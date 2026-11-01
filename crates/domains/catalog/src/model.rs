@@ -54,6 +54,8 @@ pub struct Variant {
     pub name: String,
     pub color: Option<String>,
     pub size: Option<String>,
+    /// The variant's picture: the photo of its color, or the drawing when it has none.
+    pub image: Option<String>,
     pub sale_type: String,
     pub is_managed: bool,
     pub offer_id: Option<String>,
@@ -87,6 +89,14 @@ impl Variant {
     pub fn line_json(&self) -> Value {
         json!({"variant_id": self.id, "sku": self.sku, "size": self.size, "color": self.color,
                "inventory_level": self.stock(), "availability": self.availability})
+    }
+
+    /// The entry in `get_product`'s `has_variant[]`: the line and the variant's picture, so the
+    /// product page can show the color the shopper picks. Search results keep the shorter line.
+    pub fn page_json(&self) -> Value {
+        let mut out = self.line_json();
+        out["image"] = json!(self.image);
+        out
     }
 }
 
@@ -504,6 +514,10 @@ mod tests {
             name: id.into(),
             color: Some(color.into()),
             size: Some(size.into()),
+            image: Some(format!(
+                "/media/products/prd_x--{}.webp",
+                color.to_lowercase()
+            )),
             sale_type: "always".into(),
             is_managed: true,
             offer_id: Some(id.replace("var_", "off_")),
@@ -525,6 +539,14 @@ mod tests {
             variant("var_chore_coat_s_olive", "Olive", "S", 3, "in_stock"),
             variant("var_chore_coat_m_olive", "Olive", "M", 0, "out_of_stock"),
         ]
+    }
+
+    #[test]
+    fn the_product_page_entry_carries_the_variants_picture_and_the_search_line_does_not() {
+        let v = variant("var_x_m_olive", "Olive", "M", 3, "in_stock");
+        assert_eq!(v.page_json()["image"], "/media/products/prd_x--olive.webp");
+        assert_eq!(v.page_json()["color"], "Olive");
+        assert!(v.line_json().get("image").is_none());
     }
 
     #[test]

@@ -58,7 +58,7 @@ pub async fn groups(tx: &mut TxCx, ids: &[String]) -> Result<Vec<Group>, ToolErr
     .map_err(db)
 }
 
-const VARIANT_COLUMNS: &str = "p.id, p.product_group_id, p.sku, p.name, p.color, p.size,
+const VARIANT_COLUMNS: &str = "p.id, p.product_group_id, p.sku, p.name, p.color, p.size, p.image,
     p.sale_type, p.is_managed, o.id AS offer_id, o.price, o.price_currency::text AS price_currency,
     o.availability, o.inventory_level, o.safety_stock, o.cost_value,
     o.cost_currency::text AS cost_currency";
