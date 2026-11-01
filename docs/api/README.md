@@ -403,6 +403,8 @@ get_my_orders ──order_id──▶ get_return_options ──▶ (사람) POST
 | `getClmGridList` · `getClmGridListCnt` | R | `search_return_requests` | 그리드 + 개수, 코드(`clmStatCd`, `clmRsnCd`) |
 | `getRfndPopInitData` · `saveRfndProc` | R · W | `get_claim` + `get_order` · `refund_return` | 환불 하나가 그리드·팝업 초기화·저장으로 나뉨 |
 | `saveCustMsgSend` | W | `send_customer_message` | 축약 이름, 코드(`msgTpCd`, `sndChnlCd`) |
+| `getOrdGridList` · `getOrdGridListCnt` | R | `search_orders` | 그리드 + 개수, 코드(`ordStatCd`), 검색어 한 칸(숫자면 주문번호, 아니면 주문자) |
+| `getOrdDtlPopInitData` | R | `get_order` + `get_delivery` | 주문·라인·배송·클레임을 팝업 초기화 하나로, 코드(`ordStatCd`, `dlvStatCd`, `clmStatCd`) |
 | `getCartList` · `saveCartList` | R · W | `get_cart` · `add_to_cart` · `update_cart_item` · `remove_cart_item` | 일괄 저장 하나에 담기·바꾸기·빼기 |
 | `getOrdShtInitData` | R(부작용 있음) | `get_cart` + `prepare_order` 프리뷰 | 안전한지 알 수 없는 POST 읽기 |
 | `getSaleAnlsGridList` | R | `explain_sales_change` | 코드(`cmprBaseCd`), 그리드 한 줄 |
