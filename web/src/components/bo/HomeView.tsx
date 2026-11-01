@@ -11,6 +11,7 @@ import {HStack, Layout, LayoutContent, LayoutHeader, StackItem, VStack} from '@a
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/SegmentedControl';
 import {Button} from '@astryxdesign/core/Button';
+import {useMediaQuery} from '@astryxdesign/core/hooks';
 
 import {useAi} from '@/ai/AiProvider';
 import type {ApiErrorBody} from '@/lib/api';
@@ -39,6 +40,8 @@ export function HomeView({
   const router = useRouter();
   const {takeOver} = useAgentDock();
   const [view, setView] = useState<'inbox' | 'agent'>(initialView);
+  // The example would run under the composer's buttons on a phone.
+  const isNarrow = useMediaQuery('(max-width: 640px)');
 
   useEffect(() => takeOver(() => setView('agent')), [takeOver]);
   // Watchers and change sets move tasks while the inbox is open: read the list again.
@@ -84,7 +87,11 @@ export function HomeView({
           <LayoutContent role="main">
             <VStack gap={6} paddingBlock={2}>
               <AgentComposer
-                placeholder="Give the agent a task. For example: “Run a 20% weekend sale on summer outerwear for VIP members.”"
+                placeholder={
+                  isNarrow
+                    ? 'Give the agent a task…'
+                    : 'Give the agent a task. For example: “Run a 20% weekend sale on summer outerwear for VIP members.”'
+                }
                 onSent={() => setView('agent')}
               />
               {error ? <ErrorState error={error} title="The tasks could not be loaded." /> : null}
