@@ -128,7 +128,7 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
       "changes_total": 43,
       "checks": [{"rule": "max_discount", "passed": true, "detail": "Highest is 20%; policy allows 30% for vip", "fix_tool": null},
                  {"rule": "price_floor", "passed": true, "detail": "Overshirt moved to 15% ($67.15) to stay at cost + 15% ($66.70)", "fix_tool": null},
-                 {"rule": "promo_min_stock", "passed": true, "detail": "2 products under 10 units excluded: chore coat (7), rain parka (4)", "fix_tool": null},
+                 {"rule": "promo_min_stock", "passed": true, "detail": "2 of 42 products under 10 units excluded: chore coat (7), rain parka (4)", "fix_tool": null},
                  {"rule": "promotion_overlap", "passed": true, "detail": "Checked 4 running promotions", "fix_tool": null}]},
      {"position": 2, "preview_id": "pv_8f31", "tool": "create_coupon", "address": "promotion.coupon.create",
       "depends_on": ["pv_8f2c"], "action_status": "potential", "needs_approval": true,

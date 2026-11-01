@@ -1,7 +1,11 @@
-// A state word from docs/api/enums.md as a colored chip. The color says only "good", "needs a
-// person", "in progress", "stopped"; the label is the word itself made readable.
+// A state word from docs/api/enums.md as a small colored dot and the word (Vercel's Geist Status
+// Dot does this for a deployment's state), so a column of states reads as text and only the color
+// of the dot differs. The color says only "good", "needs a person", "stopped" or neither (in
+// progress, or any other word); the label is the word itself made readable.
 
-import {Token} from '@astryxdesign/core/Token';
+import {HStack} from '@astryxdesign/core/Layout';
+import {StatusDot, type StatusDotVariant} from '@astryxdesign/core/StatusDot';
+import {Text} from '@astryxdesign/core/Text';
 
 import {words} from '@/app/bo/_lib/format';
 
@@ -81,6 +85,29 @@ export function stateColor(state: string | null | undefined): TokenColor {
   return 'gray';
 }
 
+/** The dot's color for a state: in-progress states stay neutral, as the brand's accent is red. */
+const DOT: Record<TokenColor, StatusDotVariant> = {
+  default: 'neutral',
+  red: 'error',
+  orange: 'warning',
+  yellow: 'warning',
+  green: 'success',
+  teal: 'neutral',
+  cyan: 'neutral',
+  blue: 'neutral',
+  purple: 'neutral',
+  gray: 'neutral',
+};
+
 export function StateToken({state, label, size = 'sm'}: {state: string | null | undefined; label?: string; size?: 'sm' | 'md'}) {
-  return <Token label={label ?? words(state)} color={stateColor(state)} size={size} />;
+  const text = label ?? words(state);
+  // The word is read out; the dot only repeats it in color.
+  return (
+    <HStack gap={1.5} vAlign="center">
+      <StatusDot variant={DOT[stateColor(state)]} label={text} aria-hidden />
+      <Text type={size === 'md' ? 'label' : 'body'} maxLines={1}>
+        {text}
+      </Text>
+    </HStack>
+  );
 }

@@ -526,11 +526,12 @@ pub fn check_min_stock(rules: &SaleRules, plan: &SalePlan) -> Check {
             fix_tool: Some("set_sale_prices".into()),
         };
     }
+    // Out of how many: "40 of 42" is what a person checks a sale's reach against.
+    let total = plan.included.len() + plan.excluded.len();
     let detail = match low_excluded.len() {
         0 => format!("Every product has at least {min} units"),
-        1 => format!("1 product under {min} units excluded: {}", low_excluded[0]),
         n => format!(
-            "{n} products under {min} units excluded: {}",
+            "{n} of {total} products under {min} units excluded: {}",
             low_excluded.join(", ")
         ),
     };
@@ -810,7 +811,9 @@ mod tests {
         assert!(c.passed);
         assert_eq!(
             c.detail.as_deref(),
-            Some("2 products under 10 units excluded: Cotton chore coat (7), Light rain parka (4)")
+            Some(
+                "2 of 3 products under 10 units excluded: Cotton chore coat (7), Light rain parka (4)"
+            )
         );
     }
 

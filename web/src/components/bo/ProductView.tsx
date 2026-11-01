@@ -12,6 +12,7 @@ import {Text} from '@astryxdesign/core/Text';
 import {Button} from '@astryxdesign/core/Button';
 import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
 import {Blockquote} from '@astryxdesign/core/Blockquote';
+import {Token} from '@astryxdesign/core/Token';
 
 import type {ApiErrorBody} from '@/lib/api';
 import {actor, count, date, dateTime, price, value, words} from '@/app/bo/_lib/format';
@@ -349,7 +350,7 @@ function Reviews({r, name}: {r: ReviewSummary; name: string}) {
       {r.mentions.length > 0 ? (
         <HStack gap={1} wrap="wrap">
           {r.mentions.map(m => (
-            <StateToken key={m.text} state="gray" label={`“${m.text}” · ${m.count}`} />
+            <Token key={m.text} label={`“${m.text}” · ${m.count}`} size="sm" />
           ))}
         </HStack>
       ) : null}

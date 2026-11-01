@@ -27,6 +27,7 @@ tool_search:
     photos: [remember, shown]
     text: [remember, shown]
     decline: [message, evaluate]
+    markdown: [sale, prices]
 
 router:
   # Below this the surface's default agent (or the conversation's last agent) takes the turn.

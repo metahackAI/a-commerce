@@ -619,6 +619,7 @@ mod tests {
                 registry: Arc::new(acom_registry::build().unwrap()),
                 verifier: Arc::new(Verifier::from_pem(&public, "commerce").unwrap()),
                 facade: facade.clone(),
+                events: Default::default(),
             });
             Some(Fixture {
                 router: crate::router(api),

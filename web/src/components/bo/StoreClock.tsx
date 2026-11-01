@@ -1,10 +1,11 @@
 'use client';
 
-// The store's time in the console header (docs/api/platform.md#데모-시계): the time every request
-// of the store runs on, which in demo mode is the demo clock. A session with `admin:demo` can
-// move it to the scenes' times or to a chosen time. Moving first runs the scheduled jobs that come
-// due in between (watchers refresh the tasks, promotions start and end), then the pages reload
-// their data. Moving time is a person's decision, so it goes through PersonButton only.
+// The store's time at the foot of the console's side navigation (docs/api/platform.md#데모-시계):
+// the time every request of the store runs on, which in demo mode is the demo clock. A session
+// with `admin:demo` can move it to the scenes' times or to a chosen time. Moving first runs the
+// scheduled jobs that come due in between (watchers refresh the tasks, promotions start and end),
+// then the pages reload their data. Moving time is a person's decision, so it goes through
+// PersonButton only.
 
 import {useCallback, useEffect, useState} from 'react';
 import {useRouter} from 'next/navigation';
@@ -13,15 +14,17 @@ import {Text} from '@astryxdesign/core/Text';
 import {Button} from '@astryxdesign/core/Button';
 import {Dialog, DialogHeader} from '@astryxdesign/core/Dialog';
 import {DateTimeInput, type ISODateTimeString} from '@astryxdesign/core/DateTimeInput';
-import {StatusDot} from '@astryxdesign/core/StatusDot';
+import {Icon} from '@astryxdesign/core/Icon';
+import {Tooltip} from '@astryxdesign/core/Tooltip';
+import {ClockIcon} from '@heroicons/react/24/outline';
 
 import {PersonButton} from '@/components/PersonButton';
 import {api} from '@/lib/api';
 import {signOut} from '@/lib/session';
-import {dateTime, words} from '@/app/bo/_lib/format';
+import {clockFace, dateTime} from '@/app/bo/_lib/format';
 
 import {useBoSession} from './BoSession';
-import {TargetField, TargetInline, TargetRegion} from './targets';
+import {TargetField, TargetRegion} from './targets';
 
 /** `GET /v1/platform/demo-clock`. */
 export interface StoreClockState {
@@ -195,24 +198,27 @@ export function StoreClock() {
   const canMove = clock.demo_mode && (session?.scopes.includes(MOVE_SCOPE) ?? false);
   const state = clock.demo_mode ? (clock.is_running ? 'demo clock, running' : 'demo clock, paused') : 'real time';
 
+  // One row like the side navigation's: the clock, the store's weekday and time, and Move for the
+  // demo administrator (as a Stripe test clock shows its current time beside Advance time).
   return (
-    <VStack gap={1}>
-      <TargetInline target={{kind: 'store_clock', label: `Store time ${dateTime(clock.now)} (${state})`, ids: {store_clock: 'store'}, term: 'acom:demoClock'}}>
-        <VStack gap={0}>
-          <Text type="supporting" color="secondary">
-            Store time
-          </Text>
-          <HStack gap={1} vAlign="center">
-            {clock.demo_mode ? <StatusDot variant={clock.is_running ? 'accent' : 'neutral'} label={words(state)} /> : null}
-            <Text type="label">{dateTime(clock.now)}</Text>
-          </HStack>
-        </VStack>
-      </TargetInline>
-      {canMove ? <Button label="Move time" size="sm" variant="ghost" onClick={() => setIsMoving(true)} /> : null}
+    <TargetRegion target={{kind: 'store_clock', label: `Store time ${dateTime(clock.now)} (${state})`, ids: {store_clock: 'store'}, term: 'acom:demoClock'}}>
+      <HStack gap={2} vAlign="center" paddingInline={2} paddingBlock={1}>
+        <Icon icon={ClockIcon} color="secondary" />
+        <StackItem size="fill">
+          <Tooltip content={`Store time, ${state}`}>
+            <Text type="label" maxLines={1}>
+              {clockFace(clock.now)}
+            </Text>
+          </Tooltip>
+        </StackItem>
+        {canMove ? <Button label="Move time" size="sm" variant="ghost" onClick={() => setIsMoving(true)} /> : null}
+      </HStack>
       {notice ? (
-        <Text type="supporting" color="secondary">
-          {notice}
-        </Text>
+        <HStack paddingInline={2}>
+          <Text type="supporting" color="secondary">
+            {notice}
+          </Text>
+        </HStack>
       ) : null}
       {isMoving ? (
         <MoveDialog
@@ -226,6 +232,6 @@ export function StoreClock() {
           }}
         />
       ) : null}
-    </VStack>
+    </TargetRegion>
   );
 }

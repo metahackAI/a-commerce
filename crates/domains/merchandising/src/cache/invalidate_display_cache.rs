@@ -70,7 +70,7 @@ impl Operation for InvalidateDisplayCache {
         kind: Kind::Write,
         method: Method::Post,
         path: "/v1/merchandising/cache/invalidate",
-        summary: "Clear what store pages cache of the display after a change to category mappings, slots, banners, popups or curated pages, as narrowly as possible. The store runs no display cache yet, so this records the request and clears nothing; it says which keys it would clear.",
+        summary: "Clear what store pages cache of the display after a change to category mappings, slots, banners, popups or curated pages, as narrowly as possible. The store runs no display cache yet, so this records the request and clears nothing; it says which keys it would clear. Only when someone asks for it: a new sale or booking does not need it.",
         consumes: &[
             Slot::one("slot_id"),
             Slot::one("category_id"),

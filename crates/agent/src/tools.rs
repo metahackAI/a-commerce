@@ -136,6 +136,21 @@ impl ToolSpec {
         Some((found.0.clone(), is_array))
     }
 
+    /// The field a slot fills inside an input object (a banner's `content.image_product_id`):
+    /// named like the slot, or declaring `"x-slot": "<slot>"`. Returns the object and the field.
+    pub fn nested_field_for_slot(&self, slot: &str) -> Option<(String, String)> {
+        self.properties()?.iter().find_map(|(object, schema)| {
+            let (field, _) = schema
+                .get("properties")?
+                .as_object()?
+                .iter()
+                .find(|(f, p)| {
+                    f.as_str() == slot || p.get("x-slot").and_then(Value::as_str) == Some(slot)
+                })?;
+            Some((object.clone(), field.clone()))
+        })
+    }
+
     /// One line for prompts and step logs: `set_sale_prices (write, needs approval)`.
     pub fn kind_words(&self) -> &'static str {
         match self.kind {
@@ -160,7 +175,7 @@ pub(crate) mod fixtures {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn tool(
+    pub fn tool(
         tool: &str,
         address: &str,
         kind: &str,

@@ -188,7 +188,7 @@
       "to": {"why": "promo_min_stock", "inventory_level": 4}}],
    "checks": [{"rule": "max_discount", "passed": true, "detail": "Highest is 20%; policy allows 30% for vip", "fix_tool": null},
               {"rule": "price_floor", "passed": true, "detail": "Overshirt moved to 15% ($67.15) to stay at cost + 15% ($66.70)", "fix_tool": null},
-              {"rule": "promo_min_stock", "passed": true, "detail": "2 products under 10 units excluded: chore coat (7), rain parka (4)", "fix_tool": null},
+              {"rule": "promo_min_stock", "passed": true, "detail": "2 of 42 products under 10 units excluded: chore coat (7), rain parka (4)", "fix_tool": null},
               {"rule": "promotion_overlap", "passed": true, "detail": "Checked 4 running promotions; none gives an item price on summer outerwear", "fix_tool": null}],
    "needs_approval": true,
    "approval_reason": "Changes 40 prices"}

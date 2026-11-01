@@ -14,7 +14,7 @@ import type {RefundReviewBlockData} from '@/app/bo/_lib/blocks';
 import {count, money, value, words} from '@/app/bo/_lib/format';
 import {ChecksList} from '@/components/bo/ChangeParts';
 import {StateToken} from '@/components/bo/StateToken';
-import {TargetBlock, TargetFact, TargetRow} from '@/components/bo/targets';
+import {AskHeaderCell, TargetBlock, TargetFact, TargetRow} from '@/components/bo/targets';
 
 import type {BlockProps} from '../types';
 import {BlockFrame, intentsLookup} from './parts';
@@ -63,11 +63,7 @@ export function RefundReviewBlock({block}: BlockProps) {
               <TableHeaderCell>Amount</TableHeaderCell>
               <TableHeaderCell>Reason</TableHeaderCell>
               <TableHeaderCell>Suggested</TableHeaderCell>
-              <TableHeaderCell>
-                <Text type="supporting" color="secondary">
-                  Ask
-                </Text>
-              </TableHeaderCell>
+              <AskHeaderCell />
             </TableRow>
           </TableHeader>
           <TableBody>

@@ -1167,6 +1167,110 @@ async fn a_failing_tool_with_a_next_tool_revises_the_plan_once_more() {
     assert_eq!(blocks(&events)[0].ui, "product_list");
 }
 
+/// A plan that fails on its last write comes back repeating the writes before it: those items
+/// change in place, and the change set does not end up with the sale twice.
+#[tokio::test]
+async fn a_revised_plan_changes_the_items_it_repeats() {
+    #[derive(Debug)]
+    struct BannerFailsOnce(Arc<Commerce>, Mutex<bool>);
+    impl ToolClient for BannerFailsOnce {
+        fn manifest(&self) -> BoxFuture<'_, Result<Vec<ToolSpec>, ToolError>> {
+            self.0.manifest()
+        }
+        fn read<'a>(
+            &'a self,
+            tool: &'a str,
+            input: &'a Value,
+        ) -> BoxFuture<'a, Result<Value, ToolError>> {
+            self.0.read(tool, input)
+        }
+        fn preview<'a>(
+            &'a self,
+            t: &'a str,
+            i: &'a Value,
+            c: Option<&'a str>,
+        ) -> BoxFuture<'a, Result<Preview, ToolError>> {
+            if t == "schedule_banner" && !std::mem::replace(&mut *self.1.lock().unwrap(), true) {
+                self.0.log("preview schedule_banner failed".into());
+                return Box::pin(async {
+                    Err(ToolError::invalid_input(
+                        "`image_source: product` needs a product.",
+                    ))
+                });
+            }
+            self.0.preview(t, i, c)
+        }
+        fn commit<'a>(&'a self, t: &'a str, p: &'a str) -> BoxFuture<'a, Result<Value, ToolError>> {
+            self.0.commit(t, p)
+        }
+        fn create_change_set<'a>(
+            &'a self,
+            n: &'a NewChangeSet,
+        ) -> BoxFuture<'a, Result<ChangeSetHead, ToolError>> {
+            self.0.create_change_set(n)
+        }
+        fn replace_items<'a>(
+            &'a self,
+            c: &'a str,
+            i: &'a [ItemRef],
+        ) -> BoxFuture<'a, Result<ChangeSetHead, ToolError>> {
+            self.0.replace_items(c, i)
+        }
+        fn submit<'a>(
+            &'a self,
+            c: &'a str,
+            v: i32,
+        ) -> BoxFuture<'a, Result<ChangeSetHead, ToolError>> {
+            self.0.submit(c, v)
+        }
+    }
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            (
+                "route",
+                json!({"agent": "promotion", "confidence": 0.9}).to_string(),
+            ),
+            ("plan", b1_plan()),
+            ("plan", b1_plan()),
+            (
+                "reply",
+                "I drafted change set #1042 for the 20% sale.".into(),
+            ),
+        ],
+    );
+    let rt = runtime(&[glimmer], Arc::new(MemoryLog::default()));
+    let commerce = Commerce::new();
+    let failing = Arc::new(BannerFailsOnce(commerce.clone(), Mutex::new(false)));
+    let p = rt
+        .prepare(
+            principal("adm_sj", Surface::Bo),
+            "req_9".into(),
+            ChatSurface::Bo,
+            say(B1),
+        )
+        .await
+        .unwrap();
+    let (emit, mut rx) = Emitter::channel();
+    rt.run(p, failing, emit).await;
+    while rx.try_recv().is_ok() {}
+
+    let calls = commerce.calls();
+    let revised: Vec<&str> = calls[8..].iter().map(String::as_str).collect();
+    assert_eq!(
+        revised,
+        [
+            "preview set_sale_prices",
+            "replace_items cs_1042 pv_3,pv_2",
+            "preview create_coupon",
+            "replace_items cs_1042 pv_3,pv_4",
+            "preview schedule_banner into cs_1042",
+        ],
+        "sale and coupon replaced in place, the banner added once: {calls:#?}"
+    );
+}
+
 // ---- B3: a sales question, read only ------------------------------------------------------
 
 const B3: &str = "Why did sales drop yesterday?";

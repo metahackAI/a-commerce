@@ -32,10 +32,12 @@ export interface PersonButtonProps {
   onError?: (error: ApiErrorBody, status: number) => boolean | void;
   /** `secondary` for a decision that isn't the main one on the page (Reject next to Approve). */
   variant?: 'primary' | 'secondary';
+  /** `sm` beside other small buttons, as in a table row. */
+  size?: 'sm' | 'md';
   isDisabled?: boolean;
 }
 
-export function PersonButton({action, onDone, onError, variant = 'primary', isDisabled}: PersonButtonProps) {
+export function PersonButton({action, onDone, onError, variant = 'primary', size, isDisabled}: PersonButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +76,7 @@ export function PersonButton({action, onDone, onError, variant = 'primary', isDi
 
   return (
     <>
-      <Button label={action.label} variant={variant} isDisabled={isDisabled} onClick={() => setIsOpen(true)} />
+      <Button label={action.label} variant={variant} size={size} isDisabled={isDisabled} onClick={() => setIsOpen(true)} />
       <AlertDialog
         isOpen={isOpen}
         onOpenChange={setIsOpen}
