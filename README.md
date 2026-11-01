@@ -99,6 +99,16 @@ This is a showcase of AI-native commerce, not a store that ships parcels. What r
 
 ## Architecture
 
+![Figure 1. Context construction (agent profile, step prompts, conversation memory, tool search) feeds Muse Glimmer 30B. Harness guards (plan check and binder, reply check, route hints, limits) sit between the model and commerce. Commerce has a tool interface (291 tools, human handles, previews) and trust (change sets, policies, person-only actions). The store brings work: watchers, store events, task pickup, which starts the next turn.](docs/img/fig-harness-components.png)
+
+**Figure 1. The harness around one open-weights model.** Context construction (C1–C4) decides what Muse Glimmer sees. Harness guards (H1–H4) are code the model cannot skip. Commerce is a separate service rebuilt for the agent: tools in the store's words, a preview before every write, and change sets only a person approves (T1–R3). The store also brings work (S1–S3): a watcher's task becomes the agent's next turn. Each card names the file it lives in.
+
+![Figure 2. The turn loop: request, route, tool search, plan, execute, check, reply, with a revise arrow from check back to plan. Writes go to the store loop: change set, person approves, run and read back, watchers open a task, and task pickup brings the task back as the next request.](docs/img/fig-two-loops.png)
+
+**Figure 2. One request, two loops.** The turn loop runs route → tool search → plan → execute → check → reply, and plans again up to twice with the error and the steps not run yet. Tool search and check make no model call; route and execute call it only sometimes. The store loop runs what a person approved and reads it back, and its watchers open the next task. Both figures are drawn from `docs/figures/` (`python docs/figures/render.py`).
+
+The services:
+
 ```
         Shopper (storefront)                          Operator (back office)
                  \                                          /

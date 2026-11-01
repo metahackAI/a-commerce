@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Figure 2. One request, two loops</title>
+<link rel="stylesheet" href="figures.css">
+<style>
+  .fig { width: 1800px; height: 640px; }
+  #outer { left: 10px; top: 10px; width: 1780px; height: 620px; background: #fff; border-color: var(--store-ln); }
+  #turn { left: 34px; top: 34px; width: 1250px; height: 396px; }
+  #turn .tag { position: absolute; right: 16px; top: 16px; }
+  #stages .stage { top: 120px; width: 160px; height: 222px; }
+  #stages .pill { white-space: normal; border-radius: 10px; margin-top: auto; }
+  #req { left: 54px; top: 120px; width: 120px; }
+  #storeloop { left: 1330px; top: 34px; width: 440px; }
+  #storeloop .stage { position: static; width: auto; height: auto; flex-direction: row; align-items: flex-start; gap: 10px; }
+  #storeloop .col { display: flex; flex-direction: column; gap: 26px; margin-top: 4px; }
+  #storeloop .stage > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  #storeloop .who { margin-left: auto; flex: none; }
+  .stage.person { border-color: var(--store); border-width: 1.5px; }
+</style>
+</head>
+<body>
+<div class="fig">
+
+  <div class="grp store" id="outer"></div>
+
+  <div class="grp ctx" id="turn">
+    <h2>Turn loop</h2>
+    <div class="sub">one request in the agent runtime; files are in <code>crates/agent/src/</code> unless shown</div>
+    <span class="tagr tag">a turn stops at 12 model calls, 20 tool calls or 60 s, and says why</span>
+  </div>
+
+  <div class="box" id="req"><b>Request</b><div class="d">what a person asked, or a task's request</div></div>
+
+  <div id="stages">
+    <div class="stage" id="st1" style="left:206px"><span class="n">1</span><b>Route</b>
+      <div class="d">One of five agents: a route hint, else the model picks under a schema</div>
+      <div class="path">router.rs</div><span class="pill">hint, or model</span></div>
+    <div class="stage" id="st2" style="left:384px"><span class="n">2</span><b>Tool search</b>
+      <div class="d">5–8 of 291 tools: words, then the tools one hop before and after</div>
+      <div class="path">toolsearch.rs</div><span class="pill">no model call</span></div>
+    <div class="stage" id="st3" style="left:562px"><span class="n">3</span><b>Plan</b>
+      <div class="d">Steps that name earlier steps, never ids, under a JSON schema</div>
+      <div class="path">planner.rs</div><span class="pill">model</span></div>
+    <div class="stage" id="st4" style="left:740px"><span class="n">4</span><b>Execute</b>
+      <div class="d">Fill each slot from the steps named; a read runs, a write is only previewed</div>
+      <div class="path">executor.rs</div><span class="pill">model, only for missing arguments</span></div>
+    <div class="stage" id="st5" style="left:918px"><span class="n">5</span><b>Check</b>
+      <div class="d">The store's rule checks from the preview; what was asked against what it will do</div>
+      <div class="path">checker.rs</div><span class="pill">no model call</span></div>
+    <div class="stage" id="st6" style="left:1096px"><span class="n">6</span><b>Reply</b>
+      <div class="d">UI blocks; every number in the text matched to a tool result</div>
+      <div class="path">prompts/reply.md</div><span class="pill">model</span></div>
+  </div>
+
+  <div class="grp store" id="storeloop">
+    <h2>Store loop</h2>
+    <div class="sub">what a person approves runs; what the store notices comes back</div>
+    <div class="col">
+      <div class="stage" id="cs"><div><b>Change set</b><div class="d">Every write of the turn, with its preview and checks, waiting for approval</div><div class="path">change_set.rs</div></div><span class="pill who">runtime</span></div>
+      <div class="stage person" id="ap"><div><b>Person approves</b><div class="d">Approve, reject, or ask for a change by talking (version + 1)</div><div class="path">human:* scope</div></div><span class="pill who">person</span></div>
+      <div class="stage" id="run"><div><b>Run, read back, live</b><div class="d">Runs what was approved and reads it back; live, and undoable while its window is open</div><div class="path">sys_runner</div></div><span class="pill who">store</span></div>
+      <div class="stage" id="watch"><div><b>Watchers open a task</b><div class="d">Every 30–60 min: a return over the threshold, a variant running out, a price below cost</div><div class="path">policies/platform.yml</div></div><span class="pill who">store</span></div>
+    </div>
+  </div>
+
+</div>
+<script src="wires.js"></script>
+<script>
+  const y = document.getElementById('st1').offsetTop + 40;
+  wire('req', 'right', 'st1', 'left', { y });
+  wire('st1', 'right', 'st2', 'left', { y });
+  wire('st2', 'right', 'st3', 'left', { y });
+  wire('st3', 'right', 'st4', 'left', { y });
+  wire('st4', 'right', 'st5', 'left', { y });
+  wire('st5', 'right', 'st6', 'left', { y });
+  wire('st5', 'bottom', 'st3', 'bottom', { drop: 30, color: '#2f5597',
+    label: 'revise, up to 2 times: the failed step or the mismatch, and the steps not run yet', lpos: [0, 17], bare: true });
+  wire('st6', 'right', 'cs', 'left', { y, label: 'writes', lpos: [-26, -14], bare: true });
+  wire('cs', 'bottom', 'ap', 'top');
+  wire('ap', 'bottom', 'run', 'top');
+  wire('run', 'bottom', 'watch', 'top', { label: 'sales, stock and returns move', lpos: [112, 0], bare: true });
+  wire('watch', 'bottom', 'req', 'bottom', { drop: 22, color: '#9a4a5c', w: 3,
+    label: 'task pickup, if the store turns it on: a task is the next turn\'s request' });
+</script>
+</body>
+</html>
