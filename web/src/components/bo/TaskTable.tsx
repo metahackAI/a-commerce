@@ -14,6 +14,7 @@ import {StatusDot} from '@astryxdesign/core/StatusDot';
 import {EmptyState} from '@astryxdesign/core/EmptyState';
 import {Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow} from '@astryxdesign/core/Table';
 import {VisuallyHidden} from '@astryxdesign/core/VisuallyHidden';
+import {useMediaQuery} from '@astryxdesign/core/hooks';
 
 import {PersonButton} from '@/components/PersonButton';
 import {dateTime, words} from '@/app/bo/_lib/format';
@@ -84,7 +85,22 @@ export interface TaskTableProps {
   intentsFor?: IntentsLookup;
 }
 
-function TaskRow({task, cs, blockId, intents}: {task: TaskSummary; cs?: ChangeSet; blockId?: string; intents?: string[]}) {
+/** Below this width the inbox stacks each task in one column: a phone has no room for three. */
+const NARROW = '(max-width: 640px)';
+
+function TaskRow({
+  task,
+  cs,
+  blockId,
+  intents,
+  isNarrow,
+}: {
+  task: TaskSummary;
+  cs?: ChangeSet;
+  blockId?: string;
+  intents?: string[];
+  isNarrow: boolean;
+}) {
   const router = useRouter();
   const session = useBoSession();
   const scopes = session?.scopes ?? [];
@@ -93,6 +109,65 @@ function TaskRow({task, cs, blockId, intents}: {task: TaskSummary; cs?: ChangeSe
   const canUndo = task.state === 'done' && cs?.state === 'live' && cs.undo_until !== null && scopes.includes('human:undo');
   const review = task.change_set_id && (task.state === 'needs_you' || cs?.state === 'waiting_for_approval');
   const watched = watcherLine(task);
+
+  const what = (
+    <VStack gap={0.5}>
+      <Link href={`/bo/tasks/${encodeURIComponent(task.id)}`} color="primary">
+        {task.title}
+      </Link>
+      <Text type="supporting" color="secondary">
+        {`${ORIGIN[task.origin] ?? words(task.origin)} · ${dateTime(task.at)}${task.tag ? ` · ${words(task.tag)}` : ''}`}
+      </Text>
+    </VStack>
+  );
+  const where = (
+    <VStack gap={1}>
+      {task.summary ? <Text>{task.summary}</Text> : null}
+      {watched ? (
+        <Text type="supporting" color="secondary">
+          {watched}
+        </Text>
+      ) : null}
+      {changeSetLine(cs)}
+    </VStack>
+  );
+  const actions = (
+    <HStack gap={1} hAlign={isNarrow ? 'start' : 'end'} wrap="wrap">
+      {review ? (
+        <Button label="Review" size="sm" href={`/bo/change-sets/${encodeURIComponent(task.change_set_id ?? '')}`} />
+      ) : task.change_set_id ? (
+        <Button label="Change set" size="sm" variant="ghost" href={`/bo/change-sets/${encodeURIComponent(task.change_set_id)}`} />
+      ) : (
+        <Button label="Open" size="sm" variant="ghost" href={`/bo/tasks/${encodeURIComponent(task.id)}`} />
+      )}
+      {canUndo && cs ? (
+        <PersonButton
+          action={{
+            label: 'Undo',
+            method: 'POST',
+            path: `/v1/platform/change-sets/${encodeURIComponent(cs.id)}/undo`,
+            confirm: `Undo every change of #${cs.number} in reverse order?${cs.undo_until ? ` Undo is open until ${dateTime(cs.undo_until)}.` : ''}`,
+          }}
+          variant="secondary"
+          size="sm"
+          onDone={() => router.refresh()}
+        />
+      ) : null}
+      {canDismiss ? (
+        <PersonButton
+          action={{
+            label: 'Dismiss',
+            method: 'POST',
+            path: `/v1/platform/tasks/${encodeURIComponent(task.id)}/dismiss`,
+            confirm: `Dismiss “${task.title}”? A linked change set that is still waiting is rejected too. If the same thing happens again, a new task appears.`,
+          }}
+          variant="secondary"
+          size="sm"
+          onDone={() => router.refresh()}
+        />
+      ) : null}
+    </HStack>
+  );
 
   return (
     <TargetRow
@@ -104,64 +179,21 @@ function TaskRow({task, cs, blockId, intents}: {task: TaskSummary; cs?: ChangeSe
         blockId,
       }}
       intents={intents}>
-      <TableCell>
-        <VStack gap={0.5}>
-          <Link href={`/bo/tasks/${encodeURIComponent(task.id)}`} color="primary">
-            {task.title}
-          </Link>
-          <Text type="supporting" color="secondary">
-            {`${ORIGIN[task.origin] ?? words(task.origin)} · ${dateTime(task.at)}${task.tag ? ` · ${words(task.tag)}` : ''}`}
-          </Text>
-        </VStack>
-      </TableCell>
-      <TableCell>
-        <VStack gap={1}>
-          {task.summary ? <Text>{task.summary}</Text> : null}
-          {watched ? (
-            <Text type="supporting" color="secondary">
-              {watched}
-            </Text>
-          ) : null}
-          {changeSetLine(cs)}
-        </VStack>
-      </TableCell>
-      <TableCell style={{maxWidth: 'none'}}>
-        <HStack gap={1} hAlign="end">
-          {review ? (
-            <Button label="Review" size="sm" href={`/bo/change-sets/${encodeURIComponent(task.change_set_id ?? '')}`} />
-          ) : task.change_set_id ? (
-            <Button label="Change set" size="sm" variant="ghost" href={`/bo/change-sets/${encodeURIComponent(task.change_set_id)}`} />
-          ) : (
-            <Button label="Open" size="sm" variant="ghost" href={`/bo/tasks/${encodeURIComponent(task.id)}`} />
-          )}
-          {canUndo && cs ? (
-            <PersonButton
-              action={{
-                label: 'Undo',
-                method: 'POST',
-                path: `/v1/platform/change-sets/${encodeURIComponent(cs.id)}/undo`,
-                confirm: `Undo every change of #${cs.number} in reverse order?${cs.undo_until ? ` Undo is open until ${dateTime(cs.undo_until)}.` : ''}`,
-              }}
-              variant="secondary"
-              size="sm"
-              onDone={() => router.refresh()}
-            />
-          ) : null}
-          {canDismiss ? (
-            <PersonButton
-              action={{
-                label: 'Dismiss',
-                method: 'POST',
-                path: `/v1/platform/tasks/${encodeURIComponent(task.id)}/dismiss`,
-                confirm: `Dismiss “${task.title}”? A linked change set that is still waiting is rejected too. If the same thing happens again, a new task appears.`,
-              }}
-              variant="secondary"
-              size="sm"
-              onDone={() => router.refresh()}
-            />
-          ) : null}
-        </HStack>
-      </TableCell>
+      {isNarrow ? (
+        <TableCell>
+          <VStack gap={2}>
+            {what}
+            {where}
+            {actions}
+          </VStack>
+        </TableCell>
+      ) : (
+        <>
+          <TableCell>{what}</TableCell>
+          <TableCell>{where}</TableCell>
+          <TableCell style={{maxWidth: 'none'}}>{actions}</TableCell>
+        </>
+      )}
     </TargetRow>
   );
 }
@@ -181,6 +213,7 @@ export function TaskGroups({
   blockId,
   intentsFor,
 }: TaskTableProps & {states?: TaskState[]}) {
+  const isNarrow = useMediaQuery(NARROW);
   if (tasks.length === 0) {
     return <EmptyState title="No tasks" description="Tasks appear when you ask the agent for something, or when it notices something that needs you." />;
   }
@@ -188,11 +221,17 @@ export function TaskGroups({
     <Table density="compact" verticalAlign="top" hasHover>
       <TableHeader>
         <TableRow isHeaderRow>
-          <TableHeaderCell style={{width: '50%'}}>Task</TableHeaderCell>
-          <TableHeaderCell style={{width: '50%'}}>Where it is</TableHeaderCell>
-          <TableHeaderCell style={FIT}>
-            <VisuallyHidden>Actions</VisuallyHidden>
-          </TableHeaderCell>
+          {isNarrow ? (
+            <TableHeaderCell>Task</TableHeaderCell>
+          ) : (
+            <>
+              <TableHeaderCell style={{width: '50%'}}>Task</TableHeaderCell>
+              <TableHeaderCell style={{width: '50%'}}>Where it is</TableHeaderCell>
+              <TableHeaderCell style={FIT}>
+                <VisuallyHidden>Actions</VisuallyHidden>
+              </TableHeaderCell>
+            </>
+          )}
           <AskHeaderCell />
         </TableRow>
       </TableHeader>
@@ -202,7 +241,7 @@ export function TaskGroups({
           return (
             <Fragment key={g.state}>
               <TableRow>
-                <TableCell colSpan={4}>
+                <TableCell colSpan={isNarrow ? 2 : 4}>
                   <VStack gap={0.5} paddingBlockStart={2}>
                     <HStack gap={2} vAlign="center">
                       <Text type="label" weight="semibold">
@@ -227,6 +266,7 @@ export function TaskGroups({
                   cs={t.change_set_id ? changeSets[t.change_set_id] : undefined}
                   blockId={blockId}
                   intents={intentsFor?.('task_item', t.id)}
+                  isNarrow={isNarrow}
                 />
               ))}
             </Fragment>

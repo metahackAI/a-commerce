@@ -4,6 +4,10 @@
 // a header with the way back, the title, a line of facts and the page's actions; the content
 // scrolls under it; an optional side panel holds supporting facts. A client component: the way
 // back passes an icon component to Astryx's Icon, which a server page cannot hand to the client.
+//
+// Responsive contract (Astryx layout/responsive):
+//   >1024  content | side panel 340
+//   <=1024 the panel's facts follow the content in one column  (useMediaQuery)
 
 import type {ReactNode} from 'react';
 import {HStack, Layout, LayoutContent, LayoutHeader, LayoutPanel, StackItem, VStack} from '@astryxdesign/core/Layout';
@@ -11,6 +15,7 @@ import {Heading, Text} from '@astryxdesign/core/Text';
 import {Link} from '@astryxdesign/core/Link';
 import {Icon} from '@astryxdesign/core/Icon';
 import {ArrowLeftIcon} from '@heroicons/react/24/outline';
+import {useMediaQuery} from '@astryxdesign/core/hooks';
 
 export interface PageFrameProps {
   title: ReactNode;
@@ -28,6 +33,8 @@ export interface PageFrameProps {
 }
 
 export function PageFrame({title, meta, description, back, actions, toolbar, panel, children, width = 1200}: PageFrameProps) {
+  const isNarrow = useMediaQuery('(max-width: 1024px)');
+  const beside = panel && !isNarrow;
   return (
     <Layout
       height="fill"
@@ -74,11 +81,16 @@ export function PageFrame({title, meta, description, back, actions, toolbar, pan
         <LayoutContent role="main">
           <VStack gap={6} paddingBlock={2}>
             {children}
+            {panel && !beside ? (
+              <VStack gap={4} role="complementary">
+                {panel}
+              </VStack>
+            ) : null}
           </VStack>
         </LayoutContent>
       }
       end={
-        panel ? (
+        beside ? (
           <LayoutPanel width={340} padding={4} role="complementary">
             <VStack gap={4}>{panel}</VStack>
           </LayoutPanel>
