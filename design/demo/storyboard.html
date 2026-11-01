@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A-Commerce demo video: storyboard frames</title>
+<link rel="stylesheet" href="demo.css">
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+<!-- Heroicons 24 outline (MIT), the set the back office nav uses -->
+<symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H6.911a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.25 2.25 0 0 0-.1.661Z"/></symbol>
+<symbol id="i-clipboard-document-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z"/></symbol>
+<symbol id="i-queue-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></symbol>
+<symbol id="i-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z"/></symbol>
+<symbol id="i-document-duplicate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"/></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"/></symbol>
+<symbol id="i-swatch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 0 0 3.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008Z"/></symbol>
+<symbol id="i-receipt-percent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="m9 14.25 6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0c1.1.128 1.907 1.077 1.907 2.185ZM9.75 9h.008v.008H9.75V9Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm4.125 4.5h.008v.008h-.008V13.5Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></symbol>
+<symbol id="i-building-storefront" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72l1.189-1.19A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72M6.75 18h3.75a.75.75 0 0 0 .75-.75V13.5a.75.75 0 0 0-.75-.75H6.75a.75.75 0 0 0-.75.75v3.75c0 .414.336.75.75.75Z"/></symbol>
+<symbol id="i-shopping-bag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></symbol>
+<symbol id="i-arrow-path-rounded-square" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></symbol>
+<symbol id="i-chart-bar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></symbol>
+<symbol id="i-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0 0 12 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 0 1-2.031.352 5.988 5.988 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971Zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 0 1-2.031.352 5.989 5.989 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971Z"/></symbol>
+<symbol id="i-circle-stack" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></symbol>
+<symbol id="i-chevron-up-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15 12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"/></symbol>
+<symbol id="i-inbox-solid" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M6.912 3a3 3 0 0 0-2.868 2.118l-2.411 7.838a3 3 0 0 0-.133.882V18a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3v-4.162c0-.299-.045-.596-.133-.882l-2.412-7.838A3 3 0 0 0 17.088 3H6.912Zm13.823 9.75-2.213-7.191A1.5 1.5 0 0 0 17.088 4.5H6.912a1.5 1.5 0 0 0-1.434 1.059L3.265 12.75H6.11a3 3 0 0 1 2.684 1.658l.256.513a1.5 1.5 0 0 0 1.342.829h3.218a1.5 1.5 0 0 0 1.342-.83l.256-.512a3 3 0 0 1 2.684-1.658h2.844Z"/></symbol>
+<symbol id="i-queue-list-solid" viewBox="0 0 24 24" fill="currentColor"><path d="M5.625 3.75a2.625 2.625 0 1 0 0 5.25h12.75a2.625 2.625 0 0 0 0-5.25H5.625ZM3.75 11.25a.75.75 0 0 0 0 1.5h16.5a.75.75 0 0 0 0-1.5H3.75ZM3 15.75a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75a.75.75 0 0 1-.75-.75ZM3.75 18.75a.75.75 0 0 0 0 1.5h16.5a.75.75 0 0 0 0-1.5H3.75Z"/></symbol>
+<symbol id="i-chat-bubble-oval-left-ellipsis" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></symbol>
+<symbol id="i-microphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"/></symbol>
+<symbol id="i-paper-clip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13"/></symbol>
+<symbol id="i-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18"/></symbol>
+<symbol id="i-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></symbol>
+<symbol id="i-x-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></symbol>
+<symbol id="i-arrow-uturn-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></symbol>
+<symbol id="i-magnifying-glass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></symbol>
+<symbol id="i-user-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></symbol>
+<symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></symbol>
+<symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/></symbol>
+<symbol id="i-photo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></symbol>
+<symbol id="i-stop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 0 1 7.5 5.25h9a2.25 2.25 0 0 1 2.25 2.25v9a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25v-9Z"/></symbol>
+</svg>
+<div class="page">
+<header>
+  <h1>Demo video storyboard: “You decide. The store does the rest.”</h1>
+  <p>15 key frames for the 2:50 video, drawn with the running app's own look (Astryx neutral theme, the Ailism red, Pretendard).
+  One weekend in one store: a sale on Friday, a size selling out on Saturday night, a reorder approved by voice on Sunday morning,
+  the box checked from a photo the next Friday, and the shopper who waited getting the jacket. Numbers marked “illustrative” are worked out
+  with the store's own formulas from the demo seed; the recorded run replaces them. Below each frame:
+  <span class="tag have">exists</span> already in the app, <span class="tag new">new</span> to build,
+  <span class="tag cfg">demo config</span> case-specific setting for the recording.</p>
+</header>
+
+<!-- 01 ─────────────────────────────────────────────── -->
+<section class="board" id="f01">
+  <div class="meta"><span class="tc">0:00–0:04</span><span class="name">The store asks first</span><span class="num">frame 01</span></div>
+  <div class="frame gray">
+    <div class="phone" style="left:555px; top:18px; transform:scale(.8)">
+      <div class="island"></div>
+      <div class="scr lock">
+        <div class="sb light" data-sb=""></div>
+        <div class="date">Sunday, November 8</div>
+        <div class="clockbig">7:02</div>
+        <div style="flex:1"></div>
+        <div class="notif">
+          <div class="app"><img src="assets/ailism-avatar.png" alt=""></div>
+          <div style="flex:1">
+            <div class="top"><b>Ailism Commerce</b><span>now</span></div>
+            <div class="t">Cotton utility jacket: M sold out overnight</div>
+            <div class="b">L runs out in about 3 days. I drafted a reorder for 88 units ($4,400). Nothing is ordered until you approve.</div>
+          </div>
+        </div>
+        <div style="height:150px"></div>
+        <div class="home-ind light"></div>
+      </div>
+    </div>
+    <div class="when">Sunday, 7:02 AM</div>
+    <div class="cap">“My store noticed it was running out, did the math, and asked me.”</div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">“My store noticed it was running out, did the math, and asked me.”</p>
+      <p>Real phone, real notification from the overnight run. Hard cut from black; the buzz is the first sound.</p></div>
+    <div><h4>Build</h4><ul>
+      <li><span class="tag have">exists</span>the watcher that opens the task, <code>suggest_reorder</code> sizing (#93)</li>
+      <li><span class="tag new">new</span>push to the owner's phone (Web Push from the installed back office) — fallback: open straight on frame 02</li></ul></div>
+    <div><h4>Reference</h4><p>iOS Lock Screen notification (app icon, title line, two-line body). The text is the task title the watcher already writes, plus the one sentence the change set needs: nothing happens until you approve.</p></div>
+  </div>
+</section>
+
+<!-- 02 ─────────────────────────────────────────────── -->
+<section class="board" id="f02">
+  <div class="meta"><span class="tc">0:04–0:09</span><span class="name">Answer by voice</span><span class="num">frame 02</span></div>
+  <div class="frame gray">
+    <div class="phone" style="left:555px; top:18px; transform:scale(.8)">
+      <div class="island"></div>
+      <div class="scr">
+        <div class="sb" data-sb="7:02"></div>
+        <div class="mhead"><svg class="ic"><use href="#i-arrow-left"/></svg>Inbox</div>
+        <div class="mbody">
+          <h2>Reorder Cotton utility jacket</h2>
+          <div class="meta" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--text2)">
+            <span class="tok warn">Needs you</span><span>Agent noticed · 02:14 · Stock-out watcher</span></div>
+          <div style="font-size:14.5px;line-height:1.5">M sold out at 21:40 last night. At this week's pace, L runs out in about 3 days.</div>
+          <table class="t num" style="font-size:14px">
+            <tr><th>Size</th><th class="r">On hand</th><th class="r">Sold, 7 days</th><th class="r">Order</th></tr>
+            <tr><td>XS</td><td class="r">2</td><td class="r">2</td><td class="r">6</td></tr>
+            <tr><td>S</td><td class="r">4</td><td class="r">5</td><td class="r">13</td></tr>
+            <tr><td>M</td><td class="r"><span class="tok bad">Sold out</span></td><td class="r">13</td><td class="r">41</td></tr>
+            <tr><td>L</td><td class="r">3</td><td class="r">8</td><td class="r">23</td></tr>
+            <tr><td>XL</td><td class="r">3</td><td class="r">2</td><td class="r">5</td></tr>
+            <tr><td><b>Total</b></td><td></td><td></td><td class="r"><b>88</b></td></tr>
+          </table>
+          <div class="small">$4,400 at $50.00 each · arrives by Sun, Nov 15. Each size gets enough for the 7 days until it arrives and 14 days after, plus 2 spare.</div>
+          <div style="display:flex;gap:6px"><span class="tok ok">2 of 2 checks passed</span><span class="tok warn">Needs approval: over $1,000</span></div>
+        </div>
+        <div style="text-align:center;font-size:12.5px;color:var(--text2);margin-top:8px">Listening · Muse Voice Transcribe</div>
+        <div class="mcomposer" style="border-color:#bdbdbd">
+          <div class="wave"><i style="height:8px"></i><i style="height:16px"></i><i style="height:24px"></i><i style="height:12px"></i><i style="height:20px"></i><i style="height:9px"></i><i style="height:17px"></i><i style="height:6px"></i></div>
+          <div style="flex:1;font-size:16px">“Make XL ten and approve.”</div>
+          <div class="round" style="background:#111;color:#fff"><svg class="ic" style="width:14px;height:14px"><use href="#i-stop"/></svg></div>
+        </div>
+        <div class="home-ind"></div>
+      </div>
+    </div>
+    <div class="when">Sunday, 7:02 AM</div>
+    <div class="cap">Owner: “Make XL ten and approve.”</div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">Owner, out loud: “Make XL ten and approve.”</p>
+      <p>The task opens on the phone with the reorder already sized per variant. The transcript fills the box while the owner speaks.</p></div>
+    <div><h4>Build</h4><ul>
+      <li><span class="tag have">exists</span>reorder change set, checks, approval over $1,000</li>
+      <li><span class="tag new">new</span>phone layout for a task and its change set (today the tables squeeze to one letter per line)</li>
+      <li><span class="tag new">new</span>mic in the composer → Muse Voice Transcribe, with keyword biasing from the store's product and size names (the API supports it: dev.meta.ai/docs/speech-to-text)</li>
+      <li><span class="tag new">new</span>the reorder table in store words (size, on hand, sold, order) instead of variant ids</li></ul></div>
+    <div><h4>Reference</h4><p>Dictation inside the message box with a waveform and a stop button (ChatGPT and iOS keyboard dictation). Table and tokens: our change set page. Numbers: illustrative, from <code>suggest_reorder</code>'s formula (sold × 21/7 + 2 − on hand).</p></div>
+  </div>
+</section>
+
+<!-- 03 ─────────────────────────────────────────────── -->
+<section class="board" id="f03">
+  <div class="meta"><span class="tc">0:09–0:12</span><span class="name">Version 2, approved, undoable</span><span class="num">frame 03</span></div>
+  <div class="frame gray">
+    <div class="phone" style="left:555px; top:18px; transform:scale(.8)">
+      <div class="island"></div>
+      <div class="scr">
+        <div class="sb" data-sb="7:03"></div>
+        <div class="mhead"><svg class="ic"><use href="#i-arrow-left"/></svg>Inbox</div>
+        <div class="mbody">
+          <h2>Reorder Cotton utility jacket</h2>
+          <div style="display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--text2)"><span class="tok ok">Ordered</span><span>PO 1044 · version 2 · approved by you at 07:03</span></div>
+          <div class="banner-ok"><svg class="ic"><use href="#i-check-circle"/></svg><div><b>Sent to the supplier</b>You can undo it until they ship it.</div></div>
+          <div class="small">You said: “Make XL ten and approve.”</div>
+          <table class="t num" style="font-size:14px">
+            <tr><th>Size</th><th class="r">On hand</th><th class="r">Sold, 7 days</th><th class="r">Order</th></tr>
+            <tr><td>XS</td><td class="r">2</td><td class="r">2</td><td class="r">6</td></tr>
+            <tr><td>S</td><td class="r">4</td><td class="r">5</td><td class="r">13</td></tr>
+            <tr><td>M</td><td class="r"><span class="tok bad">Sold out</span></td><td class="r">13</td><td class="r">41</td></tr>
+            <tr><td>L</td><td class="r">3</td><td class="r">8</td><td class="r">23</td></tr>
+            <tr><td>XL</td><td class="r">3</td><td class="r">2</td><td class="r"><span class="strike">5</span> <span class="changed">10</span></td></tr>
+            <tr><td><b>Total</b></td><td></td><td></td><td class="r"><b>93</b></td></tr>
+          </table>
+          <div class="small">$4,650 · arrives by Sun, Nov 15.</div>
+        </div>
+        <div class="foot"><span class="btn"><svg class="ic"><use href="#i-arrow-uturn-left"/></svg>Undo</span><span class="btn">Open change set</span></div>
+        <div class="mcomposer">
+          <div class="ph">Give the agent a task…</div>
+          <div class="round fill"><svg class="ic"><use href="#i-microphone"/></svg></div>
+          <div class="round red"><svg class="ic"><use href="#i-arrow-up"/></svg></div>
+        </div>
+        <div class="home-ind"></div>
+      </div>
+    </div>
+    <div class="when">Sunday, 7:03 AM</div>
+    <div class="cap">“Version two. Approved. And I can still take it back.”</div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">“Version two. Approved. And I can still take it back.”</p>
+      <p>The only changed cell is marked. Undo stays on screen.</p></div>
+    <div><h4>Build</h4><ul>
+      <li><span class="tag have">exists</span>talking to a change set makes version 2; approve; undo while the reorder is still processing</li>
+      <li><span class="tag new">new</span>show the changed cell between versions on the phone</li></ul></div>
+    <div><h4>Reference</h4><p>Changed value with the old one struck through: GitHub suggested changes, Google Docs suggestion mode. Success banner: Astryx <code>Banner</code> as on our Live change set page.</p></div>
+  </div>
+</section>
+
+<!-- 04 ─────────────────────────────────────────────── -->
+<section class="board" id="f04">
+  <div class="meta"><span class="tc">0:12–0:25</span><span class="name">Who this is for</span><span class="num">frame 04</span></div>
+  <div class="frame">
+    <div style="position:absolute;left:120px;right:120px;top:50%;transform:translateY(-50%)">
+      <div style="font-size:18px;color:var(--text2);font-weight:500">Most online shops are one person.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:64px;margin-top:44px">
+        <div><div style="font-size:96px;font-weight:700;letter-spacing:-.03em;line-height:1">89%</div>
+          <div style="font-size:22px;margin-top:16px;line-height:1.35">of Etsy sellers run their shop alone</div>
+          <div class="small" style="margin-top:8px">Etsy seller census, 2024</div></div>
+        <div><div style="font-size:96px;font-weight:700;letter-spacing:-.03em;line-height:1">44</div>
+          <div style="font-size:22px;margin-top:16px;line-height:1.35">tools a small business juggles to run itself</div>
+          <div class="small" style="margin-top:8px">Sage, 2026</div></div>
+        <div><div style="font-size:96px;font-weight:700;letter-spacing:-.03em;line-height:1">$1.16T</div>
+          <div style="font-size:22px;margin-top:16px;line-height:1.35">in sales lost to out-of-stocks each year</div>
+          <div class="small" style="margin-top:8px">IHL Group, 2025 · all retail</div></div>
+      </div>
+      <div style="margin-top:96px;font-size:44px;font-weight:700;letter-spacing:-.02em;line-height:1.2">Their back office was built for clicking.<br>Not for agents.</div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">“Most online shops are one person, juggling dozens of tools. Running out of stock costs retail over a trillion dollars a year. And their back office was built for clicking, not for agents.”</p></div>
+    <div><h4>Build</h4><ul><li>title card made in the editor; numbers appear one at a time</li><li>check each source's exact wording before the final cut</li></ul></div>
+    <div><h4>Reference</h4><p>Keynote stat slides: one big number, one line, the source under it. No icons or charts.</p></div>
+  </div>
+</section>
+
+<!-- 05 ─────────────────────────────────────────────── -->
+<section class="board" id="f05">
+  <div class="meta"><span class="tc">0:25–0:38</span><span class="name">Friday: one sentence becomes a change set</span><span class="num">frame 05</span></div>
+  <div class="frame inset">
+    <div class="bo">
+      <div data-side="inbox" data-clock="Fri Nov 6, 11:02" data-needs="1"></div>
+      <div class="main">
+        <div class="topbar"><h1>Inbox</h1><span class="small">1 needs you</span><div class="seg"><span>Tasks</span><span class="on">Conversation · active</span></div></div>
+        <div class="split">
+          <div class="chat">
+            <div class="msgs">
+              <div class="me-msg">Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.</div>
+              <div class="time">11:02</div>
+              <div class="ai"><div class="who"><img src="assets/ailism-avatar.png" alt="">Ailism</div>
+                <div class="bubble">I put this together as change set #1042. Nothing in the store has changed yet. Two things need your call: the chore coat (7 left) and the rain parka (4 left) are low on stock, and at 20% the seersucker overshirt would sell below its price floor.</div>
+                <div class="steps"><b>11 tool calls</b> · Muse Glimmer 30B on our GPU <svg class="ic" style="width:13px;height:13px"><use href="#i-chevron-down"/></svg></div></div>
+            </div>
+            <div class="composer"><div class="ph">Give the agent a task…</div>
+              <div class="row"><span class="tool"><svg class="ic"><use href="#i-paper-clip"/></svg></span><span class="tool"><svg class="ic"><use href="#i-camera"/></svg></span><span class="tool"><svg class="ic"><use href="#i-microphone"/></svg></span><span class="model">Muse Glimmer 30B</span><span class="send"><svg class="ic"><use href="#i-arrow-up"/></svg></span></div></div>
+          </div>
+          <div class="canvas"><div class="head">Canvas</div><div class="body">
+            <div class="block">
+              <div class="bh"><h3>VIP weekend sale: summer outerwear</h3><svg class="ic ask"><use href="#i-chat-bubble-oval-left-ellipsis"/></svg></div>
+              <div class="meta"><span>#1042 · v1</span><span class="tok gray">Drafting</span><span class="tok bad">2 checks failed</span></div>
+              <div><div class="lbl">Your request, as I understood it</div>
+                <div class="quote">“Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.”</div></div>
+              <div class="facts">
+                <div><div class="k">Who</div><div class="v">VIP tier</div><div class="d">1,284 members</div></div>
+                <div><div class="k">Products</div><div class="v">Summer outerwear</div><div class="d">42 products</div></div>
+                <div><div class="k">Benefit</div><div class="v">20% off</div><div class="d">member price</div></div>
+                <div><div class="k">When</div><div class="v">Sat Nov 7 – Sun Nov 8</div><div class="d">00:00 – 23:59</div></div>
+                <div><div class="k">Where</div><div class="v">Main page hero</div><div class="d">VIP only</div></div>
+              </div>
+              <div class="h4">Checks <span class="c">4 of 6 passed · the store's own rules, on every line</span></div>
+              <div class="checks">
+                <div class="check fail"><svg class="ic"><use href="#i-x-circle"/></svg><div><b>No price below the floor</b><span class="key">price_floor</span><div class="why">Seersucker overshirt: 20% off is $63.20, below its floor of $66.70 (cost + 15%).</div></div></div>
+                <div class="check fail"><svg class="ic"><use href="#i-x-circle"/></svg><div><b>Enough stock</b><span class="key">promo_min_stock</span><div class="why">Cotton chore coat has 7 and Light rain parka has 4; a sale needs at least 10.</div></div></div>
+                <div class="check pass"><svg class="ic"><use href="#i-check-circle"/></svg><div><b>Discount within the VIP limit</b><div class="why">Highest is 20%; the VIP limit is 30%.</div></div></div>
+                <div class="check pass"><svg class="ic"><use href="#i-check-circle"/></svg><div><b>No overlap with running promotions</b><div class="why">Checked 4 running promotions.</div></div></div>
+                <div class="check pass"><svg class="ic"><use href="#i-check-circle"/></svg><div><b>Coupon doesn't stack, main page slot is free</b><div class="why">One member benefit per order · hero open for VIP on Nov 7–8.</div></div></div>
+              </div>
+              <div class="actions"><span class="btn red dim">Approve and run</span><span class="hint">2 checks must pass first</span><span class="btn" style="margin-left:auto">Reject…</span></div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+    <div class="when mid">Friday, 11:02 AM</div>
+    <div class="cap">“One sentence becomes a change set. Even when the model is wrong, the rules hold.”</div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">“Friday. One sentence. The agent turns it into a change set: a pull request for the store. Nothing changes until I approve, and the store's own rules check every line.”</p>
+      <p>Typed, not voiced, so the viewer can read the request. Zoom on the two red checks.</p></div>
+    <div><h4>Build</h4><ul>
+      <li><span class="tag have">exists</span>conversation and canvas, change set block, 6 checks, Reject</li>
+      <li><span class="tag have">exists</span><b>the scene itself:</b> since PR #99 the request ends as change set v1 with 3 items and 2 failed checks in 4 of 5 eval runs on the final build (Nov 1); across 10 runs, 10–14 tool calls and 44–62 s per run, both turns. The one miss lost the banner when a revised plan wrote its own promotion id</li>
+      <li><span class="tag new">new</span>a line under the reply with the tool calls, the model and where it ran (11 in the Nov 1 run: 4 reads, 3 previews, the banner retried once after <code>search_products</code> found its picture); mic and camera in the composer</li></ul></div>
+    <div><h4>Reference</h4><p>Checks with pass and fail, approve blocked until they pass: GitHub pull request checks and branch protection. Conversation on the left, the work on the right: our Inbox, Codex, Claude artifacts. Tool-call line: “Worked for …” rows in ChatGPT and Codex.</p></div>
+  </div>
+</section>
+
+<!-- 06 ─────────────────────────────────────────────── -->
+<section class="board" id="f06">
+  <div class="meta"><span class="tc">0:38–0:46</span><span class="name">Fix it by talking: version 2</span><span class="num">frame 06</span></div>
+  <div class="frame inset">
+    <div class="bo">
+      <div data-side="inbox" data-clock="Fri Nov 6, 11:05" data-needs="1"></div>
+      <div class="main">
+        <div class="topbar"><h1>Inbox</h1><span class="small">1 needs you</span><div class="seg"><span>Tasks</span><span class="on">Conversation · active</span></div></div>
+        <div class="split">
+          <div class="chat">
+            <div class="msgs">
+              <div class="ai"><div class="who"><img src="assets/ailism-avatar.png" alt="">Ailism</div>
+                <div class="bubble">I put this together as change set #1042. Nothing in the store has changed yet. Two things need your call: the chore coat (7 left) and the rain parka (4 left) are low on stock, and at 20% the seersucker overshirt would sell below its price floor.</div></div>
+              <div class="me-msg">Drop the low-stock ones. Give the overshirt 15% instead.</div>
+              <div class="time">11:05</div>
+              <div class="ai"><div class="who"><img src="assets/ailism-avatar.png" alt="">Ailism</div>
+                <div class="bubble">Done. 40 products now, and the overshirt is at 15% ($67.15), just above its floor. All 6 checks pass.</div>
+                <div class="steps"><b>1 tool call</b> · Muse Glimmer 30B on our GPU <svg class="ic" style="width:13px;height:13px"><use href="#i-chevron-down"/></svg></div></div>
+            </div>
+            <div class="composer"><div class="ph">Give the agent a task…</div>
+              <div class="row"><span class="tool"><svg class="ic"><use href="#i-paper-clip"/></svg></span><span class="tool"><svg class="ic"><use href="#i-camera"/></svg></span><span class="tool"><svg class="ic"><use href="#i-microphone"/></svg></span><span class="model">Muse Glimmer 30B</span><span class="send"><svg class="ic"><use href="#i-arrow-up"/></svg></span></div></div>
+          </div>
+          <div class="canvas"><div class="head">Canvas</div><div class="body">
+            <div class="block">
+              <div class="bh"><h3>VIP weekend sale: summer outerwear</h3><svg class="ic ask"><use href="#i-chat-bubble-oval-left-ellipsis"/></svg></div>
+              <div class="meta"><span>#1042 · v2</span><span class="tok warn">Waiting for approval</span><span class="tok ok">All checks passed</span></div>
+              <div class="group"><div class="gh"><b>Changed from v1</b><span class="r">from your reply at 11:05</span></div>
+                <div class="gb"><table class="t">
+                  <tr><td style="width:44%">Left out for low stock</td><td>Cotton chore coat (7) · Light rain parka (4)</td></tr>
+                  <tr><td>Products on sale</td><td class="num"><span class="strike">42</span> <span class="changed">40</span></td></tr>
+                  <tr><td>Seersucker overshirt</td><td class="num"><span class="strike">20% · $63.20</span> <span class="changed">15% · $67.15</span> <span class="small">floor $66.70</span></td></tr>
+                </table></div></div>
+              <div class="h4">Checks <span class="c">6 of 6 passed</span></div>
+              <div class="checks two">
+                <div class="check pass"><svg class="ic"><use href="#i-check-circle"/></svg><div><b>No price below the floor</b><div class="why">Overshirt at 15% stays at cost + 15%.</div></div></div>
+                <div class="check pass"><svg class="ic"><use href="#i-check-circle"/></svg><div><b>Enough stock</b><div class="why">2 products under 10 units left out.</div></div></div>
+                <div class="check pass"><svg class="ic"><use href="#i-check-circle"/></svg><div><b>Discount within the VIP limit</b><div class="why">Highest is 20%; limit 30%.</div></div></div>
+                <div class="check pass"><svg class="ic"><use href="#i-check-circle"/></svg><div><b>No overlap with promotions</b><div class="why">Checked 4 running promotions.</div></div></div>
+                <div class="check pass"><svg class="ic"><use href="#i-check-circle"/></svg><div><b>Coupon doesn't stack</b><div class="why">One member benefit per order.</div></div></div>
+                <div class="check pass"><svg class="ic"><use href="#i-check-circle"/></svg><div><b>Main page slot is free</b><div class="why">Hero open for VIP on Nov 7–8.</div></div></div>
+              </div>
+              <div class="actions"><span class="btn red">Approve and run</span><span class="btn">Compare with v1</span><span class="btn" style="margin-left:auto">Reject…</span></div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+    <div class="when mid">Friday, 11:05 AM</div>
+    <div class="cap">“I fix it by talking. Version two passes every check.”</div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">“I fix it by talking. Version two passes every check.”</p></div>
+    <div><h4>Build</h4><ul>
+      <li><span class="tag have">exists</span>version 2 from conversation, checks re-run on the new version</li>
+      <li><span class="tag new">new</span>“Changed from v1” summary at the top of the block (today: “Compare with v1” on the page)</li></ul></div>
+    <div><h4>Reference</h4><p>What changed since the last review: GitHub “changes since last review”, Figma version history. Old value struck through, new value filled: GitHub suggested changes.</p></div>
+  </div>
+</section>
+
+<!-- 07 ─────────────────────────────────────────────── -->
+<section class="board" id="f07">
+  <div class="meta"><span class="tc">0:46–0:55</span><span class="name">The banner is checked too · approved and live</span><span class="num">frame 07</span></div>
+  <div class="frame inset">
+    <div class="bo">
+      <div data-side="inbox" data-clock="Fri Nov 6, 11:06"></div>
+      <div class="main">
+        <div class="topbar"><h1>Inbox</h1><span class="small">Nothing needs you</span><div class="seg"><span>Tasks</span><span class="on">Conversation · active</span></div></div>
+        <div class="split">
+          <div class="chat">
+            <div class="msgs">
+              <div class="me-msg">Drop the low-stock ones. Give the overshirt 15% instead.</div>
+              <div class="ai"><div class="who"><img src="assets/ailism-avatar.png" alt="">Ailism</div>
+                <div class="bubble">Done. 40 products now, and the overshirt is at 15% ($67.15), just above its floor. All 6 checks pass.</div></div>
+              <div class="sys"><svg class="ic" style="color:var(--ok-ic)"><use href="#i-check-circle"/></svg>Approved by SJ · 11:06</div>
+              <div class="ai"><div class="who"><img src="assets/ailism-avatar.png" alt="">Ailism</div>
+                <div class="bubble">It's live. I read every change back from the store and they match. You can undo all of it until Mon, Nov 9, 23:59.</div></div>
+            </div>
+            <div class="composer"><div class="ph">Give the agent a task…</div>
+              <div class="row"><span class="tool"><svg class="ic"><use href="#i-paper-clip"/></svg></span><span class="tool"><svg class="ic"><use href="#i-camera"/></svg></span><span class="tool"><svg class="ic"><use href="#i-microphone"/></svg></span><span class="model">Muse Glimmer 30B</span><span class="send"><svg class="ic"><use href="#i-arrow-up"/></svg></span></div></div>
+          </div>
+          <div class="canvas"><div class="head">Canvas</div><div class="body">
+            <div class="block">
+              <div class="bh"><h3>VIP weekend sale: summer outerwear</h3><svg class="ic ask"><use href="#i-chat-bubble-oval-left-ellipsis"/></svg></div>
+              <div class="meta"><span>#1042 · v2</span><span class="tok ok">Live</span><span class="tok ok">All checks passed</span></div>
+              <div class="banner-ok"><svg class="ic"><use href="#i-check-circle"/></svg><div><b>Live</b>Every change ran and was checked again. You can undo it until Mon, Nov 9, 23:59.</div></div>
+              <div class="h4">Changes <span class="c">3 items, ran in this order</span></div>
+              <div class="group"><div class="gh"><span class="tok op">update</span><b>Sale prices</b><span class="s">40 products · VIP member price · Sat–Sun</span></div>
+                <div class="gb"><table class="t num">
+                  <tr><td><img class="thumb" src="assets/field-navy.svg" alt="">Cotton utility jacket</td><td class="r">20%</td><td class="r"><span class="strike">$118.00</span> $94.40</td></tr>
+                  <tr><td><img class="thumb" src="assets/shirt-clay.svg" alt="">Seersucker overshirt</td><td class="r">15%</td><td class="r"><span class="strike">$79.00</span> $67.15</td></tr>
+                </table><div class="small" style="margin-top:4px">And 38 more</div></div></div>
+              <div class="group"><div class="gh"><span class="tok op">create</span><b>Coupon</b><span class="s">VIPWEEKEND20 · records the VIP price on each order</span></div></div>
+              <div class="group"><div class="gh"><span class="tok op">schedule</span><b>Main page hero</b><span class="s">VIP only · Nov 7–8</span></div>
+                <div class="gb" style="display:flex;gap:14px;align-items:stretch;padding-top:10px">
+                  <div data-banner style="width:200px;height:112px;border-radius:8px;flex:none"></div>
+                  <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+                    <div style="font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--text2)">VIP WEEKEND</div>
+                    <div style="font-size:18px;font-weight:700;line-height:1.2">20% off summer outerwear</div>
+                    <div class="check pass" style="padding:4px 0 0;border:0"><svg class="ic"><use href="#i-check-circle"/></svg><div><b style="font-size:13px">Picture matches the brief</b><div class="why">Muse Image drew it. Muse Glimmer 30B read it back: jackets on a rail, warm light; no text, logos or faces.</div></div></div>
+                  </div>
+                </div></div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+    <div class="when mid">Friday, 11:06 AM</div>
+    <div class="cap">“Muse Image draws the banner. Glimmer reads it back before it ships.”</div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">“Muse Image draws the banner, and Glimmer reads it back before it ships. Approved, live, and I can undo it.”</p>
+      <p>The banner picture is a placeholder here; the recording uses the Muse Image output. The banner's words stay HTML on the page, so the picture carries no text.</p></div>
+    <div><h4>Build</h4><ul>
+      <li><span class="tag have">exists</span>Approve and run, verify after run, Live banner, undo window, coupon, banner schedule</li>
+      <li><span class="tag new">new</span><code>generate_image</code> calls Muse Image (today a stub) — fallback: the product's own garment picture</li>
+      <li><span class="tag new">new</span>a “picture matches the brief” check: Glimmer reads the image back against the brief before the item can run</li></ul></div>
+    <div><h4>Reference</h4><p>Image shown inside the change it belongs to: Shopify Sidekick image edits shown for approval. A check on generated content before it ships: GitHub required checks. Hero layout (eyebrow, title, button): our storefront hero.</p></div>
+  </div>
+</section>
+
+<!-- 08 ─────────────────────────────────────────────── -->
+<section class="board" id="f08">
+  <div class="meta"><span class="tc">0:55–1:05</span><span class="name">Saturday: two shoppers, one rule set</span><span class="num">frame 08</span></div>
+  <div class="frame gray">
+    <div style="position:absolute;left:32px;top:72px;font-size:16px;font-weight:600">Jamie · VIP member</div>
+    <div style="position:absolute;left:728px;top:72px;font-size:16px;font-weight:600">Alex · member</div>
+    <div class="win" style="left:32px;top:102px;width:680px;height:600px">
+      <div class="bar"><i></i><i></i><i></i><span class="url">a-commerce.ailism.team</span></div>
+      <div class="fo-nav"><img src="assets/ailism-wordmark.png" alt=""><span class="muted" style="margin-left:-14px">Commerce</span><span>New in</span><span>Fall layers</span><span class="r"><svg class="ic"><use href="#i-magnifying-glass"/></svg><span>Jamie · VIP</span><svg class="ic"><use href="#i-shopping-bag"/></svg></span></div>
+      <div style="margin:4px 20px 0;border:1px solid var(--line);border-radius:12px;display:flex;overflow:hidden;height:230px">
+        <div data-banner style="width:50%"></div>
+        <div style="padding:26px 22px;display:flex;flex-direction:column;justify-content:center;gap:8px">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--text2)">VIP WEEKEND</div>
+          <div style="font-size:26px;font-weight:700;line-height:1.15">20% off summer outerwear</div>
+          <div style="font-size:13px;color:var(--text2)">Your member price, Saturday and Sunday only.</div>
+          <span class="btn red sm" style="align-self:flex-start;margin-top:4px">Shop the sale</span></div>
+      </div>
+      <div data-grid="vip" style="margin:16px 20px 0"></div>
+    </div>
+    <div class="win" style="left:728px;top:102px;width:680px;height:600px">
+      <div class="bar"><i></i><i></i><i></i><span class="url">a-commerce.ailism.team</span></div>
+      <div class="fo-nav"><img src="assets/ailism-wordmark.png" alt=""><span class="muted" style="margin-left:-14px">Commerce</span><span>New in</span><span>Fall layers</span><span class="r"><svg class="ic"><use href="#i-magnifying-glass"/></svg><span>Alex</span><svg class="ic"><use href="#i-shopping-bag"/></svg></span></div>
+      <div style="margin:4px 20px 0;border:1px solid var(--line);border-radius:12px;display:flex;overflow:hidden;height:230px">
+        <div style="width:50%;background:#cfcfcf url(assets/field-navy.svg) center/cover"></div>
+        <div style="padding:26px 22px;display:flex;flex-direction:column;justify-content:center;gap:8px">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--text2)">NEW SEASON</div>
+          <div style="font-size:26px;font-weight:700;line-height:1.15">Fall layers</div>
+          <div style="font-size:13px;color:var(--text2)">Coats, knits and fleece for cold starts</div>
+          <span class="btn red sm" style="align-self:flex-start;margin-top:4px">Shop fall layers</span></div>
+      </div>
+      <div data-grid="member" style="margin:16px 20px 0"></div>
+    </div>
+    <div class="when">Saturday, 9:00 AM</div>
+    <div class="cap">“Jamie is a VIP and sees the sale. Alex doesn't. Same tools, same rules.”</div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">“Saturday. Jamie is a VIP and sees the sale. Alex doesn't. Same tools, same rules, same numbers.”</p>
+      <p>Two browser windows recorded at the same store time. The $94.40 here is the price approved in frame 07.</p></div>
+    <div><h4>Build</h4><ul>
+      <li><span class="tag have">exists</span>member prices by tier, hero by audience, demo sign-in as Jamie and Alex</li>
+      <li><span class="tag cfg">demo config</span>store clock set to Sat 09:00 for the recording</li></ul></div>
+    <div><h4>Reference</h4><p>Our storefront home and product cards as they render today; side-by-side of two shoppers from <code>design/storefront/fo-two-shoppers</code>.</p></div>
+  </div>
+</section>
+
+<!-- 09 ─────────────────────────────────────────────── -->
+<section class="board" id="f09">
+  <div class="meta"><span class="tc">1:05–1:30</span><span class="name">Overnight, the store keeps watch</span><span class="num">frame 09</span></div>
+  <div class="frame">
+    <div class="bo" style="right:430px">
+      <div data-side="activity" data-clock="Sun Nov 8, 02:15" data-needs="1"></div>
+      <div class="main">
+        <div style="padding:16px 16px 6px"><div style="font-size:24px;font-weight:600">Activity</div>
+          <div class="small">Everything the agents, people and the store did, newest first. It is only ever added to.</div></div>
+        <table class="t" style="font-size:13.5px">
+          <tr><th style="padding-left:16px;width:96px">When</th><th style="width:150px">Who</th><th>What</th><th style="width:130px">Status</th></tr>
+          <tr style="background:#fbf5ee"><td style="padding-left:16px" class="num">Sun 02:15</td><td>Operator agent</td><td>Drafted a reorder for Cotton utility jacket: 88 units, $4,400</td><td><span class="tok warn">Waiting for you</span></td></tr>
+          <tr style="background:#fbf5ee"><td style="padding-left:16px" class="num">Sun 02:14</td><td>Stock-out watcher</td><td>Cotton utility jacket: M sold out, L runs out in about 3 days; handed to the agent</td><td><span class="tok ok">Done</span></td></tr>
+          <tr><td style="padding-left:16px" class="num">Sat 23:31</td><td>Order #20644</td><td>Linen blend field jacket, M · $102.40 VIP price</td><td><span class="tok ok">Paid</span></td></tr>
+          <tr><td style="padding-left:16px" class="num">Sat 21:52</td><td>Jamie</td><td>Asked to be told when Cotton utility jacket in M is back</td><td><span class="tok gray">Waiting</span></td></tr>
+          <tr><td style="padding-left:16px" class="num">Sat 21:40</td><td>Store</td><td>Cotton utility jacket, M sold out (automatic)</td><td><span class="tok bad">Out of stock</span></td></tr>
+          <tr><td style="padding-left:16px" class="num">Sat 21:38</td><td>Order #20611</td><td>Cotton utility jacket, M · $94.40 VIP price</td><td><span class="tok ok">Paid</span></td></tr>
+          <tr><td style="padding-left:16px" class="num">Sat 21:12</td><td>Order #20604</td><td>Packable windbreaker, S · $71.20 VIP price</td><td><span class="tok ok">Paid</span></td></tr>
+          <tr><td style="padding-left:16px" class="num">Sat 20:55</td><td>Order #20598</td><td>Cotton utility jacket, L · $94.40 VIP price</td><td><span class="tok ok">Paid</span></td></tr>
+          <tr><td style="padding-left:16px" class="num">Sat 20:51</td><td>Order #20597</td><td>Seersucker overshirt, S · $67.15 VIP price</td><td><span class="tok ok">Paid</span></td></tr>
+        </table>
+      </div>
+    </div>
+    <div style="position:absolute;right:0;top:0;bottom:0;width:430px;background:#ececec"></div>
+    <div class="phone" style="left:1072px; top:84px; transform:scale(.74)">
+      <div class="island"></div>
+      <div class="scr">
+        <div class="sb" data-sb="9:52"></div>
+        <div class="fo-nav" style="padding:0 18px"><img src="assets/ailism-wordmark.png" alt="" style="height:20px"><span class="r"><svg class="ic" style="width:20px;height:20px"><use href="#i-magnifying-glass"/></svg><svg class="ic" style="width:20px;height:20px"><use href="#i-shopping-bag"/></svg></span></div>
+        <div style="height:300px;background:#c8cacd url(assets/field-navy.svg) center/cover"></div>
+        <div style="padding:14px 18px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:22px;font-weight:600">Cotton utility jacket</div>
+          <div class="num" style="font-size:17px;font-weight:600">$94.40 <span class="strike" style="font-weight:400">$118.00</span> <span class="small">VIP weekend</span></div>
+          <div style="font-size:14px;font-weight:600;margin-top:4px">Size</div>
+          <div style="display:flex;gap:8px;font-size:15px;font-weight:500">
+            <span style="padding:6px 12px">XS</span><span style="padding:6px 12px">S</span>
+            <span style="padding:6px 12px;border-radius:10px;background:var(--fill);text-decoration:line-through;color:var(--text3)">M</span>
+            <span style="padding:6px 12px">L</span><span style="padding:6px 12px">XL</span></div>
+          <div class="small">M is sold out.</div>
+          <span class="btn red wide lg"><svg class="ic"><use href="#i-bell"/></svg>Notify me when M is back</span>
+          <div class="small" style="display:flex;gap:6px;align-items:center"><svg class="ic" style="color:var(--ok-ic)"><use href="#i-check-circle"/></svg>We'll tell you as soon as M is back.</div>
+        </div>
+        <div class="home-ind"></div>
+      </div>
+    </div>
+    <div class="speed" style="right:24px">Saturday night → Sunday 2:15 AM · sped up</div>
+    <div class="cap">“Overnight, the store keeps watch.”</div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">“Overnight, the store keeps watch. Jamie's size sells out, so Jamie asks to be told. At 2 AM, a watcher sees the jacket running out and drafts the reorder you saw.”</p>
+      <p>Time-lapse of real orders from the simulator through the real API; the store clock in the side bar runs. Ends on the row that opened frame 01.</p></div>
+    <div><h4>Build</h4><ul>
+      <li><span class="tag have">exists</span>simulator orders, automatic sold out, <code>subscribe_restock</code>, the stock-out watcher and agent pickup, store clock</li>
+      <li><span class="tag new">new</span>“Notify me when M is back” on the product page (the tool exists, the button doesn't)</li>
+      <li><span class="tag new">new</span>Activity rows in the store's words (today: tool names and record ids)</li>
+      <li><span class="tag cfg">demo config</span>simulator demand for the sale weekend and the clock jumps</li></ul></div>
+    <div><h4>Reference</h4><p>Sold-out size struck through with a “notify me” button: COS and Uniqlo product pages. Speed label on a time-lapse: product films marking sped-up footage. Feed: our Activity page.</p></div>
+  </div>
+</section>
+
+<!-- 10 ─────────────────────────────────────────────── -->
+<section class="board" id="f10">
+  <div class="meta"><span class="tc">1:30–1:40</span><span class="name">Next Friday: the box arrives</span><span class="num">frame 10</span></div>
+  <div class="frame gray">
+    <div class="kraft" style="left:0;top:0;bottom:0;width:900px"></div>
+    <div class="slip" id="slip" style="left:150px;top:96px;transform:rotate(-3.5deg)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><h5>PACKING SLIP</h5><div class="co" style="margin-top:6px"><b>Harbor &amp; Pine Garment Co.</b><br>Ship date: Nov 11, 2026</div></div>
+        <div class="co" style="text-align:right">PO number <b style="font-size:20px">1044</b><br>Carton 1 of 1</div>
+      </div>
+      <div class="co" style="margin-top:10px">Ship to: Ailism Commerce, Receiving</div>
+      <table>
+        <tr><th>Item</th><th>Size</th><th>Ordered</th><th>Shipped</th><th>Back order</th></tr>
+        <tr><td>Cotton utility jacket, Navy</td><td>XS</td><td>6</td><td>6</td><td>0</td></tr>
+        <tr><td>Cotton utility jacket, Navy</td><td>S</td><td>13</td><td>13</td><td>0</td></tr>
+        <tr><td>Cotton utility jacket, Navy</td><td>M</td><td>41</td><td>41</td><td>0</td></tr>
+        <tr><td>Cotton utility jacket, Navy</td><td>L</td><td>23</td><td>23</td><td>0</td></tr>
+        <tr><td>Cotton utility jacket, Navy</td><td>XL</td><td>10</td><td>8</td><td>2</td></tr>
+        <tr><td><b>Total</b></td><td></td><td><b>93</b></td><td><b>91</b></td><td><b>2</b></td></tr>
+      </table>
+      <div class="hand" style="margin-top:12px">XL ×2 to follow next week. — J</div>
+    </div>
+    <div class="phone" style="left:1040px; top:18px; transform:scale(.8)">
+      <div class="island"></div>
+      <div class="scr">
+        <div class="sb" data-sb="3:10"></div>
+        <div class="mhead"><svg class="ic"><use href="#i-arrow-left"/></svg>Inbox</div>
+        <div class="mbody" style="justify-content:flex-end;padding-bottom:6px">
+          <div class="me-msg" style="font-size:15.5px"><div data-slipthumb style="width:190px;height:150px;border-radius:12px;overflow:hidden;position:relative;background:#b78f5e;margin:2px 0 8px"></div>The jacket box came. Check it against the order.</div>
+          <div class="time">3:10 PM</div>
+          <div class="ai"><div class="who"><img src="assets/ailism-avatar.png" alt="">Ailism</div>
+            <div class="steps"><svg class="ic" style="width:14px;height:14px"><use href="#i-photo"/></svg><b>Reading the photo</b> · Muse Glimmer 30B on our GPU</div></div>
+        </div>
+        <div class="mcomposer"><div class="ph">Give the agent a task…</div>
+          <div class="round fill"><svg class="ic"><use href="#i-camera"/></svg></div>
+          <div class="round fill"><svg class="ic"><use href="#i-microphone"/></svg></div></div>
+        <div class="home-ind"></div>
+      </div>
+    </div>
+    <div class="when">Friday, Nov 13, 3:10 PM</div>
+    <div class="cap">“Friday, the box arrives. I take a photo of the packing slip.”</div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">“Friday, the box arrives. I take a photo of the packing slip.”</p>
+      <p>A real printed slip on a real box, shot on the phone. PO 1044 is the reorder approved in frame 03.</p></div>
+    <div><h4>Build</h4><ul>
+      <li><span class="tag new">new</span>camera and photo attach in the composer; image parts sent to the model with the turn</li>
+      <li><span class="tag new">new</span>a short number on each reorder (PO 1044) so a slip can point at it</li>
+      <li><span class="tag cfg">demo config</span>the slip is printed from the reorder with one XL line short</li></ul></div>
+    <div><h4>Reference</h4><p>Packing slip columns (ordered, shipped, back order): standard packing slip and purchase order templates. Photo in the message bubble: iMessage, ChatGPT attachments.</p></div>
+  </div>
+</section>
+
+<!-- 11 ─────────────────────────────────────────────── -->
+<section class="board" id="f11">
+  <div class="meta"><span class="tc">1:40–1:55</span><span class="name">Read on our own GPU, then a change set</span><span class="num">frame 11</span></div>
+  <div class="frame inset">
+    <div class="bo">
+      <div data-side="inbox" data-clock="Fri Nov 13, 15:11" data-needs="1"></div>
+      <div class="main">
+        <div class="topbar"><h1>Inbox</h1><span class="small">1 needs you</span><div class="seg"><span>Tasks</span><span class="on">Conversation · active</span></div></div>
+        <div class="split">
+          <div class="chat" style="width:500px">
+            <div class="msgs">
+              <div class="me-msg"><div data-slipthumb style="width:170px;height:134px;border-radius:12px;overflow:hidden;position:relative;background:#b78f5e;margin:2px 0 8px"></div>The jacket box came. Check it against the order.</div>
+              <div class="time">15:10</div>
+              <div class="ai"><div class="who"><img src="assets/ailism-avatar.png" alt="">Ailism</div>
+                <div class="bubble">This is PO 1044, Sunday's jacket reorder. Everything came except 2 of the 10 XL; the slip says they follow next week. Change set #1046 receives the box, sets XL to what actually came, and tells the 11 shoppers waiting for M.</div>
+                <div class="steps"><svg class="ic" style="width:14px;height:14px"><use href="#i-photo"/></svg><b>Read the photo, 3 tool calls</b> · Muse Glimmer 30B on our GPU</div></div>
+            </div>
+            <div class="composer"><div class="ph">Give the agent a task…</div>
+              <div class="row"><span class="tool"><svg class="ic"><use href="#i-paper-clip"/></svg></span><span class="tool"><svg class="ic"><use href="#i-camera"/></svg></span><span class="tool"><svg class="ic"><use href="#i-microphone"/></svg></span><span class="model">Muse Glimmer 30B</span><span class="send"><svg class="ic"><use href="#i-arrow-up"/></svg></span></div></div>
+          </div>
+          <div class="canvas"><div class="head">Canvas</div><div class="body" style="gap:12px">
+            <div class="block" style="gap:8px">
+              <div class="bh"><h3 style="font-size:16px">Read from the photo</h3><span class="tok ok" style="margin-left:8px">PO 1044 matches</span><svg class="ic ask"><use href="#i-chat-bubble-oval-left-ellipsis"/></svg></div>
+              <div class="meta">Packing slip from Harbor &amp; Pine · read by Muse Glimmer 30B on this server; the photo did not leave it</div>
+              <table class="t num">
+                <tr><th>Size</th><th class="r">Ordered</th><th class="r">On the slip</th><th></th></tr>
+                <tr><td>XS · S · M · L</td><td class="r">6 · 13 · 41 · 23</td><td class="r">6 · 13 · 41 · 23</td><td><span class="tok ok">Match</span></td></tr>
+                <tr><td>XL</td><td class="r">10</td><td class="r">8</td><td><span class="tok warn">2 back-ordered</span></td></tr>
+              </table>
+              <div class="small">Handwritten on the slip: “XL ×2 to follow next week.”</div>
+            </div>
+            <div class="block" style="gap:10px">
+              <div class="bh"><h3 style="font-size:16px">Receive PO 1044: Cotton utility jacket</h3><svg class="ic ask"><use href="#i-chat-bubble-oval-left-ellipsis"/></svg></div>
+              <div class="meta"><span>#1046 · v1</span><span class="tok warn">Waiting for approval</span><span class="tok ok">All checks passed</span></div>
+              <div class="group"><div class="gh"><span class="tok op">update</span><b>Receive the box</b><span class="r">XS 1→7 · S 2→15 · M 0→41 · L 1→24 · XL 2→12</span></div></div>
+              <div class="group"><div class="gh"><span class="tok op">update</span><b>Fix XL stock</b><span class="s">12 → 10, 2 back-ordered</span></div></div>
+              <div class="group"><div class="gh"><span class="tok op">send</span><b>Restock alerts</b><span class="s">11 shoppers waiting for M</span><span class="tok gray" style="margin-left:auto">Can't be undone</span></div></div>
+              <div class="checks">
+                <div class="check pass"><svg class="ic"><use href="#i-check-circle"/></svg><div><b>M goes back on sale</b><div class="why">It was sold out automatically; stock above 0 puts it back.</div></div></div>
+              </div>
+              <div class="actions"><span class="btn red">Approve and run</span><span class="btn" style="margin-left:auto">Reject…</span></div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+    <div class="when mid">Friday, Nov 13, 3:11 PM</div>
+    <div class="cap">“The same 30B model reads the paper, on our own GPU.”</div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">“The same 30B model reads the paper, on our own GPU. Two XL are missing, so the change set fixes the stock and tells the people waiting.”</p></div>
+    <div><h4>Build</h4><ul>
+      <li><span class="tag have">exists</span><code>receive_reorder</code> (stock up, back on sale, restock alerts), <code>set_variant_stock</code>, change set, irreversible marking for messages</li>
+      <li><span class="tag new">new</span>image input to Glimmer (checked on 10-31 with one synthetic slip: PO, 4 lines, total and the back-order note right, 17.9 s; real phone photos not tried yet)</li>
+      <li><span class="tag new">new</span>a “Read from the photo” block: what was read, set against the order</li></ul></div>
+    <div><h4>Reference</h4><p>Ordered against received per line with a mismatch flag: Shopify “receive inventory” for transfers and purchase orders, three-way match in accounts payable tools. Block layout: our canvas blocks.</p></div>
+  </div>
+</section>
+
+<!-- 12 ─────────────────────────────────────────────── -->
+<section class="board" id="f12">
+  <div class="meta"><span class="tc">1:55–2:05</span><span class="name">Back in Jamie's size</span><span class="num">frame 12</span></div>
+  <div class="frame gray">
+    <div class="phone" style="left:330px; top:18px; transform:scale(.8)">
+      <div class="island"></div>
+      <div class="scr lock">
+        <div class="sb light" data-sb=""></div>
+        <div class="date">Friday, November 13</div>
+        <div class="clockbig">3:12</div>
+        <div style="flex:1"></div>
+        <div class="notif">
+          <div class="app"><img src="assets/ailism-avatar.png" alt=""></div>
+          <div style="flex:1">
+            <div class="top"><b>Ailism Commerce</b><span>now</span></div>
+            <div class="t">Back in your size</div>
+            <div class="b">Cotton utility jacket in M is back. You asked us to tell you.</div>
+          </div>
+        </div>
+        <div style="height:150px"></div>
+        <div class="home-ind light"></div>
+      </div>
+    </div>
+    <div class="phone" style="left:780px; top:18px; transform:scale(.8)">
+      <div class="island"></div>
+      <div class="scr">
+        <div class="sb" data-sb="3:13"></div>
+        <div class="fo-nav" style="padding:0 18px"><img src="assets/ailism-wordmark.png" alt="" style="height:20px"><span class="r"><svg class="ic" style="width:20px;height:20px"><use href="#i-magnifying-glass"/></svg><svg class="ic" style="width:20px;height:20px"><use href="#i-user-circle"/></svg><svg class="ic" style="width:20px;height:20px"><use href="#i-shopping-bag"/></svg></span></div>
+        <div class="mbody" style="gap:10px;padding-top:6px">
+          <div class="ai" style="max-width:none"><div class="who"><img src="assets/ailism-avatar.png" alt="">Ailism</div>
+            <div style="font-size:15.5px;line-height:1.45">It's back in your size. The VIP weekend price ended on Sunday, so it's $118.00 now.</div></div>
+          <div style="display:flex;gap:12px;border:1px solid var(--line);border-radius:14px;padding:10px">
+            <div style="width:84px;height:104px;border-radius:9px;background:#c8cacd url(assets/field-navy.svg) center/cover;flex:none"></div>
+            <div style="display:flex;flex-direction:column;gap:3px;font-size:14px">
+              <b style="font-size:15.5px;font-weight:600">Cotton utility jacket</b><span class="sec">Navy · M</span><b class="num" style="font-weight:600">$118.00</b>
+              <span class="small">In stock · arrives Tue, Nov 17</span></div>
+          </div>
+          <div class="small" style="display:flex;gap:6px;align-items:center">Using your saved size, M · <u>Change</u></div>
+          <div style="border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:7px;font-size:14px">
+            <div style="font-weight:600;font-size:15px">Ready when you are</div>
+            <div style="display:flex"><span class="sec">Shipping</span><span style="margin-left:auto">Free</span></div>
+            <div style="display:flex"><span class="sec">Pay with</span><span style="margin-left:auto">Visa ·· 4242</span></div>
+            <div style="display:flex"><span class="sec">Deliver to</span><span style="margin-left:auto">Home</span></div>
+            <div style="display:flex;font-weight:600"><span>Total</span><span class="num" style="margin-left:auto">$118.00</span></div>
+            <span class="btn red wide lg" style="margin-top:4px">Place order</span>
+            <div class="small" style="text-align:center">Only you can place this order.</div>
+          </div>
+        </div>
+        <div class="mcomposer"><div class="ph">Ask about fit, fabric, delivery…</div><div class="round red"><svg class="ic"><use href="#i-arrow-up"/></svg></div></div>
+        <div class="home-ind"></div>
+      </div>
+    </div>
+    <div class="when">Friday, Nov 13, 3:12 PM</div>
+    <div class="cap">“The agent prepares the order. Only Jamie can place it.”</div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">“Back in Jamie's size. The agent prepares the order; only Jamie can place it.”</p>
+      <p>The assistant says the sale has ended instead of hiding it.</p></div>
+    <div><h4>Build</h4><ul>
+      <li><span class="tag have">exists</span>restock alert sent by <code>receive_reorder</code>, shopper assistant, saved size, checkout card that only the shopper can submit</li>
+      <li><span class="tag new">new</span>the alert opens the assistant on that product (a deep link with the product and size)</li></ul></div>
+    <div><h4>Reference</h4><p>Back-in-stock push: Shopify back-in-stock apps, Nike app. Confirm step the shopper presses: Shop Pay and Apple Pay sheets; our <code>CheckoutCard</code> and <code>design/mockups/mobile-confirm</code>.</p></div>
+  </div>
+</section>
+
+<!-- 13 ─────────────────────────────────────────────── -->
+<section class="board" id="f13">
+  <div class="meta"><span class="tc">2:05–2:22</span><span class="name">What's underneath: the store, rebuilt for the agent</span><span class="num">frame 13</span></div>
+  <div class="frame">
+    <div class="arch" id="arch">
+      <div class="levels">
+        <div><b>AI-added</b><span>A chatbot on screens built for people</span></div>
+        <div><b>Agent-ready</b><span>The old APIs, opened to outside agents</span></div>
+        <div class="on"><b>AI-native</b><span>The store rebuilt so an agent can do the work</span></div>
+      </div>
+      <div class="you"><svg class="ic"><use href="#i-user-circle"/></svg><b>You</b><span>say the goal and approve the result</span>
+        <span class="chip planned"><svg class="ic"><use href="#i-microphone"/></svg>Muse Voice Transcribe · your voice in</span></div>
+      <div class="group"><div class="gh"><b>web</b><span class="s">Next.js</span></div>
+        <div class="row"><b>The screen is the result of the work</b><span class="d">19 UI blocks, chosen for the task and the person, instead of menus to look through</span><span class="seen"><b>Sun 7:03</b>version 2 approved on the phone</span></div></div>
+      <div class="group"><div class="gh"><b>agent</b><span class="s">Rust harness</span></div>
+        <div class="row"><b>Find, plan, run, check</b><span class="d">Picks a few of the 291 tools, plans the calls, previews every write, checks its reply against the results</span>
+          <span class="chips"><span class="chip">Muse Glimmer 30B · every model call · our own GPU</span><span class="chip planned"><svg class="ic"><use href="#i-photo"/></svg>Muse Image · the sale banner</span></span></div></div>
+      <div class="group"><div class="gh"><b>commerce</b><span class="s">Rust, PostgreSQL · rebuilt for agents</span></div>
+        <div class="row"><b>Tools in the store's words</b><span class="d">291 tools in 13 domains, found by order number, email or product name, never an internal id</span><span class="seen"><b>Sun 7:02</b>“Make XL ten and approve.”</span></div>
+        <div class="row"><b>Every change is a proposal</b><span class="d">A change set with a preview and checks: you approve, the store runs it, reads it back, and can undo it</span><span class="seen"><b>Fri 11:05</b>version 2, changed by talking</span></div>
+        <div class="row"><b>Rules are data</b><span class="d">Discount limits, price floors and stock minimums live in policy files; the store checks them, not the model</span><span class="seen"><b>Fri 11:02</b>2 of 6 checks failed</span></div>
+        <div class="row"><b>The store brings the work</b><span class="d">Watchers open tasks, and the agent drafts the fix before anyone asks</span><span class="seen"><b>Sun 2:14 AM</b>the reorder drafted overnight</span></div></div>
+    </div>
+    <div class="cap">“We rebuilt what's underneath for the agent.”</div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">“Most AI commerce puts a chatbot on screens built for people. We rebuilt what's underneath for the agent: tools in the words people use, every change a proposal the store checks against its own rules, and a store that brings you the work.”</p>
+      <p>The diagram builds in the order the voice names it: the three lines on top, then commerce row by row, each row lighting up with the moment it made possible (the time and words on the right, frames 02, 06, 05, 09), then the agent and the screen (frame 03). The editor can cut in a still of that scene as each row lights up. The rows are the five principles in <code>docs/design.md</code>. The models sit on the diagram where they run, so the Meta tools are shown, not listed.</p></div>
+    <div><h4>Build</h4><ul>
+      <li><span class="tag have">exists</span>every row: human handles (#47), change sets (<code>crates/changeset</code>), <code>policies/*.yml</code>, 3 watchers and task pickup (#73), 19 UI blocks, Glimmer self-hosted</li>
+      <li><span class="tag new">new</span>Voice Transcribe and Muse Image (dashed): drop them from the frame if they are not running by the recording</li>
+      <li><span class="tag new">new</span>the open-weight prize asks for proof without a GPU: put the vLLM log line with the model name and quantization in the README</li>
+      <li><span class="tag have">exists</span>the README picture is rendered from this frame by <code>render.py</code>, without the dashed items, the story's moments and the subtitle</li></ul></div>
+    <div><h4>Reference</h4><p>The three lines are the table in <code>docs/research.md</code> §2; the layers are the README's architecture (web, agent, commerce) with the principles of <code>docs/design.md</code> as rows. Drawn with the storyboard's own pieces: the change set's group box (frame 06), the facts row (frame 05), the composer's model pill.</p></div>
+  </div>
+</section>
+
+<!-- 14 ─────────────────────────────────────────────── -->
+<section class="board" id="f14">
+  <div class="meta"><span class="tc">2:22–2:40</span><span class="name">Same model, same GPU, only the tools changed</span><span class="num">frame 14</span></div>
+  <div class="frame">
+    <div style="position:absolute;left:0;right:0;top:22px;text-align:center;font-size:15px;color:var(--text2)">Same request · Muse Glimmer 30B · same GPU · same back end</div>
+    <div style="position:absolute;left:32px;top:56px;width:680px">
+      <div style="font-size:20px;font-weight:700">Screen-shaped API</div>
+      <div class="small">One endpoint per admin screen, codes instead of words</div></div>
+    <div style="position:absolute;left:728px;top:56px;width:680px">
+      <div style="font-size:20px;font-weight:700">A-Commerce tools</div>
+      <div class="small">Named in the store's words, with previews and checks</div></div>
+    <div class="win" style="left:32px;top:116px;width:680px;height:440px"><div class="split" style="height:100%"><div class="chat" style="width:100%;border:0"><div class="msgs" style="justify-content:flex-start;gap:12px">
+      <div class="me-msg">Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.</div>
+      <div data-trail="facade"></div>
+      <div class="block" style="gap:6px;border-color:var(--bad-bg)"><div style="display:flex;gap:8px;align-items:center"><svg class="ic" style="color:var(--bad-ic);width:20px;height:20px"><use href="#i-x-circle"/></svg><b style="font-size:16px">No change set</b></div>
+        <div class="small">Both calls failed. 5 model calls, about 23 s; the same in 3 of 3 runs on Oct 31.</div></div>
+    </div></div></div></div>
+    <div class="win" style="left:728px;top:116px;width:680px;height:440px"><div class="split" style="height:100%"><div class="chat" style="width:100%;border:0"><div class="msgs" style="justify-content:flex-start;gap:10px">
+      <div class="me-msg">Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.</div>
+      <div data-trail="tools"></div>
+      <div class="block" style="gap:6px"><div style="display:flex;gap:8px;align-items:center"><svg class="ic" style="width:20px;height:20px"><use href="#i-clipboard-document-list"/></svg><b style="font-size:16px">Change set #1042 · v1</b><span class="tok bad" style="margin-left:auto">2 checks failed</span></div>
+        <div class="small">40 of 42 products, coupon, VIP hero · waiting for you</div></div>
+    </div></div></div></div>
+    <div style="position:absolute;left:32px;top:568px;width:680px;text-align:center"><b class="num" style="font-size:34px">__ / __</b><div class="small" style="font-size:14px">held-out tasks finished</div></div>
+    <div style="position:absolute;left:728px;top:568px;width:680px;text-align:center"><b class="num" style="font-size:34px">__ / __</b><div class="small" style="font-size:14px">held-out tasks finished</div></div>
+    <div style="position:absolute;left:0;right:0;top:648px;text-align:center;font-size:19px;font-weight:600">It isn't perfect: <span class="num">__</span> of <span class="num">__</span> still fail. So every write waits in a change set you approve and can undo.</div>
+    <div class="small" style="position:absolute;left:0;right:0;top:684px;text-align:center;font-size:13px">Held-out set: tasks we did not build against · ready tasks × 3 runs per tool set · measured Nov 3 under the current scorer</div>
+    <div class="cap">“Same model. Same GPU. Only the tools changed.”</div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">“Same model. Same GPU. Only the tools changed. It still fails some, so every write is a change set you approve and can undo.”</p>
+      <p>Both panes are recordings of real runs. The left trail is the Oct 31 eval (getMbrGrdList ✗, getPrdGridList ✗; 5 model calls, 22.6–23.8 s; 0 of 3 done). The right trail is a Nov 1 eval run of PR #99: 11 tool calls up to v1, with the banner retried once after <code>search_products</code> found its picture. This frame also opens the 45 s cut for X.</p></div>
+    <div><h4>Build</h4><ul>
+      <li><span class="tag have">exists</span>facade tool set in demo mode (<code>tool_set: facade</code>), <code>cargo xtask eval</code>, and the right pane's scene (frame 05)</li>
+      <li><span class="tag new">new</span>numbers from the held-out set, as <code>docs/design.md</code> asks of any public claim; the facade has never run on it. The README's 21/36 is the design set and predates the #86 scorer fix</li>
+      <li>if our own count is low, say the gap, not a rate: “the same model, and only the tools changed”</li></ul></div>
+    <div><h4>Reference</h4><p>Side-by-side runs on one prompt: model comparison views (LMArena, Vercel AI playground compare). Steps listed as they ran: Codex and Claude Code tool logs. The fail count sits in the same frame as the claim, so the claim and its denominator are seen together.</p></div>
+  </div>
+</section>
+
+<!-- 15 ─────────────────────────────────────────────── -->
+<section class="board" id="f15">
+  <div class="meta"><span class="tc">2:40–2:50</span><span class="name">End card</span><span class="num">frame 15</span></div>
+  <div class="frame">
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px">
+      <div style="display:flex;align-items:center;gap:10px"><img src="assets/ailism-wordmark.png" alt="Ailism" style="height:34px"><span style="font-size:30px;color:var(--text2)">Commerce</span></div>
+      <div style="font-size:58px;font-weight:700;letter-spacing:-.02em">You decide. The store does the rest.</div>
+      <div style="font-size:19px;color:var(--text2)">github.com/metahackAI/a-commerce · a-commerce.ailism.team</div>
+      <div class="small" style="font-size:14px">Muse Glimmer 30B · Muse Image · Muse Voice Transcribe</div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><h4>Voiceover and screen</h4><p class="vo">“You decide. The store does the rest.”</p><p>The app's own brand line is “You decide. Ailism prepares the rest.” (<code>web/src/components/brand/Ailism.tsx</code>); pick one and use it in both places.</p></div>
+    <div><h4>Build</h4><ul><li>title card</li><li>the live site must hold up during judging (Nov 5–8): scene buttons and a reset, and no deploys in that window</li></ul></div>
+    <div><h4>Reference</h4><p>Wordmark, one line, two links. Nothing else.</p></div>
+  </div>
+</section>
+
+</div>
+
+<template id="tpl-side">
+<nav class="side">
+  <div class="brand"><img src="assets/ailism-wordmark.png" alt="Ailism"><span>Commerce</span></div>
+  <a class="askrow"><img class="av" src="assets/ailism-avatar.png" alt="">Ask Ailism<span class="kbds"><kbd>Ctrl</kbd><kbd>K</kbd></span></a>
+  <a data-k="inbox" class="first"><svg class="ic"><use href="#i-inbox"/></svg>Inbox<span class="n" data-needs></span></a>
+  <a data-k="cs"><svg class="ic"><use href="#i-clipboard-document-list"/></svg>Change sets</a>
+  <a data-k="activity"><svg class="ic"><use href="#i-queue-list"/></svg>Activity</a>
+  <div class="grp">Store</div>
+  <a><svg class="ic"><use href="#i-shopping-bag"/></svg>Orders</a>
+  <a><svg class="ic"><use href="#i-tag"/></svg>Products</a>
+  <a><svg class="ic"><use href="#i-users"/></svg>Customers</a>
+  <a><svg class="ic"><use href="#i-receipt-percent"/></svg>Promotions</a>
+  <a><svg class="ic"><use href="#i-building-storefront"/></svg>Merchandising</a>
+  <a><svg class="ic"><use href="#i-chart-bar"/></svg>Insights</a>
+  <div class="grp">Rules and data</div>
+  <a><svg class="ic"><use href="#i-scale"/></svg>Policies</a>
+  <a><svg class="ic"><use href="#i-circle-stack"/></svg>Data dictionary</a>
+  <div class="foot">
+    <div class="clockrow"><svg class="ic"><use href="#i-clock"/></svg><span data-clock-val></span></div>
+    <div class="acct"><span class="av">S</span>SJ<svg class="ic"><use href="#i-chevron-up-down"/></svg></div>
+  </div>
+</nav>
+</template>
+
+<script>
+// Shared pieces: the back office side bar, phone status bars, product grids, the banner placeholder,
+// the call trails for frame 14, and the slip thumbnail (a scaled copy of the slip in frame 10).
+document.querySelectorAll('[data-side]').forEach(el => {
+  const nav = document.getElementById('tpl-side').content.firstElementChild.cloneNode(true);
+  nav.querySelector('[data-clock-val]').textContent = el.dataset.clock;
+  const on = nav.querySelector(`[data-k="${el.dataset.side}"]`);
+  if (on) {
+    on.classList.add('on');
+    const use = on.querySelector('use');
+    use.setAttribute('href', use.getAttribute('href') + '-solid');
+  }
+  const needs = nav.querySelector('[data-needs]');
+  if (el.dataset.needs) needs.textContent = el.dataset.needs; else needs.remove();
+  el.replaceWith(nav);
+});
+
+const SIG = '<svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>';
+const WIFI = '<svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 11.6 5.7 9.2a3.3 3.3 0 0 1 4.6 0z"/><path d="M3.5 7a6.4 6.4 0 0 1 9 0l-1.3 1.3a4.5 4.5 0 0 0-6.4 0z"/><path d="M1.2 4.7a9.6 9.6 0 0 1 13.6 0l-1.3 1.3a7.7 7.7 0 0 0-11 0z"/></svg>';
+const BAT = '<svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".45"/><rect x="2" y="2" width="18" height="9" rx="2" fill="currentColor"/><rect x="25" y="4.5" width="1.6" height="4" rx=".8" fill="currentColor" opacity=".45"/></svg>';
+document.querySelectorAll('[data-sb]').forEach(el => { el.innerHTML = `<span>${el.dataset.sb}</span><span class="r">${SIG}${WIFI}${BAT}</span>`; });
+
+// Placeholder for the Muse Image banner: the store's own garment drawings on a warm ground.
+document.querySelectorAll('[data-banner]').forEach(el => {
+  el.style.position = 'relative'; el.style.background = '#e9dfd0'; el.style.overflow = 'hidden';
+  el.innerHTML = ['field-sand', 'wind-sand', 'shirt-sand', 'field-olive'].map((g, i) =>
+    `<img src="assets/${g}.svg" alt="" style="position:absolute;bottom:-6%;left:${-6 + i * 25}%;width:42%;height:112%;object-fit:cover;object-position:center 30%;mix-blend-mode:multiply;opacity:.95">`).join('');
+});
+
+const GRID = {
+  vip: [['field-navy', 'Cotton utility jacket', '$94.40', '$118.00'], ['field-sand', 'Linen blend field jacket', '$102.40', '$128.00'], ['wind-navy', 'Packable windbreaker', '$71.20', '$89.00']],
+  member: [['field-navy', 'Cotton utility jacket', '$118.00', null], ['field-sand', 'Linen blend field jacket', '$128.00', null], ['wind-navy', 'Packable windbreaker', '$89.00', null]],
+};
+document.querySelectorAll('[data-grid]').forEach(el => {
+  const rows = GRID[el.dataset.grid];
+  el.innerHTML = `<div style="font-size:15px;font-weight:600;margin-bottom:8px">Summer outerwear</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">` +
+    rows.map(([img, name, price, was]) => `<div><div style="height:150px;border-radius:9px;background:#c8cacd url(assets/${img}.svg) center/cover"></div>
+      <div style="font-size:13px;margin-top:6px">${name}</div>
+      <div class="num" style="font-size:13px;font-weight:600">${price}${was ? ` <span class="strike" style="font-weight:400">${was}</span> <span class="small">VIP</span>` : ''}</div></div>`).join('') + '</div>';
+});
+
+const TRAIL = {
+  facade: [['getMbrGrdList', false], ['getPrdGridList', false]],
+  tools: [['list_tiers', true], ['list_categories', true], ['list_active_promotions', true], ['list_display_slots', true], ['set_sale_prices · preview', true], ['create_coupon · preview', true],
+    ['schedule_banner · needs a product picture', false], ['search_products', true], ['set_sale_prices · preview', true], ['create_coupon · preview', true], ['schedule_banner · preview', true]],
+};
+document.querySelectorAll('[data-trail]').forEach(el => {
+  el.style.cssText = 'display:flex;flex-direction:column;gap:6px';
+  el.innerHTML = TRAIL[el.dataset.trail].map(([name, ok]) => `<div style="display:flex;align-items:center;gap:8px;font:13.5px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace">
+    <svg class="ic" style="color:${ok ? 'var(--ok-ic)' : 'var(--bad-ic)'}"><use href="#i-${ok ? 'check-circle' : 'x-circle'}"/></svg>${name}</div>`).join('');
+});
+
+const slip = document.getElementById('slip');
+document.querySelectorAll('[data-slipthumb]').forEach(el => {
+  const w = el.getBoundingClientRect().width || parseFloat(el.style.width);
+  const c = slip.cloneNode(true);
+  c.removeAttribute('id');
+  c.style.left = '8%'; c.style.top = '6%'; c.style.transformOrigin = 'top left';
+  c.style.transform = `rotate(-3.5deg) scale(${(w * 0.86) / 560})`;
+  el.appendChild(c);
+});
+</script>
+</body>
+</html>

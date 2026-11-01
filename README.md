@@ -49,6 +49,10 @@ Handing those APIs to an LLM as they are does not work well. There are hundreds 
 
 **People state the goal and approve the result; the system does the rest. Intelligence comes from the model; trust comes from the structure.** That is why a small open-weight model can do routine work here. Five principles, each with the mechanism that holds it in the code:
 
+![AI-added, agent-ready, AI-native: A-Commerce rebuilds the store under the agent. Web: the screen is the result of the work. Agent: find, plan, run, check, on Muse Glimmer 30B. Commerce: tools in the store's words, every change a proposal, rules as data, and the store brings the work.](docs/img/ai-native-architecture.png)
+
+Most AI commerce puts a chatbot on screens built for people (AI-added) or opens the old APIs to outside agents (agent-ready). A-Commerce rebuilds what is underneath, so the agent works the store through tools made for it ([docs/research.md](docs/research.md) §2). The picture is rendered from the demo video's frame 13 ([design/demo](design/demo/README.md)).
+
 | Principle | How the code holds it |
 |---|---|
 | **1. Tools work in the units people use.** Find by an order number, an email, a product name; get back what the decision needs. | Id fields also take the order number, change set number or email. Reads return the fields a decision needs and refuse a field name that does not exist instead of returning an empty object. |
