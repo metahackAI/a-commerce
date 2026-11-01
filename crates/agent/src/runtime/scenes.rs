@@ -552,8 +552,11 @@ fn runtime(model: &Arc<Recorded>, clock: &str) -> Runtime {
             .collect(),
         missing: vec![],
     };
+    // The recorded scenes predate the results check: their outputs answer each plan as written.
+    let mut profiles = repo();
+    profiles.runtime.planner.check_results = false;
     Runtime::new(
-        Arc::new(repo()),
+        Arc::new(profiles),
         set,
         Arc::new(MemoryLog::default()),
         Arc::new(FixedStore(at(clock))),

@@ -99,6 +99,11 @@ const EMPTY_PLAN: &str = "The plan has no steps, so the answer would come from n
 The person asked about the store: plan at least one read from the tools listed (search, list or get) \
 that answers it, and pick the block that shows the result. Only a greeting or thanks needs no step.";
 
+/// What the planner checks once a plan of reads has run without trouble.
+const CHECK_RESULTS: &str = "Check their results against the request. If they answer every part of it, \
+return a plan with no steps. If something it asks for is still missing or not done, plan only the steps \
+for that; never repeat a step that already ran.";
+
 /// A block button's intent (`ui_event`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -553,6 +558,8 @@ struct Turn<'r> {
     usage: Vec<UsageRecord>,
     tool_calls: u32,
     revisions: u32,
+    /// Whether the results were checked against the request this turn (once per turn).
+    checked: bool,
     /// Fields of the step about to run that binding could not choose a value for.
     undecided: Vec<String>,
     /// The tools of the plan's steps from the one that failed on, for the next plan.
@@ -611,6 +618,7 @@ impl<'r> Turn<'r> {
             usage: Vec::new(),
             tool_calls: 0,
             revisions: 0,
+            checked: false,
             undecided: Vec::new(),
             unrun: Vec::new(),
             step_seq: 0,
@@ -1211,6 +1219,7 @@ impl<'r> Turn<'r> {
         prefer: &[&str],
         problem: Option<String>,
         draft: Option<Value>,
+        check: Option<String>,
     ) -> Result<(Plan, String), Stop> {
         let specs = self.candidate_specs();
         let refs: Vec<&ToolSpec> = specs.iter().collect();
@@ -1252,6 +1261,7 @@ impl<'r> Turn<'r> {
             done: self.done_summaries(),
             problem,
             draft,
+            check,
         };
         let req = ChatRequest::new("plan", planner::messages(&input)).json("plan", schema);
         let (raw, alias) = self.model_json("plan", prefer, req, None).await?;
@@ -1273,11 +1283,14 @@ impl<'r> Turn<'r> {
             .await;
         let worker = self.worker().to_owned();
         let planner_alias = self.planner_model().to_owned();
-        let first = match self.plan_once(&[&worker, &planner_alias], None, None).await {
+        let first = match self
+            .plan_once(&[&worker, &planner_alias], None, None, None)
+            .await
+        {
             Ok(p) => Ok(p),
             // An unusable plan gets one more try, on the planner model, with the reason.
             Err(Stop(why)) if self.usage.len() < self.limits.model_calls as usize => {
-                self.plan_once(&[&planner_alias, &worker], Some(why), None)
+                self.plan_once(&[&planner_alias, &worker], Some(why), None, None)
                     .await
             }
             Err(s) => Err(s),
@@ -1307,6 +1320,7 @@ impl<'r> Turn<'r> {
                     &[&worker, &planner_alias],
                     Some(EMPTY_PLAN.to_owned()),
                     serde_json::to_value(&plan).ok(),
+                    None,
                 )
                 .await
             && !again.0.steps.is_empty()
@@ -1320,7 +1334,7 @@ impl<'r> Turn<'r> {
         let mut by = alias.clone();
         if big && alias != planner_alias && self.rt.models.get(&planner_alias).is_some() {
             let draft = serde_json::to_value(&plan).ok();
-            if let Ok((better, a)) = self.plan_once(&[&planner_alias], None, draft).await {
+            if let Ok((better, a)) = self.plan_once(&[&planner_alias], None, draft, None).await {
                 plan = better;
                 by = a;
             }
@@ -1386,7 +1400,7 @@ impl<'r> Turn<'r> {
         };
         // After a failure the planner model takes over (§6).
         match self
-            .plan_once(&[&planner_alias, &worker], Some(asked), None)
+            .plan_once(&[&planner_alias, &worker], Some(asked), None, None)
             .await
         {
             Ok((plan, by)) => {
@@ -1418,13 +1432,95 @@ impl<'r> Turn<'r> {
         }
     }
 
+    /// Whether the results of a plan that ran without trouble get checked against the request:
+    /// once a turn, only a plan of reads (a write is already the answer: a draft waits for a person), only
+    /// when nothing was skipped as empty (that is the answer too), and only with a revision, two
+    /// model calls (the check and the reply) and a quarter of the turn's time left.
+    fn should_check(&self, plan: &Plan) -> bool {
+        self.rt.profiles.runtime.planner.check_results
+            && !self.checked
+            && self.request.ui_event.is_none()
+            && self.draft.is_none()
+            && self.skipped.is_empty()
+            && !plan.steps.is_empty()
+            && plan
+                .steps
+                .iter()
+                .all(|s| self.tool(&s.tool).is_some_and(|t| t.kind == ToolKind::Read))
+            && self.revisions < self.limits.plan_revisions
+            && self.usage.len() + 2 <= self.limits.model_calls as usize
+            && self.time_left() * 4 >= Duration::from_secs(self.limits.seconds)
+            && self.limit_reached().is_none()
+    }
+
+    /// A plan of reads can run without trouble and still leave part of the request open: a list
+    /// read where the request needs its rows' details, an action seen to be possible but not
+    /// taken. The planner sees the results once and plans only what is missing; a plan with no
+    /// steps means they answer the request. Once a turn, counted as a plan revision.
+    async fn check_results(&mut self, plan: &Plan) -> Option<Plan> {
+        if !self.should_check(plan) {
+            return None;
+        }
+        self.checked = true;
+        self.revisions += 1;
+        let h = self
+            .begin_step(
+                StepKind::Plan,
+                "Checking the results against the request".into(),
+                None,
+            )
+            .await;
+        let planner_alias = self.planner_model().to_owned();
+        let worker = self.worker().to_owned();
+        let checked = self
+            .plan_once(
+                &[&planner_alias, &worker],
+                None,
+                None,
+                Some(CHECK_RESULTS.to_owned()),
+            )
+            .await;
+        let (next, status, end) = match checked {
+            Ok((p, by)) if !p.steps.is_empty() => {
+                let end = StepEnd {
+                    summary: self.plan_summary(&p, &by),
+                    output: serde_json::to_value(&p).ok(),
+                    ..StepEnd::default()
+                };
+                (Some(p), StepStatus::Done, end)
+            }
+            Ok(_) => (
+                None,
+                StepStatus::Done,
+                StepEnd {
+                    summary: "The results answer the request.".into(),
+                    ..StepEnd::default()
+                },
+            ),
+            // The answer stands on what already ran.
+            Err(Stop(why)) => (
+                None,
+                StepStatus::Failed,
+                StepEnd {
+                    summary: why,
+                    ..StepEnd::default()
+                },
+            ),
+        };
+        self.end_step(&h, status, end).await;
+        next
+    }
+
     // ---- 4. run --------------------------------------------------------------------------
 
     async fn execute_with_revisions(&mut self, mut plan: Plan) {
         loop {
             self.plan = Some(plan.clone());
             match self.execute(&plan).await {
-                Flow::Done => return,
+                Flow::Done => match self.check_results(&plan).await {
+                    Some(next) => plan = next,
+                    None => return,
+                },
                 Flow::Stop(why) => {
                     self.problems.push(why);
                     return;

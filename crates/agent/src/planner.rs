@@ -242,6 +242,8 @@ pub struct PlanInput<'a> {
     pub problem: Option<String>,
     /// A smaller model's draft, for the planner model to improve.
     pub draft: Option<Value>,
+    /// What to check in the results of the steps that already ran, before answering.
+    pub check: Option<String>,
 }
 
 /// Tool descriptions for the prompt: kind, links, and the input schema without examples noise.
@@ -339,6 +341,9 @@ pub fn messages(input: &PlanInput<'_>) -> Vec<Message> {
         user.push_str(&format!(
             "\nA first draft of the plan, to check and improve: {d}\n"
         ));
+    }
+    if let Some(c) = &input.check {
+        user.push_str(&format!("\nThe steps above have run. {c}\n"));
     }
     let tools: Vec<Value> = input.tools.iter().map(|t| describe_tool(t)).collect();
     user.push_str(&format!(

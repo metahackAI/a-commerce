@@ -497,7 +497,18 @@ fn runtime(models: &[Arc<Scripted>], log: Arc<MemoryLog>) -> Runtime {
             .collect(),
         missing: vec!["glimmer: set GLIMMER_BASE_URL, GLIMMER_MODEL".into()],
     };
-    Runtime::new(Arc::new(repo()), set, log, Arc::new(FixedStore(settings())))
+    Runtime::new(
+        Arc::new(unchecked(repo())),
+        set,
+        log,
+        Arc::new(FixedStore(settings())),
+    )
+}
+
+/// The scripts below answer each plan as written; the results check has its own tests.
+fn unchecked(mut p: crate::profile::Profiles) -> crate::profile::Profiles {
+    p.runtime.planner.check_results = false;
+    p
 }
 
 async fn turn(
@@ -1385,6 +1396,128 @@ async fn b3_routes_to_insights_reads_twice_and_answers_with_the_explainer() {
     assert!(message(&events).starts_with("Revenue was $18,240 yesterday"));
     let (usage, _) = done(&events);
     assert_eq!((usage.tool_calls, usage.model_calls), (2, 2));
+}
+
+fn checked_runtime(models: &[Arc<Scripted>], log: Arc<MemoryLog>) -> Runtime {
+    let set = ModelSet {
+        models: models
+            .iter()
+            .map(|m| (m.info.alias.clone(), m.clone() as Arc<dyn ChatModel>))
+            .collect(),
+        missing: vec![],
+    };
+    let profiles = repo();
+    assert!(
+        profiles.runtime.planner.check_results,
+        "on in agents/runtime.yml"
+    );
+    Runtime::new(
+        Arc::new(profiles),
+        set,
+        log,
+        Arc::new(FixedStore(settings())),
+    )
+}
+
+fn b3_plan_with(steps: Value) -> String {
+    let mut plan: Value = serde_json::from_str(&b3_plan()).unwrap();
+    plan["steps"] = steps;
+    plan.to_string()
+}
+
+#[tokio::test]
+async fn a_plan_of_reads_is_checked_and_what_it_left_out_runs_too() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            (
+                "plan",
+                b3_plan_with(json!([
+                    {"id": "s1", "tool": "explain_sales_change",
+                     "args": {"valid_from": "yesterday", "valid_through": "yesterday",
+                              "compare_mode": "same_weekday_last_4_weeks"}, "uses": []}
+                ])),
+            ),
+            // The check: the trend the request also asked about was not read.
+            (
+                "plan",
+                b3_plan_with(json!([
+                    {"id": "s1", "tool": "get_sales_trend",
+                     "args": {"valid_from": "2026-10-23", "valid_through": "yesterday",
+                              "acom:granularity": "day"}, "uses": []}
+                ])),
+            ),
+            (
+                "reply",
+                "Revenue was $18,240 yesterday, $4,660 under a normal Thursday.".into(),
+            ),
+        ],
+    );
+    let log = Arc::new(MemoryLog::default());
+    let rt = checked_runtime(std::slice::from_ref(&glimmer), log.clone());
+    let commerce = Commerce::with_manifest(manifest_with_analytics());
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say(B3),
+        commerce.clone(),
+    )
+    .await;
+
+    assert_eq!(glimmer.asked(), ["plan", "plan", "reply"]);
+    assert_eq!(
+        commerce.calls(),
+        [
+            "manifest",
+            "read explain_sales_change",
+            "read get_sales_trend"
+        ],
+        "the step the check added runs after the first plan, and nothing runs twice"
+    );
+    assert_eq!(blocks(&events)[0].ui, "sales_explainer");
+    let (usage, _) = done(&events);
+    assert_eq!((usage.tool_calls, usage.model_calls), (2, 3));
+}
+
+#[tokio::test]
+async fn results_that_answer_the_request_end_the_check_without_steps() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            ("plan", b3_plan()),
+            ("plan", b3_plan_with(json!([]))),
+            (
+                "reply",
+                "Revenue was $18,240 yesterday, $4,660 under a normal Thursday.".into(),
+            ),
+        ],
+    );
+    let log = Arc::new(MemoryLog::default());
+    let rt = checked_runtime(std::slice::from_ref(&glimmer), log.clone());
+    let commerce = Commerce::with_manifest(manifest_with_analytics());
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say(B3),
+        commerce.clone(),
+    )
+    .await;
+
+    assert_eq!(glimmer.asked(), ["plan", "plan", "reply"]);
+    assert_eq!(
+        commerce.calls(),
+        [
+            "manifest",
+            "read explain_sales_change",
+            "read get_sales_trend"
+        ]
+    );
+    assert_eq!(blocks(&events)[0].ui, "sales_explainer");
+    assert!(message(&events).starts_with("Revenue was $18,240 yesterday"));
 }
 
 #[tokio::test]

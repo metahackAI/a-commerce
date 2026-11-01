@@ -43,6 +43,9 @@ planner:
   # A worker plan with more steps than this, or with steps in more than one domain, is planned
   # again by the agent's planner model (§4).
   worker_max_steps: 3
+  # Once a plan of reads has run without trouble, the planner checks the results against the
+  # request and plans what is still missing: once a turn, one of the plan revisions above.
+  check_results: true
 
 context:
   # Earlier turns of the conversation shown to the planner.

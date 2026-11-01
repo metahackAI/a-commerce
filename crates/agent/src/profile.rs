@@ -198,6 +198,10 @@ pub struct RouteHint {
 #[serde(deny_unknown_fields)]
 pub struct PlannerConfig {
     pub worker_max_steps: usize,
+    /// After a plan of reads runs without trouble, the planner checks its results against the
+    /// request and plans what is still missing: once a turn, counted as a plan revision.
+    #[serde(default)]
+    pub check_results: bool,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
