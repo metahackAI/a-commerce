@@ -4,20 +4,23 @@
 // links to the record. Values are shown as the API returned them, only formatted.
 
 import type {ReactNode} from 'react';
-import {VStack} from '@astryxdesign/core/Layout';
+import {HStack, VStack} from '@astryxdesign/core/Layout';
 import {Text} from '@astryxdesign/core/Text';
 import {Link} from '@astryxdesign/core/Link';
 import {EmptyState} from '@astryxdesign/core/EmptyState';
+import {Thumbnail} from '@astryxdesign/core/Thumbnail';
 import {Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow} from '@astryxdesign/core/Table';
 
 import type {AiTarget} from '@/ai/useAiTarget';
 
-import {TargetRow} from './targets';
+import {AskHeaderCell, TargetRow} from './targets';
 
 export interface Column<T> {
   header: string;
   /** Right-align figures. */
   numeric?: boolean;
+  /** The column's share of the table, such as `30%`, for the column people read first. */
+  width?: `${number}%`;
   cell: (row: T) => ReactNode;
 }
 
@@ -43,13 +46,11 @@ export function DataTable<T>({
       <TableHeader>
         <TableRow isHeaderRow>
           {columns.map(c => (
-            <TableHeaderCell key={c.header}>{c.header}</TableHeaderCell>
+            <TableHeaderCell key={c.header} style={c.width ? {width: c.width} : undefined}>
+              {c.header}
+            </TableHeaderCell>
           ))}
-          <TableHeaderCell>
-            <Text type="supporting" color="secondary">
-              Ask
-            </Text>
-          </TableHeaderCell>
+          <AskHeaderCell />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -65,9 +66,13 @@ export function DataTable<T>({
   );
 }
 
-/** The first cell of a row: the record's name as a link, with its id under it. */
-export function RecordCell({href, name, id}: {href: string | null; name: string; id?: string}) {
-  return (
+/**
+ * The first cell of a row: the record's name as a link, with its id under it. A record with a
+ * picture (a product) shows it before the name, as the Shopify admin lists products; `null` keeps
+ * the place with an empty square so the names stay in line.
+ */
+export function RecordCell({href, name, id, image}: {href: string | null; name: string; id?: string; image?: string | null}) {
+  const text = (
     <VStack gap={0}>
       {href ? (
         <Link href={href} color="primary" weight="medium">
@@ -82,6 +87,15 @@ export function RecordCell({href, name, id}: {href: string | null; name: string;
         </Text>
       ) : null}
     </VStack>
+  );
+  if (image === undefined) return text;
+  // The name beside it says what it is, so the picture is decorative (alt=""). Small, as Polaris's
+  // small thumbnail in a list row, instead of Thumbnail's attachment size.
+  return (
+    <HStack gap={3} vAlign="center">
+      <Thumbnail src={image ?? undefined} alt="" style={{width: 'var(--spacing-10)'}} />
+      {text}
+    </HStack>
   );
 }
 

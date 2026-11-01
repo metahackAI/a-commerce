@@ -16,7 +16,7 @@ import {ruleName, value, words} from '@/app/bo/_lib/format';
 import {entityHref, withParams} from '@/app/bo/_lib/links';
 import type {Change, Check} from '@/app/bo/_lib/types';
 
-import {AskButton, SuggestedIntents, TargetRow} from './targets';
+import {AskButton, AskHeaderCell, SuggestedIntents, TargetRow, useAskReveal} from './targets';
 
 /** Intents for an element from a block's `suggested_intents` (`element: "change_row:prd_x"`). */
 export type IntentsFor = (kind: string, id: string) => string[] | undefined;
@@ -32,8 +32,9 @@ function CheckRow({check, ids, blockId, intents}: {check: ItemCheck; ids: Record
     term: 'acom:Check',
     blockId,
   });
+  const reveal = useAskReveal();
   return (
-    <HStack ref={t.ref} {...t.props} gap={3} vAlign="start" paddingBlock={1}>
+    <HStack ref={t.ref} {...t.props} {...reveal.container} gap={3} vAlign="start" paddingBlock={1}>
       <Icon icon={check.passed ? 'success' : 'error'} color={check.passed ? 'success' : 'error'} size="sm" label={check.passed ? 'Passed' : 'Failed'} />
       <StackItem size="fill">
         <VStack gap={0.5}>
@@ -58,7 +59,9 @@ function CheckRow({check, ids, blockId, intents}: {check: ItemCheck; ids: Record
           <SuggestedIntents intents={intents} target={t} />
         </VStack>
       </StackItem>
-      <AskButton target={t} label={ruleName(check.rule)} />
+      <StackItem {...reveal.ask}>
+        <AskButton target={t} label={ruleName(check.rule)} />
+      </StackItem>
     </HStack>
   );
 }
@@ -72,9 +75,10 @@ function PassedGroup({rule, checks, ids, blockId}: {rule: string; checks: ItemCh
     term: 'acom:Check',
     blockId,
   });
+  const reveal = useAskReveal();
   const shown = checks.slice(0, GROUP_SHOWN);
   return (
-    <HStack ref={t.ref} {...t.props} gap={3} vAlign="start" paddingBlock={1}>
+    <HStack ref={t.ref} {...t.props} {...reveal.container} gap={3} vAlign="start" paddingBlock={1}>
       <Icon icon="success" color="success" size="sm" label="Passed" />
       <StackItem size="fill">
         <VStack gap={0.5}>
@@ -98,7 +102,9 @@ function PassedGroup({rule, checks, ids, blockId}: {rule: string; checks: ItemCh
           ) : null}
         </VStack>
       </StackItem>
-      <AskButton target={t} label={ruleName(rule)} />
+      <StackItem {...reveal.ask}>
+        <AskButton target={t} label={ruleName(rule)} />
+      </StackItem>
     </HStack>
   );
 }
@@ -231,11 +237,7 @@ export function ChangesTable({
             <TableHeaderCell>What</TableHeaderCell>
             <TableHeaderCell>Before</TableHeaderCell>
             <TableHeaderCell>After</TableHeaderCell>
-            <TableHeaderCell>
-              <Text type="supporting" color="secondary">
-                Ask
-              </Text>
-            </TableHeaderCell>
+            <AskHeaderCell />
           </TableRow>
         </TableHeader>
         <TableBody>

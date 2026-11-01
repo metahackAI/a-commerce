@@ -14,7 +14,7 @@ import {entityHref} from '@/app/bo/_lib/links';
 import type {ActionEntry} from '@/app/bo/_lib/types';
 
 import {StateToken} from './StateToken';
-import {TargetRow} from './targets';
+import {AskHeaderCell, TargetRow} from './targets';
 
 function objectId(a: ActionEntry): string | null {
   const o = a.object;
@@ -36,11 +36,7 @@ export function ActionLogTable({entries, blockId, empty}: {entries: ActionEntry[
           <TableHeaderCell>Action</TableHeaderCell>
           <TableHeaderCell>On</TableHeaderCell>
           <TableHeaderCell>Status</TableHeaderCell>
-          <TableHeaderCell>
-            <Text type="supporting" color="secondary">
-              Ask
-            </Text>
-          </TableHeaderCell>
+          <AskHeaderCell />
         </TableRow>
       </TableHeader>
       <TableBody>
