@@ -157,6 +157,7 @@ fn the_patterns_are_all_there() {
         "getPrmtGridList",
         "getClmGridList",
         "getPrmtTgtMbrList",
+        "getOrdGridList",
     ] {
         assert!(names.contains(grid), "{grid}");
         assert!(names.contains(format!("{grid}Cnt").as_str()), "{grid}Cnt");
@@ -233,6 +234,8 @@ fn pages_become_cursors_and_grades_become_tiers() {
     assert_eq!(codes::prmt_tp("item_price", Some("vip")), "T03");
     assert_eq!(codes::prmt_tp("item_price", Some("everyone")), "T01");
     assert_eq!(codes::SellStatCd::code("out_of_stock"), "20");
+    assert_eq!(codes::OrdStatCd::code("in_transit"), "30");
+    assert_eq!(codes::DlvStatCd::code("in_transit"), "60");
 }
 
 #[test]

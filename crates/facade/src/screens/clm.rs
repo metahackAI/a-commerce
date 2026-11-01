@@ -116,7 +116,7 @@ pub struct ClmNoIn {
     pub clm_no: String,
 }
 
-fn clm_tp(t: &Value) -> &'static str {
+pub(crate) fn clm_tp(t: &Value) -> &'static str {
     match t.as_str() {
         Some("return") => "R",
         Some("cancel") => "C",
