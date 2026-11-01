@@ -46,6 +46,8 @@ export function useAiTarget(target: AiTarget) {
       'data-acom-id': Object.values(target.ids)[0],
       'data-acom-term': target.term,
       'data-acom-ref': ref,
+      /** The name people see; the composer's microphone passes these on as spelling hints. */
+      'data-acom-label': target.label,
     },
   };
 }

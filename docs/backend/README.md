@@ -202,6 +202,7 @@ crates/domains/catalog/src/
 | `ACOM_DEMO_MODE` | 전부 | `true`면 데모 로그인·데모 시계·평가용 파사드 활성 |
 | `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | agent | self-hosted Glimmer의 OpenAI 호환 엔드포인트 |
 | `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL` | agent | Meta Model API. 비어 있으면 Spark를 건너뛰고 Glimmer만 씀(라이브 데모가 그렇습니다) |
+| `VOICE_MODEL`, `VOICE_LANGUAGES` | agent | 입력창 마이크의 음성 인식(Muse Voice Transcribe, 같은 Meta Model API 키). `VOICE_MODEL`이 비면 마이크가 이유를 말하고 꺼짐. `VOICE_LANGUAGES`는 쉼표로 적는 언어 힌트(선택) |
 
 전체를 컨테이너로 띄우는 방법은 [../../infra/README.md](../../infra/README.md) §7(`make up`)입니다. 서비스 하나를 컨테이너 밖에서 고치며 돌릴 때:
 

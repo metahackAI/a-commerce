@@ -85,7 +85,7 @@ A-Commerce의 모든 구성 요소는 컨테이너이고, **어디서 띄우든 
 | `ACOM_POLICY_DIR` | commerce | 이미지 안 `/app/policies` | 같음 |
 | `ACOM_AGENTS_DIR` | agent | 이미지 안 `/app/agents`(모델·한도·프롬프트·특화 에이전트) | 같음 |
 | `ACOM_GATEWAY_SIGNING_KEY_FILE` / `_PUBLIC_KEY_FILE` | gateway / 나머지 | `infra/secrets/*.pem`(`make keys`) | 비밀 저장소 |
-| `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL`, `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | agent | `.env` | 비밀 저장소 |
+| `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL`, `VOICE_MODEL`, `VOICE_LANGUAGES`, `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | agent | `.env` | 비밀 저장소 |
 | `ACOM_ENV`, `ACOM_DEMO_MODE`, `RUST_LOG`, `ACOM_LOG_FORMAT` | 전부 | `local`, `true`, `info`, `json` | `production`, `false`, `info`, `json` |
 | `ACOM_STORE_ID` | gateway(서명하는 스토어), worker(예약 작업을 돌릴 스토어. 쉼표로 여러 개) | `store_northwind` | 같은 스토어. `acom_app`은 RLS 때문에 스토어 목록을 못 읽으므로 worker도 이 값으로 스토어를 받음 |
 | `ACOM_COOKIE_SECURE`, `ACOM_SESSION_HOURS`, `ACOM_DEMO_PERSONAS` | gateway | `false`, `12`, 데모 운영자·쇼퍼 id | `true`(HTTPS), `12`, 데모 모드가 아니면 쓰지 않음 |

@@ -26,6 +26,7 @@ import {ResizeHandle, useResizable} from '@astryxdesign/core/Resizable';
 
 import {AILISM, AilismAvatar} from '@/components/brand/Ailism';
 import {useAi} from '@/ai/AiProvider';
+import {useVoiceInput} from '@/components/VoiceInput';
 import {useAiTarget} from '@/ai/useAiTarget';
 import type {UiBlock} from '@/ai/types';
 import {blockComponent} from '@/components/blocks/registry';
@@ -87,13 +88,15 @@ export interface WorkspaceProps {
 export function Workspace({greeting, composerPlaceholder, canvasTitle, canvasEmpty}: WorkspaceProps) {
   const ai = useAi();
   const canvas = useResizable({defaultSize: 560, minSize: 400, maxSize: 900, autoSaveId: `acom-canvas-${ai.surface}`});
+  const voice = useVoiceInput();
 
   const composer = (
     <ChatComposer
       onSubmit={text => void ai.send(text)}
       placeholder={composerPlaceholder}
       input={<ChatComposerInput />}
-      status={ai.isBusy ? {type: 'warning', message: 'Working…'} : undefined}
+      sendActions={voice.button}
+      status={ai.isBusy ? {type: 'warning', message: 'Working…'} : voice.status}
       headerActions={
         ai.picked.length > 0 ? (
           <HStack gap={1}>

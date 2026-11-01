@@ -114,7 +114,7 @@ base에는 값이 든 Secret이 없습니다. 이름과 키는 `secrets.example.
 |---|---|---|
 | `acom-database` | `DATABASE_URL` (역할 acom_app), `MIGRATION_DATABASE_URL` (역할 acom_owner) | commerce, commerce-worker, agent는 `DATABASE_URL`; migrate Job은 `MIGRATION_DATABASE_URL` |
 | `acom-gateway-keys` | 파일 `gateway_signing_key.pem`, `gateway_public_key.pem` | `/run/secrets/acom`에 읽기 전용 마운트. gateway는 둘 다, commerce/worker/agent는 공개 키만 |
-| `acom-models` | `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL`, `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | agent만. 모든 키가 `optional: true`라 없어도 agent가 뜸 |
+| `acom-models` | `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL`, `VOICE_MODEL`, `VOICE_LANGUAGES`, `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | agent만. 모든 키가 `optional: true`라 없어도 agent가 뜸 |
 | `acom-postgres` | `POSTGRES_PASSWORD` | 로컬 PostgreSQL 컴포넌트만 |
 | `acom-tls` | TLS 인증서 | production Ingress. cert-manager가 만듦 |
 
