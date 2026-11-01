@@ -46,14 +46,15 @@ pub struct BannerContent {
     /// Button text (policy `banner.text_max_length.cta_label`).
     #[schemars(example = &"Shop the sale")]
     pub cta_label: String,
-    /// Store path the button opens, starting with `/`.
+    /// Store path the button opens: `/sale/{the sale's name in lowercase with dashes}` for a
+    /// sale, `/c/{category_id}` for a category, `/p/{product_id}` for a product.
     #[schemars(regex(pattern = r"^/"), example = &"/sale/vip-weekend")]
     pub url: String,
     /// Where the picture comes from: `product` or `image`.
     #[schemars(example = &"product")]
     pub image_source: ImageSource,
     /// The product whose image to show, when `image_source` is `product`.
-    #[schemars(regex(pattern = r"^prd_[a-z0-9_]+$"), example = &"prd_field_jacket")]
+    #[schemars(regex(pattern = r"^prd_[a-z0-9_]+$"), example = &"prd_field_jacket", extend("x-slot" = "product_id"))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image_product_id: Option<String>,
     /// That product's color to show, when `image_source` is `product`. Default: its main color.
@@ -133,6 +134,7 @@ impl Operation for ScheduleBanner {
             Slot::one("slot_id"),
             Slot::one("tier_id"),
             Slot::one("promotion_id"),
+            Slot::one("product_id"),
         ],
         produces: &[Slot::one("display_booking_id")],
         checks: &["slot_free"],
@@ -199,7 +201,8 @@ pub(crate) fn check_content(rules: &DisplayRules, c: &BannerContent) -> Result<(
             "image_product_id",
             "missing",
             "`image_source: product` needs `content.image_product_id`.".into(),
-        )),
+        )
+        .next("search_products")),
         ImageSource::Image if c.image_id.is_none() => Err(content_error(
             "image_id",
             "missing",
