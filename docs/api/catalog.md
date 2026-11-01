@@ -102,9 +102,12 @@
    {"name": "warmth", "value": "wind_layer"},
    {"name": "rain", "value": true}],
  "has_variant": [
-   {"variant_id": "var_windbreaker_m_slate", "sku": "wb-slate-m", "size": "M", "color": "Slate", "inventory_level": 18, "availability": "in_stock"},
-   {"variant_id": "var_windbreaker_l_slate", "sku": "wb-slate-l", "size": "L", "color": "Slate", "inventory_level": 12, "availability": "in_stock"},
-   {"variant_id": "var_windbreaker_m_black", "sku": "wb-black-m", "size": "M", "color": "Black", "inventory_level": 9, "availability": "in_stock"}]}
+   {"variant_id": "var_windbreaker_m_slate", "sku": "wb-slate-m", "size": "M", "color": "Slate", "inventory_level": 18, "availability": "in_stock",
+    "image": "/media/products/prd_windbreaker-7f4a8e8c.webp"},
+   {"variant_id": "var_windbreaker_l_slate", "sku": "wb-slate-l", "size": "L", "color": "Slate", "inventory_level": 12, "availability": "in_stock",
+    "image": "/media/products/prd_windbreaker-7f4a8e8c.webp"},
+   {"variant_id": "var_windbreaker_m_black", "sku": "wb-black-m", "size": "M", "color": "Black", "inventory_level": 9, "availability": "in_stock",
+    "image": "/media/products/prd_windbreaker--black-cd4797ba.webp"}]}
    // has_variant: 5색 × XS–XL = 25개 중 일부
 ```
 - 출력(쇼퍼 Jamie, VIP, Sat Nov 7 10:00): 같은 모양에서 `cost` 키가 없고, `member_price`가 Jamie의 등급 기준으로 채워집니다.
@@ -117,6 +120,7 @@
   - `keywords`는 상품 태그(`catalog.product_group.keywords`)입니다. 검색 필터(`search_products`의 `tags`)와 같은 단어이고, 상품 페이지의 JSON-LD `keywords`가 됩니다.
   - `price`는 정가(`list_price`), `member_price`는 그 시각 적용되는 회원·기간 한정 판매가(`UnitPriceSpecification`, `price_type: sale_price`)이고 없으면 `null`입니다. 가격 계산은 `search_products`와 같습니다.
   - `cost`는 운영자 주체에게만 있는 필드입니다. 쇼퍼·외부 에이전트 응답에는 키 자체가 없습니다.
+  - `has_variant[].image`는 그 변형의 사진(`catalog.product.image`)입니다. 같은 색의 변형은 같은 사진이라, 상품 페이지는 고른 색의 사진을 보여 줍니다. 목록용인 `search_products`의 `has_variant`에는 없습니다(결과가 길어지지 않게).
   - `additional_property`는 상품의 사실입니다. 이름은 `compare_products`의 속성(`weight`, `packed_size`, `packing`, `warmth`, `rain`, `material`)과 상품 사실 속성(`fiber_content`, `materials`(신발·가방 등 부위별 소재), `fit`, `care`, `fabric`, `fabric_weight`, `knit_gauge`, `finish`, `insulation`, `closure`, `sleeve_length`, `neckline`, `hood`, `support`, `features`, `dimensions`, `capacity`, `width`, `fits_shoe_size`, `fits_waist`, `product_type`, `google_product_category`)입니다. 단위가 있으면 `unit_code`(예: `g`, `cm`, `g/m2`), 사이즈마다 다르면 `size`(예: `weight`는 M 기준)를 함께 둡니다.
 - 프리뷰: 해당 없음(읽기)
 - 정책: [catalog.yml](../../policies/catalog.yml) `pricing.cost_visibility`, `pricing.sale_price`, `inventory.product_status`

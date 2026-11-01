@@ -72,11 +72,16 @@ export function ProductPurchase({
   addressId,
   addressLabel,
   initialDelivery,
+  color: chosenColor,
+  onColorChange,
 }: {
   product: Product;
   addressId: string | null;
   addressLabel: string | null;
   initialDelivery: DeliveryDate | null;
+  /** The chosen color when the page holds it (ProductShowcase), so the picture beside it follows. */
+  color?: string | null;
+  onColorChange?: (color: string) => void;
 }) {
   const router = useRouter();
   const {isShopper, compare, toggleCompare} = useStorefront();
@@ -85,7 +90,9 @@ export function ProductPurchase({
   const sizes = unique(variants.map(v => v.size));
   const firstAvailable = variants.find(v => v.availability === 'in_stock') ?? variants[0];
 
-  const [color, setColor] = useState<string | null>(firstAvailable?.color ?? null);
+  const [ownColor, setOwnColor] = useState<string | null>(firstAvailable?.color ?? null);
+  const color = chosenColor !== undefined ? chosenColor : ownColor;
+  const setColor = onColorChange ?? setOwnColor;
   const [size, setSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [breakdown, setBreakdown] = useState<PriceBreakdown | null>(null);

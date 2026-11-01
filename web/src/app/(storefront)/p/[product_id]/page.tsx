@@ -1,18 +1,16 @@
 import type {Metadata} from 'next';
 import {BreadcrumbItem, Breadcrumbs} from '@astryxdesign/core/Breadcrumbs';
 import {Collapsible, CollapsibleGroup} from '@astryxdesign/core/Collapsible';
-import {Grid} from '@astryxdesign/core/Grid';
 import {Layout, LayoutContent, VStack} from '@astryxdesign/core/Layout';
 import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
 import {Heading, Text} from '@astryxdesign/core/Text';
 
 import {ErrorNotice} from '@/components/fo/ErrorNotice';
 import {MeasurementsTable, ProductFacts, ReviewList, ReviewSummaryView} from '@/components/fo/ProductDetails';
-import {ProductImage} from '@/components/fo/ProductImage';
-import {ProductPurchase} from '@/components/fo/ProductPurchase';
+import {ProductShowcase} from '@/components/fo/ProductShowcase';
 import type {Page} from '@/lib/api';
 
-import {imageUrl, words} from '../../_lib/format';
+import {words} from '../../_lib/format';
 import {jsonLdScript, productJsonLd} from '../../_lib/jsonld';
 import {load, shopper} from '../../_lib/server';
 import type {
@@ -97,19 +95,14 @@ export default async function ProductPage({params}: {params: Params}) {
               {category?.ok ? <BreadcrumbItem href={`/c/${encodeURIComponent(category.data.id)}`}>{category.data.name}</BreadcrumbItem> : null}
               <BreadcrumbItem isCurrent>{p.name}</BreadcrumbItem>
             </Breadcrumbs>
-            <Grid columns={{minWidth: 320, repeat: 'fit'}} gap={6} align="start">
-              <ProductImage src={imageUrl(g?.image ?? p.image)} alt={p.name} />
-              <VStack gap={4}>
-                <Heading level={1}>{p.name}</Heading>
-                {description ? <Text color="secondary">{description}</Text> : null}
-                <ProductPurchase
-                  product={p}
-                  addressId={address?.id ?? null}
-                  addressLabel={address ? (address.label ?? address.street_address) : null}
-                  initialDelivery={delivery?.ok ? (delivery.data.items[0] ?? null) : null}
-                />
-              </VStack>
-            </Grid>
+            <ProductShowcase
+              product={p}
+              image={g?.image ?? p.image}
+              description={description}
+              addressId={address?.id ?? null}
+              addressLabel={address ? (address.label ?? address.street_address) : null}
+              initialDelivery={delivery?.ok ? (delivery.data.items[0] ?? null) : null}
+            />
             <CollapsibleGroup type="multiple" defaultValue={['details', 'fit', 'reviews', 'returns']} hasDividers>
               {p.additional_property && p.additional_property.length > 0 ? (
                 <Collapsible value="details" trigger={<Heading level={2}>Details</Heading>}>
