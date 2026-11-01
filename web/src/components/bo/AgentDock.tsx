@@ -24,6 +24,7 @@ import {Token} from '@astryxdesign/core/Token';
 import {useAi} from '@/ai/AiProvider';
 
 import {AILISM, AilismAvatar} from '@/components/brand/Ailism';
+import {useVoiceInput} from '@/components/VoiceInput';
 import {BlockView} from './BlockView';
 
 interface DockState {
@@ -74,6 +75,7 @@ export function useAgentDock(): DockState {
 /** A composer that sends to the agent, with the picked elements as removable chips. */
 export function AgentComposer({placeholder, onSent}: {placeholder: string; onSent?: () => void}) {
   const ai = useAi();
+  const voice = useVoiceInput();
   return (
     <ChatComposer
       onSubmit={text => {
@@ -82,7 +84,8 @@ export function AgentComposer({placeholder, onSent}: {placeholder: string; onSen
       }}
       placeholder={placeholder}
       isDisabled={ai.isBusy}
-      status={ai.isBusy ? {type: 'warning', message: 'Working…'} : undefined}
+      sendActions={voice.button}
+      status={ai.isBusy ? {type: 'warning', message: 'Working…'} : voice.status}
       headerActions={
         ai.picked.length > 0 ? (
           <HStack gap={1} wrap="wrap">

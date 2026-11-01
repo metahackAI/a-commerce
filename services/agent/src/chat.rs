@@ -9,7 +9,7 @@ use acom_auth::{Principal, Surface, Verifier};
 use acom_contract::{ErrorClass, ErrorCode, ToolError};
 use acom_core::enums::ActorKind;
 use axum::body::{Body, Bytes};
-use axum::extract::{Path, Query, State};
+use axum::extract::{DefaultBodyLimit, Path, Query, State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -26,6 +26,8 @@ pub struct App {
     pub http: reqwest::Client,
     /// `ACOM_DEMO_MODE`: only then may a turn use the evaluation's facade (`tool_set: facade`).
     pub demo_mode: bool,
+    /// Voice input for the composer, or why it is off (the variables still to set).
+    pub voice: Result<crate::voice::Voice, String>,
 }
 
 /// The facade outside demo mode (the same code commerce uses for it).
@@ -43,9 +45,16 @@ fn check_tool_set(app: &App, request: &TurnRequest) -> Result<(), ToolError> {
     Ok(())
 }
 
+/// A recording for the composer: a few minutes of 16 kHz mono WAV at most.
+const LARGEST_RECORDING: usize = 10 * 1024 * 1024;
+
 pub fn routes(app: Arc<App>) -> Router {
     Router::new()
         .route("/chat/{surface}/turns", post(turns))
+        .route(
+            "/chat/{surface}/transcriptions",
+            post(crate::voice::transcribe).layer(DefaultBodyLimit::max(LARGEST_RECORDING)),
+        )
         .route(
             "/chat/{surface}/conversations/{conversation_id}",
             get(conversation),
@@ -53,7 +62,7 @@ pub fn routes(app: Arc<App>) -> Router {
         .with_state(app)
 }
 
-fn error(e: &ToolError) -> Response {
+pub(crate) fn error(e: &ToolError) -> Response {
     let status = StatusCode::from_u16(e.http_status()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
     (status, Json(json!({"error": e}))).into_response()
 }
@@ -67,13 +76,13 @@ fn unavailable(why: &str) -> ToolError {
 }
 
 /// The verified caller: who, with which token, under which request id.
-struct Caller {
+pub(crate) struct Caller {
     principal: Principal,
     token: String,
-    request_id: String,
+    pub(crate) request_id: String,
 }
 
-fn surface_of(s: &str) -> Result<ChatSurface, ToolError> {
+pub(crate) fn surface_of(s: &str) -> Result<ChatSurface, ToolError> {
     ChatSurface::parse(s).ok_or_else(|| {
         ToolError::new(
             ErrorCode::NOT_FOUND,
@@ -85,7 +94,11 @@ fn surface_of(s: &str) -> Result<ChatSurface, ToolError> {
 
 /// Checks the gateway's token. Only on-behalf tokens for this surface pass, and never one with
 /// a person-only scope: the agent acts for a person and never as one.
-fn caller(app: &App, headers: &HeaderMap, surface: ChatSurface) -> Result<Caller, ToolError> {
+pub(crate) fn caller(
+    app: &App,
+    headers: &HeaderMap,
+    surface: ChatSurface,
+) -> Result<Caller, ToolError> {
     let verifier = app
         .verifier
         .as_ref()
@@ -293,6 +306,13 @@ mod tests {
     }
 
     fn fixture_in(demo_mode: bool) -> Option<Fixture> {
+        fixture_with(demo_mode, Err("voice: set META_API_KEY".into()))
+    }
+
+    fn fixture_with(
+        demo_mode: bool,
+        voice: Result<crate::voice::Voice, String>,
+    ) -> Option<Fixture> {
         let (private, public) = keys()?;
         let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../agents");
         let profiles = acom_agent::Profiles::load(&dir).unwrap();
@@ -316,6 +336,7 @@ mod tests {
             commerce_url: "http://127.0.0.1:9".into(),
             http: reqwest::Client::new(),
             demo_mode,
+            voice,
         });
         Some(Fixture {
             app: routes(app),
@@ -507,6 +528,7 @@ mod tests {
             commerce_url: String::new(),
             http: reqwest::Client::new(),
             demo_mode: false,
+            voice: Err("voice: set META_API_KEY".into()),
         }));
         let res = app
             .oneshot(post("/chat/bo/turns", Some("x"), r#"{"message": "hi"}"#))
@@ -515,5 +537,153 @@ mod tests {
         assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
         let body = text(res).await;
         assert!(body.contains("ACOM_GATEWAY_PUBLIC_KEY_FILE"), "{body}");
+    }
+
+    /// A multipart body with a recording and the words on screen, as the browser sends it.
+    fn recording(audio: &[u8], keywords: &str) -> (String, Vec<u8>) {
+        let b = "acomtestboundary";
+        let mut body = Vec::new();
+        body.extend_from_slice(
+            format!(
+                "--{b}\r\nContent-Disposition: form-data; name=\"audio\"; filename=\"s.wav\"\r\n\
+                 Content-Type: audio/wav\r\n\r\n"
+            )
+            .as_bytes(),
+        );
+        body.extend_from_slice(audio);
+        body.extend_from_slice(
+            format!(
+                "\r\n--{b}\r\nContent-Disposition: form-data; name=\"keywords\"\r\n\r\n\
+                 {keywords}\r\n--{b}--\r\n"
+            )
+            .as_bytes(),
+        );
+        (format!("multipart/form-data; boundary={b}"), body)
+    }
+
+    fn wav() -> Vec<u8> {
+        let mut w = b"RIFF\0\0\0\0WAVEfmt ".to_vec();
+        w.resize(128, 0);
+        w
+    }
+
+    fn post_recording(path: &str, token: &str, audio: &[u8], keywords: &str) -> Request<Body> {
+        let (content_type, body) = recording(audio, keywords);
+        Request::post(path)
+            .header(header::CONTENT_TYPE, content_type)
+            .header(header::AUTHORIZATION, format!("Bearer {token}"))
+            .body(Body::from(body))
+            .unwrap()
+    }
+
+    /// A stand-in for the recognizer: checks the key and the settings, then echoes the words
+    /// it was told to expect.
+    async fn recognizer() -> String {
+        async fn transcribe(headers: HeaderMap, mut form: axum::extract::Multipart) -> Response {
+            if headers
+                .get(header::AUTHORIZATION)
+                .and_then(|v| v.to_str().ok())
+                != Some("Bearer test-key")
+            {
+                return StatusCode::UNAUTHORIZED.into_response();
+            }
+            let mut settings = serde_json::Value::Null;
+            let mut audio = 0;
+            while let Ok(Some(f)) = form.next_field().await {
+                let name = f.name().unwrap_or_default().to_owned();
+                let bytes = f.bytes().await.unwrap();
+                match name.as_str() {
+                    "request" => settings = serde_json::from_slice(&bytes).unwrap(),
+                    "audio" => audio = bytes.len(),
+                    _ => {}
+                }
+            }
+            let words: Vec<&str> = settings["keywords"]
+                .as_array()
+                .map(|a| a.iter().filter_map(|w| w.as_str()).collect())
+                .unwrap_or_default();
+            Json(json!({
+                "sessionId": "s",
+                "transcript": format!(" make {} ten ", words.join(" ")),
+                "audioDurationMs": audio,
+                "model": settings["model"],
+                "languageBias": settings["languageBias"],
+                "turns": [],
+            }))
+            .into_response()
+        }
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let app = Router::new().route("/v1/asr/transcribe", axum::routing::post(transcribe));
+        tokio::spawn(async move { axum::serve(listener, app).await.ok() });
+        format!("http://{addr}/v1")
+    }
+
+    #[tokio::test]
+    async fn a_recording_comes_back_as_text_with_the_words_on_screen_as_hints() {
+        let base_url = recognizer().await;
+        let voice = crate::voice::Voice {
+            base_url,
+            api_key: "test-key".into(),
+            model: "voice-model".into(),
+            languages: vec!["English".into()],
+        };
+        let Some(f) = fixture_with(false, Ok(voice)) else {
+            return;
+        };
+        let t = token(&f, &operator().on_behalf());
+        let res = f
+            .app
+            .clone()
+            .oneshot(post_recording(
+                "/chat/bo/transcriptions",
+                &t,
+                &wav(),
+                r#"["XL", " XL ", "Cotton utility jacket"]"#,
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body: serde_json::Value = serde_json::from_str(&text(res).await).unwrap();
+        assert_eq!(body["transcript"], "make XL Cotton utility jacket ten");
+        assert_eq!(body["audio_ms"], 128);
+
+        // Not a WAV: refused before anything is sent on.
+        let res = f
+            .app
+            .clone()
+            .oneshot(post_recording("/chat/bo/transcriptions", &t, b"OggS", "[]"))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        // The person's own token (not on behalf) is refused like a turn.
+        let own = token(&f, &operator());
+        let res = f
+            .app
+            .oneshot(post_recording(
+                "/chat/bo/transcriptions",
+                &own,
+                &wav(),
+                "[]",
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    async fn without_voice_settings_the_microphone_says_what_to_set() {
+        let Some(f) = fixture() else {
+            return;
+        };
+        let t = token(&f, &operator().on_behalf());
+        let res = f
+            .app
+            .oneshot(post_recording("/chat/bo/transcriptions", &t, &wav(), "[]"))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let body = text(res).await;
+        assert!(body.contains("META_API_KEY"), "{body}");
     }
 }

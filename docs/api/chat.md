@@ -145,3 +145,23 @@ SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(
 | 프로필 `layout_preference=list`, "as a list", 그 밖 | `product_list` |
 
 순서는 지금 한 말 → 이 대화에서 전에 한 말 → 프로필 → 첫 방문입니다. 프로필 항목은 기억의 키(`compares_specs`) 또는 `키=말`(`layout_preference=photos`는 기억 `photos over details`와 맞음)입니다. 형태를 바꾼 이유는 `why`에 한 줄로 쓰고, 사람이 말로 언제든 바꿀 수 있습니다. 새로 읽지 않고 형태만 바꾸면 마지막에 보여 준 결과를 그대로(같은 가격으로) 다시 놓습니다(F6). 로그인한 쇼퍼의 형태 요청은 `layout_preference`로 기억되어 되돌리기 줄이 붙고, 게스트는 기억이 없어 이 대화 안에서만 유지됩니다.
+
+## 4. 음성 입력
+
+입력창의 마이크는 말을 글로 바꿔 입력창에 넣기만 합니다. 사람이 읽고 보내기를 눌러야 보통 턴(§1)이 되므로, 말로는 타이핑으로 못 하는 일을 할 수 없습니다.
+
+```
+POST /api/chat/{surface}/transcriptions        surface = bo | fo
+Content-Type: multipart/form-data
+  audio     16 kHz 모노 16비트 PCM WAV (브라우저가 녹음을 이 형식으로 바꿔서 보냄)
+  keywords  JSON 문자열 배열(선택): 화면에 보이는 이름. AI 타깃의 label(`data-acom-label`)을
+            구분자(` · `, `: `, `, `, ` → `)로 잘라 숫자·id(`_`)가 없는 30자 이하 부분만
+
+200 {"transcript": "Make XL ten and approve.", "audio_ms": 2400}
+```
+
+- 게이트웨이를 지나는 길은 턴과 같습니다(대신 행동 토큰, 같은 surface만). 에이전트 서비스가 Meta Model API의 Muse Voice Transcribe(`POST {META_API_BASE_URL}/asr/transcribe`, `mode: PUSH_TO_TALK`)에 넘기고 글만 돌려줍니다. 녹음은 저장하지 않습니다.
+- `keywords`는 상품·사이즈 이름의 철자 힌트입니다. 다듬어(앞뒤 공백, 빈 값·중복 제거) 100개까지, 하나에 30자까지(인식기가 더 긴 힌트가 하나라도 있으면 요청 전체를 거절함) 넘깁니다. 힌트일 뿐 철자를 보장하지 않습니다.
+- 설정: `META_API_BASE_URL`, `META_API_KEY`, `VOICE_MODEL`(예: `muse-voice-transcribe-1.0`), 선택으로 `VOICE_LANGUAGES`(쉼표로 적는 언어 이름, 예: `English`). 하나라도 비면 `503 upstream_unavailable`로 무엇을 설정할지 말합니다.
+- 에러: WAV가 아니면 `422 invalid_input`(`detail.field: audio`), 인식기가 답하지 않거나 거절하면 `503 upstream_unavailable`(`detail.retryable`, 429·5xx면 `true`). 웹은 그 문장을 입력창 아래에 보여 주고 타이핑을 권합니다.
+- 녹음 본문은 10 MB까지 받습니다(16 kHz 모노로 5분 남짓).

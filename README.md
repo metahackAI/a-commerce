@@ -76,6 +76,7 @@ Oct 31, every model call on Glimmer; reports in [eval/results/](eval/results). S
 |---|---|---|
 | **Muse Glimmer 30B** | Open weights, self-hosted (OpenAI-compatible vLLM, one GPU) | Every agent's worker: routing, tool search, planning, arguments, replies. On the live demo it handles every call. |
 | **Muse Spark** | Meta Model API | Wired as every agent's planner and fallback ([agents/models.yml](agents/models.yml)); used when `META_API_KEY` and `SPARK_MODEL` are set. |
+| **Muse Voice Transcribe** | Meta Model API | The composer's microphone: speech becomes the draft message, with the names on the screen (products, sizes) as spelling hints ([docs/api/chat.md](docs/api/chat.md) §4); used when `META_API_KEY` and `VOICE_MODEL` are set. |
 
 **Why Meta models matter here:** open weights let a merchant run the agent on its own infrastructure, keeping catalog and customer data in-house, and a small model keeps the cost per request low enough to put an agent behind every request. The structure (closed tools, previews, policy checks, a reply that may only use numbers found in the tool results) is what makes a 30B model dependable.
 
@@ -211,6 +212,7 @@ cargo xtask eval --base http://localhost:8080 --set design --tool-set both   # t
 |---|---|
 | `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | OpenAI-compatible endpoint serving the worker model |
 | `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL` | Meta Model API for the planner model (optional; never commit the key) |
+| `VOICE_MODEL`, `VOICE_LANGUAGES` | Speech to text for the composer's microphone through the same API (optional) |
 | `ACOM_HTTP_PORT` | Host port of the gateway (default 8080) |
 
 ## TODO

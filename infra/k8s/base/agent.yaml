@@ -75,6 +75,18 @@ spec:
                   name: acom-models
                   key: SPARK_MODEL
                   optional: true
+            - name: VOICE_MODEL
+              valueFrom:
+                secretKeyRef:
+                  name: acom-models
+                  key: VOICE_MODEL
+                  optional: true
+            - name: VOICE_LANGUAGES
+              valueFrom:
+                secretKeyRef:
+                  name: acom-models
+                  key: VOICE_LANGUAGES
+                  optional: true
             - name: GLIMMER_BASE_URL
               valueFrom:
                 secretKeyRef:

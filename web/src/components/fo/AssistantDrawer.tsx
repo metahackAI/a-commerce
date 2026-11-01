@@ -29,6 +29,7 @@ import {useAiTarget} from '@/ai/useAiTarget';
 import {blockComponent} from '@/components/blocks/registry';
 
 import {AILISM, AilismAvatar} from '@/components/brand/Ailism';
+import {useVoiceInput} from '@/components/VoiceInput';
 import {useStorefront} from './StorefrontContext';
 
 const STARTERS = ['I need a light jacket for spring trips.', 'What goes with what is in my cart?', 'Where is my order?'];
@@ -67,13 +68,16 @@ export function AssistantDrawer() {
   // /ask is the full workspace; the drawer would show the same conversation twice.
   const isOpen = isAssistantOpen && pathname !== '/ask';
 
+  const voice = useVoiceInput('sm');
+
   const composer = (
     <ChatComposer
       onSubmit={text => void ai.send(text)}
       placeholder="Ask about fit, fabric, delivery, returns…"
       input={<ChatComposerInput />}
       density="compact"
-      status={ai.isBusy ? {type: 'warning', message: 'Working…'} : undefined}
+      sendActions={voice.button}
+      status={ai.isBusy ? {type: 'warning', message: 'Working…'} : voice.status}
       headerActions={
         ai.picked.length > 0 ? (
           <HStack gap={1} wrap="wrap">
