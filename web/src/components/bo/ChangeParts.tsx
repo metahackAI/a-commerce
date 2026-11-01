@@ -179,6 +179,21 @@ function withCurrency(side: unknown, currency: string | undefined): unknown {
   return o;
 }
 
+/**
+ * What a person calls the subject of a change: its name, else its size and color (a variant),
+ * else its id. Ids stay on the row's target for the agent.
+ */
+function subjectName(c: Change): string | null {
+  for (const side of [c.to, c.from]) {
+    if (!side || typeof side !== 'object' || Array.isArray(side)) continue;
+    const o = side as Record<string, unknown>;
+    if (typeof o.name === 'string' && o.name.trim()) return o.name;
+    const parts = [o.size, o.color].filter((v): v is string => typeof v === 'string' && v.trim() !== '');
+    if (parts.length > 0) return parts.join(' · ');
+  }
+  return null;
+}
+
 /** A side without the id the "What" column already shows. */
 function withoutSubject(side: unknown, subject: string): unknown {
   if (!side || typeof side !== 'object' || Array.isArray(side)) return side;
@@ -243,6 +258,7 @@ export function ChangesTable({
         <TableBody>
           {changes.map((c, i) => {
             const subject = changeSubject(c);
+            const shown = subjectName(c) ?? subject;
             const {from, to} = beforeAfter(c, currency);
             const href = entityHref(subject);
             return (
@@ -264,11 +280,11 @@ export function ChangesTable({
                     <Text>{words(c.entity)}</Text>
                     {href ? (
                       <Link href={href} color="secondary">
-                        {subject}
+                        {shown}
                       </Link>
                     ) : (
                       <Text type="supporting" color="secondary">
-                        {subject}
+                        {shown}
                       </Text>
                     )}
                     {c.note ? (

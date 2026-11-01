@@ -148,7 +148,7 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
                   term: 'acom:ChangeSetItem',
                 }}>
                 <HStack gap={2} vAlign="center" wrap="wrap">
-                  <Heading level={3}>{`${item.position} · ${item.tool}`}</Heading>
+                  <Heading level={3}>{`${item.position} · ${words(item.tool)}`}</Heading>
                   {item.needs_approval ? (
                     cs.approved_at ? <Token label="Approved" size="sm" /> : <Token label="Needs approval" size="sm" color="orange" />
                   ) : (
@@ -157,11 +157,16 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
                   {item.action_status ? <StateToken state={item.action_status} label={ITEM_STATUS[item.action_status]} /> : null}
                 </HStack>
                 {item.approval_reason ? <Text>{item.approval_reason}</Text> : null}
-                <Text type="supporting" color="secondary">
-                  {`Preview ${item.preview_id}${item.address ? ` · ${item.address}` : ''}${
-                    item.depends_on && item.depends_on.length > 0 ? ` · uses the result of ${item.depends_on.join(', ')}` : ''
-                  }`}
-                </Text>
+                {item.depends_on && item.depends_on.length > 0 ? (
+                  <Text type="supporting" color="secondary">
+                    {`Uses the result of ${item.depends_on
+                      .map(d => {
+                        const before = items.find(i => i.preview_id === d);
+                        return before ? `item ${before.position}` : d;
+                      })
+                      .join(', ')}`}
+                  </Text>
+                ) : null}
               </TargetBlock>
               <ChangesTable
                 changes={item.changes}
@@ -254,12 +259,7 @@ function VerificationTable({verification}: {verification: Verification}) {
               ids: {preview_id: v.preview_id, change_set_id: verification.change_set_id},
             }}>
             <TableCell>
-              <VStack gap={0}>
-                <Text>{v.tool}</Text>
-                <Text type="supporting" color="secondary">
-                  {v.preview_id}
-                </Text>
-              </VStack>
+              <Text>{words(v.tool)}</Text>
             </TableCell>
             <TableCell>
               {v.result_id && entityHref(v.result_id) ? <Link href={entityHref(v.result_id) ?? '#'}>{v.result_id}</Link> : <Text>{v.result_id ?? '—'}</Text>}
