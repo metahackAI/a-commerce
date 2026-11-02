@@ -465,6 +465,36 @@ fn collections(output: &Value) -> Vec<Row> {
         .collect()
 }
 
+/// One collection: its name and reach, then a row per section, each opening the collection.
+fn collection(c: &Value) -> (Option<Value>, Vec<Row>) {
+    let id = text(c.get("id")).unwrap_or_default();
+    let href = format!("/collections/{id}");
+    let reach = text(c.get("product_count")).map(|n| format!("{n} products"));
+    let summary = json!({"label": text(c.get("name")).unwrap_or_default(),
+                         "value": reach, "href": href});
+    let rows = c
+        .get("has_part")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .enumerate()
+        .map(|(n, part)| {
+            let count = part
+                .get("item_list_element")
+                .and_then(Value::as_array)
+                .map_or(0, Vec::len);
+            Row {
+                id: format!("{id}_{n}"),
+                title: text(part.get("name")).unwrap_or_else(|| format!("Section {}", n + 1)),
+                subtitle: Some(format!("{count} products")),
+                href: Some(href.clone()),
+                ..Row::default()
+            }
+        })
+        .collect();
+    (Some(summary), rows)
+}
+
 fn alerts(output: &Value) -> Vec<Row> {
     items(output)
         .iter()
@@ -734,7 +764,7 @@ fn kind_of(tool: &str) -> (&'static str, &'static str) {
         "list_notices" | "get_notice" => ("notices", "Store notices"),
         "list_faqs" | "get_faq" => ("faqs", "Questions people ask"),
         "list_active_promotions" => ("promotions", "On sale now"),
-        "list_curations" => ("collections", "Collections"),
+        "list_curations" | "get_curation" => ("collections", "Collections"),
         "list_restock_subscriptions" => ("alerts", "Back-in-stock alerts"),
         "list_addresses" => ("addresses", "Your addresses"),
         "list_notifications" => ("messages", "Messages from the store"),
@@ -790,6 +820,7 @@ fn record_list_with(tool: &str, output: &Value, summary: Option<Value>) -> Optio
         "get_faq" => (None, vec![faq_row(output)]),
         "list_active_promotions" => (None, promotions(output)),
         "list_curations" => (None, collections(output)),
+        "get_curation" => collection(output),
         "list_restock_subscriptions" => (None, alerts(output)),
         "list_addresses" => (None, addresses(output)),
         "list_notifications" => (None, messages(output)),
@@ -934,6 +965,18 @@ mod tests {
         assert_eq!(b.data["summary"]["label"], "UPS · 1Z999");
         assert_eq!(b.data["summary"]["value"], "Delivered");
         assert_eq!(b.data["rows"][1]["subtitle"], "Brooklyn, NY");
+    }
+
+    #[test]
+    fn a_collection_shows_its_sections_and_opens_its_page() {
+        let c = json!({"id": "col_travel_light", "name": "Travel light", "product_count": 6,
+            "valid_through": "2026-11-30T23:59:00-05:00",
+            "has_part": [{"name": "Jackets", "item_list_element": ["prd_windbreaker", "prd_field_jacket", "prd_rain_parka"]}]});
+        let b = record_list("get_curation", &c).unwrap();
+        assert_eq!(b.data["summary"]["label"], "Travel light");
+        assert_eq!(b.data["summary"]["href"], "/collections/col_travel_light");
+        assert_eq!(b.data["rows"][0]["title"], "Jackets");
+        assert_eq!(b.data["rows"][0]["subtitle"], "3 products");
     }
 
     #[test]
