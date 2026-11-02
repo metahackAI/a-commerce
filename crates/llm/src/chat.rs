@@ -95,6 +95,35 @@ pub struct ChatRequest {
     /// Sampling temperature. Planning and routing run at 0 so the same input gives the same plan.
     pub temperature: f32,
     pub max_tokens: Option<u32>,
+    /// How a streamed structured answer is asked for. Providers differ: some stream a schema-held
+    /// answer only through their own field, some only without the usage option.
+    pub stream_variant: StreamVariant,
+}
+
+/// Ways to ask for a streamed answer that follows a schema, tried in this order until one
+/// gives text (`Runtime` remembers which).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StreamVariant {
+    /// As the model is configured (`structured_output`), with `stream_options.include_usage`.
+    #[default]
+    Configured,
+    /// vLLM's `guided_json` field, whatever the model is configured with.
+    GuidedJson,
+    /// As configured, without `stream_options` (the usage is then not counted).
+    WithoutUsage,
+}
+
+impl StreamVariant {
+    pub const ALL: [StreamVariant; 3] = [Self::Configured, Self::GuidedJson, Self::WithoutUsage];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Configured => "configured",
+            Self::GuidedJson => "guided_json",
+            Self::WithoutUsage => "without_usage",
+        }
+    }
 }
 
 impl ChatRequest {
@@ -106,6 +135,7 @@ impl ChatRequest {
             output: None,
             temperature: 0.0,
             max_tokens: None,
+            stream_variant: StreamVariant::Configured,
         }
     }
 
@@ -115,6 +145,11 @@ impl ChatRequest {
             name: name.to_owned(),
             schema,
         });
+        self
+    }
+
+    pub fn stream_variant(mut self, v: StreamVariant) -> Self {
+        self.stream_variant = v;
         self
     }
 

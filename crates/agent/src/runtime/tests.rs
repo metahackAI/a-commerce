@@ -1720,22 +1720,39 @@ async fn a_reply_with_made_up_numbers_is_written_again_and_what_was_read_is_show
 
 #[tokio::test]
 async fn a_stream_without_the_reply_is_asked_again_without_streaming() {
-    let glimmer = Scripted::new(
-        "glimmer",
-        "Muse Glimmer 30B",
-        vec![
-            ("plan", json!({"interpretation": [{"aspect": "who", "text": "VIP members"}], "about": "self",
-                "reply_plan": "text", "steps": [
-                {"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
-            .to_string()),
-            ("reply", "You have 1,284 VIP members.".into()),
-        ],
-    )
-    .streaming_nothing();
-    let rt = runtime(
-        std::slice::from_ref(&glimmer),
-        Arc::new(MemoryLog::default()),
-    );
+    let plan = || {
+        json!({"interpretation": [{"aspect": "who", "text": "VIP members"}], "about": "self",
+            "reply_plan": "text", "steps": [
+            {"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
+        .to_string()
+    };
+    let mut answers: Vec<(&str, String)> = Vec::new();
+    for _ in 0..4 {
+        answers.push(("plan", plan()));
+        answers.push(("reply", "You have 1,284 VIP members.".into()));
+    }
+    let glimmer = Scripted::new("glimmer", "Muse Glimmer 30B", answers).streaming_nothing();
+    let log = Arc::new(MemoryLog::default());
+    let rt = runtime(std::slice::from_ref(&glimmer), log.clone());
+    let replies = |g: &Scripted| g.asked().iter().filter(|p| *p == "reply").count();
+    // Three turns: each way of streaming comes back empty once, and the reply is asked again
+    // without streaming, so the person still gets the model's reply (in sentences).
+    for n in 1..=3 {
+        let events = turn(
+            &rt,
+            principal("adm_sj", Surface::Bo),
+            ChatSurface::Bo,
+            say("Show me our member tiers."),
+            Commerce::new(),
+        )
+        .await;
+        assert_eq!(message(&events), "You have 1,284 VIP members.", "turn {n}");
+        assert!(events.iter().any(
+            |e| matches!(e, Event::MessageDelta { text } if text == "You have 1,284 VIP members.")
+        ));
+        assert_eq!(replies(&glimmer), n * 2, "turn {n}");
+    }
+    // Every way failed: the model's replies are no longer streamed, one call per reply.
     let events = turn(
         &rt,
         principal("adm_sj", Surface::Bo),
@@ -1744,16 +1761,8 @@ async fn a_stream_without_the_reply_is_asked_again_without_streaming() {
         Commerce::new(),
     )
     .await;
-    assert_eq!(
-        message(&events),
-        "You have 1,284 VIP members.",
-        "the model's reply, not the plain one"
-    );
-    assert_eq!(glimmer.asked().iter().filter(|p| *p == "reply").count(), 2);
-    // Nothing streamed, so the reply comes in sentences.
-    assert!(events.iter().any(
-        |e| matches!(e, Event::MessageDelta { text } if text == "You have 1,284 VIP members.")
-    ));
+    assert_eq!(message(&events), "You have 1,284 VIP members.");
+    assert_eq!(replies(&glimmer), 7);
 }
 
 fn on_facade(text: &str) -> TurnRequest {

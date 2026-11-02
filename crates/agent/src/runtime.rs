@@ -20,7 +20,8 @@ use acom_contract::{Change, Check, ErrorCode, Preview, ToolError};
 use acom_core::Clock;
 use acom_core::ids::{ConversationId, TurnId};
 use acom_llm::{
-    ChatModel, ChatRequest, LlmError, Message, ModelSet, RepairEnv, Repaired, UsageRecord,
+    ChatModel, ChatRequest, LlmError, Message, ModelSet, RepairEnv, Repaired, StreamVariant,
+    UsageRecord,
 };
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
@@ -277,6 +278,10 @@ pub struct Runtime {
     models: ModelSet,
     log: Arc<dyn TurnLog>,
     store: Arc<dyn StoreInfo>,
+    /// For each model (alias), how far down [`StreamVariant::ALL`] the reply's stream has had to
+    /// go: a way that came back without text is not tried again, and past the last one the
+    /// model's replies are not streamed.
+    stream_tried: std::sync::Mutex<BTreeMap<String, usize>>,
 }
 
 impl std::fmt::Debug for Runtime {
@@ -308,6 +313,26 @@ impl Runtime {
             models,
             log,
             store,
+            stream_tried: std::sync::Mutex::new(BTreeMap::new()),
+        }
+    }
+
+    /// The way to stream a reply from this model now, or `None` when none gave text.
+    fn stream_variant(&self, alias: &str) -> Option<StreamVariant> {
+        let tried = self
+            .stream_tried
+            .lock()
+            .map_or(0, |t| t.get(alias).copied().unwrap_or(0));
+        StreamVariant::ALL.get(tried).copied()
+    }
+
+    /// A way that came back without text: the next turn tries the next one.
+    fn stream_failed(&self, alias: &str, variant: StreamVariant) {
+        if let Ok(mut t) = self.stream_tried.lock() {
+            let at = t.entry(alias.to_owned()).or_default();
+            if StreamVariant::ALL.get(*at) == Some(&variant) {
+                *at += 1;
+            }
         }
     }
 
@@ -970,35 +995,57 @@ impl<'r> Turn<'r> {
             }
             // Each attempt (another model, or a check asking again) starts a fresh reply.
             self.reply_stream.reset("The reply is being written again.");
+            let alias = model.info().alias.clone();
+            let variant = self.rt.stream_variant(&alias);
             let left = self.time_left();
             let started_at = self.clock.now();
             let t = Instant::now();
-            // The reply streams to the person as it is written; a model that answered nothing
-            // leaves nothing on screen for the next one.
-            let stream = self.reply_stream.clone();
-            let sink = move |d: &str| stream.push(d);
-            let res = tokio::time::timeout(left, model.chat(&req, Some(&sink)))
-                .await
-                .unwrap_or(Err(LlmError::Timeout(left.as_secs())));
+            // The reply streams to the person as it is written, the way this model was last
+            // seen to stream; a model that never gave a streamed answer is asked without one.
+            let res = match variant {
+                Some(v) => {
+                    let stream = self.reply_stream.clone();
+                    let sink = move |d: &str| stream.push(d);
+                    let req = req.clone().stream_variant(v);
+                    tokio::time::timeout(left, model.chat(&req, Some(&sink)))
+                        .await
+                        .unwrap_or(Err(LlmError::Timeout(left.as_secs())))
+                }
+                None => tokio::time::timeout(left, model.chat(&req, None))
+                    .await
+                    .unwrap_or(Err(LlmError::Timeout(left.as_secs()))),
+            };
             if !self.reply_stream.shown().is_empty() {
                 self.streamed = true;
             }
-            let record = UsageRecord::new(
+            let mut record = UsageRecord::new(
                 model.info(),
                 purpose,
                 started_at,
                 t.elapsed().as_millis() as u64,
                 &res,
             );
+            // A stream that came back without the answer (a provider that streams structured
+            // output apart, or not at all) is asked once more without streaming, so the person
+            // still gets the model's reply; that way of streaming is not tried again. Not when
+            // the endpoint is down: that would only wait twice.
+            let unstreamed = variant.is_some()
+                && match &res {
+                    Ok(r) => r.text.trim().is_empty(),
+                    Err(e) => {
+                        !e.is_down() && !matches!(e, LlmError::Timeout(_) | LlmError::Resting(_))
+                    }
+                };
+            if let (true, Some(v)) = (unstreamed, variant) {
+                self.rt.stream_failed(&alias, v);
+                record.succeeded = false;
+                record.error = Some(format!(
+                    "streamed as {}: {}",
+                    v.as_str(),
+                    record.error.as_deref().unwrap_or("no text")
+                ));
+            }
             self.record_call(record, None).await;
-            // A stream that came back without the answer (a provider that streams it apart, or
-            // breaks streamed structured output) is asked once more without streaming, so the
-            // person still gets the model's reply rather than the plain one. Not when the
-            // endpoint is down: that would only wait twice.
-            let unstreamed = match &res {
-                Ok(r) => r.text.trim().is_empty(),
-                Err(e) => !e.is_down() && !matches!(e, LlmError::Timeout(_) | LlmError::Resting(_)),
-            };
             let res = if unstreamed
                 && (self.usage.len() as u32) < self.limits.model_calls
                 && !self.time_left().is_zero()

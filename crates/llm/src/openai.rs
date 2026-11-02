@@ -13,8 +13,8 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::chat::{
-    ChatModel, ChatRequest, ChatResponse, DeltaSink, LlmError, Message, ModelInfo, Role, ToolCall,
-    Usage,
+    ChatModel, ChatRequest, ChatResponse, DeltaSink, LlmError, Message, ModelInfo, Role,
+    StreamVariant, ToolCall, Usage,
 };
 
 /// How a provider is asked for JSON that follows a schema.
@@ -250,6 +250,11 @@ pub fn request_body(
     stream: bool,
 ) -> Value {
     let mut messages: Vec<Value> = req.messages.iter().map(message_json).collect();
+    let structured = if stream && req.stream_variant == StreamVariant::GuidedJson {
+        StructuredOutput::GuidedJson
+    } else {
+        structured
+    };
     let mut body = json!({"model": model, "temperature": req.temperature});
     if let Some(n) = req.max_tokens {
         body["max_tokens"] = json!(n);
@@ -289,7 +294,9 @@ pub fn request_body(
     body["messages"] = Value::Array(messages);
     if stream {
         body["stream"] = json!(true);
-        body["stream_options"] = json!({"include_usage": true});
+        if req.stream_variant != StreamVariant::WithoutUsage {
+            body["stream_options"] = json!({"include_usage": true});
+        }
     }
     body
 }
@@ -609,6 +616,21 @@ mod tests {
         assert_eq!(b["guided_json"]["type"], "object");
         assert_eq!(b["stream"], true);
         assert_eq!(b["stream_options"]["include_usage"], true);
+
+        // The streamed variants: vLLM's own field, or no usage option.
+        let guided = plan_request().stream_variant(StreamVariant::GuidedJson);
+        let b = request_body("m", StructuredOutput::JsonSchema, &guided, true);
+        assert!(b.get("response_format").is_none());
+        assert_eq!(b["guided_json"]["type"], "object");
+        let b = request_body("m", StructuredOutput::JsonSchema, &guided, false);
+        assert_eq!(
+            b["response_format"]["type"], "json_schema",
+            "only a stream changes the field"
+        );
+        let bare = plan_request().stream_variant(StreamVariant::WithoutUsage);
+        let b = request_body("m", StructuredOutput::JsonSchema, &bare, true);
+        assert_eq!(b["stream"], true);
+        assert!(b.get("stream_options").is_none());
 
         let b = request_body("m", StructuredOutput::Prompt, &plan_request(), false);
         assert!(b.get("response_format").is_none());
