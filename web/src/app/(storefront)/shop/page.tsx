@@ -12,9 +12,9 @@ import {CollectionCards, NoticeList} from '@/components/fo/StoreContent';
 import {StorePopup} from '@/components/fo/StorePopup';
 import type {Page} from '@/lib/api';
 
-import {collectionPreviews} from './_lib/collections';
-import {imageUrl} from './_lib/format';
-import {load, orElse, shopper} from './_lib/server';
+import {collectionPreviews} from '../_lib/collections';
+import {imageUrl} from '../_lib/format';
+import {load, orElse, shopper} from '../_lib/server';
 import type {
   Brand,
   Category,
@@ -29,7 +29,7 @@ import type {
   ProductSummary,
   Profile,
   SlotItem,
-} from './_lib/types';
+} from '../_lib/types';
 
 const GRID_LIMIT = 8;
 
@@ -89,7 +89,9 @@ type Section =
   | {kind: 'banners'; id: string; title: string; heroes: HeroContent[]}
   | {kind: 'brands'; id: string; title: string; brands: Brand[]};
 
-export default async function StorefrontHome() {
+export const metadata = {title: 'Featured'};
+
+export default async function StoreFront() {
   const who = await shopper();
   const store = await load<{now: string}>('/v1/platform/store');
   const [today, tomorrow] = storeDays(store.ok ? store.data.now : null);

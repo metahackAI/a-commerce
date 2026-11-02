@@ -35,8 +35,8 @@ web/
     │   ├── healthz/route.ts          컨테이너·Kubernetes 헬스 체크
     │   ├── media/garment/[file]/     상품 자리표시 그림(옷 모양 + 색, SVG)
     │   ├── (storefront)/             # /  쇼퍼. layout: StorefrontShell + 어시스턴트 서랍, AiProvider(surface="fo")
-    │   │   ├── page.tsx              홈(대상별 hero 배너, 진열, 브랜드 띠, 기획전, 공지, 팝업)
-    │   │   ├── ask/                  대화 + 캔버스 전체 화면(Workspace, F1·F2·F6)
+    │   │   ├── page.tsx              홈 = 대화(Workspace): 처음엔 가운데 큰 입력창, 블록이 오면 왼쪽 대화 + 오른쪽 조립 캔버스(F1–F6). ask/도 같은 화면
+    │   │   ├── shop/                 진열 홈(대상별 hero 배너, 진열, 브랜드 띠, 기획전, 공지, 팝업)
     │   │   ├── search/  c/[category_id]/  sale/[slug]/  compare/  p/[product_id]/ (상품 페이지는 JSON-LD·Q&A 포함)
     │   │   ├── collections/[collection_page_id]/  기획전(list_curations, get_curation)
     │   │   ├── help/  help/notices/[notice_id]/  pages/[topic]/  공지·FAQ(`pages/shipping` = `help?topic=shipping`)
@@ -58,7 +58,8 @@ web/
     │   └── types.ts                  채팅 계약 타입
     ├── components/
     │   ├── blocks/{bo,fo}/           ui 이름 하나 = 컴포넌트 하나, registry.ts(모르는 블록은 제목과 why만 보이는 카드)
-    │   ├── workspace/Workspace.tsx   대화 + 캔버스 (Astryx `ai-chat` 템플릿에서 시작)
+    │   ├── workspace/Workspace.tsx   대화 + 캔버스: 빈 화면 → 대화 → 분할(애니메이션), 좁은 화면은 블록을 대화 안에
+    │   ├── chat/ChatParts.tsx        대화 부품(헤더, 대화, 진행 단계, 입력창, 시작 문장): BO 도크, FO 서랍, Workspace가 같이 씀
     │   ├── bo/                       백오피스 페이지 부품(AgentDock, BoNav, StoreClock, ChangeSetView, TaskView, SalesChart …)
     │   ├── fo/                       스토어프론트 부품(StorefrontShell, AssistantDrawer, ProductCard, CheckoutFlow, ReturnPanel, StoreContent, StorePopup …)
     │   ├── brand/Ailism.tsx          워드마크, 어시스턴트 얼굴, 브랜드 문구, 푸터
