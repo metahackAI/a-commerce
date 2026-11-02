@@ -108,6 +108,10 @@ pub enum StreamVariant {
     /// As the model is configured (`structured_output`), with `stream_options.include_usage`.
     #[default]
     Configured,
+    /// No schema: the answer as plain text, with the chat template's thinking off. For a server
+    /// that streams nothing once output is held to a schema; the schema's one field (`text`)
+    /// is then the whole answer, and the checks after it read the text the same way.
+    PlainText,
     /// vLLM's current `structured_outputs: {json}` field (vLLM 0.10 and later).
     StructuredOutputs,
     /// As configured, with the chat template's thinking turned off
@@ -121,8 +125,9 @@ pub enum StreamVariant {
 }
 
 impl StreamVariant {
-    pub const ALL: [StreamVariant; 5] = [
+    pub const ALL: [StreamVariant; 6] = [
         Self::Configured,
+        Self::PlainText,
         Self::StructuredOutputs,
         Self::WithoutThinking,
         Self::GuidedJson,
@@ -132,6 +137,7 @@ impl StreamVariant {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Configured => "configured",
+            Self::PlainText => "plain_text",
             Self::StructuredOutputs => "structured_outputs",
             Self::WithoutThinking => "without_thinking",
             Self::GuidedJson => "guided_json",

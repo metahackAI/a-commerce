@@ -276,10 +276,23 @@ pub fn request_body(
     } else {
         StreamVariant::Configured
     };
-    if variant == StreamVariant::WithoutThinking {
+    if matches!(
+        variant,
+        StreamVariant::WithoutThinking | StreamVariant::PlainText
+    ) {
         body["chat_template_kwargs"] = json!({"enable_thinking": false});
     }
-    if let (StreamVariant::StructuredOutputs, Some(out)) = (variant, &req.output) {
+    if let (StreamVariant::PlainText, Some(out)) = (variant, &req.output) {
+        // The schema's one text field is the answer: ask for that text alone.
+        let field = out
+            .schema
+            .pointer("/properties")
+            .and_then(Value::as_object)
+            .and_then(|p| p.keys().next().cloned())
+            .unwrap_or_else(|| "text".into());
+        messages.push(json!({"role": "system", "content": format!(
+            "Write only the {field} itself as plain sentences: no JSON, no quotes around it, no heading.")}));
+    } else if let (StreamVariant::StructuredOutputs, Some(out)) = (variant, &req.output) {
         body["structured_outputs"] = json!({"json": out.schema});
     } else if let Some(out) = &req.output {
         match structured {
@@ -667,6 +680,17 @@ mod tests {
         let b = request_body("m", StructuredOutput::JsonSchema, &current, true);
         assert!(b.get("response_format").is_none());
         assert_eq!(b["structured_outputs"]["json"]["type"], "object");
+        let plain = plan_request().stream_variant(StreamVariant::PlainText);
+        let b = request_body("m", StructuredOutput::JsonSchema, &plain, true);
+        assert!(b.get("response_format").is_none() && b.get("structured_outputs").is_none());
+        assert_eq!(b["chat_template_kwargs"]["enable_thinking"], false);
+        let last = b["messages"].as_array().unwrap().last().unwrap();
+        assert!(
+            last["content"]
+                .as_str()
+                .unwrap()
+                .contains("plain sentences")
+        );
         let calm = plan_request().stream_variant(StreamVariant::WithoutThinking);
         let b = request_body("m", StructuredOutput::JsonSchema, &calm, true);
         assert_eq!(b["chat_template_kwargs"]["enable_thinking"], false);

@@ -1727,7 +1727,7 @@ async fn a_stream_without_the_reply_is_asked_again_without_streaming() {
         .to_string()
     };
     let mut answers: Vec<(&str, String)> = Vec::new();
-    for _ in 0..6 {
+    for _ in 0..=StreamVariant::ALL.len() {
         answers.push(("plan", plan()));
         answers.push(("reply", "You have 1,284 VIP members.".into()));
     }
