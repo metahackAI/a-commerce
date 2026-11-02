@@ -102,7 +102,7 @@ export interface OrderDetailData {
   order_id?: string;
   order_number: string;
   status: string;
-  lines: {order_item_id?: string; id?: string; product_id?: string; name: string; size?: string | null; color?: string | null; quantity?: number; order_quantity?: number; price?: MoneyLike; status?: string | null}[];
+  lines: {order_item_id?: string; id?: string; product_id?: string; name: string; size?: string | null; color?: string | null; image?: string | null; quantity?: number; order_quantity?: number; price?: MoneyLike; status?: string | null}[];
   delivery: {address?: string | null; address_label?: string | null; arrives?: string | null; expected_arrival_until?: string | null; delivered_at?: string | null; state?: string | null; delivery_state?: string | null; tracking_number?: string | null; carrier?: string | null} | null;
   payment: {label?: string | null; payment_method?: string | null; card_last4?: string | null; payment_status?: string | null} | null;
   totals: {subtotal?: MoneyLike; discounts?: {label: string; amount: MoneyLike}[]; shipping?: MoneyLike; total?: MoneyLike} | null;

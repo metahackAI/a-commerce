@@ -17,7 +17,7 @@ import type {Delivery, Order, Payment, TrackingEvent} from '@/app/bo/_lib/types'
 import {ErrorState} from './ErrorState';
 import {PageFrame, PageSection} from './PageFrame';
 import {StateToken} from './StateToken';
-import {DataTable, Figure} from './tables';
+import {DataTable, Figure, RecordCell} from './tables';
 import {TargetFact} from './targets';
 
 export interface OrderViewProps {
@@ -94,12 +94,12 @@ export function OrderView({order: o, payment, paymentError, delivery, deliveryEr
             {
               header: 'Item',
               cell: l => (
-                <VStack gap={0}>
-                  <Link href={`/bo/products/${encodeURIComponent(l.product_id)}`}>{l.name}</Link>
-                  <Text type="supporting" color="secondary">
-                    {[l.size, l.color, l.variant_id].filter(Boolean).join(' · ')}
-                  </Text>
-                </VStack>
+                <RecordCell
+                  href={`/bo/products/${encodeURIComponent(l.product_id)}`}
+                  name={l.name}
+                  id={[l.size, l.color, l.variant_id].filter(Boolean).join(' · ')}
+                  image={l.image ?? null}
+                />
               ),
             },
             {header: 'Qty', cell: l => <Figure>{count(l.order_quantity)}</Figure>},

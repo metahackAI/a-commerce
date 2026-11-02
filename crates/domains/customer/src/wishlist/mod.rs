@@ -74,25 +74,30 @@ mod tests {
     #[ignore = "integration: needs a PostgreSQL database"]
     async fn keeps_and_drops_a_product() {
         let cx = crate::testdb::cx("cus_jamie").await;
+        // Jamie keeps three products in the seed; the denim jacket is not one of them.
         let input = || WishlistItemInput {
             customer_id: "me".into(),
-            product_id: "prd_field_jacket".into(),
+            product_id: "prd_denim_jacket".into(),
         };
         let add = AddToWishlist.preview(&cx, input()).await.unwrap();
         assert_eq!(add.changes.len(), 1);
         let mut tx = cx.begin().await.unwrap();
+        let (before, _) = repo::wishlist(&mut tx, "cus_jamie", 20, 0).await.unwrap();
         AddToWishlist.commit(&mut tx, &add.plan).await.unwrap();
         AddToWishlist.commit(&mut tx, &add.plan).await.unwrap();
         let (total, rows) = repo::wishlist(&mut tx, "cus_jamie", 20, 0).await.unwrap();
-        assert_eq!(total, 1);
-        assert_eq!(rows[0].product_group_id, "prd_field_jacket");
+        assert_eq!(total, before + 1, "kept once, however often it is added");
+        assert!(
+            rows.iter()
+                .any(|r| r.product_group_id == "prd_denim_jacket")
+        );
         let remove = WishlistPlan {
             changes_anything: true,
             ..add.plan
         };
         RemoveFromWishlist.commit(&mut tx, &remove).await.unwrap();
         assert!(
-            repo::wishlist_item(&mut tx, "cus_jamie", "prd_field_jacket")
+            repo::wishlist_item(&mut tx, "cus_jamie", "prd_denim_jacket")
                 .await
                 .unwrap()
                 .is_none()

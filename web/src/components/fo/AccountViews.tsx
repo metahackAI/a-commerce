@@ -17,12 +17,13 @@ import {useState} from 'react';
 
 import {useAiTarget} from '@/ai/useAiTarget';
 import {day, longDate, money, price, words} from '@/app/(storefront)/_lib/format';
-import type {Address, LoyaltyBalance, MemberCoupon, Preference, StoreMessage, WishlistItem} from '@/app/(storefront)/_lib/types';
+import type {Address, LoyaltyBalance, MemberCoupon, Preference, RestockAlert, StoreMessage, Subscription, WishlistItem} from '@/app/(storefront)/_lib/types';
 import type {ApiErrorBody} from '@/lib/api';
 import {signOut} from '@/lib/session';
 import {PersonButton} from '@/components/PersonButton';
 
 import {AskButton} from './Ask';
+import {ProductThumb, productHref} from './ProductThumb';
 import {ErrorNotice} from './ErrorNotice';
 import {errorBody, write} from './write';
 import {StatusTag} from './StatusTag';
@@ -110,6 +111,7 @@ function WishlistRow({item, onRemoved}: {item: WishlistItem; onRemoved: (id: str
     <ListItem
       ref={target.ref}
       {...target.props}
+      startContent={<ProductThumb productId={item.product_id} name={item.name} image={item.image} size={56} />}
       label={
         <Link href={`/p/${encodeURIComponent(item.product_id)}`}>
           <Text weight="semibold">{item.name}</Text>
@@ -162,6 +164,87 @@ export function WishlistView({initial}: {initial: WishlistItem[]}) {
     <List hasDividers>
       {items.map(i => (
         <WishlistRow key={i.product_id} item={i} onRemoved={id => setItems(list => list.filter(x => x.product_id !== id))} />
+      ))}
+    </List>
+  );
+}
+
+const CYCLE: Record<string, string> = {every_week: 'Every week', every_2_weeks: 'Every two weeks', every_month: 'Every month'};
+
+function SubscriptionRow({sub}: {sub: Subscription}) {
+  const first = sub.lines[0];
+  const what = sub.lines.map(l => `${l.name}${[l.color, l.size ? `size ${l.size}` : null].filter(Boolean).length ? ` (${[l.color, l.size].filter(Boolean).join(', ')})` : ''}${l.quantity > 1 ? ` × ${l.quantity}` : ''}`).join(', ');
+  const target = useAiTarget({kind: 'subscription', label: `${what} · ${CYCLE[sub.billing_cycle] ?? words(sub.billing_cycle)}`, ids: {subscription_id: sub.id}, term: 'acom:Subscription'});
+  return (
+    <ListItem
+      ref={target.ref}
+      {...target.props}
+      align="start"
+      startContent={first ? <ProductThumb productId={first.product_id} name={first.name} image={first.image} color={first.color} size={56} /> : undefined}
+      label={
+        <HStack gap={2} vAlign="center" wrap="wrap">
+          {first ? (
+            <Link href={productHref(first.product_id, first.color)}>
+              <Text weight="semibold">{what}</Text>
+            </Link>
+          ) : (
+            <Text weight="semibold">{what}</Text>
+          )}
+          <StatusTag label={words(sub.status)} tone={sub.status === 'active' ? 'success' : 'neutral'} />
+        </HStack>
+      }
+      description={[CYCLE[sub.billing_cycle] ?? words(sub.billing_cycle), sub.status === 'active' ? `next ${longDate(sub.next_charge_date)}` : null, money(sub.amount), sub.payment?.label ?? null]
+        .filter(Boolean)
+        .join(' · ')}
+      endContent={<AskButton target={target} label={what} />}
+    />
+  );
+}
+
+export function SubscriptionList({subscriptions}: {subscriptions: Subscription[]}) {
+  if (subscriptions.length === 0) return <Text color="secondary">No subscriptions. Ask Ailism to send something you buy again and again.</Text>;
+  return (
+    <List hasDividers>
+      {subscriptions.map(s => (
+        <SubscriptionRow key={s.id} sub={s} />
+      ))}
+    </List>
+  );
+}
+
+function RestockRow({alert}: {alert: RestockAlert}) {
+  const options = [alert.color, alert.size ? `size ${alert.size}` : null].filter(Boolean).join(', ');
+  const back = alert.availability === 'in_stock';
+  const target = useAiTarget({kind: 'restock_alert', label: `${alert.product_name}${options ? ` (${options})` : ''}`, ids: {restock_alert_id: alert.id, product_id: alert.product_id}});
+  return (
+    <ListItem
+      ref={target.ref}
+      {...target.props}
+      startContent={<ProductThumb productId={alert.product_id} name={alert.product_name} image={alert.image} color={alert.color} size={56} />}
+      label={
+        <HStack gap={2} vAlign="center" wrap="wrap">
+          <Link href={productHref(alert.product_id, alert.color)}>
+            <Text weight="semibold">{`${alert.product_name}${options ? ` (${options})` : ''}`}</Text>
+          </Link>
+          <StatusTag label={back ? 'Back in stock' : 'Waiting'} tone={back ? 'success' : 'neutral'} />
+        </HStack>
+      }
+      description={[
+        `by ${words(alert.channel)}`,
+        alert.notified_at ? `told ${longDate(alert.notified_at)}` : `since ${longDate(alert.start_time)}`,
+        `until ${longDate(alert.expires)}`,
+      ].join(' · ')}
+      endContent={<AskButton target={target} label={alert.product_name} />}
+    />
+  );
+}
+
+export function RestockAlertList({alerts}: {alerts: RestockAlert[]}) {
+  if (alerts.length === 0) return <Text color="secondary">No back-in-stock alerts. Ask for one on a sold-out size.</Text>;
+  return (
+    <List hasDividers>
+      {alerts.map(a => (
+        <RestockRow key={a.id} alert={a} />
       ))}
     </List>
   );

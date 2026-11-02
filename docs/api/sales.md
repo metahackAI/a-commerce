@@ -208,8 +208,9 @@
   {"items": [{"id": "ord_20402", "order_number": "20402", "order_status": "delivered",
               "order_date": "2026-10-27T19:12:00-04:00",
               "ordered_item": [{"id": "oln_1", "product_id": "prd_chelsea_boots", "variant_id": "var_chelsea_boots_9_tan",
-                                "name": "Leather chelsea boots", "size": "9", "color": "Tan", "order_quantity": 1,
-                                "order_item_status": "delivered"}],
+                                "name": "Leather chelsea boots", "size": "9", "color": "Tan",
+                                "image": "/media/products/prd_chelsea_boots--tan-….webp", "order_quantity": 1,
+                                "availability_now": "in_stock", "order_item_status": "delivered"}],
               "delivered_at": "2026-10-31T14:02:00-04:00",
               "total": {"value": 312.00, "currency": "USD"}}],
    "total": 1}
@@ -235,7 +236,9 @@
    "order_date": "2026-10-27T19:12:00-04:00",
    "customer_id": "cus_alex",
    "ordered_item": [{"id": "oln_1", "variant_id": "var_chelsea_boots_9_tan", "product_id": "prd_chelsea_boots",
-                     "name": "Leather chelsea boots", "size": "9", "color": "Tan", "order_quantity": 1,
+                     "name": "Leather chelsea boots", "size": "9", "color": "Tan",
+                     "image": "/media/products/prd_chelsea_boots--tan-….webp", "order_quantity": 1,
+                     "availability_now": "in_stock",
                      "price": {"value": 312.00, "currency": "USD"},
                      "discount": {"value": 0.00, "currency": "USD"},
                      "order_item_status": "delivered"}],
@@ -256,6 +259,7 @@
    "claims": [{"id": "clm_20402", "claim_type": "return", "claim_status": "requested",
                "order_item_ids": ["oln_20402_1"], "requested_at": "2026-11-06T09:52:00-05:00"}]}
   ```
+  주문 항목의 `image`는 주문한 색상의 사진(없으면 상품 사진), `availability_now`는 같은 옵션을 지금 살 수 있는지(`in_stock`, `out_of_stock`, 판매를 그만둔 상품은 `discontinued`)입니다. 웹은 이것으로 줄마다 사진과 "다시 사기"를 보여 줍니다.
   - `gift`: 선물 주문이면 `{recipient_name, recipient_mode, card_message, gift_receipt, exchange_until, acceptance}`, 아니면 `null`. `acceptance`는 받는 사람이 링크로 수락하는 선물(`recipient_accepts`)일 때 `{gift_order_id, accept_url, action_status, expires}`이고, 기한이 지난 대기는 `failed`로 보입니다. 포장비는 `totals.gift_wrap`(포장하지 않았으면 `null`).
   - `claims[]`: 이 주문의 취소·반품·교환 요청(오래된 순)과 각각이 걸린 줄. 쇼퍼 화면은 열린 요청이 있는 줄에 "반품 요청 중"을 보여 주고 새 요청 버튼을 내지 않습니다. 상태는 [enums.md](enums.md) §1.5.
   - 예: Alex의 #20402(F5, B2). Fri Nov 6 기준 배송 완료 6일째. 쿠폰을 쓴 주문이면 `totals.discounts[]`와 `coupons_recorded[]`가 채워집니다(예 `[{"coupon_id": "cpn_vipweekend20", "code": "VIPWEEKEND20", "promotion_id": "promo_1042"}]`).
@@ -270,7 +274,7 @@
 - 요약: 운영자용 주문 검색. 사람이 말하는 단위로 찾습니다: 주문 번호, 고객의 이메일·이름·전화번호.
 - consumes → produces: → `order_id[]`
 - 입력: `order_number`(Text, `^#?[0-9]{1,12}$`, `#` 있어도 됨), `customer`(Text, 2–100자: 이메일·이름·전화번호나 그 일부, 또는 고객 id. `search_members`와 같은 방식으로 맞춤), `order_status`(enum[], [enums.md](enums.md) §1.1), `customer_id`(`^cus_`), `order_date_from` / `order_date_to`(Date), `seller_id`(`^slr_`), `sort`(`order_date` \| `-order_date` \| `total` \| `-total`, 기본 `-order_date`), `limit`(기본 20, 최대 100), `cursor`, `fields`(Text[])
-- 출력: `{"items": [{"id": "ord_20402", "order_number": "20402", "order_status": "delivered", "customer_id": "cus_alex", "order_date": "2026-10-27T19:12:00-04:00", "total": {"value": 312.00, "currency": "USD"}}], "total": 1}`
+- 출력: `{"items": [{"id": "ord_20402", "order_number": "20402", "order_status": "delivered", "customer_id": "cus_alex", "order_date": "2026-10-27T19:12:00-04:00", "total": {"value": 312.00, "currency": "USD"}, "ordered_item": [{"id": "oln_1", "product_id": "prd_chelsea_boots", "variant_id": "var_chelsea_boots_9_tan", "name": "Leather chelsea boots", "size": "9", "color": "Tan", "image": "/media/products/prd_chelsea_boots--tan-….webp", "order_quantity": 1, "availability_now": "in_stock", "order_item_status": "delivered"}]}], "total": 1}` — `ordered_item`은 `get_my_orders`의 줄과 같은 모양(무엇을 샀는지, 그 색상의 사진)
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음
 - 에러: `invalid_filter` → `list_enums` · `invalid_filter`(`detail.reason: too_broad`, `customer`가 500명 넘게 맞음, 이메일이나 더 긴 이름으로) → `search_members`
@@ -443,7 +447,7 @@
 - 요약: 정기 주문 목록. 쇼퍼는 본인 것만(`customer_id` 생략 또는 `me`).
 - consumes → produces: → `subscription_id[]`
 - 입력: `customer_id`(`^cus_` 또는 `me`), `status`(enum[] `active` \| `paused` \| `cancelled`), `limit`(기본 20), `cursor`
-- 출력: `{"items": [{"id": "sub_3301", "customer_id": "cus_jamie", "status": "active", "billing_cycle": "every_month", "next_charge_date": "2026-12-01", "amount": {"value": 64.00, "currency": "USD"}, "lines": [{"variant_id": "var_merino_tee_m_charcoal", "product_id": "prd_merino_tee", "name": "Merino trail tee", "size": "M", "color": "Charcoal", "quantity": 1}], "delivery": {"address_id": "adr_home", "address_label": "Home · 12 Harbor St, Apt 3, Brooklyn, NY 11201"}, "payment": {"payment_method": "credit_card", "label": "Card ending 4821"}, "paused_at": null, "cancelled_at": null}], "total": 1}` — 시드의 Jamie
+- 출력: `{"items": [{"id": "sub_3301", "customer_id": "cus_jamie", "status": "active", "billing_cycle": "every_month", "next_charge_date": "2026-12-01", "amount": {"value": 64.00, "currency": "USD"}, "lines": [{"variant_id": "var_merino_tee_m_charcoal", "product_id": "prd_merino_tee", "name": "Merino trail tee", "size": "M", "color": "Charcoal", "quantity": 1, "image": "/media/products/prd_merino_tee-….webp"}], "delivery": {"address_id": "adr_home", "address_label": "Home · 12 Harbor St, Apt 3, Brooklyn, NY 11201"}, "payment": {"payment_method": "credit_card", "label": "Card ending 4821"}, "paused_at": null, "cancelled_at": null}], "total": 1}` — 시드의 Jamie. 줄마다 `image`는 그 색상의 사진입니다
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음
 - 에러: `invalid_filter`(운영자가 `me`) → `search_members` · `forbidden`(쇼퍼가 남의 `customer_id`) → `list_subscriptions`
