@@ -307,7 +307,12 @@ function ChangeSetFacts({cs, latestVersion}: {cs: ChangeSet; latestVersion: numb
         <MetadataListItem label="Created">{dateTime(cs.created_at)}</MetadataListItem>
         <MetadataListItem label="Submitted">{dateTime(cs.submitted_at)}</MetadataListItem>
         <MetadataListItem label="Approved">{cs.approved_at ? `${dateTime(cs.approved_at)} by ${cs.approved_by ? nameOf(cs, cs.approved_by) : 'standing approval'}` : '—'}</MetadataListItem>
-        {cs.request?.conversation_id ? <MetadataListItem label="Conversation">{cs.request.conversation_id}</MetadataListItem> : null}
+        {cs.request?.conversation_id ? (
+          <MetadataListItem label="Conversation">
+            {/* The request that made this change set, as it was said: opens the conversation. */}
+            <Link href={`/bo?view=agent&conversation=${encodeURIComponent(cs.request.conversation_id)}`}>Open the conversation</Link>
+          </MetadataListItem>
+        ) : null}
       </MetadataList>
       {versions.length > 1 ? (
         <VStack gap={1}>

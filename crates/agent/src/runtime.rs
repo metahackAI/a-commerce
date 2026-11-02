@@ -418,6 +418,54 @@ impl Runtime {
         }
     }
 
+    /// The caller's conversations on one surface, the most recent first, at most `limit`
+    /// (`GET /chat/{surface}/conversations`): `{items: [{conversation_id, name, turns,
+    /// started_at, last_turn_at}], total}`, times in store time. Only the caller's own, as for
+    /// one conversation.
+    pub async fn conversations(
+        &self,
+        principal: &Principal,
+        surface: ChatSurface,
+        limit: usize,
+        tools: &dyn ToolClient,
+    ) -> Result<Value, ToolError> {
+        let tenant = principal.tenant.as_str();
+        let owner = Owner::of(principal);
+        let (items, total) = self
+            .log
+            .conversations(tenant, surface.as_str(), &owner, limit)
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "conversation list");
+                ToolError::new(
+                    ErrorCode::UPSTREAM_UNAVAILABLE,
+                    "The conversation store did not answer; try again in a moment.",
+                )
+            })?;
+        // The store's time zone as a turn reads it: from commerce, else this store's fallback.
+        let zone = if items.is_empty() {
+            None
+        } else {
+            match tools.store().await {
+                Ok(s) => Some(s.time),
+                Err(_) => self.store.settings(tenant).await.ok().map(|s| s.time),
+            }
+        };
+        let stamp = |t: Option<DateTime<Utc>>| match (t, &zone) {
+            (Some(t), Some(zone)) => json!(zone.format(t)),
+            (Some(t), None) => json!(t.to_rfc3339()),
+            (None, _) => Value::Null,
+        };
+        let items: Vec<Value> = items
+            .into_iter()
+            .map(|c| {
+                json!({"conversation_id": c.conversation_id, "name": c.name, "turns": c.turns,
+                       "started_at": stamp(c.started_at), "last_turn_at": stamp(c.last_turn_at)})
+            })
+            .collect();
+        Ok(json!({"items": items, "total": total}))
+    }
+
     /// Runs one turn, sending its events. Always ends with `turn.done`.
     pub async fn run(&self, p: Prepared, tools: Arc<dyn ToolClient>, emit: Emitter) {
         let tenant = p.principal.tenant.as_str().to_owned();

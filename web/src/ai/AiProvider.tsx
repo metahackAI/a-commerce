@@ -7,6 +7,7 @@
 import {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode} from 'react';
 import {useRouter} from 'next/navigation';
 
+import {loadConversation} from './history';
 import {chatSocket, chatTurn, type Transport} from './socket';
 import type {TurnRequest} from './stream';
 import type {AgentStep, ChatMessage, ElementContext, SavedMemory, Surface, TurnUsage, UiBlock} from './types';
@@ -17,6 +18,14 @@ const wireContext = (context: ElementContext[]) =>
 
 interface AiState {
   surface: Surface;
+  /** The conversation on screen, once its first turn has started (or it was opened). */
+  conversationId: string | null;
+  /** Changes when a turn ends or a conversation opens or starts, so history lists read again. */
+  historyStamp: number;
+  /** Shows an earlier conversation (its messages and blocks) to carry on from; one of the caller's own. */
+  openConversation: (conversationId: string) => Promise<void>;
+  /** Clears the screen for a new conversation; the last one stays in the history. */
+  newConversation: () => void;
   messages: ChatMessage[];
   /** Every block of the conversation, oldest first. */
   blocks: UiBlock[];
@@ -79,6 +88,8 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
   const [liveTurn, setLiveTurn] = useState<string | null>(null);
   const [picked, setPicked] = useState<ElementContext[]>([]);
   const conversationId = useRef<string | undefined>(undefined);
+  const [conversation, setConversation] = useState<string | null>(null);
+  const [historyStamp, setHistoryStamp] = useState(0);
   const targets = useRef(new Map<string, HTMLElement>()).current;
 
   const router = useRouter();
@@ -136,7 +147,10 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
           const data = (ev.data ?? {}) as Record<string, unknown>;
           switch (ev.event) {
             case 'turn.started':
-              if (typeof data.conversation_id === 'string') conversationId.current = data.conversation_id;
+              if (typeof data.conversation_id === 'string') {
+                conversationId.current = data.conversation_id;
+                setConversation(data.conversation_id);
+              }
               break;
             case 'agent.step': {
               const step = data as unknown as AgentStep;
@@ -224,10 +238,65 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
         running.current = null;
         setIsBusy(false);
         setLiveTurn(null);
+        setHistoryStamp(n => n + 1);
       }
     },
     [runCommand, surface],
   );
+
+  /** Puts a conversation on screen: `turns` as messages and blocks, or nothing for a new one. */
+  const show = useCallback((id: string | null, turns: {turn_id: string; text: string; reply_text: string | null; blocks: UiBlock[] | null}[]) => {
+    const shown: ChatMessage[] = [];
+    let shownBlocks: UiBlock[] = [];
+    const turnOf: Record<string, string> = {};
+    for (const t of turns) {
+      shown.push({id: nextId('msg'), sender: 'user', text: t.text, turn_id: t.turn_id});
+      if (t.reply_text) shown.push({id: nextId('msg'), sender: 'assistant', text: t.reply_text, turn_id: t.turn_id});
+      // A block sent again by a later turn belongs to that turn, as while the conversation ran.
+      for (const b of t.blocks ?? []) {
+        shownBlocks = [...shownBlocks.filter(x => x.block_id !== b.block_id), b];
+        turnOf[b.block_id] = t.turn_id;
+      }
+    }
+    conversationId.current = id ?? undefined;
+    blockTurnsRef.current = turnOf;
+    setConversation(id);
+    setMessages(shown);
+    setBlocks(shownBlocks);
+    setBlockTurns(turnOf);
+    setChosenTurn(null);
+    setPicked([]);
+    setSteps([]);
+    setMemories([]);
+    setChangeSets({});
+    setLastTurn(null);
+    setHistoryStamp(n => n + 1);
+    // The address names an opened conversation, so a reload shows it again; a new one has none.
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set('conversation', id);
+    else url.searchParams.delete('conversation');
+    window.history.replaceState(window.history.state, '', url);
+  }, []);
+
+  const openConversation = useCallback(
+    async (id: string) => {
+      if (running.current || id === conversationId.current) return;
+      try {
+        const {turns} = await loadConversation(surface, id);
+        show(id, turns);
+      } catch {
+        setMessages(m => [
+          ...m,
+          {id: nextId('msg'), sender: 'system', text: 'That conversation could not be opened. It may belong to someone else, or the demo store was loaded again.'},
+        ]);
+      }
+    },
+    [show, surface],
+  );
+
+  const newConversation = useCallback(() => {
+    if (!running.current) show(null, []);
+  }, [show]);
 
   const stop = useCallback(() => running.current?.abort(), []);
 
@@ -274,6 +343,10 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
   const value = useMemo(
     () => ({
       surface,
+      conversationId: conversation,
+      historyStamp,
+      openConversation,
+      newConversation,
       messages,
       blocks,
       resultTurns,
@@ -295,7 +368,7 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
       changeSets,
       lastTurn,
     }),
-    [surface, messages, blocks, resultTurns, blocksOf, canvasTurn, isBusy, stop, transport, liveTurn, picked, send, sendEvent, pick, unpick, targets, steps, memories, changeSets, lastTurn],
+    [surface, conversation, historyStamp, openConversation, newConversation, messages, blocks, resultTurns, blocksOf, canvasTurn, isBusy, stop, transport, liveTurn, picked, send, sendEvent, pick, unpick, targets, steps, memories, changeSets, lastTurn],
   );
   return <AiContext.Provider value={value}>{children}</AiContext.Provider>;
 }

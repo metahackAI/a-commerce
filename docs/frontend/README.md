@@ -60,6 +60,7 @@ web/
     │   ├── blocks/{bo,fo}/           ui 이름 하나 = 컴포넌트 하나, registry.ts(모르는 블록은 제목과 why만 보이는 카드)
     │   ├── workspace/Workspace.tsx   대화 + 캔버스: 빈 화면 → 대화 → 분할(애니메이션). 캔버스는 한 턴의 블록만(최신 또는 고른 턴), 대화 폭은 손잡이로 조절. 좁은 화면은 블록을 대화 안에
     │   ├── chat/ChatParts.tsx        대화 부품(헤더, 대화, 진행 단계, 입력창, 시작 문장): BO 도크, FO 서랍, Workspace가 같이 씀
+    │   ├── chat/History.tsx          대화 기록: 최근 대화, 기록 메뉴, 새 대화, 계정 페이지 목록
     │   ├── bo/                       백오피스 페이지 부품(AgentDock, BoNav, StoreClock, ChangeSetView, TaskView, SalesChart …)
     │   ├── fo/                       스토어프론트 부품(StorefrontShell, AssistantDrawer, ProductCard, CheckoutFlow, ReturnPanel, StoreContent, StorePopup …)
     │   ├── brand/Ailism.tsx          워드마크, 어시스턴트 얼굴, 브랜드 문구, 푸터
@@ -166,6 +167,12 @@ return <TableRow ref={t.ref} {...t.props}>…</TableRow>;
 ## 6. 상태
 
 - 대화 상태(대화 id, 메시지, 블록, 고른 요소)는 면마다 `AiProvider` 하나의 React 상태입니다. 블록은 `block_id`로 저장하고 같은 id가 오면 교체합니다.
+- 대화 기록(`components/chat/History.tsx`, API는 [../api/chat.md](../api/chat.md) §1)은 탭이나 메뉴를 늘리지 않고 대화가 있는 자리에 둡니다.
+  - 빈 대화 화면: 시작 문장 아래 "Recent conversations" 3개와 나머지 메뉴("All n").
+  - 대화 중: 대화 열 머리줄(캔버스 머리줄과 같은 높이)에 기록 메뉴(시계)와 새 대화. BO 도크와 FO 서랍 머리줄에도 같은 두 버튼.
+  - FO 계정 메뉴의 Conversations → 계정 페이지의 "Conversations with Ailism" 섹션(`/account#conversations`).
+  - BO 변경셋·할 일 상세의 Conversation → 그 대화를 대화 화면에서 엽니다(`/bo?view=agent&conversation=…`).
+- 대화를 고르면 `ai.openConversation(id)`가 지난 턴을 메시지와 블록으로 되살리고(블록은 보낸 턴에 붙음), 그 대화에 이어서 말합니다. 주소에 `?conversation=conv_…`가 붙어 새로고침해도 같은 대화가 열리고, 새 대화(`ai.newConversation()`)는 화면과 주소를 비웁니다. 새로 시작한 대화는 주소를 바꾸지 않으므로, 새로고침하면 지금처럼 빈 화면에서 시작합니다. 다른 사람의 대화는 열리지 않고 그렇다고 말합니다. 시각은 서버가 쓴 스토어 시간 그대로(`Nov 6, 10:52`) 보여 줍니다(데모 시계라 "오늘"과 비교하지 않음).
 - 메시지와 블록은 자기가 속한 턴을 압니다. 캔버스는 한 턴의 블록만 보여 줍니다: 기본은 블록을 보낸 마지막 턴이고, 답 아래의 "Show N results on the canvas" 버튼이나 캔버스 머리의 이전·다음으로 다른 턴을 올립니다. 새 턴은 첫 블록이 올 때 캔버스를 차지하고, 블록 없는 턴은 캔버스를 그대로 둡니다. 캔버스가 없는 곳(서랍, 독, 좁은 화면)에서는 각 턴의 블록이 그 턴의 답 바로 아래에 놓입니다.
 - 분할 화면에서 대화와 캔버스 사이의 손잡이(Astryx `ResizeHandle`)로 대화 폭을 정합니다(320px부터 화면의 60%까지, 키보드 화살표도 됨). 폭은 면마다 브라우저에 기억됩니다.
 - 같은 면 안에서 페이지를 옮겨도 대화가 남지만, 새로고침하면 처음부터입니다. 끊긴 SSE를 `Last-Event-ID`로 이어 받는 것과 `GET /api/chat/{surface}/conversations/{id}`로 복원하는 것은 아직 웹에 없습니다(API는 있음).

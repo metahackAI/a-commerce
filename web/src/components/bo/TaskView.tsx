@@ -91,7 +91,13 @@ export function TaskView({task, changeSet}: {task: Task; changeSet: ChangeSet | 
               'None yet'
             )}
           </MetadataListItem>
-          <MetadataListItem label="Conversation">{task.related?.conversation_id ?? '—'}</MetadataListItem>
+          <MetadataListItem label="Conversation">
+            {task.related?.conversation_id ? (
+              <Link href={`/bo?view=agent&conversation=${encodeURIComponent(task.related.conversation_id)}`}>Open the conversation</Link>
+            ) : (
+              '—'
+            )}
+          </MetadataListItem>
           <MetadataListItem label="Records">
             {task.related?.entities?.length ? (
               <VStack gap={0.5}>

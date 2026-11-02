@@ -8,6 +8,7 @@ import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import type {ReactNode} from 'react';
 
+import {ConversationList} from '@/components/chat/History';
 import {AddressList, CouponList, LoyaltyView, MemoryList, MessageList, SignOutButton, WishlistView} from '@/components/fo/AccountViews';
 import {ErrorNotice} from '@/components/fo/ErrorNotice';
 import type {Page} from '@/lib/api';
@@ -18,9 +19,9 @@ import type {Address, LoyaltyBalance, MemberCoupon, Preference, Profile, StoreMe
 
 export const metadata: Metadata = {title: 'Account'};
 
-function Section({title, subtitle, children}: {title: string; subtitle?: string; children: ReactNode}) {
+function Section({id, title, subtitle, children}: {id?: string; title: string; subtitle?: string; children: ReactNode}) {
   return (
-    <Card>
+    <Card id={id}>
       <VStack gap={3}>
         <VStack gap={0.5}>
           <Heading level={2}>{title}</Heading>
@@ -108,6 +109,9 @@ export default async function AccountPage() {
                   ) : null}
                   <Loadable loaded={memories}>{d => <MemoryList memories={d.items} />}</Loadable>
                 </VStack>
+              </Section>
+              <Section id="conversations" title="Conversations with Ailism" subtitle="Pick one to see it again and carry on where you left off.">
+                <ConversationList page="/ask" />
               </Section>
               <Section title="Wishlist">
                 <Loadable loaded={wishlist}>{d => <WishlistView initial={d.items} />}</Loadable>

@@ -14,6 +14,7 @@ import {usePathname} from 'next/navigation';
 
 import {AILISM} from '@/components/brand/Ailism';
 import {ChatEmpty, ChatHeader, ChatPanel} from '@/components/chat/ChatParts';
+import {ConversationActions} from '@/components/chat/History';
 
 import {useStorefront} from './StorefrontContext';
 
@@ -39,6 +40,7 @@ export function AssistantDrawer() {
               subtitle={`${AILISM.screen} Only you can place an order.`}
               actions={
                 <>
+                  <ConversationActions />
                   <Button label="Full view" size="sm" variant="ghost" href="/" onClick={() => setAssistantOpen(false)} />
                   <IconButton label="Close" variant="ghost" size="sm" icon={<Icon icon={XMarkIcon} />} onClick={() => setAssistantOpen(false)} />
                 </>

@@ -111,6 +111,7 @@ function AccountItem() {
       items={[
         {label: 'Account', href: '/account'},
         {label: 'Orders', href: '/orders'},
+        {label: 'Conversations', href: '/account#conversations'},
         {
           label: 'Sign out',
           onClick: () => signOutAndGoHome(router),
