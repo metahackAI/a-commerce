@@ -78,7 +78,8 @@ export function AgentComposer({placeholder, onSent}: {placeholder: string; onSen
       }}
       placeholder={placeholder}
       elevation="none"
-      isDisabled={ai.isBusy}
+      isStopShown={ai.isBusy}
+      onStop={ai.stop}
       sendActions={voice.button}
       status={ai.isBusy ? {type: 'warning', message: 'Working…'} : voice.status}
       headerActions={ai.picked.length > 0 ? <PickedChips /> : undefined}

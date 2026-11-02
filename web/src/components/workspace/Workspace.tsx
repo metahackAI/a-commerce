@@ -233,7 +233,7 @@ export function Workspace({greeting, intro, composerPlaceholder, canvasTitle, st
   const question = ai.messages.find(m => m.turn_id === turn && m.sender === 'user')?.text ?? null;
 
   return (
-    <div className="acom-ws" data-mode={mode} data-resizing={resizing} ref={root} style={style}>
+    <div className="acom-ws" data-mode={mode} data-transport={ai.transport} data-resizing={resizing} ref={root} style={style}>
       <ChatStyles />
       <style>{WORKSPACE_CSS}</style>
       <section className="acom-ws-chat" aria-label="Conversation">
