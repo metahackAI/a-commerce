@@ -303,7 +303,10 @@ Deployment/Service `models`(8000), 모델 캐시 PVC `models-cache`(100Gi), Conf
 `nvidia.com/gpu: 1`을 요청하고, 첫 시작 때 모델을 내려받으므로 startup 프로브가 최대 30분을 기다립니다.
 
 1. 오버레이의 `components:`에 `- ../../components/models-vllm`을 추가합니다.
-2. ConfigMap `models-config`의 `VLLM_MODEL`(기본값 `set-me`)을 실제 Hugging Face 모델 id로 패치합니다.
+2. ConfigMap `models-config`의 `VLLM_MODEL` 기본값은 `nvidia/Muse-Glimmer-30B-NVFP4`이고, 인자도 Glimmer용입니다
+   (툴·추론 파서). 다른 모델이면 오버레이에서 둘 다 패치합니다. RTX 50 시리즈·RTX PRO Blackwell(SM120) GPU면
+   `infra/models/Dockerfile`(cuDNN 9.27)로 이미지를 빌드해 `images:`로 바꿉니다. 기본 이미지의 cuDNN 9.20은 그 GPU에서
+   몇 분마다 죽었습니다([../../docs/serving.md](../../docs/serving.md)).
 3. Component는 Secret 안의 값을 바꿀 수 없으므로, **`acom-models` Secret의 `GLIMMER_BASE_URL`을
    `http://models:8000/v1`로**, `GLIMMER_MODEL`을 `VLLM_MODEL`과 같은 id로 직접 설정합니다
    (local이면 `models.env`). 접근 제한 모델이면 같은 Secret에 `HF_TOKEN`을 넣습니다(models 파드만 읽음).
