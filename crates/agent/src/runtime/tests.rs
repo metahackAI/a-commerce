@@ -23,6 +23,8 @@ struct Scripted {
     answers: Mutex<Vec<(String, String)>>,
     asked: Mutex<Vec<String>>,
     streams_nothing: std::sync::atomic::AtomicBool,
+    /// Streams the background check's request but nothing in a turn (the demo's endpoint did).
+    streams_check_only: std::sync::atomic::AtomicBool,
 }
 
 impl Scripted {
@@ -43,7 +45,14 @@ impl Scripted {
             ),
             asked: Mutex::new(Vec::new()),
             streams_nothing: std::sync::atomic::AtomicBool::new(false),
+            streams_check_only: std::sync::atomic::AtomicBool::new(false),
         })
+    }
+
+    fn streaming_the_check_only(self: Arc<Self>) -> Arc<Self> {
+        self.streams_check_only
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self
     }
 
     /// Answers a streamed call with no text, as a provider that streams structured output
@@ -95,9 +104,12 @@ impl ChatModel for Scripted {
                 });
             }
             if on_delta.is_some()
-                && self
+                && (self
                     .streams_nothing
                     .load(std::sync::atomic::Ordering::SeqCst)
+                    || self
+                        .streams_check_only
+                        .load(std::sync::atomic::Ordering::SeqCst))
             {
                 return Ok(ChatResponse {
                     model: self.info.model.clone(),
@@ -1824,6 +1836,56 @@ async fn replies_stream_only_where_the_background_check_saw_streaming_work() {
     );
     assert_eq!(replies(&dumb), 3);
     assert_eq!(rt.stream_state("glimmer"), StreamState::Unknown);
+}
+
+#[tokio::test]
+async fn a_way_that_fails_in_turns_is_not_trusted_again_by_the_check() {
+    let plan = json!({"interpretation": [{"aspect": "who", "text": "VIP members"}], "about": "self",
+        "reply_plan": "text", "steps": [{"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
+    .to_string();
+    let mut answers: Vec<(&str, String)> = Vec::new();
+    for _ in 0..=StreamVariant::ALL.len() {
+        answers.push(("plan", plan.clone()));
+        answers.push(("reply", "You have 1,284 VIP members.".into()));
+    }
+    let model = Scripted::new("glimmer", "Muse Glimmer 30B", answers).streaming_the_check_only();
+    let rt = runtime(std::slice::from_ref(&model), Arc::new(MemoryLog::default()));
+    rt.assume_streaming("glimmer", StreamState::Unknown);
+    // The check passes every way; each turn proves one wrong, and the check moves past it.
+    for (n, way) in StreamVariant::ALL.iter().enumerate() {
+        rt.probe_streaming().await;
+        assert_eq!(
+            rt.stream_state("glimmer"),
+            StreamState::Works(*way),
+            "check {n}"
+        );
+        let events = turn(
+            &rt,
+            principal("adm_sj", Surface::Bo),
+            ChatSurface::Bo,
+            say("Show me our member tiers."),
+            Commerce::new(),
+        )
+        .await;
+        assert_eq!(message(&events), "You have 1,284 VIP members.", "turn {n}");
+        assert_eq!(rt.stream_state("glimmer"), StreamState::Unknown);
+    }
+    // Every way failed in a turn: the check turns streaming off, and replies come whole.
+    rt.probe_streaming().await;
+    assert_eq!(rt.stream_state("glimmer"), StreamState::Off);
+    let before = model.asked().iter().filter(|p| *p == "reply").count();
+    turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say("Show me our member tiers."),
+        Commerce::new(),
+    )
+    .await;
+    assert_eq!(
+        model.asked().iter().filter(|p| *p == "reply").count(),
+        before + 1
+    );
 }
 
 fn on_facade(text: &str) -> TurnRequest {
