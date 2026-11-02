@@ -3,6 +3,7 @@
 
 use acom_auth::Principal;
 use acom_contract::ToolError;
+use acom_core::enums::ActorKind;
 use serde::{Deserialize, Serialize};
 
 use crate::not_signed_in;
@@ -62,10 +63,15 @@ pub(crate) enum Viewer {
 }
 
 pub(crate) fn viewer(p: &Principal) -> Viewer {
-    match p.customer_id() {
-        Some(c) => Viewer::Shopper(c.to_owned()),
-        None if p.subject.starts_with("ses_") => Viewer::Guest,
-        None => Viewer::Staff,
+    if let Some(c) = p.customer_id() {
+        return Viewer::Shopper(c.to_owned());
+    }
+    // Staff by what the caller is, never by what it lacks: a visitor with no session at all is
+    // a shopper without a customer id, and sees no orders.
+    match p.kind {
+        ActorKind::Operator | ActorKind::System => Viewer::Staff,
+        ActorKind::AgentOnBehalf if p.subject.starts_with("adm_") => Viewer::Staff,
+        _ => Viewer::Guest,
     }
 }
 
@@ -105,6 +111,12 @@ mod tests {
             Viewer::Shopper("cus_alex".into())
         );
         assert_eq!(viewer(&principal("ses_x", None)), Viewer::Guest);
-        assert_eq!(viewer(&principal("adm_sj", None)), Viewer::Staff);
+        // The gateway's caller with no session sees no one's orders.
+        assert_eq!(viewer(&principal("anonymous", None)), Viewer::Guest);
+        let operator = Principal {
+            kind: ActorKind::Operator,
+            ..principal("adm_sj", None)
+        };
+        assert_eq!(viewer(&operator), Viewer::Staff);
     }
 }

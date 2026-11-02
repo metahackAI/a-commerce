@@ -8,6 +8,8 @@ import {AskEntry} from '@/components/fo/AskEntry';
 import {ErrorNotice} from '@/components/fo/ErrorNotice';
 import {HeroBanner, type HeroContent} from '@/components/fo/HeroBanner';
 import {ProductGrid} from '@/components/fo/ProductGrid';
+import {CollectionCards, NoticeList} from '@/components/fo/StoreContent';
+import {StorePopup} from '@/components/fo/StorePopup';
 import type {Page} from '@/lib/api';
 
 import {imageUrl} from './_lib/format';
@@ -15,9 +17,12 @@ import {load, orElse, shopper} from './_lib/server';
 import type {
   Brand,
   Category,
+  CollectionPageSummary,
   DisplayBooking,
   DisplaySlot,
   DisplaySlotSummary,
+  NoticeSummary,
+  Popup,
   Product,
   ProductGroup,
   ProductSummary,
@@ -69,8 +74,12 @@ async function slotProducts(slot: DisplaySlot): Promise<ProductSummary[]> {
   return loaded.flatMap(l => (l.ok ? [l.data] : []));
 }
 
-function isoDay(d: Date): string {
-  return d.toISOString().slice(0, 10);
+/** The store's own day (`2026-11-06`) and the next, from `get_store`'s clock, never the server's. */
+function storeDays(now: string | null): [string, string] {
+  const today = now ? now.slice(0, 10) : new Date().toISOString().slice(0, 10);
+  const next = new Date(`${today}T00:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return [today, next.toISOString().slice(0, 10)];
 }
 
 type Section =
@@ -81,19 +90,25 @@ type Section =
 
 export default async function StorefrontHome() {
   const who = await shopper();
-  const now = new Date();
-  const [slotList, categories, featured, profile, brandList] = await Promise.all([
+  const store = await load<{now: string}>('/v1/platform/store');
+  const [today, tomorrow] = storeDays(store.ok ? store.data.now : null);
+  const [slotList, categories, featured, profile, brandList, collections, notices, popups] = await Promise.all([
     load<Page<DisplaySlotSummary>>('/v1/merchandising/display-slots', {
       page: 'main',
-      valid_from: isoDay(now),
-      valid_through: isoDay(new Date(now.getTime() + 86_400_000)),
+      valid_from: today,
+      valid_through: tomorrow,
       limit: 20,
     }),
     load<Page<Category>>('/v1/merchandising/categories', {term_set: 'standard', limit: 50}),
     load<Page<ProductSummary>>('/v1/search/products', {sort: 'newest', limit: GRID_LIMIT}),
     who.isShopper ? load<Profile>('/v1/customer/people/me', {fields: ['name']}) : null,
     load<Page<Brand>>('/v1/catalog/brands', {limit: 50}),
+    load<Page<CollectionPageSummary>>('/v1/merchandising/collection-pages', {limit: 6}),
+    load<Page<NoticeSummary>>('/v1/customer/notices', {limit: 3}),
+    load<Page<Popup>>('/v1/merchandising/popups', {page: 'main'}),
   ]);
+  const openCollections = orElse(collections, {items: [], total: 0}).items;
+  const latestNotices = orElse(notices, {items: [], total: 0}).items;
   const brands = orElse(brandList, {items: [], total: 0}).items;
 
   const summaries = orElse(slotList, {items: [], total: 0}).items.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
@@ -132,6 +147,7 @@ export default async function StorefrontHome() {
       content={
         <LayoutContent padding={6}>
           <VStack gap={8}>
+            <StorePopup popups={orElse(popups, {items: [], total: 0}).items} />
             {!slotList.ok ? <ErrorNotice error={slotList.error} title="The main page could not be loaded." /> : null}
             {sections.map(s =>
               s.kind === 'hero' ? (
@@ -163,6 +179,15 @@ export default async function StorefrontHome() {
                 </VStack>
               ),
             )}
+            {openCollections.length > 0 ? (
+              <VStack gap={3}>
+                <HStack gap={2} vAlign="center" justify="between" wrap="wrap">
+                  <Heading level={2}>Collections</Heading>
+                  <Button label="All collections" variant="ghost" href="/collections" />
+                </HStack>
+                <CollectionCards pages={openCollections} />
+              </VStack>
+            ) : null}
             <AskEntry name={profile?.ok ? profile.data.name : null} />
             {topCategories.length > 0 ? (
               <VStack gap={3}>
@@ -189,6 +214,15 @@ export default async function StorefrontHome() {
                 <ErrorNotice error={featured.error} askAbout="What's new in the store?" />
               )}
             </VStack>
+            {latestNotices.length > 0 ? (
+              <VStack gap={3}>
+                <HStack gap={2} vAlign="center" justify="between" wrap="wrap">
+                  <Heading level={2}>From the store</Heading>
+                  <Button label="Help and notices" variant="ghost" href="/help" />
+                </HStack>
+                <NoticeList notices={latestNotices} />
+              </VStack>
+            ) : null}
           </VStack>
         </LayoutContent>
       }

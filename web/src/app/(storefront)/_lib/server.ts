@@ -4,7 +4,7 @@
 import 'server-only';
 
 import {ApiError, type ApiErrorBody, type Query} from '@/lib/api';
-import {serverApi, serverSession} from '@/lib/server-api';
+import {serverApi, serverPost, serverSession} from '@/lib/server-api';
 import type {Session} from '@/lib/session';
 
 export type Loaded<T> = {ok: true; data: T} | {ok: false; status: number; error: ApiErrorBody};
@@ -20,6 +20,16 @@ const unreachable: ApiErrorBody = {
 export async function load<T>(path: string, query?: Query): Promise<Loaded<T>> {
   try {
     return {ok: true, data: await serverApi<T>(path, query)};
+  } catch (e) {
+    if (e instanceof ApiError) return {ok: false, status: e.status, error: e.body};
+    return {ok: false, status: 503, error: unreachable};
+  }
+}
+
+/** A read whose input is a body (`POST /v1/community/posts/search`, no side effects). */
+export async function loadBody<T>(path: string, body: unknown): Promise<Loaded<T>> {
+  try {
+    return {ok: true, data: await serverPost<T>(path, body)};
   } catch (e) {
     if (e instanceof ApiError) return {ok: false, status: e.status, error: e.body};
     return {ok: false, status: 503, error: unreachable};

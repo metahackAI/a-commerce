@@ -121,7 +121,7 @@ impl ReadOp<Cx> for GetDisplaySlot {
                     == DisplayStatus::Active
             })
             .collect();
-        let live_now = !live.is_empty() || item_products.len() > hidden.len();
+        let live_now = !live.is_empty() || shows_items(&slot.item_list_element, hidden.len());
         let showing = showing(&audiences, &live);
         // A shopper sees the one booking that shows to them now, never what is coming or what
         // other tiers see.
@@ -167,5 +167,38 @@ impl ReadOp<Cx> for GetDisplaySlot {
             "as_of": cx.time.format(at),
         });
         fields::keep(out, &input.fields.unwrap_or_default())
+    }
+}
+
+/// Whether the slot's own items show anything: a product shows unless the rules hide it; any
+/// other item (a brand of a brand strip, a category) always shows.
+fn shows_items(items: &Value, hidden_products: usize) -> bool {
+    let ids: Vec<&str> = items
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|i| i["item_id"].as_str())
+        .collect();
+    let products = ids.iter().filter(|id| id.starts_with("prd_")).count();
+    ids.len() > products || products > hidden_products
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_brand_strip_shows_its_brands_without_a_booking() {
+        let brands = json!([{"item_id": "brn_northwind", "position": 1}]);
+        assert!(shows_items(&brands, 0));
+    }
+
+    #[test]
+    fn a_product_grid_shows_while_one_product_is_not_hidden() {
+        let products =
+            json!([{"item_id": "prd_a", "position": 1}, {"item_id": "prd_b", "position": 2}]);
+        assert!(shows_items(&products, 1));
+        assert!(!shows_items(&products, 2));
+        assert!(!shows_items(&json!([]), 0));
     }
 }
