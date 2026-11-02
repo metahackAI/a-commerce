@@ -88,8 +88,8 @@ export function ProductView(p: ProductViewProps) {
   const session = useBoSession();
   const canWrite = session?.scopes.includes('tools:write:catalog') ?? false;
   const [editing, setEditing] = useState<{variant: InvVariant; mode: EditMode} | null>(null);
-  // A phone keeps the variant, its stock and the edit buttons; ids, safety stock and availability
-  // need the width of a desk.
+  // A phone keeps the variant, its stock and the edit buttons; safety stock and availability need
+  // the width of a desk.
   const isNarrow = useMediaQuery('(max-width: 640px)');
   const [editor, setEditor] = useState<EditorTab | null>(p.initialEdit ?? null);
   const draft = p.group?.['acom:draft'];
@@ -251,16 +251,8 @@ export function ProductView(p: ProductViewProps) {
           columns={[
             {
               header: 'Variant',
-              cell: v => (
-                <VStack gap={0}>
-                  <Text weight="medium">{[v.size, v.color].filter(Boolean).join(' · ') || v.variant_id}</Text>
-                  {isNarrow ? null : (
-                    <Text type="supporting" color="secondary">
-                      {`${v.variant_id}${v.sku ? ` · ${v.sku}` : ''}`}
-                    </Text>
-                  )}
-                </VStack>
-              ),
+              // The variant id stays in the row's AI target; people read size and color.
+              cell: v => <Text weight="medium">{[v.size, v.color].filter(Boolean).join(' · ') || v.variant_id}</Text>,
             },
             {header: 'Stock', cell: v => <Figure>{count(v.inventory_level)}</Figure>},
             ...(isNarrow ? [] : [{header: 'Safety stock', cell: (v: InvVariant) => <Figure muted>{count(v['acom:safety_stock'])}</Figure>}]),
