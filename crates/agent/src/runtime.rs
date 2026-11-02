@@ -29,7 +29,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::blocks::change_set::{ChangeSetView, ItemView};
-use crate::blocks::{Action, Block, insights, review, shop, shopper, table};
+use crate::blocks::{Action, Block, insights, records, review, shop, shopper, table};
 use crate::checker;
 use crate::client::{ItemRef, NewChangeSet, ToolClient};
 use crate::executor::{self, StepRecord};
@@ -752,6 +752,14 @@ struct ShownBlock {
 
 /// Where a block sits on the canvas: the product views are one place (the same results laid
 /// out as a list, a gallery or a comparison), anything else by its kind; then its order.
+/// Whether a listed item is a product (`prd_…` as its `product_id` or `id`).
+fn is_product_item(item: &Value) -> bool {
+    item.get("product_id")
+        .or_else(|| item.get("id"))
+        .and_then(Value::as_str)
+        .is_some_and(|id| id.starts_with("prd_"))
+}
+
 fn place_of(ui: &str, nth: usize) -> String {
     let family = match ui {
         "compare_table" | "look_gallery" | "product_list" => "products",
@@ -860,7 +868,7 @@ impl<'r> Turn<'r> {
         if self.search().await {
             match self.plan_first().await {
                 Ok(plan) => self.execute_with_revisions(plan).await,
-                Err(Stop(why)) => self.problems.push(why),
+                Err(Stop(why)) => self.note_problem(why),
             }
         }
         self.finish_change_set().await;
@@ -1429,8 +1437,7 @@ impl<'r> Turn<'r> {
         )
         .await;
         if !ok {
-            self.problems
-                .push("None of the store's tools that I may use fits this request.".into());
+            self.note_problem("None of the store's tools that I may use fits this request.".into());
         }
         ok
     }
@@ -1695,7 +1702,7 @@ impl<'r> Turn<'r> {
             match self.execute(&plan).await {
                 Flow::Done => return,
                 Flow::Stop(why) => {
-                    self.problems.push(why);
+                    self.note_problem(why);
                     return;
                 }
                 Flow::Revise(why) if self.revisions < self.limits.plan_revisions => {
@@ -1709,13 +1716,13 @@ impl<'r> Turn<'r> {
                     match self.revise(why).await {
                         Ok(p) => plan = p,
                         Err(Stop(why)) => {
-                            self.problems.push(why);
+                            self.note_problem(why);
                             return;
                         }
                     }
                 }
                 Flow::Revise(why) => {
-                    self.problems.push(why);
+                    self.note_problem(why);
                     return;
                 }
             }
@@ -1747,8 +1754,9 @@ impl<'r> Turn<'r> {
                 ));
             }
             if plan.about == About::Other && tool.remembers() {
-                self.problems
-                    .push("I did not remember anything about the person this is for.".into());
+                self.note_problem(
+                    "I did not remember anything about the person this is for.".into(),
+                );
                 continue;
             }
             // Blocks shown earlier in the conversation stand in for steps (`blk_…`).
@@ -1801,8 +1809,7 @@ impl<'r> Turn<'r> {
                 // goes on without them, and keeping one says it could not.
                 Err(Flow::Stop(_)) if tool.remembers() && !tool.is_write() => {}
                 Err(Flow::Stop(why)) if tool.remembers() => {
-                    self.problems
-                        .push(format!("I could not remember that: {why}"));
+                    self.note_problem(format!("I could not remember that: {why}"));
                 }
                 Err(flow) => {
                     self.unrun = plan
@@ -2729,7 +2736,7 @@ impl<'r> Turn<'r> {
                         state: head.state,
                     });
                 }
-                Err(e) => self.problems.push(format!(
+                Err(e) => self.note_problem(format!(
                     "The change set could not be handed over for approval: {}",
                     e.message
                 )),
@@ -2942,9 +2949,10 @@ impl<'r> Turn<'r> {
     fn product_rows(&self, uis: &[&str]) -> Vec<Value> {
         if let Some(r) = self.last_output(|r| {
             r.kind == ToolKind::Read
+                && !records::shaped(&r.tool)
                 && shop::items_of(r.output.as_ref().unwrap_or(&Value::Null))
                     .first()
-                    .is_some_and(|i| i.get("name").is_some())
+                    .is_some_and(|i| i.get("name").is_some() && is_product_item(i))
         }) {
             return shop::items_of(r.output.as_ref().unwrap_or(&Value::Null));
         }
@@ -3090,14 +3098,12 @@ impl<'r> Turn<'r> {
                 .last_output(|r| r.kind == ToolKind::Read)
                 .and_then(|r| table::product_table(r.output.as_ref()?)),
             "action_log" => self
-                .last_output(|r| r.kind == ToolKind::Read)
+                .last_output(|r| r.tool == "search_action_log" || r.tool == "get_action_log")
                 .and_then(|r| table::action_log(r.output.as_ref()?)),
             "task_list" => self
                 .last_output(|r| r.tool == "list_tasks")
                 .and_then(|r| crate::blocks::tasks::task_list(r.output.as_ref()?)),
-            "order_detail" => self
-                .last_output(|_| true)
-                .and_then(|r| table::order_detail(r.output.as_ref()?)),
+            "order_detail" => self.order_detail_block(),
             "cart" => self
                 .last_output(|r| r.output.as_ref().is_some_and(|o| o.get("lines").is_some()))
                 .and_then(|r| shop::cart(r.output.as_ref()?)),
@@ -3110,8 +3116,25 @@ impl<'r> Turn<'r> {
                     insights::sales_explainer(r.output.as_ref()?, trend, &self.profile.next_actions)
                 }),
             "return_options" => self
-                .last_output(|r| r.kind == ToolKind::Read)
+                .last_output(|r| {
+                    matches!(
+                        r.tool.as_str(),
+                        "get_return_options" | "get_exchange_options" | "get_cancel_options"
+                    )
+                })
                 .and_then(|r| shop::return_options(r.output.as_ref()?, &r.input)),
+            "record_list" => self.record_block(),
+            // The plan named a product layout but this turn read only records (orders, coupons):
+            // those are the answer, not the products shown earlier.
+            "compare_table" | "look_gallery" | "product_list"
+                if allowed("record_list")
+                    && self.product_read().is_none()
+                    && self
+                        .primary_read()
+                        .is_some_and(|r| records::shaped(&r.tool)) =>
+            {
+                self.record_block()
+            }
             "compare_table" | "look_gallery" | "product_list" => {
                 let (ui, rule) = self.product_layout(&reply_plan);
                 let ui = ui.as_str();
@@ -3148,6 +3171,18 @@ impl<'r> Turn<'r> {
         } else {
             block
         };
+        // Products come with what this turn read about them: their reviews and questions.
+        let about_products = if allowed("record_list")
+            && block.as_ref().is_some_and(|b| {
+                matches!(
+                    b.ui.as_str(),
+                    "compare_table" | "look_gallery" | "product_list"
+                )
+            }) {
+            self.product_content_blocks()
+        } else {
+            Vec::new()
+        };
         // A gift is reviewed in its picker first; the card with the Place order button follows.
         if reply_plan == "gift_picker" {
             out.extend(block);
@@ -3156,6 +3191,7 @@ impl<'r> Turn<'r> {
             out.extend(cards);
             out.extend(block);
         }
+        out.extend(about_products);
         out
     }
 
@@ -3283,25 +3319,115 @@ impl<'r> Turn<'r> {
 
     /// The last list a read returned, as a block this agent may show.
     fn found_block(&self, allowed: &dyn Fn(&str) -> bool) -> Option<Block> {
+        if let Some(read) = self.product_read()
+            && allowed("product_list")
+        {
+            return shop::products("product_list", read.output.as_ref()?, None);
+        }
+        if allowed("order_detail")
+            && let Some(b) = self.order_detail_block()
+        {
+            return Some(b);
+        }
+        // Only who the shopper is was read ("what do you remember about me?"): their profile.
+        if allowed("profile_card")
+            && let Some(r) = self.primary_read().filter(|r| r.tool == "get_my_profile")
+            && let Some(b) = shopper::profile_card(r.output.as_ref()?)
+        {
+            return Some(b);
+        }
+        if allowed("record_list") {
+            return self.record_block();
+        }
         let read = self.last_output(|r| {
             r.kind == ToolKind::Read
                 && r.output
                     .as_ref()
                     .is_some_and(|o| !shop::items_of(o).is_empty())
         })?;
-        let output = read.output.as_ref()?;
-        let products = shop::items_of(output).iter().all(|i| {
-            i.get("product_id")
-                .or_else(|| i.get("id"))
-                .and_then(Value::as_str)
-                .is_some_and(|id| id.starts_with("prd_"))
-        });
-        if products && allowed("product_list") {
-            shop::products("product_list", output, None)
-        } else if allowed("product_table") {
-            table::product_table(output)
+        if allowed("product_table") {
+            table::product_table(read.output.as_ref()?)
         } else {
             None
+        }
+    }
+
+    /// The newest read this turn whose items are products (search results, a wishlist), not
+    /// records that only point at products (reviews, alerts).
+    fn product_read(&self) -> Option<&StepRecord> {
+        self.history.iter().rev().find(|r| {
+            r.kind == ToolKind::Read
+                && !records::shaped(&r.tool)
+                && r.output.as_ref().is_some_and(|o| {
+                    let items = shop::items_of(o);
+                    !items.is_empty() && items.iter().all(is_product_item)
+                })
+        })
+    }
+
+    /// The order this turn read, with its lines (`get_order`; not its payment or delivery).
+    fn order_detail_block(&self) -> Option<Block> {
+        self.last_output(|r| {
+            r.output
+                .as_ref()
+                .is_some_and(|o| o.get("order_number").is_some() && o.get("ordered_item").is_some())
+        })
+        .and_then(|r| table::order_detail(r.output.as_ref()?))
+    }
+
+    /// The read a records answer shows: the newest one with a shape of its own, else the newest
+    /// that is not only about who is asking.
+    fn primary_read(&self) -> Option<&StepRecord> {
+        let reads: Vec<&StepRecord> = self
+            .history
+            .iter()
+            .rev()
+            .filter(|r| r.kind == ToolKind::Read && r.output.as_ref().is_some_and(|o| !o.is_null()))
+            .collect();
+        reads
+            .iter()
+            .find(|r| records::shaped(&r.tool))
+            .or_else(|| {
+                reads
+                    .iter()
+                    .find(|r| !records::SUPPORTING.contains(&r.tool.as_str()))
+            })
+            .or_else(|| reads.first())
+            .copied()
+    }
+
+    /// `record_list` from the primary read; reviews come with their summary when both were read.
+    fn record_block(&self) -> Option<Block> {
+        let read = self.primary_read()?;
+        if matches!(read.tool.as_str(), "list_reviews" | "get_review_summary") {
+            return self.reviews_block();
+        }
+        records::record_list(&read.tool, read.output.as_ref()?)
+    }
+
+    fn reviews_block(&self) -> Option<Block> {
+        let of = |tool: &str| {
+            self.last_output(|r| r.tool == tool)
+                .and_then(|r| r.output.as_ref())
+        };
+        records::reviews_with_summary(of("list_reviews"), of("get_review_summary"))
+    }
+
+    /// Reviews and questions this turn read, each as its own `record_list`.
+    fn product_content_blocks(&self) -> Vec<Block> {
+        let mut out: Vec<Block> = self.reviews_block().into_iter().collect();
+        out.extend(
+            self.last_output(|r| r.tool == "list_questions")
+                .and_then(|r| records::record_list(&r.tool, r.output.as_ref()?)),
+        );
+        out
+    }
+
+    /// A problem the reply names, once however often the turn ran into it (a plan revised
+    /// runs its steps again).
+    fn note_problem(&mut self, why: String) {
+        if !self.problems.contains(&why) {
+            self.problems.push(why);
         }
     }
 

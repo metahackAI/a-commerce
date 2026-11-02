@@ -1,12 +1,12 @@
 # The catalog agent: products and their drafts (scene B4), variants, list prices, categories,
-# brands and reviews.
+# brands, reviews and questions, and the community boards where shoppers post.
 id: catalog
 surface: bo
 title: Catalog agent
-description: Products and drafts — supplier sheets turned into product drafts, names and descriptions, variants and list prices, categories, brands, review moderation, and publishing products.
+description: Products and drafts — supplier sheets turned into product drafts, names and descriptions, variants and list prices, categories, brands, stock and reorders, moderating reviews, product questions and community posts, and publishing products.
 home_domains: [catalog, merchandising]
 tool_scope:
-  domains: [catalog, merchandising, search, platform]
+  domains: [catalog, merchandising, search, platform, community]
   kinds: [read, write, write_approval]
   # Always among the candidates: finding products and their stock, and the work waiting.
   always: [search_products, get_product, get_inventory, list_tasks]
@@ -36,3 +36,8 @@ route_when_said:
   - categories
   - brand
   - size chart
+  - community
+  - reported post
+  - reported posts
+  - community post
+  - community board

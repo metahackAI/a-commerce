@@ -8,6 +8,7 @@
 pub mod change_set;
 pub mod drafts;
 pub mod insights;
+pub mod records;
 pub mod review;
 pub mod shop;
 pub mod shopper;
@@ -41,6 +42,7 @@ pub const KNOWN_BLOCKS: &[&str] = &[
     "profile_card",
     "refund_review",
     "product_drafts",
+    "record_list",
 ];
 
 /// Block data format version (`schema`).

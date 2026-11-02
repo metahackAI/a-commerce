@@ -227,7 +227,7 @@ The back end is complete for the showcase: every specified operation is built. W
 - [ ] Run the held-out set once and put its numbers in [Results](#results); compare Glimmer with Spark on the same tasks.
 
 **The new domains in the agents and on screen**
-- [ ] Give the agents the domains added on Oct 31: no agent profile lists `community`, `partner` or `integration` yet, so those tools are reachable through REST but not through a conversation.
+- [x] Give the agents the domains added on Oct 31: `community` is in the catalog agent, `partner` and `integration` in the new marketplace agent.
 - [ ] The checkout card built from a `prepare_subscription` preview posts to the order endpoint; it should start the subscription (`POST /v1/sales/subscriptions`).
 - [ ] UI blocks and back-office pages for the tools added on Oct 31 (campaigns, community moderation, sellers, channels and imports, subscriptions, receipts, inquiries, remedies). Today they answer in text and tables only (principle 5).
 
