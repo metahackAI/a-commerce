@@ -1467,7 +1467,9 @@ fn manifest_with_records() -> Vec<ToolSpec> {
                "consumes": [], "produces": [], "checks": [],
                "input_schema": {"type": "object", "additionalProperties": false, "properties": {
                    "order_id": {"type": "string", "description": "Order."},
-                   "product_id": {"type": "string", "description": "Product."}}, "required": []}})
+                   "product_id": {"type": "string", "description": "Product."},
+                   "answered": {"type": "boolean", "description": "Only answered (true) or waiting (false)."},
+                   "limit": {"type": "integer", "description": "Page size."}}, "required": []}})
     };
     let records: crate::tools::Manifest = serde_json::from_value(json!({"items": [
         read("get_my_orders", "sales.order.get_my_orders", "The shopper's own orders, newest first."),
@@ -1933,6 +1935,57 @@ async fn a_reply_with_made_up_numbers_is_written_again_and_what_was_read_is_show
     assert_eq!(b.len(), 1, "the tiers read, shown as a table");
     assert_eq!(b[0].ui, "product_table");
     assert_eq!(glimmer.asked().iter().filter(|p| *p == "reply").count(), 2);
+}
+
+#[tokio::test]
+async fn a_planned_yes_no_the_shopper_never_said_is_not_sent() {
+    // The plan does not say which product; the arguments model is asked and answers with every
+    // field, the yes/no included.
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            (
+                "plan",
+                json!({"interpretation": [], "about": "self", "reply_plan": "record_list", "steps": [
+                    {"id": "q", "tool": "list_questions", "uses": [], "args": {"answered": true, "limit": 20}}]})
+                .to_string(),
+            ),
+            (
+                "arguments",
+                json!({"product_id": "prd_windbreaker", "answered": true, "limit": 20}).to_string(),
+            ),
+        ],
+    );
+    let mut manifest = manifest_with_records();
+    for t in &mut manifest {
+        if t.tool == "list_questions" {
+            t.input_schema["required"] = json!(["product_id"]);
+        }
+    }
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let commerce = Commerce::with_manifest(manifest);
+    turn(
+        &rt,
+        principal("cus_jamie", Surface::Fo),
+        ChatSurface::Fo,
+        say("What questions have people asked about the windbreaker?"),
+        commerce.clone(),
+    )
+    .await;
+    let asked: Vec<Value> = commerce
+        .reads()
+        .into_iter()
+        .filter(|(t, _)| t == "list_questions")
+        .map(|(_, input)| input)
+        .collect();
+    assert!(!asked.is_empty());
+    for input in &asked {
+        assert!(input.get("answered").is_none(), "{input}");
+    }
 }
 
 #[test]
