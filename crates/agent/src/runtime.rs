@@ -3216,6 +3216,15 @@ impl<'r> Turn<'r> {
         let allowed = |ui: &str| self.profile.blocks.iter().any(|b| b == ui);
         let block = match reply_plan.as_str() {
             "product_drafts" => drafts,
+            // Return requests have their own review (scene B2), even when only listed.
+            "product_table"
+                if allowed("refund_review")
+                    && self
+                        .last_output(|r| r.kind == ToolKind::Read)
+                        .is_some_and(|r| r.tool == "search_return_requests") =>
+            {
+                self.refund_review_block()
+            }
             "product_table" => self
                 .last_output(|r| r.kind == ToolKind::Read)
                 .and_then(|r| table::product_table(r.output.as_ref()?)),
