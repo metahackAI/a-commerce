@@ -64,6 +64,7 @@
 | 경로 | 대상 | 인증 |
 |---|---|---|
 | `/api/auth/*` | 게이트웨이 자신 | 로그인·로그아웃·세션·데모 로그인 |
+| `/api/chat/ws` | 게이트웨이 자신 → agent | WebSocket. Origin·세션 쿠키 확인 후 업그레이드, `hello`의 CSRF 확인. 턴마다 새 `agent_on_behalf` 토큰으로 agent의 이벤트 스트림을 불러 프레임으로 중계([chat.md](../api/chat.md) §2.6) |
 | `/api/chat/{bo,fo}/*` | agent | 세션 → `agent_on_behalf` 토큰. SSE를 버퍼링 없이 중계. `fo`에서 운영자는 세션 쇼퍼로(§1) |
 | `/api/v1/*` | commerce | 세션 → 사람 토큰(웹이 툴 REST를 직접 부를 때: 목록 화면, 블록 새로고침). `x-acom-surface: fo`면 운영자는 세션 쇼퍼로(§1) |
 | `/api/v1/**/approve`, `/undo`, `/orders`, … (사람 전용) | commerce | 세션 + CSRF 토큰 + `human:*` |

@@ -48,6 +48,11 @@ pub fn cookies(gw: &Gateway, token: &str, csrf: &str, max_age: i64) -> [HeaderVa
     ]
 }
 
+/// Who a session is, as the session API and the chat socket's `ready` say it.
+pub fn user_json(p: &acom_auth::Principal) -> Value {
+    user(p)
+}
+
 fn user(p: &acom_auth::Principal) -> Value {
     let kind = match (p.kind, p.subject.starts_with("cus_")) {
         (ActorKind::Operator, _) => "operator",
