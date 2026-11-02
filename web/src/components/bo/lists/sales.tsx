@@ -27,6 +27,16 @@ export function OrderList({items}: {items: OrderSummary[]}) {
       columns={[
         {header: 'Order', cell: r => <RecordCell href={`/bo/orders/${encodeURIComponent(r.id)}`} name={`#${r.order_number}`} id={r.id} />},
         {header: 'Status', cell: r => <StateToken state={r.order_status} />},
+        {
+          header: 'Items',
+          cell: r => {
+            const lines = r.ordered_item ?? [];
+            const first = lines[0];
+            if (!first) return <Text color="secondary">—</Text>;
+            const name = lines.map(l => `${l.name}${l.size ? ` ${l.size}` : ''}${l.order_quantity > 1 ? ` ×${l.order_quantity}` : ''}`).join(', ');
+            return <RecordCell href={`/bo/products/${encodeURIComponent(first.product_id)}`} name={name} id={first.color ?? undefined} image={first.image ?? null} />;
+          },
+        },
         {header: 'Customer', cell: r => <Link href={`/bo/customers/${encodeURIComponent(r.customer_id)}`}>{r.customer_id}</Link>},
         {header: 'Placed', cell: r => <Text>{dateTime(r.order_date)}</Text>},
         {header: 'Total', cell: r => <Figure>{money(r.total)}</Figure>},

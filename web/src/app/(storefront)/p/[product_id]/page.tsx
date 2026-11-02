@@ -38,8 +38,11 @@ export async function generateMetadata({params}: {params: Params}): Promise<Meta
   return {title: product.ok ? product.data.name : 'Product'};
 }
 
-export default async function ProductPage({params}: {params: Params}) {
+export default async function ProductPage({params, searchParams}: {params: Params; searchParams: Promise<{color?: string | string[]}>}) {
   const id = decodeURIComponent((await params).product_id);
+  // `?color=Black` (links from the shopper's orders, subscriptions and alerts) opens on that color.
+  const asked = (await searchParams).color;
+  const initialColor = (Array.isArray(asked) ? asked[0] : asked) ?? null;
   const path = `/p/${encodeURIComponent(id)}`;
   const enc = encodeURIComponent(id);
   const who = await shopper();
@@ -109,6 +112,7 @@ export default async function ProductPage({params}: {params: Params}) {
               addressId={address?.id ?? null}
               addressLabel={address ? (address.label ?? address.street_address) : null}
               initialDelivery={delivery?.ok ? (delivery.data.items[0] ?? null) : null}
+              initialColor={initialColor}
             />
             <CollapsibleGroup type="multiple" defaultValue={['details', 'fit', 'reviews', 'questions', 'returns']} hasDividers>
               {p.additional_property && p.additional_property.length > 0 ? (

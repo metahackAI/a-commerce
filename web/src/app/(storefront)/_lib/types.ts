@@ -447,6 +447,10 @@ export interface OrderItem {
   name: string;
   size?: string | null;
   color?: string | null;
+  /** The ordered color's picture. */
+  image?: string | null;
+  /** Whether the same variant can be bought now (`in_stock`, `out_of_stock`, `discontinued`, …). */
+  availability_now?: Availability | string;
   order_quantity: number;
   price?: Money;
   discount?: Money;
@@ -632,6 +636,10 @@ export interface ReturnHistoryItem {
   order_id: string;
   order_number: string;
   item: string;
+  /** The order's first line, for its picture and link. */
+  product_id?: string;
+  image?: string | null;
+  color?: string | null;
   amount: Money;
   reason: string;
   status: string;
@@ -684,6 +692,35 @@ export interface WishlistItem {
   price_currency: string;
   availability?: Availability;
   added_at?: string;
+  image?: string | null;
+}
+
+/** `list_subscriptions` (sales.md subscription): a shopper's own. */
+export interface Subscription {
+  id: string;
+  status: 'active' | 'paused' | 'cancelled' | string;
+  billing_cycle: string;
+  next_charge_date: string;
+  amount: Money;
+  lines: {variant_id: string; product_id: string; name: string; size?: string | null; color?: string | null; quantity: number; image?: string | null}[];
+  delivery?: {address_label?: string | null};
+  payment?: {label?: string | null};
+}
+
+/** `list_restock_subscriptions` (catalog.md restock_alert). */
+export interface RestockAlert {
+  id: string;
+  product_id: string;
+  product_name: string;
+  variant_id: string;
+  size?: string | null;
+  color?: string | null;
+  image?: string | null;
+  channel: string;
+  availability?: string | null;
+  start_time: string;
+  expires: string;
+  notified_at?: string | null;
 }
 
 /** One `list_member_coupons` item. */

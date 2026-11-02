@@ -22,6 +22,7 @@ export function ProductShowcase({
   addressId,
   addressLabel,
   initialDelivery,
+  initialColor,
 }: {
   product: Product;
   /** The product's own picture, shown for a color that has none. */
@@ -30,9 +31,12 @@ export function ProductShowcase({
   addressId: string | null;
   addressLabel: string | null;
   initialDelivery: DeliveryDate | null;
+  /** The color to open on (`?color=`), when the product has it. */
+  initialColor?: string | null;
 }) {
   const variants = product.has_variant ?? [];
-  const first = variants.find(v => v.availability === 'in_stock') ?? variants[0];
+  const asked = initialColor ? variants.find(v => v.color?.toLowerCase() === initialColor.toLowerCase()) : undefined;
+  const first = asked ?? variants.find(v => v.availability === 'in_stock') ?? variants[0];
   const [color, setColor] = useState<string | null>(first?.color ?? null);
   const shown = variants.find(v => v.color === color && imageUrl(v.image ?? null))?.image;
   return (
