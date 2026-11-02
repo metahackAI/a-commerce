@@ -7,25 +7,21 @@
 
 import {createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode} from 'react';
 import {useRouter} from 'next/navigation';
-import {VStack, HStack, StackItem} from '@astryxdesign/core/Layout';
-import {Drawer, DrawerHeader} from '@astryxdesign/core/Drawer';
-import {
-  ChatComposer,
-  ChatLayout,
-  ChatMessage,
-  ChatMessageBubble,
-  ChatMessageList,
-  ChatSystemMessage,
-} from '@astryxdesign/core/Chat';
-import {EmptyState} from '@astryxdesign/core/EmptyState';
+import {HStack} from '@astryxdesign/core/Layout';
+import {Drawer} from '@astryxdesign/core/Drawer';
+import {ChatComposer} from '@astryxdesign/core/Chat';
 import {Button} from '@astryxdesign/core/Button';
+import {Icon} from '@astryxdesign/core/Icon';
+import {IconButton} from '@astryxdesign/core/IconButton';
 import {Token} from '@astryxdesign/core/Token';
+import {XMarkIcon} from '@heroicons/react/24/outline';
 
 import {useAi} from '@/ai/AiProvider';
 
-import {AILISM, AilismAvatar} from '@/components/brand/Ailism';
+import {ChatEmpty, ChatHeader, ChatPanel} from '@/components/chat/ChatParts';
 import {useVoiceInput} from '@/components/VoiceInput';
-import {BlockView} from './BlockView';
+
+const DOCK_STARTERS = ['What needs my attention today?', 'Why did sales drop yesterday?', 'Which products are low on stock?'];
 
 interface DockState {
   isOpen: boolean;
@@ -83,6 +79,7 @@ export function AgentComposer({placeholder, onSent}: {placeholder: string; onSen
         onSent?.();
       }}
       placeholder={placeholder}
+      elevation="none"
       isDisabled={ai.isBusy}
       sendActions={voice.button}
       status={ai.isBusy ? {type: 'warning', message: 'Working…'} : voice.status}
@@ -100,74 +97,40 @@ export function AgentComposer({placeholder, onSent}: {placeholder: string; onSen
 }
 
 function AgentDrawer({isOpen, onOpenChange}: {isOpen: boolean; onOpenChange: (open: boolean) => void}) {
-  const ai = useAi();
   const router = useRouter();
-
   return (
     <Drawer isOpen={isOpen} onOpenChange={onOpenChange} label="Ask the agent" width={480} hasScrim={false} padding={0}>
-      <VStack height="100%">
-        <DrawerHeader
-          title="Ask Ailism"
-          subtitle="Press Ask on anything on the page, then say what you want to know or change."
-          onOpenChange={onOpenChange}
-          hasDivider
-          endContent={
-            <Button
-              label="Full view"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                onOpenChange(false);
-                router.push('/bo?view=agent');
-              }}
+      {isOpen ? (
+        <ChatPanel
+          header={
+            <ChatHeader
+              subtitle="Press Ask on anything, then say what to know or change."
+              actions={
+                <>
+                  <Button
+                    label="Full view"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      onOpenChange(false);
+                      router.push('/bo?view=agent');
+                    }}
+                  />
+                  <IconButton label="Close" variant="ghost" size="sm" icon={<Icon icon={XMarkIcon} />} onClick={() => onOpenChange(false)} />
+                </>
+              }
+            />
+          }
+          placeholder="Ask about this, or ask for a change…"
+          emptyState={
+            <ChatEmpty
+              title="Nothing asked yet"
+              description="The agent explains anything here and prepares changes. Nothing changes in the store until a person approves."
+              starters={DOCK_STARTERS}
             />
           }
         />
-        <StackItem size="fill">
-          <ChatLayout density="compact" composer={<AgentComposer placeholder="Ask about this, or ask for a change…" />}>
-            <ChatMessageList
-              density="compact"
-              isStreaming={ai.isBusy}
-              emptyState={
-                <EmptyState
-                  isCompact
-                  title="Nothing asked yet"
-                  description="The agent can explain anything here and prepare changes. Nothing changes in the store until a person approves."
-                />
-              }>
-              {/* One flat list: ChatMessageList shows its empty state only when its children are
-                  an empty array. */}
-              {[
-                ...ai.messages.map(m =>
-                  m.sender === 'system' ? (
-                    <ChatSystemMessage key={m.id}>{m.text}</ChatSystemMessage>
-                  ) : (
-                    <ChatMessage
-                      key={m.id}
-                      sender={m.sender}
-                      name={m.sender === 'assistant' ? AILISM.assistant : undefined}
-                      avatar={m.sender === 'assistant' ? <AilismAvatar size="sm" /> : undefined}>
-                      <ChatMessageBubble>{m.text}</ChatMessageBubble>
-                    </ChatMessage>
-                  ),
-                ),
-                ...(ai.blocks.length > 0
-                  ? [
-                      <ChatSystemMessage key="results" variant="divider">
-                        Results
-                      </ChatSystemMessage>,
-                    ]
-                  : []),
-                ...ai.blocks.map(b => (
-                  <ChatMessage key={b.block_id} sender="assistant">
-                    <BlockView block={b} />
-                  </ChatMessage>
-                )),
-              ]}
-            </ChatMessageList>
-          </ChatLayout>
-        </StackItem>
-      </VStack>
+      ) : null}
     </Drawer>
   );
 }

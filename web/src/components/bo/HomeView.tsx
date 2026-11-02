@@ -75,12 +75,15 @@ export function HomeView({
           <LayoutContent padding={0} isScrollable={false}>
             <Workspace
               greeting="What should the store do next?"
+              intro="Change sets, return reviews and explanations are assembled beside the conversation. Nothing changes in the store until you approve."
               composerPlaceholder="Give the agent a task…"
               canvasTitle="Canvas"
-              canvasEmpty={{
-                title: 'Nothing to review yet',
-                description: 'Change sets, return reviews, and explanations appear here. Nothing changes in the store until you approve.',
-              }}
+              starters={[
+                'What needs my attention today?',
+                'Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.',
+                'Go through the return requests over $200 and tell me which ones to refund.',
+                'Why did sales drop yesterday?',
+              ]}
             />
           </LayoutContent>
         ) : (

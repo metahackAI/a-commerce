@@ -1,21 +1,12 @@
 import type {Metadata} from 'next';
 
-import {Workspace} from '@/components/workspace/Workspace';
+import {StorefrontWorkspace} from '@/components/fo/StorefrontWorkspace';
+
+import {greetingName, shopper} from '../_lib/server';
 
 export const metadata: Metadata = {title: 'Ask Ailism'};
 
-// The full conversation + canvas workspace (F1, F2, F6). The same conversation shows in the
-// assistant drawer on every other page.
-export default function AskPage() {
-  return (
-    <Workspace
-      greeting="What are you looking for today?"
-      composerPlaceholder="Ask about fit, fabric, delivery, returns…"
-      canvasTitle="For you"
-      canvasEmpty={{
-        title: 'Results show up here',
-        description: 'Comparisons, photos, and your cart appear here as you talk.',
-      }}
-    />
-  );
+// The same conversation as the main page, for links that name it.
+export default async function AskPage() {
+  return <StorefrontWorkspace name={await greetingName(await shopper())} />;
 }

@@ -1,172 +1,166 @@
 'use client';
 
-// The conversation + canvas workspace both surfaces use (design/ mockups: chat on one side, the
-// result as UI blocks on the other). Built from the Astryx `ai-chat` page template (`npm run
-// astryx -- template ai-chat`): a ChatLayout transcript beside a resizable panel. The canvas shows
-// the UI blocks the agent sends (docs/api/chat.md §3); until block components exist (M4) it shows
-// each block's title and why-line.
+// The conversation + canvas workspace both surfaces use: the storefront's main page and /ask, and
+// the back office's conversation view. It opens as one large conversation in the middle of the
+// screen. When the agent answers with UI blocks (docs/api/chat.md §3) the conversation slides to
+// the left and the canvas opens on the right, where the blocks are assembled as they arrive. On a
+// narrow screen there is no room for a canvas, so the blocks stay in the conversation.
 
-import type {CSSProperties} from 'react';
-import {HStack, VStack, Layout, LayoutContent} from '@astryxdesign/core/Layout';
-import {
-  ChatComposer,
-  ChatComposerInput,
-  ChatLayout,
-  ChatMessage,
-  ChatMessageBubble,
-  ChatMessageList,
-  ChatSystemMessage,
-} from '@astryxdesign/core/Chat';
-import {Card} from '@astryxdesign/core/Card';
-import {EmptyState} from '@astryxdesign/core/EmptyState';
-import {Text} from '@astryxdesign/core/Text';
-import {Token} from '@astryxdesign/core/Token';
-import {Toolbar} from '@astryxdesign/core/Toolbar';
-import {ResizeHandle, useResizable} from '@astryxdesign/core/Resizable';
+import {Button} from '@astryxdesign/core/Button';
+import {Heading, Text} from '@astryxdesign/core/Text';
+import {useEffect, useRef, useState} from 'react';
 
-import {AILISM, AilismAvatar} from '@/components/brand/Ailism';
 import {useAi} from '@/ai/AiProvider';
-import {useVoiceInput} from '@/components/VoiceInput';
-import {useAiTarget} from '@/ai/useAiTarget';
 import type {UiBlock} from '@/ai/types';
-import {blockComponent} from '@/components/blocks/registry';
+import {AilismAvatar} from '@/components/brand/Ailism';
+import {BlockView} from '@/components/bo/BlockView';
+import {ChatStyles, Composer, Starters, StepProgress, Transcript} from '@/components/chat/ChatParts';
 
-// Below this width the canvas collapses under the chat (same breakpoint as the template).
-const MOBILE_MAX_WIDTH = 767;
+/** Below this width of the workspace the canvas folds into the conversation. */
+const NARROW = 900;
 
-const root: CSSProperties = {height: '100%', width: '100%', containerType: 'inline-size', containerName: 'workspace'};
-const chatColumn: CSSProperties = {flex: 1, width: '100%', minWidth: 0, height: '100%'};
-const chatLayout: CSSProperties = {flex: 1, minHeight: 0};
-const canvasScroll: CSSProperties = {flex: 1, overflowY: 'auto'};
-const canvasWidth = (size: number | string): CSSProperties =>
-  ({'--workspace-canvas-width': typeof size === 'number' ? `${size}px` : size}) as CSSProperties;
-
-// The container query lives in a plain <style> tag, as in the template, so no CSS compiler is
-// needed.
+// The three states share one tree so the change between them can animate: the chat column's width
+// and the canvas's growth are transitioned, the blocks rise in as they arrive.
 const WORKSPACE_CSS = `
-.acom-canvas-handle { display: flex; }
-.acom-canvas { overflow: hidden; display: flex; flex-direction: column; width: var(--workspace-canvas-width); flex-shrink: 0; }
-[data-acom-highlight="true"] { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-@container workspace (max-width: ${MOBILE_MAX_WIDTH}px) {
-  .acom-canvas-handle { display: none; }
-  .acom-canvas { width: 100%; flex-shrink: 1; }
+.acom-ws { position: relative; display: flex; width: 100%; height: 100%; min-height: 0; overflow: hidden; background: var(--color-background-body); }
+.acom-ws-chat { display: flex; flex-direction: column; min-width: 0; min-height: 0; flex: 1 1 100%; background: var(--color-background-card);
+  transition: flex-basis 560ms cubic-bezier(.2,.7,.2,1), flex-grow 560ms cubic-bezier(.2,.7,.2,1); }
+.acom-ws-chat-inner { display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%; max-width: 760px; margin: 0 auto; transition: max-width 560ms cubic-bezier(.2,.7,.2,1); }
+.acom-ws[data-mode="split"] .acom-ws-chat { flex: 0 0 420px; border-right: 1px solid var(--color-border); }
+.acom-ws[data-mode="split"] .acom-ws-chat-inner { max-width: 420px; }
+.acom-ws-canvas { display: flex; flex-direction: column; min-width: 0; min-height: 0; flex: 0 0 0; opacity: 0; overflow: hidden;
+  transition: flex-grow 560ms cubic-bezier(.2,.7,.2,1), opacity 400ms ease 160ms; }
+.acom-ws[data-mode="split"] .acom-ws-canvas { flex: 1 1 0; opacity: 1; }
+.acom-ws-canvas-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-2); padding: var(--spacing-3) var(--spacing-5); border-bottom: 1px solid var(--color-border); background: var(--color-background-card); flex-shrink: 0; }
+.acom-ws-canvas-body { flex: 1; min-height: 0; overflow-y: auto; padding: var(--spacing-5); }
+.acom-ws-canvas-stack { display: flex; flex-direction: column; gap: var(--spacing-4); max-width: 1100px; margin: 0 auto; }
+.acom-ws-hero { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; gap: var(--spacing-5); padding: var(--spacing-8) var(--spacing-5); }
+.acom-ws-hero-head { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-3); text-align: center; }
+.acom-ws-hero .acom-ws-hero-below { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-3); }
+.acom-ws-new { outline: 2px solid var(--color-accent); outline-offset: 4px; border-radius: var(--radius-container); transition: outline-color 1200ms ease; }
+.acom-ws-new[data-settled="true"] { outline-color: transparent; }
+@media (prefers-reduced-motion: reduce) {
+  .acom-ws-chat, .acom-ws-chat-inner, .acom-ws-canvas { transition: none; }
 }
 `;
 
-/** The block's own component, or a card with its title and why-line. */
-function Block({block}: {block: UiBlock}) {
-  const Component = blockComponent(block.ui);
-  return Component ? <Component block={block} /> : <BlockCard block={block} />;
+type Mode = 'empty' | 'talk' | 'split';
+
+function useWidth(ref: React.RefObject<HTMLElement | null>): number {
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver(entries => setWidth(entries[0]?.contentRect.width ?? 0));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+  return width;
 }
 
-function BlockCard({block}: {block: UiBlock}) {
-  const target = useAiTarget({kind: 'block', label: block.title ?? block.ui, ids: {block_id: block.block_id}, blockId: block.block_id});
+/** The canvas: the blocks in the order they came, the newest scrolled into view and marked briefly. */
+function Canvas({title, blocks}: {title: string; blocks: UiBlock[]}) {
+  const body = useRef<HTMLDivElement | null>(null);
+  const [newest, setNewest] = useState<string | null>(null);
+  const [settled, setSettled] = useState(false);
+  const last = blocks[blocks.length - 1]?.block_id ?? null;
+
+  useEffect(() => {
+    if (!last) return;
+    setNewest(last);
+    setSettled(false);
+    const el = body.current?.querySelector<HTMLElement>(`[data-block-id="${CSS.escape(last)}"]`);
+    el?.scrollIntoView({behavior: 'smooth', block: 'start'});
+    const t = window.setTimeout(() => setSettled(true), 900);
+    return () => window.clearTimeout(t);
+  }, [last]);
+
   return (
-    <Card ref={target.ref} {...target.props}>
-      <VStack gap={1}>
+    <>
+      <div className="acom-ws-canvas-bar">
         <Text type="label" weight="semibold">
-          {block.title ?? block.ui}
+          {title}
         </Text>
-        {block.why ? (
-          <Text type="supporting" color="secondary">
-            {block.why}
-          </Text>
-        ) : null}
-      </VStack>
-    </Card>
+        <Text type="supporting" color="secondary">
+          {blocks.length === 1 ? '1 result' : `${blocks.length} results`}
+        </Text>
+      </div>
+      <div className="acom-ws-canvas-body" ref={body}>
+        <div className="acom-ws-canvas-stack">
+          {blocks.map(b => (
+            <div
+              key={b.block_id}
+              data-block-id={b.block_id}
+              className={b.block_id === newest ? 'acom-rise acom-ws-new' : 'acom-rise'}
+              data-settled={b.block_id === newest ? settled : undefined}>
+              <BlockView block={b} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 
 export interface WorkspaceProps {
-  /** Shown in the empty transcript. */
+  /** The large question on the empty workspace. */
   greeting: string;
+  /** One line under it. */
+  intro?: string;
   composerPlaceholder: string;
   canvasTitle: string;
-  canvasEmpty: {title: string; description: string};
+  starters?: string[];
+  /** Under the starters on the empty workspace (links to browse, for example). */
+  belowStarters?: React.ReactNode;
+  /** @deprecated The canvas opens only when there is something on it. */
+  canvasEmpty?: {title: string; description: string};
 }
 
-export function Workspace({greeting, composerPlaceholder, canvasTitle, canvasEmpty}: WorkspaceProps) {
+export function Workspace({greeting, intro, composerPlaceholder, canvasTitle, starters = [], belowStarters}: WorkspaceProps) {
   const ai = useAi();
-  const canvas = useResizable({defaultSize: 560, minSize: 400, maxSize: 900, autoSaveId: `acom-canvas-${ai.surface}`});
-  const voice = useVoiceInput();
-
-  const composer = (
-    <ChatComposer
-      onSubmit={text => void ai.send(text)}
-      placeholder={composerPlaceholder}
-      input={<ChatComposerInput />}
-      sendActions={voice.button}
-      status={ai.isBusy ? {type: 'warning', message: 'Working…'} : voice.status}
-      headerActions={
-        ai.picked.length > 0 ? (
-          <HStack gap={1}>
-            {ai.picked.map(p => (
-              <Token key={p.element_ref} label={p.label} onRemove={() => ai.unpick(p.element_ref)} />
-            ))}
-          </HStack>
-        ) : undefined
-      }
-    />
-  );
+  const root = useRef<HTMLDivElement | null>(null);
+  const width = useWidth(root);
+  const narrow = width > 0 && width < NARROW;
+  const hasBlocks = ai.blocks.length > 0;
+  const mode: Mode = ai.messages.length === 0 && !hasBlocks ? 'empty' : hasBlocks && !narrow ? 'split' : 'talk';
 
   return (
-    <VStack style={root}>
+    <div className="acom-ws" data-mode={mode} ref={root}>
+      <ChatStyles />
       <style>{WORKSPACE_CSS}</style>
-      <Layout
-        height="fill"
-        content={
-          <LayoutContent padding={0}>
-            <HStack height="100%">
-              <VStack style={chatColumn}>
-                <ChatLayout density="spacious" style={chatLayout} composer={composer}>
-                  <ChatMessageList emptyState={<EmptyState title={greeting} />}>
-                    {ai.messages.map(m =>
-                      m.sender === 'system' ? (
-                        <ChatSystemMessage key={m.id}>{m.text}</ChatSystemMessage>
-                      ) : (
-                        <ChatMessage
-                          key={m.id}
-                          sender={m.sender}
-                          name={m.sender === 'assistant' ? AILISM.assistant : undefined}
-                          avatar={m.sender === 'assistant' ? <AilismAvatar size="sm" /> : undefined}>
-                          <ChatMessageBubble>{m.text}</ChatMessageBubble>
-                        </ChatMessage>
-                      ),
-                    )}
-                  </ChatMessageList>
-                </ChatLayout>
-              </VStack>
-              <ResizeHandle
-                direction="horizontal"
-                resizable={canvas.props}
-                isReversed
-                pillPlacement="start"
-                hasDivider
-                label="Resize canvas"
-                className="acom-canvas-handle"
-              />
-              <Card variant="transparent" height="100%" className="acom-canvas" style={canvasWidth(canvas.size)}>
-                <Toolbar
-                  label="Canvas"
-                  dividers={['bottom']}
-                  startContent={
-                    <Text type="label" weight="semibold">
-                      {canvasTitle}
-                    </Text>
-                  }
-                />
-                <VStack gap={3} padding={4} style={canvasScroll}>
-                  {ai.blocks.length === 0 ? (
-                    <EmptyState title={canvasEmpty.title} description={canvasEmpty.description} />
-                  ) : (
-                    ai.blocks.map(b => <Block key={b.block_id} block={b} />)
-                  )}
-                </VStack>
-              </Card>
-            </HStack>
-          </LayoutContent>
-        }
-      />
-    </VStack>
+      <section className="acom-ws-chat" aria-label="Conversation">
+        <div className="acom-ws-chat-inner">
+          {mode === 'empty' ? (
+            <div className="acom-ws-hero">
+              <div className="acom-ws-hero-head acom-rise">
+                <AilismAvatar size="lg" />
+                <Heading level={1} type="display-3">
+                  {greeting}
+                </Heading>
+                {intro ? <Text color="secondary">{intro}</Text> : null}
+              </div>
+              <div className="acom-rise">
+                <Composer placeholder={composerPlaceholder} size="lg" />
+              </div>
+              <div className="acom-ws-hero-below acom-rise">
+                {starters.length > 0 ? <Starters items={starters} align="center" /> : null}
+                {belowStarters}
+              </div>
+              <StepProgress />
+            </div>
+          ) : (
+            <Transcript placeholder={composerPlaceholder} emptyState={null} showBlocks={mode === 'talk'} />
+          )}
+        </div>
+      </section>
+      <section className="acom-ws-canvas" aria-label={canvasTitle} aria-hidden={mode !== 'split'}>
+        {hasBlocks && !narrow ? <Canvas title={canvasTitle} blocks={ai.blocks} /> : null}
+      </section>
+    </div>
   );
+}
+
+/** A small link-like button for under the starters. */
+export function WorkspaceLink({label, href}: {label: string; href: string}) {
+  return <Button label={label} variant="ghost" size="sm" href={href} />;
 }
