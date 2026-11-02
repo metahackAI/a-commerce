@@ -71,6 +71,29 @@ impl ChatModel for Scripted {
     ) -> BoxFuture<'a, Result<ChatResponse, LlmError>> {
         Box::pin(async move {
             self.asked.lock().unwrap().push(req.purpose.clone());
+            // The background streaming check: any model can answer it.
+            if req.purpose == "stream_check" {
+                let streams = !self
+                    .streams_nothing
+                    .load(std::sync::atomic::Ordering::SeqCst);
+                let text = if streams && on_delta.is_some() {
+                    "{\"text\": \"Ready.\"}".to_owned()
+                } else {
+                    String::new()
+                };
+                if let Some(sink) = on_delta {
+                    for piece in [&text[..text.len().min(10)], &text[text.len().min(10)..]] {
+                        if !piece.is_empty() {
+                            sink(piece);
+                        }
+                    }
+                }
+                return Ok(ChatResponse {
+                    model: self.info.model.clone(),
+                    text,
+                    ..Default::default()
+                });
+            }
             if on_delta.is_some()
                 && self
                     .streams_nothing
@@ -528,7 +551,12 @@ fn runtime(models: &[Arc<Scripted>], log: Arc<MemoryLog>) -> Runtime {
             .collect(),
         missing: vec!["glimmer: set GLIMMER_BASE_URL, GLIMMER_MODEL".into()],
     };
-    Runtime::new(Arc::new(repo()), set, log, Arc::new(FixedStore(settings())))
+    let rt = Runtime::new(Arc::new(repo()), set, log, Arc::new(FixedStore(settings())));
+    // The scripted models stream, as the background check would have found.
+    for m in models {
+        rt.assume_streaming(&m.info.alias, StreamState::Works(StreamVariant::Configured));
+    }
+    rt
 }
 
 async fn turn(
@@ -1720,50 +1748,82 @@ async fn a_reply_with_made_up_numbers_is_written_again_and_what_was_read_is_show
 }
 
 #[tokio::test]
-async fn a_stream_without_the_reply_is_asked_again_without_streaming() {
+async fn replies_stream_only_where_the_background_check_saw_streaming_work() {
     let plan = || {
         json!({"interpretation": [{"aspect": "who", "text": "VIP members"}], "about": "self",
             "reply_plan": "text", "steps": [
             {"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
         .to_string()
     };
-    let mut answers: Vec<(&str, String)> = Vec::new();
-    for _ in 0..=StreamVariant::ALL.len() {
-        answers.push(("plan", plan()));
-        answers.push(("reply", "You have 1,284 VIP members.".into()));
-    }
-    let glimmer = Scripted::new("glimmer", "Muse Glimmer 30B", answers).streaming_nothing();
-    let log = Arc::new(MemoryLog::default());
-    let rt = runtime(std::slice::from_ref(&glimmer), log.clone());
-    let replies = |g: &Scripted| g.asked().iter().filter(|p| *p == "reply").count();
-    // A turn per way of streaming: each comes back empty once, and the reply is asked again
-    // without streaming, so the person still gets the model's reply (in sentences).
-    for n in 1..=StreamVariant::ALL.len() {
-        let events = turn(
-            &rt,
+    let script = || {
+        let mut a: Vec<(&str, String)> = Vec::new();
+        for _ in 0..3 {
+            a.push(("plan", plan()));
+            a.push(("reply", "You have 1,284 VIP members.".into()));
+        }
+        a
+    };
+    async fn ask(rt: &Runtime) -> Vec<Event> {
+        turn(
+            rt,
             principal("adm_sj", Surface::Bo),
             ChatSurface::Bo,
             say("Show me our member tiers."),
             Commerce::new(),
         )
-        .await;
-        assert_eq!(message(&events), "You have 1,284 VIP members.", "turn {n}");
-        assert!(events.iter().any(
-            |e| matches!(e, Event::MessageDelta { text } if text == "You have 1,284 VIP members.")
-        ));
-        assert_eq!(replies(&glimmer), n * 2, "turn {n}");
+        .await
     }
-    // Every way failed: the model's replies are no longer streamed, one call per reply.
-    let events = turn(
-        &rt,
-        principal("adm_sj", Surface::Bo),
-        ChatSurface::Bo,
-        say("Show me our member tiers."),
-        Commerce::new(),
-    )
-    .await;
+    let deltas = |events: &[Event]| {
+        events
+            .iter()
+            .filter(|e| matches!(e, Event::MessageDelta { .. }))
+            .count()
+    };
+    let replies = |g: &Scripted| g.asked().iter().filter(|p| *p == "reply").count();
+
+    // Not checked yet: the reply is asked for once, whole, and comes in sentences.
+    let glimmer = Scripted::new("glimmer", "Muse Glimmer 30B", script());
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    rt.assume_streaming("glimmer", StreamState::Unknown);
+    let events = ask(&rt).await;
     assert_eq!(message(&events), "You have 1,284 VIP members.");
-    assert_eq!(replies(&glimmer), StreamVariant::ALL.len() * 2 + 1);
+    assert_eq!((replies(&glimmer), deltas(&events)), (1, 1));
+
+    // The check sees the model stream: the next reply streams in pieces.
+    rt.probe_streaming().await;
+    assert_eq!(
+        rt.stream_state("glimmer"),
+        StreamState::Works(StreamVariant::Configured)
+    );
+    let events = ask(&rt).await;
+    assert_eq!(message(&events), "You have 1,284 VIP members.");
+    assert_eq!(replies(&glimmer), 2);
+    assert!(deltas(&events) > 1);
+
+    // A model whose streams are empty is off after the check, and replies come whole.
+    let dumb = Scripted::new("glimmer", "Muse Glimmer 30B", script()).streaming_nothing();
+    let rt = runtime(std::slice::from_ref(&dumb), Arc::new(MemoryLog::default()));
+    rt.assume_streaming("glimmer", StreamState::Unknown);
+    rt.probe_streaming().await;
+    assert_eq!(rt.stream_state("glimmer"), StreamState::Off);
+    let events = ask(&rt).await;
+    assert_eq!(message(&events), "You have 1,284 VIP members.");
+    assert_eq!(replies(&dumb), 1);
+
+    // A way that worked stops working mid-turn: the turn asks again unstreamed, so the person
+    // still gets the model's reply, and streaming waits for the next check.
+    rt.assume_streaming("glimmer", StreamState::Works(StreamVariant::Configured));
+    let events = ask(&rt).await;
+    assert_eq!(
+        message(&events),
+        "You have 1,284 VIP members.",
+        "the model's reply, not the plain one"
+    );
+    assert_eq!(replies(&dumb), 3);
+    assert_eq!(rt.stream_state("glimmer"), StreamState::Unknown);
 }
 
 fn on_facade(text: &str) -> TurnRequest {
