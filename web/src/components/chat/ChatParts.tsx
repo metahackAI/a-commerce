@@ -14,14 +14,17 @@ import {
   ChatMessageList,
   ChatSystemMessage,
 } from '@astryxdesign/core/Chat';
+import {Button} from '@astryxdesign/core/Button';
+import {Icon} from '@astryxdesign/core/Icon';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
 import {Spinner} from '@astryxdesign/core/Spinner';
 import {Text} from '@astryxdesign/core/Text';
 import {Token} from '@astryxdesign/core/Token';
+import {RectangleStackIcon} from '@heroicons/react/24/outline';
 import type {CSSProperties, ReactNode} from 'react';
 
 import {useAi} from '@/ai/AiProvider';
-import type {UiBlock} from '@/ai/types';
+import type {ChatMessage as Message, ElementContext, UiBlock} from '@/ai/types';
 import {AILISM, AilismAvatar} from '@/components/brand/Ailism';
 import {BlockView} from '@/components/bo/BlockView';
 import {useVoiceInput} from '@/components/VoiceInput';
@@ -43,6 +46,7 @@ export const CHAT_CSS = `
 .acom-chat-starter:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 .acom-chat-starter[aria-disabled="true"] { opacity: .5; cursor: default; }
 .acom-chat-empty { padding: var(--spacing-6) var(--spacing-2); display: flex; flex-direction: column; gap: var(--spacing-3); }
+.acom-chat-turn-blocks { display: flex; flex-direction: column; gap: var(--spacing-3); }
 @keyframes acom-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .acom-rise { animation: acom-rise var(--duration-slow, 320ms) cubic-bezier(.2,.7,.2,1) both; }
 @media (prefers-reduced-motion: reduce) { .acom-rise { animation: none; } }
@@ -131,6 +135,36 @@ export function StepProgress() {
   );
 }
 
+// The composer's header slot sizes to its content, so a long chip would run past the composer's
+// edge and be cut. The slot may shrink here, and each chip ends in an ellipsis inside it.
+const CHIP_CSS = `
+div:has(> .acom-chat-chips) { min-width: 0; max-width: 100%; }
+.acom-chat-chips { display: flex; flex-wrap: wrap; gap: var(--spacing-1); min-width: 0; max-width: 100%; }
+.acom-chat-chip { display: inline-flex; min-width: 0; max-width: 100%; }
+.acom-chat-chip > * { min-width: 0; max-width: 100%; }
+`;
+
+/** A picked element's chip text: its short name, else the first part of what it shows. */
+function chipText(p: ElementContext): string {
+  return p.title ?? p.label.split(' · ')[0] ?? p.label;
+}
+
+/** The elements picked as "this", as removable chips; the whole label shows on hover. */
+export function PickedChips() {
+  const ai = useAi();
+  if (ai.picked.length === 0) return null;
+  return (
+    <div className="acom-chat-chips">
+      <style>{CHIP_CSS}</style>
+      {ai.picked.map(p => (
+        <span key={p.element_ref} className="acom-chat-chip" title={p.label}>
+          <Token label={chipText(p)} size="sm" onRemove={() => ai.unpick(p.element_ref)} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /** The composer: what was picked on the page rides along as chips; voice beside send. */
 export function Composer({placeholder, size = 'md', onSent}: {placeholder: string; size?: 'md' | 'lg'; onSent?: () => void}) {
   const ai = useAi();
@@ -148,16 +182,27 @@ export function Composer({placeholder, size = 'md', onSent}: {placeholder: strin
       isDisabled={ai.isBusy}
       sendActions={voice.button}
       status={voice.status}
-      headerActions={
-        ai.picked.length > 0 ? (
-          <HStack gap={1} wrap="wrap">
-            {ai.picked.map(p => (
-              <Token key={p.element_ref} label={p.label} size="sm" onRemove={() => ai.unpick(p.element_ref)} />
-            ))}
-          </HStack>
-        ) : undefined
-      }
+      headerActions={ai.picked.length > 0 ? <PickedChips /> : undefined}
     />
+  );
+}
+
+/** Under a turn's answer: puts the turn's blocks on the canvas; pressed while they are there. */
+function CanvasButton({turnId, count}: {turnId: string; count: number}) {
+  const ai = useAi();
+  const shown = ai.canvasTurn === turnId;
+  const results = count === 1 ? '1 result' : `${count} results`;
+  return (
+    <HStack gap={1} vAlign="center">
+      <Button
+        label={shown ? `${results} on the canvas` : `Show ${results} on the canvas`}
+        variant={shown ? 'secondary' : 'ghost'}
+        size="sm"
+        icon={<Icon icon={RectangleStackIcon} />}
+        aria-pressed={shown}
+        onClick={() => ai.showOnCanvas(turnId)}
+      />
+    </HStack>
   );
 }
 
@@ -189,36 +234,59 @@ export function Transcript({
       <Composer placeholder={placeholder} />
     </div>
   );
+
+  // Each turn's blocks go with the turn: in the conversation under its answer when there is no
+  // canvas, or as a button under its answer that puts them on the canvas.
+  const items: ReactNode[] = [];
+  ai.messages.forEach((m, i) => {
+    const turnId = m.turn_id;
+    const lastOfTurn = turnId != null && ai.messages[i + 1]?.turn_id !== turnId;
+    const blocks = lastOfTurn ? ai.blocksOf(turnId) : [];
+    const button = !showBlocks && turnId && blocks.length > 0 ? <CanvasButton turnId={turnId} count={blocks.length} /> : null;
+    if (m.sender === 'assistant') {
+      items.push(
+        <ChatMessage key={m.id} sender="assistant" name={AILISM.assistant} avatar={<AilismAvatar size="sm" />}>
+          <ChatMessageBubble>{m.text}</ChatMessageBubble>
+          {button}
+        </ChatMessage>,
+      );
+    } else {
+      items.push(messageItem(m));
+      if (button) items.push(<div key={`${m.id}-canvas`}>{button}</div>);
+    }
+    if (showBlocks && blocks.length > 0) {
+      items.push(
+        <div key={`${turnId}-blocks`} className="acom-chat-turn-blocks">
+          {blocks.map(b => (
+            <div key={b.block_id} className="acom-rise">
+              {renderBlock(b)}
+            </div>
+          ))}
+        </div>,
+      );
+    }
+  });
+  if (ai.isBusy) items.push(<StepProgress key="step" />);
+
   return (
     <ChatLayout density="compact" style={fill} composer={composer}>
       <ChatMessageList density="compact" isStreaming={ai.isBusy} emptyState={emptyState}>
         {/* One flat list: ChatMessageList shows its empty state only when its children are an
             empty array. */}
-        {[
-          ...ai.messages.map(m =>
-            m.sender === 'system' ? (
-              <ChatSystemMessage key={m.id}>{m.text}</ChatSystemMessage>
-            ) : (
-              <ChatMessage
-                key={m.id}
-                sender={m.sender}
-                name={m.sender === 'assistant' ? AILISM.assistant : undefined}
-                avatar={m.sender === 'assistant' ? <AilismAvatar size="sm" /> : undefined}>
-                <ChatMessageBubble>{m.text}</ChatMessageBubble>
-              </ChatMessage>
-            ),
-          ),
-          ...(ai.isBusy ? [<StepProgress key="step" />] : []),
-          ...(showBlocks
-            ? ai.blocks.map(b => (
-                <div key={b.block_id} className="acom-rise">
-                  {renderBlock(b)}
-                </div>
-              ))
-            : []),
-        ]}
+        {items}
       </ChatMessageList>
     </ChatLayout>
+  );
+}
+
+/** A person's or the system's line in the conversation. */
+function messageItem(m: Message): ReactNode {
+  return m.sender === 'system' ? (
+    <ChatSystemMessage key={m.id}>{m.text}</ChatSystemMessage>
+  ) : (
+    <ChatMessage key={m.id} sender={m.sender}>
+      <ChatMessageBubble>{m.text}</ChatMessageBubble>
+    </ChatMessage>
   );
 }
 

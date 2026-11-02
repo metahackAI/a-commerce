@@ -16,7 +16,7 @@ import {AskHeaderCell, TargetRow} from '@/components/bo/targets';
 
 const ID_KEYS = ['product_id', 'variant_id', 'claim_id', 'order_id', 'promotion_id', 'customer_id', 'id', 'draft_id'];
 const NAME_KEYS = ['name', 'title', 'label', 'item'];
-const HIDDEN = new Set(['price_currency', 'currency', 'image', 'image_url']);
+const HIDDEN = new Set(['price_currency', 'currency', 'image', 'image_url', '@type']);
 
 /** The id a row is about, if it carries one. */
 export function rowId(row: Record<string, unknown>): string | null {
@@ -27,6 +27,17 @@ export function rowId(row: Record<string, unknown>): string | null {
 function rowName(row: Record<string, unknown>): string | null {
   for (const k of NAME_KEYS) if (typeof row[k] === 'string') return row[k] as string;
   return null;
+}
+
+/**
+ * A short name for a row picked as "this": its name, or for a row without one, its type and what
+ * it is about (`Question · Packable windbreaker`) rather than a bare id.
+ */
+function rowTitle(row: Record<string, unknown>, name: string): string {
+  if (rowName(row)) return name;
+  const type = typeof row['@type'] === 'string' ? (row['@type'] as string).replace(/^acom:/, '') : null;
+  const about = typeof row.product_name === 'string' ? row.product_name : name;
+  return type ? `${type} · ${about}` : about;
 }
 
 /** One value of a row as text; money-like numbers use the row's currency. */
@@ -87,10 +98,11 @@ export function RowsTable({
           const name = rowName(r) ?? id ?? `Row ${i + 1}`;
           const href = entityHref(id);
           const label = [name, ...cols.map(c => `${c.label} ${cellText(r, c.key)}`)].join(' · ');
+          const title = rowTitle(r, name);
           return (
             <TargetRow
               key={id ?? i}
-              target={{kind, label, ids: {[id ? `${id.slice(0, id.indexOf('_'))}_id` : 'row']: id ?? String(i), ...ids}, blockId}}
+              target={{kind, label, title, ids: {[id ? `${id.slice(0, id.indexOf('_'))}_id` : 'row']: id ?? String(i), ...ids}, blockId}}
               intents={id ? intentsFor?.(kind, id) : undefined}>
               {hasName ? (
                 <TableCell>
