@@ -1727,7 +1727,7 @@ async fn a_stream_without_the_reply_is_asked_again_without_streaming() {
         .to_string()
     };
     let mut answers: Vec<(&str, String)> = Vec::new();
-    for _ in 0..4 {
+    for _ in 0..6 {
         answers.push(("plan", plan()));
         answers.push(("reply", "You have 1,284 VIP members.".into()));
     }
@@ -1735,9 +1735,9 @@ async fn a_stream_without_the_reply_is_asked_again_without_streaming() {
     let log = Arc::new(MemoryLog::default());
     let rt = runtime(std::slice::from_ref(&glimmer), log.clone());
     let replies = |g: &Scripted| g.asked().iter().filter(|p| *p == "reply").count();
-    // Three turns: each way of streaming comes back empty once, and the reply is asked again
+    // A turn per way of streaming: each comes back empty once, and the reply is asked again
     // without streaming, so the person still gets the model's reply (in sentences).
-    for n in 1..=3 {
+    for n in 1..=StreamVariant::ALL.len() {
         let events = turn(
             &rt,
             principal("adm_sj", Surface::Bo),
@@ -1762,7 +1762,7 @@ async fn a_stream_without_the_reply_is_asked_again_without_streaming() {
     )
     .await;
     assert_eq!(message(&events), "You have 1,284 VIP members.");
-    assert_eq!(replies(&glimmer), 7);
+    assert_eq!(replies(&glimmer), StreamVariant::ALL.len() * 2 + 1);
 }
 
 fn on_facade(text: &str) -> TurnRequest {
