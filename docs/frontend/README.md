@@ -58,7 +58,7 @@ web/
     │   └── types.ts                  채팅 계약 타입
     ├── components/
     │   ├── blocks/{bo,fo}/           ui 이름 하나 = 컴포넌트 하나, registry.ts(모르는 블록은 제목과 why만 보이는 카드)
-    │   ├── workspace/Workspace.tsx   대화 + 캔버스: 빈 화면 → 대화 → 분할(애니메이션), 좁은 화면은 블록을 대화 안에
+    │   ├── workspace/Workspace.tsx   대화 + 캔버스: 빈 화면 → 대화 → 분할(애니메이션). 캔버스는 한 턴의 블록만(최신 또는 고른 턴), 대화 폭은 손잡이로 조절. 좁은 화면은 블록을 대화 안에
     │   ├── chat/ChatParts.tsx        대화 부품(헤더, 대화, 진행 단계, 입력창, 시작 문장): BO 도크, FO 서랍, Workspace가 같이 씀
     │   ├── bo/                       백오피스 페이지 부품(AgentDock, BoNav, StoreClock, ChangeSetView, TaskView, SalesChart …)
     │   ├── fo/                       스토어프론트 부품(StorefrontShell, AssistantDrawer, ProductCard, CheckoutFlow, ReturnPanel, StoreContent, StorePopup …)
@@ -104,6 +104,7 @@ return <TableRow ref={t.ref} {...t.props}>…</TableRow>;
 ### 3.2 묻기와 고치기
 
 - 요소를 고르면(묻기 버튼 "Ask about this") 입력 칸에 그 요소가 칩으로 붙고, 턴 요청의 `context`에 `element_ref`, `kind`, `ids`, `label`이 실립니다. 에이전트는 "이것"이 무엇인지 추측하지 않습니다.
+- 칩에는 짧은 이름(`useAiTarget`의 `title`, 없으면 `label`의 첫 부분)이 보이고, 길면 말줄임으로 끝나며 전체 `label`은 마우스를 올리면 보입니다. `title`은 웹 안에서만 쓰고 보내지 않습니다. 표의 행은 이름이 없으면 종류와 대상으로 부릅니다(`Question · Packable windbreaker`).
 - 추천 말은 블록 데이터의 `suggested_intents`에서 오고, 누르면 그 문장이 그대로 대화로 갑니다.
 - 계획: 입력 칸(`NaturalInput`)이 자연어를 받아(기간 칸에 "this weekend") 에이전트가 스토어 시간대로 풀고 `looking_for` 칩으로 확인받는 것. 아직 없습니다. 지금은 대화 입력 칸 하나입니다.
 
@@ -165,6 +166,8 @@ return <TableRow ref={t.ref} {...t.props}>…</TableRow>;
 ## 6. 상태
 
 - 대화 상태(대화 id, 메시지, 블록, 고른 요소)는 면마다 `AiProvider` 하나의 React 상태입니다. 블록은 `block_id`로 저장하고 같은 id가 오면 교체합니다.
+- 메시지와 블록은 자기가 속한 턴을 압니다. 캔버스는 한 턴의 블록만 보여 줍니다: 기본은 블록을 보낸 마지막 턴이고, 답 아래의 "Show N results on the canvas" 버튼이나 캔버스 머리의 이전·다음으로 다른 턴을 올립니다. 새 턴은 첫 블록이 올 때 캔버스를 차지하고, 블록 없는 턴은 캔버스를 그대로 둡니다. 캔버스가 없는 곳(서랍, 독, 좁은 화면)에서는 각 턴의 블록이 그 턴의 답 바로 아래에 놓입니다.
+- 분할 화면에서 대화와 캔버스 사이의 손잡이(Astryx `ResizeHandle`)로 대화 폭을 정합니다(320px부터 화면의 60%까지, 키보드 화살표도 됨). 폭은 면마다 브라우저에 기억됩니다.
 - 같은 면 안에서 페이지를 옮겨도 대화가 남지만, 새로고침하면 처음부터입니다. 끊긴 SSE를 `Last-Event-ID`로 이어 받는 것과 `GET /api/chat/{surface}/conversations/{id}`로 복원하는 것은 아직 웹에 없습니다(API는 있음).
 - 서버 데이터는 페이지 첫 로드에 서버 컴포넌트가 가져오고, 사람의 버튼으로 쓴 뒤에는 `router.refresh()`로 다시 읽습니다.
 - 스토어 진행 이벤트(`GET /api/v1/platform/events`)는 화면이 데이터를 다시 읽는 신호로만 씁니다: 받은 편지함은 `task.updated`가 오면 할 일 목록을 다시 읽습니다(감시 작업이 갱신한 할 일 포함). 숫자는 이벤트가 아니라 읽기에서 옵니다.

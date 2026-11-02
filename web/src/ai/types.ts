@@ -9,6 +9,8 @@ export interface ElementContext {
   kind: string;
   label: string;
   ids: Record<string, string>;
+  /** Web only, never sent: the short name the composer's chip shows (`label` can be a whole row). */
+  title?: string;
 }
 
 export type BlockAction =
@@ -32,6 +34,8 @@ export interface ChatMessage {
   sender: 'user' | 'assistant' | 'system';
   text: string;
   context?: ElementContext[];
+  /** Web only: the turn the message belongs to, so its blocks can be shown with it. */
+  turn_id?: string;
 }
 
 /** One server-sent event from `POST /api/chat/{surface}/turns`. */

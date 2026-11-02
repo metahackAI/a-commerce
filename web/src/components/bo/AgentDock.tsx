@@ -7,18 +7,16 @@
 
 import {createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode} from 'react';
 import {useRouter} from 'next/navigation';
-import {HStack} from '@astryxdesign/core/Layout';
 import {Drawer} from '@astryxdesign/core/Drawer';
 import {ChatComposer} from '@astryxdesign/core/Chat';
 import {Button} from '@astryxdesign/core/Button';
 import {Icon} from '@astryxdesign/core/Icon';
 import {IconButton} from '@astryxdesign/core/IconButton';
-import {Token} from '@astryxdesign/core/Token';
 import {XMarkIcon} from '@heroicons/react/24/outline';
 
 import {useAi} from '@/ai/AiProvider';
 
-import {ChatEmpty, ChatHeader, ChatPanel} from '@/components/chat/ChatParts';
+import {ChatEmpty, ChatHeader, ChatPanel, PickedChips} from '@/components/chat/ChatParts';
 import {useVoiceInput} from '@/components/VoiceInput';
 
 const DOCK_STARTERS = ['What needs my attention today?', 'Why did sales drop yesterday?', 'Which products are low on stock?'];
@@ -83,15 +81,7 @@ export function AgentComposer({placeholder, onSent}: {placeholder: string; onSen
       isDisabled={ai.isBusy}
       sendActions={voice.button}
       status={ai.isBusy ? {type: 'warning', message: 'Working…'} : voice.status}
-      headerActions={
-        ai.picked.length > 0 ? (
-          <HStack gap={1} wrap="wrap">
-            {ai.picked.map(p => (
-              <Token key={p.element_ref} label={p.label} size="sm" onRemove={() => ai.unpick(p.element_ref)} />
-            ))}
-          </HStack>
-        ) : undefined
-      }
+      headerActions={ai.picked.length > 0 ? <PickedChips /> : undefined}
     />
   );
 }
