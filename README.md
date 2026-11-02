@@ -74,7 +74,7 @@ Oct 31, every model call on Glimmer; reports in [eval/results/](eval/results). S
 
 | Model | Where it runs | What it does |
 |---|---|---|
-| **Muse Glimmer 30B** | Open weights, self-hosted (OpenAI-compatible vLLM, one GPU) | Every agent's worker: routing, tool search, planning, arguments, replies. On the live demo it handles every call. |
+| **Muse Glimmer 30B** | Open weights, self-hosted: NVIDIA's 4-bit build on vLLM, one RTX 5090. 72 output tokens/s for one request, 0.1 s to the first token when the prompt's start is cached. A crash on this GPU traced to cuDNN and fixed ([docs/serving.md](docs/serving.md)) | Every agent's worker: routing, tool search, planning, arguments, replies. On the live demo it handles every call. |
 | **Muse Spark** | Meta Model API | Wired as every agent's planner and fallback ([agents/models.yml](agents/models.yml)); used when `META_API_KEY` and `SPARK_MODEL` are set. |
 | **Muse Voice Transcribe** | Meta Model API | The composer's microphone: speech becomes the draft message, with the names on the screen (products, sizes) as spelling hints ([docs/api/chat.md](docs/api/chat.md) §4); used when `META_API_KEY` and `VOICE_MODEL` are set. |
 
@@ -155,6 +155,7 @@ Start with the row that matches what you are about to do. Each document links to
 | Build front-end code | [docs/frontend-ui.md](docs/frontend-ui.md) (Meta Astryx, the Ailism theme, look rules) → [docs/frontend/README.md](docs/frontend/README.md) (AI layer, elements, person buttons) → [docs/api/chat.md](docs/api/chat.md) (stream and blocks) → [design/](design) |
 | Measure the agent | [eval/README.md](eval/README.md) (task format, sources, how to run) → [docs/backend/testing.md](docs/backend/testing.md) |
 | Run, package, or deploy | [infra/README.md](infra/README.md) (serving architecture, images, Compose, Kubernetes) → [infra/deploy/README.md](infra/deploy/README.md) (the demo server) |
+| Serve the model | [docs/serving.md](docs/serving.md) (Glimmer's image and flags, speed, the RTX 5090 crash and its fix, scripts to measure again) |
 | Look up a table, column, or term | [docs/backend/schema.generated.md](docs/backend/schema.generated.md) (generated from the migrations), [vocab/acom.jsonld](vocab/acom.jsonld) (every `acom:` term), or the `describe_data` tool |
 | Load or change demo data | [docs/scenarios.md](docs/scenarios.md) → [seed/demo/README.md](seed/demo/README.md) |
 
