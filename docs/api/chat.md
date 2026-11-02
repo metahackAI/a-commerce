@@ -47,6 +47,16 @@ Accept: text/event-stream
 
 `GET /api/chat/{surface}/conversations/{id}`는 지난 턴과 블록을 돌려줍니다(새로고침·다른 기기). `?log=true`를 붙이면 턴마다 `log{steps[], model_calls[]}`(단계의 입력·출력·에러, 모델 호출의 목적·모델·토큰·지연·성공 여부·실패 이유)가 더해집니다. 대화의 주인만 볼 수 있습니다.
 
+`GET /api/chat/{surface}/conversations`는 부른 사람이 그 면에서 나눈 대화 목록입니다(대화 기록). 마지막 턴이 최근인 순서이고, `limit`은 다른 목록과 같습니다(기본 20, 최대 100). 주인 판단은 대화 하나를 읽을 때와 같습니다: 회원은 고객 id, 운영자는 운영자 id, 게스트는 브라우저 세션(회원·운영자의 대화는 빠짐). 시각은 스토어 시간입니다.
+
+```jsonc
+{"items": [{"conversation_id": "conv_01jc8…", "name": "Run a 20% weekend sale on summer outerwear for VIP members",
+            "turns": 3, "started_at": "2026-11-06T10:41:00-05:00", "last_turn_at": "2026-11-06T10:52:00-05:00"}],
+ "total": 7}
+```
+
+`name`은 대화의 첫 요청(80자까지)입니다. 웹은 이 목록을 대화 화면의 빈 상태("Recent conversations")와 대화 머리줄의 기록 버튼, 스토어프론트 계정 메뉴의 Conversations에서 보여 주고, 하나를 고르면 위의 `GET …/conversations/{id}`로 메시지와 블록을 되살려 이어서 대화합니다([../frontend/README.md](../frontend/README.md) §3).
+
 ## 2. 이벤트 스트림
 
 이벤트는 생기는 즉시 갑니다. 웹은 WebSocket(§2.6)으로 받고, 소켓을 열 수 없는 곳에서는 같은 이벤트를 HTTP 이벤트 스트림(SSE, `POST /api/chat/{surface}/turns`)으로 받습니다. SSE에서 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(JSON 한 줄)를 가집니다.

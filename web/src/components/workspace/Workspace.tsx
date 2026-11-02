@@ -15,6 +15,7 @@ import {HStack} from '@astryxdesign/core/Layout';
 import {ResizeHandle, useResizable, type ResizableProps} from '@astryxdesign/core/Resizable';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {ChevronLeftIcon, ChevronRightIcon} from '@heroicons/react/24/outline';
+import {useSearchParams} from 'next/navigation';
 import {useEffect, useRef, useState, type CSSProperties} from 'react';
 
 import {useAi} from '@/ai/AiProvider';
@@ -22,6 +23,7 @@ import type {UiBlock} from '@/ai/types';
 import {AilismAvatar} from '@/components/brand/Ailism';
 import {BlockView} from '@/components/bo/BlockView';
 import {ChatStyles, Composer, Starters, StepProgress, Transcript} from '@/components/chat/ChatParts';
+import {ConversationActions, RecentConversations} from '@/components/chat/History';
 
 /** Below this width of the workspace the canvas folds into the conversation. */
 const NARROW = 900;
@@ -42,6 +44,8 @@ const WORKSPACE_CSS = `
 .acom-ws[data-mode="split"] .acom-ws-canvas { flex: 1 1 0; opacity: 1; }
 .acom-ws-canvas-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-2); padding: var(--spacing-3) var(--spacing-5); border-bottom: 1px solid var(--color-border); background: var(--color-background-card); flex-shrink: 0; }
 .acom-ws-canvas-for { display: flex; flex-direction: column; min-width: 0; }
+/* The conversation's own header, level with the canvas's: what it is about, its history, a new one. */
+.acom-ws-chat-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-2); padding: var(--spacing-3) var(--spacing-4); border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
 .acom-ws-canvas-for > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* While the handle is dragged the widths follow the pointer, not an animation. */
 .acom-ws[data-resizing="true"] .acom-ws-chat, .acom-ws[data-resizing="true"] .acom-ws-chat-inner, .acom-ws[data-resizing="true"] .acom-ws-canvas { transition: none; }
@@ -231,6 +235,14 @@ export function Workspace({greeting, intro, composerPlaceholder, canvasTitle, st
     onLatest: at >= 0 && at < turns.length - 1 ? () => ai.showOnCanvas(null) : undefined,
   };
   const question = ai.messages.find(m => m.turn_id === turn && m.sender === 'user')?.text ?? null;
+  const firstRequest = ai.messages.find(m => m.sender === 'user')?.text ?? null;
+
+  // `?conversation=conv_…` opens that conversation (from the history, a change set or a reload).
+  const asked = useSearchParams().get('conversation');
+  const {openConversation} = ai;
+  useEffect(() => {
+    if (asked) void openConversation(asked);
+  }, [asked, openConversation]);
 
   return (
     <div className="acom-ws" data-mode={mode} data-transport={ai.transport} data-resizing={resizing} ref={root} style={style}>
@@ -253,11 +265,25 @@ export function Workspace({greeting, intro, composerPlaceholder, canvasTitle, st
               <div className="acom-ws-hero-below acom-rise">
                 {starters.length > 0 ? <Starters items={starters} align="center" /> : null}
                 {belowStarters}
+                <RecentConversations />
               </div>
               <StepProgress />
             </div>
           ) : (
-            <Transcript placeholder={composerPlaceholder} emptyState={null} showBlocks={mode === 'talk'} />
+            <>
+              <div className="acom-ws-chat-bar">
+                <div className="acom-ws-canvas-for">
+                  <Text type="label" weight="semibold">
+                    Conversation
+                  </Text>
+                  <Text type="supporting" color="secondary">
+                    {firstRequest ?? 'Just started'}
+                  </Text>
+                </div>
+                <ConversationActions />
+              </div>
+              <Transcript placeholder={composerPlaceholder} emptyState={null} showBlocks={mode === 'talk'} />
+            </>
           )}
         </div>
       </section>

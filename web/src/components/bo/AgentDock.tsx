@@ -17,6 +17,7 @@ import {XMarkIcon} from '@heroicons/react/24/outline';
 import {useAi} from '@/ai/AiProvider';
 
 import {ChatEmpty, ChatHeader, ChatPanel, PickedChips} from '@/components/chat/ChatParts';
+import {ConversationActions} from '@/components/chat/History';
 import {useVoiceInput} from '@/components/VoiceInput';
 
 const DOCK_STARTERS = ['What needs my attention today?', 'Why did sales drop yesterday?', 'Which products are low on stock?'];
@@ -98,6 +99,7 @@ function AgentDrawer({isOpen, onOpenChange}: {isOpen: boolean; onOpenChange: (op
               subtitle="Press Ask on anything, then say what to know or change."
               actions={
                 <>
+                  <ConversationActions />
                   <Button
                     label="Full view"
                     variant="ghost"

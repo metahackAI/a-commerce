@@ -1,5 +1,5 @@
-//! The chat routes (docs/api/chat.md): a turn streamed as server-sent events, and a
-//! conversation's earlier turns.
+//! The chat routes (docs/api/chat.md): a turn streamed as server-sent events, the caller's
+//! conversations, and a conversation's earlier turns.
 
 use std::convert::Infallible;
 use std::sync::Arc;
@@ -55,6 +55,7 @@ pub fn routes(app: Arc<App>) -> Router {
             "/chat/{surface}/transcriptions",
             post(crate::voice::transcribe).layer(DefaultBodyLimit::max(LARGEST_RECORDING)),
         )
+        .route("/chat/{surface}/conversations", get(conversations))
         .route("/chat/{surface}/streaming", get(streaming))
         .route(
             "/chat/{surface}/conversations/{conversation_id}",
@@ -209,6 +210,42 @@ fn event_stream(rx: tokio::sync::mpsc::UnboundedReceiver<acom_agent::Event>) -> 
     // Proxies must pass events on as they come.
     h.insert("x-accel-buffering", HeaderValue::from_static("no"));
     res
+}
+
+/// `GET /chat/{surface}/conversations`: the caller's conversations on this surface, the most
+/// recent first, for the history list. `limit` as every list (docs/api/conventions.md §6):
+/// 20 when not given, at most 100.
+#[derive(Debug, serde::Deserialize)]
+struct ListQuery {
+    limit: Option<usize>,
+}
+
+async fn conversations(
+    State(app): State<Arc<App>>,
+    Path(surface): Path<String>,
+    Query(q): Query<ListQuery>,
+    headers: HeaderMap,
+) -> Response {
+    let result = async {
+        let surface = surface_of(&surface)?;
+        let c = caller(&app, &headers, surface)?;
+        let runtime = app
+            .runtime
+            .clone()
+            .ok_or_else(|| unavailable("the agent definitions did not load (see /readyz)"))?;
+        let limit = q.limit.unwrap_or(20).clamp(1, 100);
+        // Commerce gives the store's time zone, so the times read as the store's clock.
+        let tools =
+            HttpToolClient::new(app.http.clone(), &app.commerce_url, &c.token, &c.request_id);
+        runtime
+            .conversations(&c.principal, surface, limit, &tools)
+            .await
+    }
+    .await;
+    match result {
+        Ok(v) => Json(v).into_response(),
+        Err(e) => error(&e),
+    }
 }
 
 /// `GET /chat/{surface}/conversations/{id}`: earlier turns and their blocks, for a reload.
@@ -397,6 +434,38 @@ mod tests {
             .await
             .unwrap();
         String::from_utf8(bytes.to_vec()).unwrap()
+    }
+
+    #[tokio::test]
+    async fn the_conversation_list_is_the_callers_own_on_that_surface() {
+        let Some(f) = fixture() else {
+            eprintln!("openssl not available; skipping");
+            return;
+        };
+        let get = |path: &str, token: Option<&str>| {
+            let mut r = Request::get(path);
+            if let Some(t) = token {
+                r = r.header(header::AUTHORIZATION, format!("Bearer {t}"));
+            }
+            f.app.clone().oneshot(r.body(Body::empty()).unwrap())
+        };
+        let res = get("/chat/bo/conversations", None).await.unwrap();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+
+        let chat = token(&f, &operator().on_behalf());
+        let res = get("/chat/fo/conversations", Some(&chat)).await.unwrap();
+        assert_eq!(
+            res.status(),
+            StatusCode::FORBIDDEN,
+            "a back-office token on the storefront"
+        );
+
+        let res = get("/chat/bo/conversations?limit=5", Some(&chat))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body: serde_json::Value = serde_json::from_str(&text(res).await).unwrap();
+        assert_eq!(body, json!({"items": [], "total": 0}));
     }
 
     #[tokio::test]

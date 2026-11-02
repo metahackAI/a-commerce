@@ -605,6 +605,42 @@ fn runtime(models: &[Arc<Scripted>], log: Arc<MemoryLog>) -> Runtime {
     rt
 }
 
+#[tokio::test]
+async fn the_conversation_list_is_the_callers_own_with_times_in_store_time() {
+    let log = Arc::new(MemoryLog::default());
+    let rt = runtime(&[], log.clone());
+    let sj = principal("adm_sj", Surface::Bo);
+    let started = |conversation: &str, owner: &Principal| TurnStart {
+        tenant: "store_northwind".into(),
+        conversation_id: conversation.into(),
+        surface: "bo".into(),
+        owner: Owner::of(owner),
+        name: "Run a VIP weekend sale".into(),
+        turn_id: format!("turn_{}", acom_core::id::new_suffix()),
+        text: "Run a VIP weekend sale".into(),
+        context: json!([]),
+        agent: "promotion".into(),
+        request_id: "req_test".into(),
+        started_at: settings().now,
+    };
+    log.start_turn(&started("conv_sj", &sj)).await.unwrap();
+    log.start_turn(&started("conv_mina", &principal("adm_mina", Surface::Bo)))
+        .await
+        .unwrap();
+
+    // The test commerce gives no store settings, so the store's own fallback (New York) applies.
+    let list = rt
+        .conversations(&sj, ChatSurface::Bo, 20, Commerce::new().as_ref())
+        .await
+        .unwrap();
+    assert_eq!(list["total"], 1, "{list:#}");
+    let item = &list["items"][0];
+    assert_eq!(item["conversation_id"], "conv_sj");
+    assert_eq!(item["name"], "Run a VIP weekend sale");
+    assert_eq!(item["started_at"], "2026-11-06T11:02:00-05:00");
+    assert_eq!(item["last_turn_at"], "2026-11-06T11:02:00-05:00");
+}
+
 async fn turn(
     rt: &Runtime,
     who: Principal,
