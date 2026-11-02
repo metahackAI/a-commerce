@@ -4,10 +4,11 @@
 // elements people can ask about, and the screen commands the agent may run (highlight, scroll).
 // Person-only actions are not here: they go through PersonButton and never through the agent.
 
-import {createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode} from 'react';
+import {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode} from 'react';
 import {useRouter} from 'next/navigation';
 
-import {sendTurn, type TurnRequest} from './stream';
+import {chatSocket, chatTurn, type Transport} from './socket';
+import type {TurnRequest} from './stream';
 import type {AgentStep, ChatMessage, ElementContext, SavedMemory, Surface, TurnUsage, UiBlock} from './types';
 
 /** What goes to the server for a picked element: `title` is the web's own and is left out. */
@@ -28,6 +29,10 @@ interface AiState {
   /** Shows a turn's blocks on the canvas; `null` follows the latest turn again. */
   showOnCanvas: (turnId: string | null) => void;
   isBusy: boolean;
+  /** Stops the turn that is running (the agent stops too). */
+  stop: () => void;
+  /** What carries the conversation: the WebSocket, or the HTTP event stream as a fallback. */
+  transport: Transport;
   /** The turn that is running, while one is. */
   liveTurn: string | null;
   /** Elements the person picked as "this" for the next message. */
@@ -64,8 +69,13 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
   const [blocks, setBlocks] = useState<UiBlock[]>([]);
   // The turn each block came in (block_id → turn id), and the turn a person put on the canvas.
   const [blockTurns, setBlockTurns] = useState<Record<string, string>>({});
+  // The same, readable inside a running turn without waiting for a render.
+  const blockTurnsRef = useRef<Record<string, string>>({});
   const [chosenTurn, setChosenTurn] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
+  const [transport, setTransport] = useState<Transport>('idle');
+  const running = useRef<AbortController | null>(null);
+  useEffect(() => chatSocket(surface).onTransport(setTransport), [surface]);
   const [liveTurn, setLiveTurn] = useState<string | null>(null);
   const [picked, setPicked] = useState<ElementContext[]>([]);
   const conversationId = useRef<string | undefined>(undefined);
@@ -111,8 +121,18 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
       let reply = '';
       let sentBlocks = false;
       const replyId = nextId('msg');
+      const abort = new AbortController();
+      running.current = abort;
+      // The reply as it stands on screen: written as it streams, taken off when a check resets it.
+      const showReply = (text: string) =>
+        setMessages(m => {
+          const at = m.findIndex(x => x.id === replyId);
+          if (!text) return at < 0 ? m : m.filter(x => x.id !== replyId);
+          const msg: ChatMessage = {id: replyId, sender: 'assistant', text, turn_id: turnId};
+          return at < 0 ? [...m, msg] : m.map(x => (x.id === replyId ? msg : x));
+        });
       try {
-        for await (const ev of sendTurn(surface, {conversation_id: conversationId.current, ...turn})) {
+        for await (const ev of chatTurn(surface, {conversation_id: conversationId.current, ...turn}, abort.signal)) {
           const data = (ev.data ?? {}) as Record<string, unknown>;
           switch (ev.event) {
             case 'turn.started':
@@ -124,22 +144,35 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
               break;
             }
             case 'message.delta':
+              // The reply as the model writes it.
               if (typeof data.text === 'string') {
                 reply += data.text;
-                const text = reply;
-                setMessages(m => [...m.filter(x => x.id !== replyId), {id: replyId, sender: 'assistant', text, turn_id: turnId}]);
+                showReply(reply);
               }
               break;
+            case 'message.reset':
+              // A check turned the reply down; another streams next, or message.done brings it.
+              reply = '';
+              showReply('');
+              break;
             case 'message.done':
+              // The reply that stands, which a check may have changed from what streamed.
               if (typeof data.text === 'string' && data.text !== reply) {
-                const text = data.text;
-                reply = text;
-                setMessages(m => [...m.filter(x => x.id !== replyId), {id: replyId, sender: 'assistant', text, turn_id: turnId}]);
+                reply = data.text;
+                showReply(reply);
               }
               break;
             case 'ui.block': {
+              // While a turn works it sends a block again with the same id as it fills in: it
+              // replaces itself where it is. A block an earlier turn sent moves to this turn.
               const block = ev.data as UiBlock;
-              setBlocks(b => [...b.filter(x => x.block_id !== block.block_id), block]);
+              const mine = blockTurnsRef.current[block.block_id] === turnId;
+              setBlocks(b =>
+                mine && b.some(x => x.block_id === block.block_id)
+                  ? b.map(x => (x.block_id === block.block_id ? block : x))
+                  : [...b.filter(x => x.block_id !== block.block_id), block],
+              );
+              blockTurnsRef.current = {...blockTurnsRef.current, [block.block_id]: turnId};
               setBlockTurns(t => ({...t, [block.block_id]: turnId}));
               // A turn's first block puts the turn on the canvas, over whatever a person chose.
               if (!sentBlocks) {
@@ -148,6 +181,13 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
               }
               break;
             }
+            case 'ui.block.removed':
+              // A block shown while the turn worked that its answer does not keep.
+              if (typeof data.block_id === 'string') {
+                const id = data.block_id;
+                setBlocks(b => b.filter(x => x.block_id !== id));
+              }
+              break;
             case 'memory.saved': {
               const memory = data as unknown as SavedMemory;
               setMemories(all => [...all.filter(x => x.memory_id !== memory.memory_id), memory]);
@@ -176,8 +216,12 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
           }
         }
       } catch {
-        setMessages(m => [...m, {id: nextId('msg'), sender: 'system', text: 'The assistant could not be reached.', turn_id: turnId}]);
+        if (!abort.signal.aborted) {
+          setMessages(m => [...m, {id: nextId('msg'), sender: 'system', text: 'The assistant could not be reached.', turn_id: turnId}]);
+        }
       } finally {
+        if (abort.signal.aborted) setMessages(m => [...m, {id: nextId('msg'), sender: 'system', text: 'Stopped.', turn_id: turnId}]);
+        running.current = null;
         setIsBusy(false);
         setLiveTurn(null);
       }
@@ -185,8 +229,12 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
     [runCommand, surface],
   );
 
+  const stop = useCallback(() => running.current?.abort(), []);
+
   const send = useCallback(
     async (text: string, taskId?: string, about: ElementContext[] = []) => {
+      // One turn at a time: a message sent while one runs waits for the person to stop it.
+      if (running.current) return;
       const context = [...picked, ...about.filter(a => !picked.some(p => p.element_ref === a.element_ref))];
       const turnId = nextId('turn');
       setMessages(m => [...m, {id: nextId('msg'), sender: 'user', text, context, turn_id: turnId}]);
@@ -233,6 +281,8 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
       canvasTurn,
       showOnCanvas: setChosenTurn,
       isBusy,
+      stop,
+      transport,
       liveTurn,
       picked,
       send,
@@ -245,7 +295,7 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
       changeSets,
       lastTurn,
     }),
-    [surface, messages, blocks, resultTurns, blocksOf, canvasTurn, isBusy, liveTurn, picked, send, sendEvent, pick, unpick, targets, steps, memories, changeSets, lastTurn],
+    [surface, messages, blocks, resultTurns, blocksOf, canvasTurn, isBusy, stop, transport, liveTurn, picked, send, sendEvent, pick, unpick, targets, steps, memories, changeSets, lastTurn],
   );
   return <AiContext.Provider value={value}>{children}</AiContext.Provider>;
 }

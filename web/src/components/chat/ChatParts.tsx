@@ -182,7 +182,10 @@ export function Composer({placeholder, size = 'md', onSent}: {placeholder: strin
       input={<ChatComposerInput />}
       density={size === 'lg' ? 'spacious' : 'compact'}
       elevation="none"
-      isDisabled={ai.isBusy}
+      // While a turn runs, send becomes stop: the reply and the canvas keep streaming until the
+      // person stops it, and the next message can already be typed.
+      isStopShown={ai.isBusy}
+      onStop={ai.stop}
       sendActions={voice.button}
       status={voice.status}
       headerActions={ai.picked.length > 0 ? <PickedChips /> : undefined}

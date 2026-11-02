@@ -12,7 +12,7 @@ acom-auth.workspace = true
 acom-core.workspace = true
 acom-server.workspace = true
 acom-store.workspace = true
-axum.workspace = true
+axum = { workspace = true, features = ["ws"] }
 chrono.workspace = true
 clap.workspace = true
 hyper-util.workspace = true

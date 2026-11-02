@@ -595,14 +595,21 @@ fn conversation(events: &[Event]) -> String {
         .to_owned()
 }
 
+/// The blocks on screen when the turn ended: a block sent again with its id replaces itself in
+/// place, and a removed one is gone (the turn sends blocks while it works).
 fn blocks(events: &[Event]) -> Vec<&Block> {
-    events
-        .iter()
-        .filter_map(|e| match e {
-            Event::Block(b) => Some(b.as_ref()),
-            _ => None,
-        })
-        .collect()
+    let mut shown: Vec<&Block> = Vec::new();
+    for e in events {
+        match e {
+            Event::Block(b) => match shown.iter_mut().find(|s| s.block_id == b.block_id) {
+                Some(s) => *s = b.as_ref(),
+                None => shown.push(b.as_ref()),
+            },
+            Event::BlockRemoved { block_id } => shown.retain(|s| &s.block_id != block_id),
+            _ => {}
+        }
+    }
+    shown
 }
 
 fn block<'a>(events: &'a [Event], ui: &str) -> &'a Block {

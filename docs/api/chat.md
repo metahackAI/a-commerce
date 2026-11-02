@@ -49,20 +49,48 @@ Accept: text/event-stream
 
 ## 2. 이벤트 스트림
 
-SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(JSON 한 줄)를 가집니다. 연결이 끊기면 `Last-Event-ID`로 이어 받습니다.
+이벤트는 생기는 즉시 갑니다. 웹은 WebSocket(§2.6)으로 받고, 소켓을 열 수 없는 곳에서는 같은 이벤트를 HTTP 이벤트 스트림(SSE, `POST /api/chat/{surface}/turns`)으로 받습니다. SSE에서 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(JSON 한 줄)를 가집니다.
 
 | event | data | 뜻 |
 |---|---|---|
 | `turn.started` | `{turn_id, conversation_id, agent}` | 턴 시작. `agent`는 라우터가 고른 특화 에이전트 |
 | `agent.step` | `{step_id, kind, summary, tool?, status}` | 진행 표시. `kind`: `route` · `search_tools` · `plan` · `call_tool` · `check`. `status`: `running` · `done` · `failed` |
-| `message.delta` | `{text}` | 답 텍스트 조각 |
-| `message.done` | `{message_id, text}` | 답 텍스트 끝 |
-| `ui.block` | 블록(§3) | 블록 추가. 같은 `block_id`가 다시 오면 교체 |
+| `message.delta` | `{text}` | 모델이 쓰는 대로 오는 답 텍스트 조각. 이어 붙여 보여 줌 |
+| `message.reset` | `{reason}` | 지금까지 흘린 답을 지움. 답 확인(숫자·툴 이름·길이)이 그 답을 돌려보냈고, 다음 답이 다시 흘러옴 |
+| `message.done` | `{message_id, text}` | 답 끝. `text`가 남는 답이므로 흘러온 글과 다르면 이것으로 바꿈(확인이 고친 답, 쉬운 답으로 대체) |
+| `ui.block` | 블록(§3) | 블록 추가. 턴은 툴 결과가 생길 때마다 그때까지 만들 수 있는 블록을 보냄. 같은 `block_id`가 다시 오면 그 자리에서 교체(변경셋 항목이 하나씩 늘어남, 반품 검토가 채워짐) |
+| `ui.block.removed` | `{block_id}` | 턴이 일하는 동안 보였지만 최종 답에 남지 않는 블록을 지움 |
 | `memory.saved` | `{memory_id, text}` | 기억이 생김. 웹은 한 줄과 되돌리기 버튼을 보여 줌 |
 | `ui.command` | `{command, target, note?}` | 에이전트가 화면을 가리킴. `command`: `highlight` · `scroll_to` · `open` · `focus_input`. `target`은 `element_ref`, 블록 id, 또는 경로. `person` 버튼은 대상이 될 수 없음 |
 | `change_set.updated` | `{change_set_id, version, state}` | 이 턴이 변경셋을 만들거나 고치거나 제출했을 때(`drafting`, `waiting_for_approval`) |
 | `error` | `{code, message}` | 턴을 끝내는 오류. 코드는 [errors.md](errors.md) |
 | `turn.done` | `{turn_id, usage: {model_calls, tool_calls, input_tokens, output_tokens, ms, cost_usd}, models: [...]}` | 턴 끝. 화면의 "9 tool calls · Muse Glimmer 30B · 3.8s" |
+
+**스트리밍 순서.** 답은 모델이 쓰는 대로 `message.delta`로 갑니다. 답 확인은 다 쓴 답에 대해 돌고, 돌려보내면 `message.reset` 뒤 다시 씁니다. 블록은 답보다 먼저, 툴 결과마다 갑니다. 그래서 캔버스는 마지막에 한꺼번에 채워지지 않고 일하는 동안 조립됩니다.
+
+### 2.6 WebSocket (`GET /api/chat/ws`)
+
+브라우저는 한 페이지에 연결 하나를 열어 두고 모든 턴을 그 위로 보냅니다. 게이트웨이는 턴마다 그 턴만을 위한 토큰을 새로 서명해 에이전트의 이벤트 스트림을 부르고, 이벤트를 받는 대로 소켓으로 넘깁니다(연결이 한 시간 열려 있어도 토큰은 턴보다 오래되지 않고, 세션이 끝나면 다음 턴이 거절됨).
+
+**핸드셰이크**
+
+1. 업그레이드 요청은 가게 자신의 페이지에서 와야 하고(`Origin`이 `Host`/`X-Forwarded-Host`와 같음, 다르면 403) 살아 있는 세션 쿠키가 있어야 합니다(없으면 401; 웹은 `POST /api/auth/guest`로 비회원 세션을 연 뒤 다시 엶).
+2. 첫 프레임은 `{"type": "hello", "surface": "fo" | "bo", "csrf_token": "…", "protocol": 1}`. 10초 안에 오지 않거나 CSRF가 세션과 다르면 닫습니다.
+3. 게이트웨이가 `{"type": "ready", "protocol": 1, "surface", "user", "acts_as", "heartbeat_seconds": 20}`로 답합니다. `acts_as`는 그 surface에서의 주체 종류(스토어프론트의 운영자는 `shopper`, [gateway.md](../backend/gateway.md) §1).
+
+**프레임** (모두 JSON 텍스트)
+
+| 방향 | type | 필드 | 뜻 |
+|---|---|---|---|
+| → | `turn` | `request_id`(1–64자, 연결 안에서 유일), `turn`(§1의 턴 요청) | 턴 하나 시작. 연결당 동시에 4개까지 |
+| → | `cancel` | `request_id` | 그 턴을 멈춤. 에이전트 스트림을 끊으므로 에이전트도 멈춤 |
+| → | `ping` | | `pong`으로 답함(브라우저 쪽 생존 확인, 25초마다) |
+| ← | `event` | `request_id`, `id`, `event`, `data` | §2 표의 이벤트 하나, 생기는 즉시 |
+| ← | `end` | `request_id`, `reason`: `done` · `cancelled` · `error` | 그 턴의 끝 |
+| ← | `error` | `request_id?`, `code`, `message` | 그 턴의 오류(뒤에 `end`). `request_id`가 없으면 프레임 자체의 오류 |
+| ← | `pong` | | |
+
+게이트웨이는 20초마다 WebSocket ping을 보내고, 75초 동안 아무것도 오지 않으면 닫습니다. 닫는 코드: 4001 세션 없음, 4003 CSRF·출처, 4008 `hello` 시간 초과, 4400 잘못된 프레임. 연결이 턴 도중 끊기면 웹은 그 턴을 오류로 끝내고(다시 보내기는 사람이 함, 쓰기가 두 번 되지 않음) 다음 턴에서 다시 엽니다. 소켓을 열 수 없으면 60초 동안 SSE로 보냅니다.
 
 턴 밖의 변화(승인 뒤 실행·검증, 할 일, 예약 작업)는 채팅 스트림으로 오지 않습니다. 백오피스 화면은 스토어 이벤트 `GET /api/v1/platform/events`(SSE: `change_set.updated`, `task.updated`, `job.updated`, [platform.md](platform.md#내부-엔드포인트))를 구독해 읽기를 다시 합니다.
 

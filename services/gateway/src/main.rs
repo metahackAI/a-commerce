@@ -17,6 +17,7 @@
 //! add-to-cart) gets a guest session on the spot.
 
 mod auth;
+mod chat_ws;
 mod pickup;
 mod session;
 
@@ -110,6 +111,8 @@ const TURN_TOKEN_SECONDS: u64 = 900;
 #[allow(missing_debug_implementations)]
 pub struct Gateway {
     client: Client<HttpConnector, Body>,
+    /// Calls the gateway makes itself (the chat socket's turns).
+    http: reqwest::Client,
     commerce: Arc<str>,
     agent: Arc<str>,
     web: Arc<str>,
@@ -405,6 +408,7 @@ fn app(gw: Arc<Gateway>) -> Router {
             .route("/api/auth/logout", post(auth::logout))
             .route("/api/auth/session", get(auth::session))
             .route("/api/auth/personas", get(auth::personas))
+            .route("/api/chat/ws", get(chat_ws::upgrade))
             .route("/", any(proxy))
             .route("/{*path}", any(proxy))
             .with_state(gw),
@@ -425,6 +429,10 @@ fn gateway(cli: &Cli) -> Result<Gateway, String> {
     let tenant = TenantId::parse(cli.store_id.as_str()).map_err(|e| e.to_string())?;
     Ok(Gateway {
         client: Client::builder(TokioExecutor::new()).build_http(),
+        http: reqwest::Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(5))
+            .build()
+            .map_err(|e| e.to_string())?,
         commerce: cli.commerce_url.trim_end_matches('/').into(),
         agent: cli.agent_url.trim_end_matches('/').into(),
         web: cli.web_url.trim_end_matches('/').into(),
