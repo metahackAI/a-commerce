@@ -65,20 +65,25 @@ fn reply_schema() -> Value {
                                    "description": "Two or three plain sentences for the person."}}})
 }
 
-/// Whether `variant` streams an answer from `model`: a short request shaped like a reply, which
-/// must come back in pieces that already read as text, and whole at the end.
-async fn probe_once(model: &dyn acom_llm::ChatModel, variant: StreamVariant) -> bool {
+/// Whether `variant` streams an answer from `model`: a request shaped like a real reply (the
+/// reply prompt and a turn's results), which must come back in pieces that already read as
+/// text, and whole at the end.
+async fn probe_once(model: &dyn acom_llm::ChatModel, variant: StreamVariant, prompt: &str) -> bool {
     let raw = std::sync::Mutex::new(String::new());
     let sink = |d: &str| {
         if let Ok(mut r) = raw.lock() {
             r.push_str(d);
         }
     };
+    let results = json!({"reads": [{"tool": "search_products", "result": {"items": [
+        {"id": "prd_windbreaker", "name": "Packable windbreaker", "price": 89.0, "price_currency": "USD", "availability": "in_stock"},
+        {"id": "prd_field_jacket", "name": "Linen blend field jacket", "price": 128.0, "price_currency": "USD", "availability": "in_stock"}],
+        "total": 2}}], "request": "I need a light jacket for spring trips."});
     let req = ChatRequest::new(
         "stream_check",
         vec![
-            Message::system("Answer in one short sentence.".to_owned()),
-            Message::user("Say that you are ready.".to_owned()),
+            Message::system(prompt.trim().to_owned()),
+            Message::user(format!("Results of this turn: {results}")),
         ],
     )
     .json("reply", reply_schema())
@@ -310,6 +315,9 @@ pub struct Runtime {
     streaming: std::sync::Mutex<BTreeMap<String, StreamState>>,
     /// Wakes the background check when a way that worked stops working in a turn.
     reprobe: tokio::sync::Notify,
+    /// Ways that came back empty in a person's turn, per model, and when: a real reply outweighs
+    /// the check, so the check does not trust them again for [`TURN_FAILURE_HOLDS`].
+    failed_in_turn: std::sync::Mutex<BTreeMap<String, Vec<(StreamVariant, Instant)>>>,
 }
 
 /// What the runtime knows about streaming one model's reply.
@@ -329,6 +337,8 @@ pub enum StreamState {
 /// that gets fixed starts streaming without a restart), and at one whose do.
 const PROBE_AGAIN_OFF: Duration = Duration::from_secs(10 * 60);
 const PROBE_AGAIN_WORKS: Duration = Duration::from_secs(60 * 60);
+/// How long a way that failed in a person's turn is left out of the check.
+const TURN_FAILURE_HOLDS: Duration = Duration::from_secs(6 * 60 * 60);
 
 impl std::fmt::Debug for Runtime {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -361,6 +371,7 @@ impl Runtime {
             store,
             streaming: std::sync::Mutex::new(BTreeMap::new()),
             reprobe: tokio::sync::Notify::new(),
+            failed_in_turn: std::sync::Mutex::new(BTreeMap::new()),
         }
     }
 
@@ -375,12 +386,27 @@ impl Runtime {
     /// A way that worked came back without text in a turn: replies come whole again until the
     /// background check, woken now, has looked again.
     fn stream_failed(&self, model: &ModelInfo, variant: StreamVariant) {
+        if let Ok(mut f) = self.failed_in_turn.lock() {
+            f.entry(model.alias.clone())
+                .or_default()
+                .push((variant, Instant::now()));
+        }
         if let Ok(mut s) = self.streaming.lock()
             && s.get(&model.alias) == Some(&StreamState::Works(variant))
         {
             s.insert(model.alias.clone(), StreamState::Unknown);
             self.reprobe.notify_one();
         }
+    }
+
+    /// Whether `variant` failed in a person's turn lately (the check leaves it out).
+    fn failed_lately(&self, alias: &str, variant: StreamVariant) -> bool {
+        self.failed_in_turn.lock().is_ok_and(|f| {
+            f.get(alias).is_some_and(|ways| {
+                ways.iter()
+                    .any(|(v, at)| *v == variant && at.elapsed() < TURN_FAILURE_HOLDS)
+            })
+        })
     }
 
     pub fn stream_state(&self, alias: &str) -> StreamState {
@@ -415,8 +441,12 @@ impl Runtime {
                 continue;
             }
             let mut found = StreamState::Off;
+            let prompt = self.profiles.prompts.reply.clone();
             for &v in &model.info().stream_variants {
-                if probe_once(model.as_ref(), v).await {
+                if self.failed_lately(alias, v) {
+                    continue;
+                }
+                if probe_once(model.as_ref(), v, &prompt).await {
                     found = StreamState::Works(v);
                     break;
                 }
