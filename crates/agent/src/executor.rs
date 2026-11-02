@@ -417,6 +417,19 @@ pub fn bind(
             input.insert(field.to_owned(), v);
         }
     }
+    // An empty text for a field the tool can do without filters by nothing: every member
+    // with the tier "" is no member. Left out, the tool does what it does without it.
+    let blank: Vec<String> = input
+        .iter()
+        .filter(|(k, v)| {
+            v.as_str().is_some_and(|t| t.trim().is_empty()) && !required.contains(&k.as_str())
+        })
+        .map(|(k, _)| k.clone())
+        .collect();
+    for field in blank {
+        notes.push(format!("{field}: empty, left out"));
+        input.remove(&field);
+    }
     Bound {
         input: Value::Object(input),
         notes,
@@ -673,6 +686,29 @@ mod tests {
             &BTreeMap::new(),
         );
         assert_eq!(coupon.input["promotion_id"], "$item[1].promotion_id");
+    }
+
+    #[test]
+    fn an_empty_text_for_a_field_the_tool_can_do_without_is_left_out() {
+        let m = manifest();
+        let b = bind(
+            &step(
+                "s1",
+                "search_products",
+                json!({"query": "", "category": " ", "limit": 20}),
+                &[],
+            ),
+            get(&m, "search_products"),
+            &BTreeMap::new(),
+            &[],
+            &BTreeMap::new(),
+        );
+        assert_eq!(b.input, json!({"limit": 20}));
+        assert!(
+            b.notes.iter().any(|n| n == "query: empty, left out"),
+            "{:?}",
+            b.notes
+        );
     }
 
     #[test]

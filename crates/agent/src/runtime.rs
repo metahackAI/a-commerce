@@ -3367,7 +3367,7 @@ impl<'r> Turn<'r> {
 
     /// The order this turn read, with its lines (`get_order`; not its payment or delivery). Of
     /// several (each of the shopper's orders read to find one), the one whose parcel the turn
-    /// tracked, else the last read.
+    /// tracked, else the one holding what the request names, else the last read.
     fn order_detail_block(&self) -> Option<Block> {
         let orders: Vec<&Value> = self
             .history
@@ -3389,6 +3389,29 @@ impl<'r> Turn<'r> {
                     .iter()
                     .find(|o| o.pointer("/delivery/id").and_then(Value::as_str) == Some(t))
             })
+            // Else the one with what the request names ("my windbreaker order").
+            .or_else(|| {
+                let said: Vec<String> = self
+                    .text
+                    .to_lowercase()
+                    .split(|c: char| !c.is_alphanumeric())
+                    .filter(|w| {
+                        w.len() >= 4 && !["order", "orders", "track", "where", "show"].contains(w)
+                    })
+                    .map(str::to_owned)
+                    .collect();
+                orders.iter().find(|o| {
+                    o.get("ordered_item")
+                        .and_then(Value::as_array)
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|l| l.get("name").and_then(Value::as_str))
+                        .any(|name| {
+                            let name = name.to_lowercase();
+                            said.iter().any(|w| name.contains(w.as_str()))
+                        })
+                })
+            })
             .or_else(|| orders.first())?;
         table::order_detail(order)
     }
@@ -3402,9 +3425,13 @@ impl<'r> Turn<'r> {
             .rev()
             .filter(|r| r.kind == ToolKind::Read && r.output.as_ref().is_some_and(|o| !o.is_null()))
             .collect();
+        // What the agent always has at hand (the shopper's orders and profile) is often read only
+        // to set up the answer, so another read with a shape of its own comes first.
+        let at_hand = |r: &&&StepRecord| self.profile.tool_scope.always.contains(&r.tool);
         reads
             .iter()
-            .find(|r| records::shaped(&r.tool))
+            .find(|r| records::shaped(&r.tool) && !at_hand(r))
+            .or_else(|| reads.iter().find(|r| records::shaped(&r.tool)))
             .or_else(|| {
                 reads
                     .iter()
@@ -3531,6 +3558,18 @@ impl<'r> Turn<'r> {
         req: ChatRequest,
         prompt: &str,
     ) -> Option<ReplyDraft> {
+        // What it must not copy: its instructions, and what a check told it when asking again
+        // ("That repeats the request…" came back once as the answer).
+        let guide = std::iter::once(prompt)
+            .chain(
+                req.messages
+                    .iter()
+                    .skip(2)
+                    .filter(|m| m.role == acom_llm::Role::User)
+                    .map(|m| m.content.as_str()),
+            )
+            .collect::<Vec<_>>()
+            .join("\n");
         let (raw, stopped) = self.model_text("reply", &[worker], req).await?;
         let parsed = acom_llm::parse::extract_json(&raw)
             .and_then(|v| v.get("text").and_then(Value::as_str).map(str::to_owned));
@@ -3544,7 +3583,7 @@ impl<'r> Turn<'r> {
                 None => (raw, stopped),
             },
         };
-        let text = without_echo(text.trim().to_owned(), prompt)?;
+        let text = without_echo(text.trim().to_owned(), &guide)?;
         Some(ReplyDraft { text, cut })
     }
 

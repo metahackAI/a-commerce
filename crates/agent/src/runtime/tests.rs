@@ -314,6 +314,8 @@ impl ToolClient for Commerce {
                     json!({"payment_status": "payment_complete", "label": "Card ending 4821",
                     "amount": {"value": 89.00, "currency": "USD"}})
                 }
+                "list_faqs" => json!({"items": [
+                    {"id": "faq_return_days", "name": "How long do I have to return something?", "category": "returns"}], "total": 1}),
                 "list_reviews" => json!({"items": [
                     {"id": "rev_1", "product_id": "prd_windbreaker", "review_rating": 5,
                      "author": {"name": "Jordan P."}, "review_body": "Packs into its pocket."}], "total": 1}),
@@ -1473,6 +1475,7 @@ fn manifest_with_records() -> Vec<ToolSpec> {
         read("get_payment", "sales.payment.get_payment", "How an order was paid."),
         read("track_shipment", "fulfillment.parcel_delivery.track_shipment", "Where an order's parcel is."),
         read("list_reviews", "catalog.review.list_reviews", "Reviews of a product."),
+        read("list_faqs", "customer.faq_notice.list_faqs", "Questions shoppers often ask, with the store's answers."),
         read("list_questions", "catalog.question.list_questions", "Questions about a product and their answers."),
     ]}))
     .unwrap();
@@ -1549,6 +1552,33 @@ async fn of_several_orders_read_the_one_whose_parcel_was_tracked_is_shown() {
     let b = blocks(&events);
     assert_eq!(b.len(), 1, "{b:?}");
     assert_eq!(b[0].data["order_number"], "20268");
+}
+
+#[tokio::test]
+async fn what_the_agent_always_has_at_hand_does_not_crowd_out_the_answer() {
+    let events = shopper_turn(
+        json!({"interpretation": [], "about": "self", "reply_plan": "text", "steps": [
+            {"id": "s1", "tool": "list_faqs", "args": {}, "uses": []},
+            {"id": "s2", "tool": "get_my_orders", "args": {}, "uses": []}]}),
+        "How long do I have to return something?",
+    )
+    .await;
+    let b = blocks(&events);
+    assert_eq!(b.len(), 1, "{b:?}");
+    assert_eq!(b[0].data["kind"], "faqs");
+}
+
+#[tokio::test]
+async fn of_several_orders_read_the_one_with_what_was_named_is_shown() {
+    let events = shopper_turn(
+        json!({"interpretation": [], "about": "self", "reply_plan": "order_detail", "steps": [
+            {"id": "s1", "tool": "get_order", "args": {"order_id": "ord_20268"}, "uses": []},
+            {"id": "s2", "tool": "get_order", "args": {"order_id": "ord_20105"}, "uses": []}]}),
+        "Track my windbreaker order",
+    )
+    .await;
+    let b = blocks(&events);
+    assert_eq!(b[0].data["order_number"], "20268", "{b:?}");
 }
 
 #[tokio::test]
@@ -1903,6 +1933,40 @@ async fn a_reply_with_made_up_numbers_is_written_again_and_what_was_read_is_show
     assert_eq!(b.len(), 1, "the tiers read, shown as a table");
     assert_eq!(b[0].ui, "product_table");
     assert_eq!(glimmer.asked().iter().filter(|p| *p == "reply").count(), 2);
+}
+
+#[tokio::test]
+async fn a_reply_that_copies_what_a_check_told_it_is_not_the_answer() {
+    let asked = "Show me the change sets waiting for approval";
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            (
+                "plan",
+                json!({"interpretation": [], "about": "self", "reply_plan": "text", "steps": [
+                {"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
+                .to_string(),
+            ),
+            ("reply", format!("{asked}. The results show the tiers.")),
+            ("reply", format!("{REPEATED_REQUEST} Here it is.")),
+        ],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say(asked),
+        Commerce::new(),
+    )
+    .await;
+    let reply = message(&events);
+    assert!(!reply.contains("repeats the request"), "{reply}");
+    assert!(!reply.is_empty());
 }
 
 #[tokio::test]
