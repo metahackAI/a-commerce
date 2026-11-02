@@ -44,6 +44,8 @@ export function useAiTarget(target: AiTarget) {
     ref: register,
     /** Picks this element as "this" for the next message. */
     ask: () => pick(context),
+    /** The element as a message's context, for a sentence sent about it right away. */
+    context,
     props: {
       'data-acom-kind': target.kind,
       'data-acom-id': Object.values(target.ids)[0],

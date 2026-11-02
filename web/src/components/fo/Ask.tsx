@@ -13,17 +13,18 @@ import {ChatBubbleLeftEllipsisIcon} from '@heroicons/react/24/outline';
 import {useCallback} from 'react';
 
 import {useAi} from '@/ai/AiProvider';
+import type {ElementContext} from '@/ai/types';
 
 import {useStorefront} from './StorefrontContext';
 
-/** Sends a sentence to the assistant and opens it. */
+/** Sends a sentence to the assistant and opens it; `about` is the element the sentence is about. */
 export function useSay() {
   const ai = useAi();
   const {openAssistant} = useStorefront();
   return useCallback(
-    (text: string) => {
+    (text: string, about?: ElementContext) => {
       openAssistant();
-      void ai.send(text);
+      void ai.send(text, undefined, about ? [about] : []);
     },
     [ai, openAssistant],
   );
@@ -60,14 +61,17 @@ export function AskButton({target, label}: {target: {ask: () => void}; label: st
   );
 }
 
-/** Suggested sentences for one element (a block's `suggested_intents`); pressing one sends it. */
-export function Intents({says}: {says: string[]}) {
+/**
+ * Suggested sentences for one element (a block's `suggested_intents`); pressing one sends it with
+ * the element as its context, so "this one" reaches the agent as that element.
+ */
+export function Intents({says, about}: {says: string[]; about: ElementContext}) {
   const say = useSay();
   if (says.length === 0) return null;
   return (
     <HStack gap={1} wrap="wrap">
       {says.map(s => (
-        <Button key={s} label={s} size="sm" variant="ghost" onClick={() => say(s)} />
+        <Button key={s} label={s} size="sm" variant="ghost" onClick={() => say(s, about)} />
       ))}
     </HStack>
   );

@@ -7,7 +7,7 @@
 // a row's actions), so a page of rows does not repeat it on every line. Suggested intents, when a
 // block provides them, sit next to the element and send their sentence as is.
 
-import {useEffect, useRef, type ReactNode} from 'react';
+import type {ReactNode} from 'react';
 import {HStack, StackItem, VStack} from '@astryxdesign/core/Layout';
 import {Button} from '@astryxdesign/core/Button';
 import {IconButton} from '@astryxdesign/core/IconButton';
@@ -64,24 +64,10 @@ export function AskHeaderCell() {
   );
 }
 
-/**
- * Sends a sentence with an element picked as "this". The pick is state in the AI layer, so the
- * sentence goes after the pick has rendered, with the `send` of that render.
- */
+/** Sends a sentence with an element as "this": the element rides along as the message's context. */
 export function useSendAbout() {
   const ai = useAi();
-  const latest = useRef(ai.send);
-  useEffect(() => {
-    latest.current = ai.send;
-  });
-  return (say: string, target?: Registered) => {
-    if (!target) {
-      void ai.send(say);
-      return;
-    }
-    target.ask();
-    window.setTimeout(() => void latest.current(say), 0);
-  };
+  return (say: string, target?: Registered) => void ai.send(say, undefined, target ? [target.context] : []);
 }
 
 /** Suggested sentences for an element; pressing one sends it to the agent with the element picked. */

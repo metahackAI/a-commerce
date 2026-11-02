@@ -77,7 +77,7 @@ function Line({block, line, kind, index}: {block: UiBlock; line: LineView; kind:
               {line.note}
             </Text>
           ) : null}
-          <Intents says={intentsFor(block, kind, id)} />
+          <Intents says={intentsFor(block, kind, id)} about={target.context} />
         </VStack>
       }
       endContent={

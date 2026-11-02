@@ -77,6 +77,7 @@ function ColumnHeader({
           ) : null}
           <Intents
             says={intentsFor(block, "compare_column", product.product_id)}
+            about={target.context}
           />
         </VStack>
       </div>
@@ -108,7 +109,7 @@ function AttributeRow({
           <Text type="supporting" color="secondary">
             {row.label}
           </Text>
-          <Intents says={says} />
+          <Intents says={says} about={target.context} />
         </VStack>
       </TableCell>
       {Array.from({ length: count }, (_, i) => (
