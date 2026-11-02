@@ -5,6 +5,7 @@ import {ErrorNotice} from '@/components/fo/ErrorNotice';
 import {CollectionCards} from '@/components/fo/StoreContent';
 import type {Page} from '@/lib/api';
 
+import {collectionPreviews} from '../_lib/collections';
 import {load} from '../_lib/server';
 import type {CollectionPageSummary} from '../_lib/types';
 
@@ -13,6 +14,7 @@ export const metadata = {title: 'Collections'};
 // The collection pages open to this shopper now (list_curations answers a shopper with only those).
 export default async function CollectionsPage() {
   const list = await load<Page<CollectionPageSummary>>('/v1/merchandising/collection-pages', {limit: 50});
+  const previews = list.ok ? await collectionPreviews(list.data.items) : [];
   return (
     <Layout
       height="auto"
@@ -26,7 +28,7 @@ export default async function CollectionsPage() {
             ) : list.data.items.length === 0 ? (
               <Text color="secondary">No collections are on right now.</Text>
             ) : (
-              <CollectionCards pages={list.data.items} />
+              <CollectionCards collections={previews} />
             )}
           </VStack>
         </LayoutContent>

@@ -16,7 +16,7 @@ import {Heading, Text} from '@astryxdesign/core/Text';
 import {Token} from '@astryxdesign/core/Token';
 
 import {useAiTarget} from '@/ai/useAiTarget';
-import {dateTime, longDate, words} from '@/app/(storefront)/_lib/format';
+import {dateTime, imageUrl, longDate, words} from '@/app/(storefront)/_lib/format';
 import type {
   Board,
   CollectionPageSummary,
@@ -25,10 +25,12 @@ import type {
   Post,
   PostSummary,
   ProductQuestion,
+  ProductSummary,
   Reply,
 } from '@/app/(storefront)/_lib/types';
 
 import {AskButton} from './Ask';
+import {ProductImage} from './ProductImage';
 
 function personName(author: string | {name?: string} | null | undefined, fallback: string): string {
   if (!author) return fallback;
@@ -220,16 +222,27 @@ export function QuestionList({questions}: {questions: ProductQuestion[]}) {
 
 // ---------------------------------------------------------------- collection pages
 
-function CollectionCard({page}: {page: CollectionPageSummary}) {
+function CollectionCard({page, products}: {page: CollectionPageSummary; products: ProductSummary[]}) {
   const target = useAiTarget({kind: 'collection_page', label: page.name, ids: {collection_page_id: page.id}, term: 'schema:CollectionPage'});
-  const count = page.product_count ?? 0;
+  const count = page.product_count ?? products.length;
+  const href = `/collections/${encodeURIComponent(page.id)}`;
   return (
     <Card padding={4} ref={target.ref} {...target.props}>
-      <VStack gap={2} hAlign="start">
-        <Heading level={3}>{page.name}</Heading>
-        <Text color="secondary">
-          {[count === 1 ? '1 product' : `${count} products`, page.valid_through ? `until ${longDate(page.valid_through)}` : null].filter(Boolean).join(' · ')}
-        </Text>
+      <VStack gap={3}>
+        {products.length > 0 ? (
+          // The collection's first products, small; as many as it has, up to four.
+          <Grid columns={4} gap={2}>
+            {products.map(p => (
+              <ProductImage key={p.id} src={imageUrl(p.image)} alt={p.name} ratio={1} href={`/p/${encodeURIComponent(p.id)}`} />
+            ))}
+          </Grid>
+        ) : null}
+        <VStack gap={1} hAlign="start">
+          <Heading level={3}>{page.name}</Heading>
+          <Text color="secondary">
+            {[count === 1 ? '1 product' : `${count} products`, page.valid_through ? `until ${longDate(page.valid_through)}` : null].filter(Boolean).join(' · ')}
+          </Text>
+        </VStack>
         {page.keywords && page.keywords.length > 0 ? (
           <HStack gap={1} wrap="wrap">
             {page.keywords.map(k => (
@@ -238,7 +251,7 @@ function CollectionCard({page}: {page: CollectionPageSummary}) {
           </HStack>
         ) : null}
         <HStack gap={2} vAlign="center">
-          <Button label="See the collection" variant="secondary" size="sm" href={`/collections/${encodeURIComponent(page.id)}`} />
+          <Button label="See the collection" variant="secondary" size="sm" href={href} />
           <AskButton target={target} label={page.name} />
         </HStack>
       </VStack>
@@ -246,11 +259,11 @@ function CollectionCard({page}: {page: CollectionPageSummary}) {
   );
 }
 
-export function CollectionCards({pages}: {pages: CollectionPageSummary[]}) {
+export function CollectionCards({collections}: {collections: {page: CollectionPageSummary; products: ProductSummary[]}[]}) {
   return (
     <Grid columns={{minWidth: 280}} gap={4}>
-      {pages.map(p => (
-        <CollectionCard key={p.id} page={p} />
+      {collections.map(c => (
+        <CollectionCard key={c.page.id} page={c.page} products={c.products} />
       ))}
     </Grid>
   );

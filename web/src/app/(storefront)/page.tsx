@@ -12,6 +12,7 @@ import {CollectionCards, NoticeList} from '@/components/fo/StoreContent';
 import {StorePopup} from '@/components/fo/StorePopup';
 import type {Page} from '@/lib/api';
 
+import {collectionPreviews} from './_lib/collections';
 import {imageUrl} from './_lib/format';
 import {load, orElse, shopper} from './_lib/server';
 import type {
@@ -107,7 +108,7 @@ export default async function StorefrontHome() {
     load<Page<NoticeSummary>>('/v1/customer/notices', {limit: 3}),
     load<Page<Popup>>('/v1/merchandising/popups', {page: 'main'}),
   ]);
-  const openCollections = orElse(collections, {items: [], total: 0}).items;
+  const openCollections = await collectionPreviews(orElse(collections, {items: [], total: 0}).items);
   const latestNotices = orElse(notices, {items: [], total: 0}).items;
   const brands = orElse(brandList, {items: [], total: 0}).items;
 
@@ -147,6 +148,8 @@ export default async function StorefrontHome() {
       content={
         <LayoutContent padding={6}>
           <VStack gap={8}>
+            {/* AI-native: the first thing on the page is the way to ask. */}
+            <AskEntry name={profile?.ok ? profile.data.name : null} />
             <StorePopup popups={orElse(popups, {items: [], total: 0}).items} />
             {!slotList.ok ? <ErrorNotice error={slotList.error} title="The main page could not be loaded." /> : null}
             {sections.map(s =>
@@ -185,10 +188,9 @@ export default async function StorefrontHome() {
                   <Heading level={2}>Collections</Heading>
                   <Button label="All collections" variant="ghost" href="/collections" />
                 </HStack>
-                <CollectionCards pages={openCollections} />
+                <CollectionCards collections={openCollections} />
               </VStack>
             ) : null}
-            <AskEntry name={profile?.ok ? profile.data.name : null} />
             {topCategories.length > 0 ? (
               <VStack gap={3}>
                 <Heading level={2}>Shop by category</Heading>
