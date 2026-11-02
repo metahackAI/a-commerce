@@ -391,6 +391,11 @@ pub struct StreamReader {
     data_lines: usize,
     /// Text some providers send apart from the answer (`reasoning_content`, `reasoning`).
     reasoning: usize,
+    /// The start of that text, to say what it was when no answer came.
+    reasoning_head: String,
+    /// Whether that text is the answer itself: a provider whose reasoning parser never sees the
+    /// end of reasoning sends a schema-held answer (it starts with `{`) in the reasoning field.
+    reasoning_is_answer: Option<bool>,
     /// An error the provider sent inside the stream (`data: {"error": …}`).
     error: Option<String>,
     /// The first `data:` line, to say what a stream without an answer carried.
@@ -473,10 +478,29 @@ impl StreamReader {
                 }
             }
         }
+        let mut carried = None;
         for key in ["reasoning_content", "reasoning"] {
             if let Some(r) = delta.get(key).and_then(Value::as_str) {
                 self.reasoning += r.chars().count();
+                if self.reasoning_head.chars().count() < 160 {
+                    self.reasoning_head.push_str(r);
+                }
+                // Decided by its first visible character, and only while no answer came the
+                // usual way: JSON is the answer, anything else is thinking and stays out.
+                if self.reasoning_is_answer.is_none()
+                    && self.text.is_empty()
+                    && let Some(c) = r.trim_start().chars().next()
+                {
+                    self.reasoning_is_answer = Some(c == '{');
+                }
+                if self.reasoning_is_answer == Some(true) && !r.is_empty() {
+                    self.text.push_str(r);
+                    carried = Some(r.to_owned());
+                }
             }
+        }
+        if carried.is_some() {
+            return carried;
         }
         let text = delta.get("content").and_then(Value::as_str)?;
         if text.is_empty() {
@@ -507,8 +531,9 @@ impl StreamReader {
         }
         if self.text.trim().is_empty() && self.calls.is_empty() {
             if self.reasoning > 0 {
+                let head: String = self.reasoning_head.chars().take(160).collect();
                 return Err(LlmError::BadResponse(format!(
-                    "the stream carried no answer text, only {} characters of reasoning",
+                    "the stream carried no answer text, only {} characters of reasoning: {head}",
                     self.reasoning
                 )));
             }
@@ -723,16 +748,26 @@ mod tests {
     }
 
     #[test]
-    fn a_stream_of_reasoning_only_is_an_error_that_says_so() {
+    fn a_schema_held_answer_in_the_reasoning_field_is_the_answer() {
         let events = concat!(
-            "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"{\\\"text\\\": \\\"Hi.\\\"}\"}}]}\n\n",
-            "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"\"}}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"{\\\"text\\\": \\\"Two \"}}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"jackets.\\\"}\"}}]}\n\n",
             "data: [DONE]\n\n"
         );
         let mut reader = StreamReader::default();
-        assert!(reader.feed(events.as_bytes()).is_empty());
+        let deltas = reader.feed(events.as_bytes());
+        assert_eq!(deltas.concat(), "{\"text\": \"Two jackets.\"}");
+        assert_eq!(
+            reader.finish().unwrap().text,
+            "{\"text\": \"Two jackets.\"}"
+        );
+        // Thinking in the reasoning field is not the answer.
+        let thinking = "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"Let me see.\"}}]}\n\ndata: [DONE]\n\n";
+        let mut reader = StreamReader::default();
+        assert!(reader.feed(thinking.as_bytes()).is_empty());
         let e = reader.finish().unwrap_err().to_string();
-        assert!(e.contains("only 15 characters of reasoning"), "{e}");
+        assert!(e.contains("reasoning: Let me see."), "{e}");
     }
 
     #[test]
