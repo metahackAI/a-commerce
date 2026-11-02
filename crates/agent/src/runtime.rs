@@ -1894,10 +1894,16 @@ impl<'r> Turn<'r> {
     ) -> Result<StepRecord, Flow> {
         let mut repaired = acom_llm::repair(&input, &tool.input_schema, &self.repair_env());
         repaired.missing.append(&mut self.undecided);
+        let mut asked = Vec::new();
         if !repaired.is_valid()
             && let Some(fixed) = self.ask_arguments(tool, &repaired).await
         {
             repaired = fixed;
+            // The arguments model answers with the whole schema and fills what nobody asked
+            // for, a yes/no filter included: left out again on the storefront.
+            if !tool.is_write() && self.surface == ChatSurface::Fo {
+                asked = unasked_yes_no(&mut repaired.value, tool, &self.text);
+            }
         }
         if !repaired.is_valid() {
             let mut why: Vec<String> = repaired.errors.clone();
@@ -1930,6 +1936,7 @@ impl<'r> Turn<'r> {
         }
         let mut notes = notes;
         notes.extend(repaired.notes.iter().cloned());
+        notes.extend(asked);
         let input = repaired.value;
         // Same read with the same arguments earlier this turn: reuse its result.
         if !tool.is_write()
