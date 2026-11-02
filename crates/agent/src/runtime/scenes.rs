@@ -681,6 +681,32 @@ const B2_ASK: &str = "Review the return requests over $200 that are waiting.";
 const B2_KEEP: &str = "Keep the decline, but be kind in the message. Go ahead with the refunds and the photo requests.";
 
 #[tokio::test]
+async fn return_requests_only_listed_are_shown_in_their_review() {
+    let glimmer = Recorded::new(vec![
+        ("route", json!({"agent": "orders", "confidence": 0.92})),
+        (
+            "plan",
+            json!({"interpretation": [], "about": "self", "reply_plan": "product_table", "steps": [
+                {"id": "s1", "tool": "search_return_requests",
+                 "args": {"min_amount": {"value": 200, "currency": "USD"}}, "uses": []}]}),
+        ),
+    ]);
+    let rt = runtime(&glimmer, "2026-11-06T10:40");
+    let commerce = Scene::new(false, b2_reads);
+    let sj = person("adm_sj", Surface::Bo);
+    let events = turn(
+        &rt,
+        &sj,
+        ChatSurface::Bo,
+        say("Show me the return requests over $200", None),
+        &commerce,
+    )
+    .await;
+    let review = block(&events, "refund_review");
+    assert_eq!(review.data["summary"]["waiting"], 12);
+}
+
+#[tokio::test]
 async fn b2_twelve_requests_become_one_change_set_of_nine_refunds_and_three_messages() {
     let glimmer = Recorded::new(vec![
         ("route", json!({"agent": "orders", "confidence": 0.92})),
