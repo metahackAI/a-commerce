@@ -28,6 +28,57 @@ pub struct ListFaqsInput {
     pub cursor: Option<String>,
 }
 
+/// The words of a query worth matching: lower case, three letters or more, without the words
+/// every question has ("how", "do", "the").
+fn words(query: &str) -> Vec<String> {
+    const COMMON: &[&str] = &[
+        "the",
+        "and",
+        "for",
+        "you",
+        "your",
+        "how",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "why",
+        "can",
+        "does",
+        "did",
+        "have",
+        "has",
+        "are",
+        "was",
+        "with",
+        "about",
+        "that",
+        "this",
+        "something",
+        "anything",
+        "there",
+        "from",
+        "will",
+        "would",
+        "could",
+        "should",
+        "much",
+        "many",
+    ];
+    let mut out: Vec<String> = Vec::new();
+    for w in query
+        .split(|c: char| !c.is_alphanumeric())
+        .map(str::to_lowercase)
+        .filter(|w| w.chars().count() >= 3 && !COMMON.contains(&w.as_str()))
+    {
+        if !out.contains(&w) {
+            out.push(w);
+        }
+    }
+    out
+}
+
 pub struct ListFaqs;
 
 impl Operation for ListFaqs {
@@ -54,13 +105,14 @@ impl Operation for ListFaqs {
 impl ReadOp<Cx> for ListFaqs {
     async fn read(&self, cx: &Cx, input: ListFaqsInput) -> Result<Value, ToolError> {
         let page = Page::new(input.limit, input.cursor.as_deref())?;
-        let query = input
-            .query
-            .map(|q| q.trim().to_owned())
-            .filter(|q| !q.is_empty());
-        let filter = "tenant_id = $1 AND ($2::text IS NULL OR category = $2)
-            AND ($3::text IS NULL OR name ILIKE '%' || $3 || '%'
-                 OR accepted_answer ILIKE '%' || $3 || '%')";
+        // Words, not a phrase: "how long to return" finds "How long do I have to return?".
+        let query = input.query.as_deref().map(words).filter(|w| !w.is_empty());
+        let hits = "(SELECT count(*) FROM unnest($3::text[]) w
+                     WHERE name ILIKE '%' || w || '%' OR accepted_answer ILIKE '%' || w || '%')";
+        let filter = format!(
+            "tenant_id = $1 AND ($2::text IS NULL OR category = $2)
+             AND ($3::text[] IS NULL OR {hits} > 0)"
+        );
         let mut tx = cx.read().await.map_err(ToolError::from)?;
         let total: i64 = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
             "SELECT count(*) FROM customer.question WHERE {filter}"
@@ -73,7 +125,8 @@ impl ReadOp<Cx> for ListFaqs {
         .map_err(db)?;
         let rows = sqlx::query_as::<_, QuestionRow>(sqlx::AssertSqlSafe(format!(
             "SELECT id, name, accepted_answer, category FROM customer.question WHERE {filter}
-             ORDER BY category, position, id LIMIT $4 OFFSET $5"
+             ORDER BY (CASE WHEN $3::text[] IS NULL THEN 0 ELSE {hits} END) DESC,
+                      category, position, id LIMIT $4 OFFSET $5"
         )))
         .bind(tx.tenant.as_str())
         .bind(input.category.as_deref())
@@ -101,6 +154,16 @@ mod tests {
     use acom_contract::schema::{closed_schema_for, violations};
 
     use super::*;
+
+    #[test]
+    fn a_query_is_its_words_not_a_phrase() {
+        assert_eq!(
+            words("How long do I have to return something?"),
+            ["long", "return"]
+        );
+        assert_eq!(words("return window"), ["return", "window"]);
+        assert_eq!(words("  "), Vec::<String>::new());
+    }
 
     #[test]
     fn input_is_closed_and_anyone_may_read() {

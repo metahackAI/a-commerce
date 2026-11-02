@@ -772,7 +772,7 @@ schema.org 대응: `member_price` → `TierBenefitLoyaltyPrice`, `points_multipl
 - 논리주소/REST: `customer.faq_notice.list_faqs` · `GET /v1/customer/faqs`
 - 요약: FAQ 목록(schema.org `FAQPage`). 비회원도 가능.
 - consumes → produces: → `faq_id[]`
-- 입력: `category?`, `query?`, `limit`(기본 20, 최대 100), `cursor?`
+- 입력: `category?`, `query?`(질문이나 답에 든 단어들. 문구가 아니라 세 글자 이상의 단어 하나하나로 찾고 "how"·"the" 같은 흔한 말은 빼며, 맞는 단어가 많은 것부터), `limit`(기본 20, 최대 100), `cursor?`
 - 출력: `{"items": [{"id": "faq_returns", "name": "How long do I have to return?", "category": "returns"}], "total": 24}`
 - 정책: 없음(읽기).
 - 에러: 없음.
