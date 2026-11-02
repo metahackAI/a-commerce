@@ -66,7 +66,7 @@ export function MemoryNoteBlock({block}: BlockProps) {
             ))}
           </HStack>
         ) : null}
-        <Intents says={intentsFor(block, 'memory_note', memoryId)} />
+        <Intents says={intentsFor(block, 'memory_note', memoryId)} about={target.context} />
       </VStack>
     </Card>
   );

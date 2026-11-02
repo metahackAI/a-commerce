@@ -282,13 +282,18 @@ export function Transcript({
   );
 }
 
-/** A person's or the system's line in the conversation. */
+/** A person's or the system's line in the conversation, with what it was about when it named something. */
 function messageItem(m: Message): ReactNode {
-  return m.sender === 'system' ? (
-    <ChatSystemMessage key={m.id}>{m.text}</ChatSystemMessage>
-  ) : (
+  if (m.sender === 'system') return <ChatSystemMessage key={m.id}>{m.text}</ChatSystemMessage>;
+  const about = (m.context ?? []).map(chipText);
+  return (
     <ChatMessage key={m.id} sender={m.sender}>
       <ChatMessageBubble>{m.text}</ChatMessageBubble>
+      {about.length > 0 ? (
+        <Text type="supporting" color="secondary">
+          About {about.join(', ')}
+        </Text>
+      ) : null}
     </ChatMessage>
   );
 }

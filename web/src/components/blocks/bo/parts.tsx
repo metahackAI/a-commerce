@@ -99,7 +99,7 @@ export function BlockFrame({
                 variant="ghost"
                 onClick={() => {
                   dock.open();
-                  void ai.send(say);
+                  void ai.send(say, undefined, [t.context]);
                 }}
               />
             ))}
