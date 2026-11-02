@@ -144,9 +144,12 @@ div:has(> .acom-chat-chips) { min-width: 0; max-width: 100%; }
 .acom-chat-chip > * { min-width: 0; max-width: 100%; }
 `;
 
-/** A picked element's chip text: its short name, else the first part of what it shows. */
+/**
+ * A picked element's chip text: its short name, else the first non-empty part of what it shows,
+ * else its kind. Never empty, so a chip always says what it is.
+ */
 function chipText(p: ElementContext): string {
-  return p.title ?? p.label.split(' · ')[0] ?? p.label;
+  return p.title?.trim() || p.label.split(' · ').find(part => part.trim() !== '') || p.kind.replace(/_/g, ' ');
 }
 
 /** The elements picked as "this", as removable chips; the whole label shows on hover. */

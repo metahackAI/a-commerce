@@ -104,7 +104,7 @@ return <TableRow ref={t.ref} {...t.props}>…</TableRow>;
 ### 3.2 묻기와 고치기
 
 - 요소를 고르면(묻기 버튼 "Ask about this") 입력 칸에 그 요소가 칩으로 붙고, 턴 요청의 `context`에 `element_ref`, `kind`, `ids`, `label`이 실립니다. 에이전트는 "이것"이 무엇인지 추측하지 않습니다.
-- 칩에는 짧은 이름(`useAiTarget`의 `title`, 없으면 `label`의 첫 부분)이 보이고, 길면 말줄임으로 끝나며 전체 `label`은 마우스를 올리면 보입니다. `title`은 웹 안에서만 쓰고 보내지 않습니다. 표의 행은 이름이 없으면 종류와 대상으로 부릅니다(`Question · Packable windbreaker`).
+- 칩에는 짧은 이름(`useAiTarget`의 `title`, 없으면 `label`의 첫 부분)이 보이고, 길면 말줄임으로 끝나며 전체 `label`은 마우스를 올리면 보입니다. `title`은 웹 안에서만 쓰고 보내지 않습니다. 표의 행은 이름이 없으면 무엇에 관한 행인지로 부릅니다: 변경은 동작·엔티티·대상(`Update unit price specification · prd_windbreaker`), 그 밖에는 종류와 대상(`Question · Packable windbreaker`). 칩은 비지 않습니다(짧은 이름 → `label`의 비어 있지 않은 첫 부분 → 요소 종류).
 - 추천 말은 블록 데이터의 `suggested_intents`에서 오고, 누르면 그 문장이 그대로 대화로 갑니다.
 - 계획: 입력 칸(`NaturalInput`)이 자연어를 받아(기간 칸에 "this weekend") 에이전트가 스토어 시간대로 풀고 `looking_for` 칩으로 확인받는 것. 아직 없습니다. 지금은 대화 입력 칸 하나입니다.
 
