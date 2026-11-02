@@ -991,6 +991,37 @@ impl<'r> Turn<'r> {
                 &res,
             );
             self.record_call(record, None).await;
+            // A stream that came back without the answer (a provider that streams it apart, or
+            // breaks streamed structured output) is asked once more without streaming, so the
+            // person still gets the model's reply rather than the plain one. Not when the
+            // endpoint is down: that would only wait twice.
+            let unstreamed = match &res {
+                Ok(r) => r.text.trim().is_empty(),
+                Err(e) => !e.is_down() && !matches!(e, LlmError::Timeout(_) | LlmError::Resting(_)),
+            };
+            let res = if unstreamed
+                && (self.usage.len() as u32) < self.limits.model_calls
+                && !self.time_left().is_zero()
+            {
+                self.reply_stream.reset("The reply is being written again.");
+                let left = self.time_left();
+                let started_at = self.clock.now();
+                let t = Instant::now();
+                let again = tokio::time::timeout(left, model.chat(&req, None))
+                    .await
+                    .unwrap_or(Err(LlmError::Timeout(left.as_secs())));
+                let record = UsageRecord::new(
+                    model.info(),
+                    purpose,
+                    started_at,
+                    t.elapsed().as_millis() as u64,
+                    &again,
+                );
+                self.record_call(record, None).await;
+                again
+            } else {
+                res
+            };
             if let Ok(r) = res
                 && !r.text.trim().is_empty()
             {
