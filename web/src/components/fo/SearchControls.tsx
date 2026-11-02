@@ -4,18 +4,29 @@
 // with the store's counts; choosing one changes the URL, and the page reads search_products again.
 // search_products filters by category, availability and list-price range; brand, color and size
 // facets narrow the search words instead.
+//
+// The filters sit in a panel on the left that stays in view while the results scroll (on a phone,
+// a collapsible section above them). Each group shows its first few values and the rest behind
+// "More"; a chosen value always shows.
 
+import {useAppShellMobile} from '@astryxdesign/core/AppShell';
+import {Button} from '@astryxdesign/core/Button';
+import {CheckboxInput} from '@astryxdesign/core/CheckboxInput';
 import {Collapsible} from '@astryxdesign/core/Collapsible';
+import {Divider} from '@astryxdesign/core/Divider';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
-import {Selector} from '@astryxdesign/core/Selector';
 import {Text} from '@astryxdesign/core/Text';
-import {Token} from '@astryxdesign/core/Token';
 import {usePathname, useRouter} from 'next/navigation';
+import {useState, type ReactNode} from 'react';
 
 import {useAiTarget} from '@/ai/useAiTarget';
 import {price, words} from '@/app/(storefront)/_lib/format';
 import type {Facet} from '@/app/(storefront)/_lib/types';
 import {hrefWith, type SearchParamsState} from '@/app/(storefront)/_lib/search-href';
+
+/** Values a group shows before "More". */
+const VISIBLE = 5;
+const PANEL_WIDTH = 240;
 
 function priceRangeLabel(value: string, currency: string): string {
   const [lo, hi] = value.split('-');
@@ -26,49 +37,101 @@ function priceRangeLabel(value: string, currency: string): string {
   return `${price(a, currency)} – ${price(b, currency)}`;
 }
 
-function FacetToken({
-  facet,
-  label,
-  isActive,
-  href,
-  onRemove,
-}: {
-  facet: Facet;
-  label: string;
-  isActive: boolean;
-  href: string;
-  onRemove?: () => void;
-}) {
-  const target = useAiTarget({kind: 'chip', label: `${words(facet.name)}: ${label}`, ids: {facet: `${facet.name}:${facet.value}`}});
+// ---------------------------------------------------------------- sort
+
+export function SortBar({state}: {state: SearchParamsState}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const current = state.sort ?? (state.q ? 'relevance' : 'newest');
+  const options = [
+    ...(state.q ? [{value: 'relevance', label: 'Best match'}] : []),
+    {value: 'newest', label: 'Newest'},
+    {value: 'price', label: 'Price: low to high'},
+    {value: '-price', label: 'Price: high to low'},
+  ];
   return (
-    <Token
-      ref={target.ref}
-      {...target.props}
-      label={`${label} (${facet.count})`}
-      size="sm"
-      color={isActive ? 'blue' : 'default'}
-      href={isActive ? undefined : href}
-      onRemove={isActive ? onRemove : undefined}
-    />
+    <HStack gap={1} wrap="wrap" vAlign="center" role="group" aria-label="Sort by">
+      {options.map(o => (
+        <Button
+          key={o.value}
+          label={o.label}
+          size="sm"
+          variant={o.value === current ? 'secondary' : 'ghost'}
+          aria-pressed={o.value === current}
+          onClick={() => router.push(hrefWith(pathname, state, {sort: o.value === 'relevance' ? undefined : o.value}))}
+        />
+      ))}
+    </HStack>
   );
 }
 
-export function SearchControls({
+// ---------------------------------------------------------------- filters
+
+function FacetCheckbox({facet, label, isActive, onChange}: {facet: Facet; label: string; isActive: boolean; onChange: (on: boolean) => void}) {
+  const target = useAiTarget({kind: 'chip', label: `${words(facet.name)}: ${label}`, ids: {facet: `${facet.name}:${facet.value}`}});
+  return (
+    <div ref={target.ref} {...target.props}>
+      <CheckboxInput size="sm" label={`${label} (${facet.count})`} value={isActive} onChange={on => onChange(on)} />
+    </div>
+  );
+}
+
+function FacetGroup({
+  title,
+  items,
+  render,
+  onChange,
+}: {
+  title: string;
+  items: Facet[];
+  render: (f: Facet) => {label: string; active: boolean};
+  onChange: (f: Facet, on: boolean) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const shown = open ? items : items.filter((f, i) => i < VISIBLE || render(f).active);
+  const hiddenCount = items.length - shown.length;
+  return (
+    <VStack gap={1}>
+      <Text type="label" weight="semibold">
+        {title}
+      </Text>
+      {shown.map(f => {
+        const {label, active} = render(f);
+        return <FacetCheckbox key={`${f.name}:${f.value}`} facet={f} label={label} isActive={active} onChange={on => onChange(f, on)} />;
+      })}
+      {items.length > VISIBLE ? (
+        <HStack>
+          <Button
+            label={open ? 'Show less' : `More (${hiddenCount})`}
+            size="sm"
+            variant="ghost"
+            aria-expanded={open}
+            onClick={() => setOpen(o => !o)}
+          />
+        </HStack>
+      ) : null}
+    </VStack>
+  );
+}
+
+export function FilterPanel({
   state,
   facets,
   categoryNames,
   currency,
   showCategoryFacet,
+  clearHref,
 }: {
   state: SearchParamsState;
   facets: Facet[];
   categoryNames: Record<string, string>;
   currency: string;
   showCategoryFacet: boolean;
+  /** The page with the search words kept and every filter cleared. */
+  clearHref: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const go = (change: Partial<SearchParamsState>) => router.push(hrefWith(pathname, state, change));
 
   const groups: {name: string; title: string; items: Facet[]}[] = [
     {name: 'category', title: 'Category', items: showCategoryFacet ? facets.filter(f => f.name === 'category') : []},
@@ -78,13 +141,6 @@ export function SearchControls({
     {name: 'color', title: 'Color', items: facets.filter(f => f.name === 'color')},
     {name: 'size', title: 'Size', items: facets.filter(f => f.name === 'size')},
   ].filter(g => g.items.length > 0);
-
-  const sortOptions = [
-    ...(state.q ? [{value: 'relevance', label: 'Best match'}] : []),
-    {value: 'newest', label: 'Newest'},
-    {value: 'price', label: 'Price: low to high'},
-    {value: '-price', label: 'Price: high to low'},
-  ];
 
   function labelOf(f: Facet): string {
     if (f.label) return f.label;
@@ -118,46 +174,63 @@ export function SearchControls({
     return {q: on ? [...q, f.value].join(' ') : q.filter(w => w.toLowerCase() !== f.value.toLowerCase()).join(' ')};
   }
 
+  const onChange = (f: Facet, on: boolean) => router.push(hrefWith(pathname, state, change(f, on)), {scroll: false});
+  const render = (f: Facet) => ({label: labelOf(f), active: active(f)});
+  const anyActive = groups.some(g => g.items.some(active));
+
+  if (groups.length === 0) return null;
   return (
-    <VStack gap={3}>
-      <HStack gap={3} vAlign="end" wrap="wrap" justify="between">
-        <Selector
-          label="Sort by"
-          size="sm"
-          variant="secondary"
-          options={sortOptions}
-          value={state.sort ?? (state.q ? 'relevance' : 'newest')}
-          onChange={v => go({sort: v === 'relevance' ? undefined : v})}
-        />
+    <VStack gap={4}>
+      <HStack gap={2} justify="between" vAlign="center">
+        <Text type="label" weight="semibold">
+          Filters
+        </Text>
+        {anyActive ? <Button label="Clear all" size="sm" variant="ghost" href={clearHref} /> : null}
       </HStack>
-      {groups.length > 0 ? (
-        <Collapsible trigger={<Text type="label">Filters</Text>} defaultIsOpen>
-          <VStack gap={3} paddingBlockStart={2}>
-            {groups.map(g => (
-              <VStack key={g.name} gap={1}>
-                <Text type="supporting" color="secondary">
-                  {g.title}
-                </Text>
-                <HStack gap={1} wrap="wrap">
-                  {g.items.map(f => {
-                    const on = active(f);
-                    return (
-                      <FacetToken
-                        key={`${f.name}:${f.value}`}
-                        facet={f}
-                        label={labelOf(f)}
-                        isActive={on}
-                        href={hrefWith(pathname, state, change(f, true))}
-                        onRemove={() => go(change(f, false))}
-                      />
-                    );
-                  })}
-                </HStack>
-              </VStack>
-            ))}
-          </VStack>
-        </Collapsible>
-      ) : null}
+      {groups.map((g, i) => (
+        <VStack key={g.name} gap={4}>
+          {i > 0 ? <Divider /> : null}
+          <FacetGroup title={g.title} items={g.items} render={render} onChange={onChange} />
+        </VStack>
+      ))}
     </VStack>
+  );
+}
+
+// ---------------------------------------------------------------- layout
+
+/**
+ * The filter panel on the left, kept in view while the results scroll; on a phone the filters
+ * fold into a section above the results.
+ */
+export function BrowseLayout({filters, children}: {filters: ReactNode; children: ReactNode}) {
+  const {isMobile} = useAppShellMobile();
+  if (isMobile) {
+    return (
+      <VStack gap={4}>
+        {filters ? <Collapsible trigger={<Text type="label">Filters</Text>}>{filters}</Collapsible> : null}
+        {children}
+      </VStack>
+    );
+  }
+  return (
+    <HStack gap={6} vAlign="start">
+      {filters ? (
+        <aside
+          aria-label="Filters"
+          style={{
+            width: PANEL_WIDTH,
+            flexShrink: 0,
+            position: 'sticky',
+            top: 'var(--spacing-4)',
+            // The window less the store's top bar and a margin; a long panel scrolls on its own.
+            maxHeight: 'calc(100vh - 120px)',
+            overflowY: 'auto',
+          }}>
+          {filters}
+        </aside>
+      ) : null}
+      <div style={{flex: 1, minWidth: 0}}>{children}</div>
+    </HStack>
   );
 }

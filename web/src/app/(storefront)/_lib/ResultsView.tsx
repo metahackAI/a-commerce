@@ -1,4 +1,4 @@
-// Search results with sorting, filters and pages: shared by /search and /c/[category_id].
+// Search results with sorting, filters and endless scrolling: shared by /search and /c/[category_id].
 // Reads search_products (results, the shopper's own prices) and get_facets (filter counts).
 
 import {Button} from '@astryxdesign/core/Button';
@@ -7,11 +7,11 @@ import {HStack, Layout, LayoutContent, VStack} from '@astryxdesign/core/Layout';
 import {Heading, Text} from '@astryxdesign/core/Text';
 
 import {ErrorNotice} from '@/components/fo/ErrorNotice';
-import {ProductGrid} from '@/components/fo/ProductGrid';
+import {InfiniteProducts} from '@/components/fo/InfiniteProducts';
 import {SearchBox} from '@/components/fo/SearchBox';
-import {SearchControls} from '@/components/fo/SearchControls';
+import {BrowseLayout, FilterPanel, SortBar} from '@/components/fo/SearchControls';
 
-import {hrefWith, type SearchParamsState} from './search-href';
+import type {SearchParamsState} from './search-href';
 import type {Page, Query} from '@/lib/api';
 
 import {load, orElse} from './server';
@@ -65,7 +65,9 @@ export async function ResultsView({
   const categoryId = fixedCategoryId ?? state.category_id;
   // search_products takes list-price bounds as MonetaryAmount; in a query string an object field is JSON.
   const currency = state.currency ?? 'USD';
-  const query: Query = {
+  // The query without a cursor: the results keep loading its next pages as the shopper scrolls,
+  // and a new query (its key) starts over.
+  const baseQuery: Query = {
     query: state.q,
     category_id: categoryId,
     sort: state.sort,
@@ -73,8 +75,8 @@ export async function ResultsView({
     min_price: state.min_price ? JSON.stringify({value: Number(state.min_price), currency}) : undefined,
     max_price: state.max_price ? JSON.stringify({value: Number(state.max_price), currency}) : undefined,
     limit: PAGE_SIZE,
-    cursor: state.cursor,
   };
+  const query: Query = {...baseQuery, cursor: state.cursor};
   const [results, facets, categories] = await Promise.all([
     load<Page<ProductSummary>>('/v1/search/products', query),
     load<Page<Facet>>('/v1/search/facets', {
@@ -87,56 +89,61 @@ export async function ResultsView({
   const categoryNames = Object.fromEntries(orElse(categories, {items: [], total: 0}).items.map(c => [c.id, c.name]));
   const items = results.ok ? results.data.items : [];
   const shownCurrency = items[0]?.price_currency ?? currency;
-  const baseHref = hrefWith(pathname, state, {});
-  const withCursor = (c: string) => `${baseHref}${baseHref.includes('?') ? '&' : '?'}cursor=${encodeURIComponent(c)}`;
+  const clearHref = state.q ? `${pathname}?q=${encodeURIComponent(state.q)}` : pathname;
+  const queryKey = JSON.stringify(baseQuery);
 
   return (
     <Layout
       height="auto"
-      contentWidth={1200}
+      contentWidth={1280}
       content={
-        <LayoutContent padding={6}>
-          <VStack gap={5}>
-            <VStack gap={2}>
-              <Heading level={1}>{title}</Heading>
-              {subtitle ? <Text color="secondary">{subtitle}</Text> : null}
-              {results.ok ? (
-                <Text type="supporting" color="secondary">
-                  {results.data.total === 1 ? '1 product' : `${results.data.total} products`}
-                </Text>
-              ) : null}
-            </VStack>
-            <SearchBox initial={state.q ?? ''} />
-            <SearchControls
-              state={state}
-              facets={orElse(facets, {items: [], total: 0}).items}
-              categoryNames={categoryNames}
-              currency={shownCurrency}
-              showCategoryFacet={!fixedCategoryId}
-            />
-            {!results.ok ? (
-              <ErrorNotice error={results.error} askAbout={state.q ? `Help me find ${state.q}` : undefined} />
-            ) : items.length === 0 ? (
-              <EmptyState
-                title="Nothing matches yet"
-                description={state.q ? `No products for “${state.q}” with these filters.` : 'No products with these filters.'}
-                actions={
-                  <HStack gap={2} wrap="wrap">
-                    <Button label="Clear filters" href={state.q ? `${pathname}?q=${encodeURIComponent(state.q)}` : pathname} />
-                    <Button label="Shop all" variant="ghost" href="/search" />
-                  </HStack>
-                }
+        // Visible overflow: the filter panel sticks to the shell's scrolling area, not to this box.
+        <LayoutContent padding={6} style={{overflow: 'visible'}}>
+          <BrowseLayout
+            filters={
+              <FilterPanel
+                state={state}
+                facets={orElse(facets, {items: [], total: 0}).items}
+                categoryNames={categoryNames}
+                currency={shownCurrency}
+                showCategoryFacet={!fixedCategoryId}
+                clearHref={clearHref}
               />
-            ) : (
-              <ProductGrid products={items} />
-            )}
-            {results.ok && (state.cursor || results.data.next_cursor) ? (
-              <HStack gap={2} justify="center">
-                {state.cursor ? <Button label="First page" variant="ghost" href={baseHref} /> : null}
-                {results.data.next_cursor ? <Button label="More products" href={withCursor(results.data.next_cursor)} /> : null}
+            }>
+            <VStack gap={4}>
+              <VStack gap={1}>
+                <Heading level={1}>{title}</Heading>
+                {subtitle ? <Text color="secondary">{subtitle}</Text> : null}
+              </VStack>
+              <SearchBox initial={state.q ?? ''} />
+              <HStack gap={3} justify="between" vAlign="center" wrap="wrap">
+                {results.ok ? (
+                  <Text type="supporting" color="secondary">
+                    {results.data.total === 1 ? '1 product' : `${results.data.total} products`}
+                  </Text>
+                ) : (
+                  <span />
+                )}
+                <SortBar state={state} />
               </HStack>
-            ) : null}
-          </VStack>
+              {!results.ok ? (
+                <ErrorNotice error={results.error} askAbout={state.q ? `Help me find ${state.q}` : undefined} />
+              ) : items.length === 0 ? (
+                <EmptyState
+                  title="Nothing matches yet"
+                  description={state.q ? `No products for “${state.q}” with these filters.` : 'No products with these filters.'}
+                  actions={
+                    <HStack gap={2} wrap="wrap">
+                      <Button label="Clear filters" href={clearHref} />
+                      <Button label="Shop all" variant="ghost" href="/search" />
+                    </HStack>
+                  }
+                />
+              ) : (
+                <InfiniteProducts key={queryKey} query={baseQuery} initial={items} initialCursor={results.data.next_cursor ?? null} />
+              )}
+            </VStack>
+          </BrowseLayout>
         </LayoutContent>
       }
     />

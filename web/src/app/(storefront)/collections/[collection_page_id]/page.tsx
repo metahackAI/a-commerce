@@ -7,16 +7,12 @@ import {Token} from '@astryxdesign/core/Token';
 import {ErrorNotice} from '@/components/fo/ErrorNotice';
 import {ProductGrid} from '@/components/fo/ProductGrid';
 
+import {slotItemId} from '../../_lib/collections';
 import {longDate} from '../../_lib/format';
 import {load} from '../../_lib/server';
-import type {CollectionPage, Product, SlotItem} from '../../_lib/types';
+import type {CollectionPage, Product} from '../../_lib/types';
 
 type Params = Promise<{collection_page_id: string}>;
-
-function itemId(item: SlotItem): string | null {
-  if (typeof item === 'string') return item;
-  return item.item_id ?? item.product_id ?? item.id ?? null;
-}
 
 export async function generateMetadata({params}: {params: Params}): Promise<Metadata> {
   const id = decodeURIComponent((await params).collection_page_id);
@@ -47,7 +43,7 @@ export default async function CollectionPageView({params}: {params: Params}) {
   const hidden = new Set((c.hidden_items ?? []).map(h => h.product_id));
   const sections = await Promise.all(
     c.has_part.map(async part => {
-      const ids = part.item_list_element.map(itemId).filter((p): p is string => !!p && p.startsWith('prd_') && !hidden.has(p));
+      const ids = part.item_list_element.map(slotItemId).filter((p): p is string => !!p && p.startsWith('prd_') && !hidden.has(p));
       const loaded = await Promise.all(ids.map(p => load<Product>(`/v1/catalog/products/${encodeURIComponent(p)}`)));
       return {name: part.name, products: loaded.flatMap(l => (l.ok ? [l.data] : []))};
     }),
