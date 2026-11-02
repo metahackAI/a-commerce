@@ -135,12 +135,11 @@ async fn main() -> ExitCode {
                 models = ?models.models.keys().collect::<Vec<_>>(),
                 "agent definitions loaded"
             );
-            Some(Arc::new(Runtime::new(
-                Arc::new(profiles),
-                models,
-                log,
-                store,
-            )))
+            let runtime = Arc::new(Runtime::new(Arc::new(profiles), models, log, store));
+            // Whether each model's replies can stream is found out in the background, at start
+            // and on a schedule; turns stream only where it was seen to work.
+            tokio::spawn(runtime.clone().keep_streaming_probed());
+            Some(runtime)
         }
         Err(e) => {
             problems.push(format!(

@@ -65,6 +65,33 @@ fn reply_schema() -> Value {
                                    "description": "Two or three plain sentences for the person."}}})
 }
 
+/// Whether `variant` streams an answer from `model`: a short request shaped like a reply, which
+/// must come back in pieces that already read as text, and whole at the end.
+async fn probe_once(model: &dyn acom_llm::ChatModel, variant: StreamVariant) -> bool {
+    let raw = std::sync::Mutex::new(String::new());
+    let sink = |d: &str| {
+        if let Ok(mut r) = raw.lock() {
+            r.push_str(d);
+        }
+    };
+    let req = ChatRequest::new(
+        "stream_check",
+        vec![
+            Message::system("Answer in one short sentence.".to_owned()),
+            Message::user("Say that you are ready.".to_owned()),
+        ],
+    )
+    .json("reply", reply_schema())
+    .max_tokens(500)
+    .stream_variant(variant);
+    let res = tokio::time::timeout(Duration::from_secs(45), model.chat(&req, Some(&sink))).await;
+    let streamed = raw
+        .lock()
+        .map(|r| crate::reply_stream::visible_text(&r))
+        .unwrap_or_default();
+    matches!(res, Ok(Ok(r)) if !r.text.trim().is_empty()) && !streamed.trim().is_empty()
+}
+
 /// A reply the model wrote, and whether a length limit stopped it before it finished.
 struct ReplyDraft {
     text: String,
@@ -278,11 +305,30 @@ pub struct Runtime {
     models: ModelSet,
     log: Arc<dyn TurnLog>,
     store: Arc<dyn StoreInfo>,
-    /// For each model (alias), how far down its ways to stream the reply (`stream_variants`) it
-    /// has had to go: a way that came back without text is not tried again, and past the last
-    /// one the model's replies are not streamed.
-    stream_tried: std::sync::Mutex<BTreeMap<String, usize>>,
+    /// For each model (alias), whether its replies stream and how ([`StreamState`]). Found out
+    /// in the background ([`Runtime::keep_streaming_probed`]), never in a person's turn.
+    streaming: std::sync::Mutex<BTreeMap<String, StreamState>>,
+    /// Wakes the background check when a way that worked stops working in a turn.
+    reprobe: tokio::sync::Notify,
 }
+
+/// What the runtime knows about streaming one model's reply.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize)]
+#[serde(tag = "state", content = "way", rename_all = "snake_case")]
+pub enum StreamState {
+    /// Not checked yet (or a way stopped working): replies come whole until it is.
+    #[default]
+    Unknown,
+    /// Replies stream this way: the background check saw an answer arrive in pieces.
+    Works(StreamVariant),
+    /// No way gave a streamed answer: replies come whole, and it is checked again later.
+    Off,
+}
+
+/// How often the background check looks again at a model whose replies do not stream (a server
+/// that gets fixed starts streaming without a restart), and at one whose do.
+const PROBE_AGAIN_OFF: Duration = Duration::from_secs(10 * 60);
+const PROBE_AGAIN_WORKS: Duration = Duration::from_secs(60 * 60);
 
 impl std::fmt::Debug for Runtime {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -313,25 +359,86 @@ impl Runtime {
             models,
             log,
             store,
-            stream_tried: std::sync::Mutex::new(BTreeMap::new()),
+            streaming: std::sync::Mutex::new(BTreeMap::new()),
+            reprobe: tokio::sync::Notify::new(),
         }
     }
 
-    /// The way to stream a reply from this model now, or `None` when none is left to try.
+    /// The way to stream a reply from this model now: only one the background check saw work.
     fn stream_variant(&self, model: &ModelInfo) -> Option<StreamVariant> {
-        let tried = self
-            .stream_tried
-            .lock()
-            .map_or(0, |t| t.get(&model.alias).copied().unwrap_or(0));
-        model.stream_variants.get(tried).copied()
+        match self.stream_state(&model.alias) {
+            StreamState::Works(v) => Some(v),
+            StreamState::Unknown | StreamState::Off => None,
+        }
     }
 
-    /// A way that came back without text: the next turn tries the next one.
+    /// A way that worked came back without text in a turn: replies come whole again until the
+    /// background check, woken now, has looked again.
     fn stream_failed(&self, model: &ModelInfo, variant: StreamVariant) {
-        if let Ok(mut t) = self.stream_tried.lock() {
-            let at = t.entry(model.alias.clone()).or_default();
-            if model.stream_variants.get(*at) == Some(&variant) {
-                *at += 1;
+        if let Ok(mut s) = self.streaming.lock()
+            && s.get(&model.alias) == Some(&StreamState::Works(variant))
+        {
+            s.insert(model.alias.clone(), StreamState::Unknown);
+            self.reprobe.notify_one();
+        }
+    }
+
+    pub fn stream_state(&self, alias: &str) -> StreamState {
+        self.streaming.lock().map_or(StreamState::Unknown, |s| {
+            s.get(alias).copied().unwrap_or_default()
+        })
+    }
+
+    /// Every configured model and whether its replies stream (`GET /chat/{surface}/streaming`).
+    pub fn stream_states(&self) -> Vec<(String, StreamState)> {
+        self.models
+            .models
+            .keys()
+            .map(|alias| (alias.clone(), self.stream_state(alias)))
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn assume_streaming(&self, alias: &str, state: StreamState) {
+        if let Ok(mut s) = self.streaming.lock() {
+            s.insert(alias.to_owned(), state);
+        }
+    }
+
+    /// One look at every model whose replies do not stream yet: each of its ways
+    /// (`stream_variants`) in turn, with a short request shaped like a reply, until one answers
+    /// in pieces. Returns how long to wait before the next look.
+    pub async fn probe_streaming(&self) -> Duration {
+        let mut wait = PROBE_AGAIN_WORKS;
+        for (alias, model) in &self.models.models {
+            if matches!(self.stream_state(alias), StreamState::Works(_)) {
+                continue;
+            }
+            let mut found = StreamState::Off;
+            for &v in &model.info().stream_variants {
+                if probe_once(model.as_ref(), v).await {
+                    found = StreamState::Works(v);
+                    break;
+                }
+            }
+            tracing::info!(model = %alias, state = ?found, "reply streaming checked");
+            if found == StreamState::Off {
+                wait = PROBE_AGAIN_OFF;
+            }
+            if let Ok(mut s) = self.streaming.lock() {
+                s.insert(alias.clone(), found);
+            }
+        }
+        wait
+    }
+
+    /// Checks streaming at start, again on a schedule, and at once when a way stops working.
+    pub async fn keep_streaming_probed(self: Arc<Self>) {
+        loop {
+            let wait = self.probe_streaming().await;
+            tokio::select! {
+                () = tokio::time::sleep(wait) => {}
+                () = self.reprobe.notified() => {}
             }
         }
     }
