@@ -752,6 +752,58 @@ struct ShownBlock {
 
 /// Where a block sits on the canvas: the product views are one place (the same results laid
 /// out as a list, a gallery or a comparison), anything else by its kind; then its order.
+/// The value for `field` among the rows a used step returned, when exactly one of those rows is
+/// named in the request: its id or its name, word for word ("VIP" is the tier `vip` named VIP).
+fn named_in_request(
+    field: &str,
+    step: &PlanStep,
+    tool: &ToolSpec,
+    view: &BTreeMap<String, StepRecord>,
+    said: &str,
+) -> Option<Value> {
+    // The slot the field takes, else a slot of the same name (`tier_id`).
+    let slot = tool
+        .consumes
+        .iter()
+        .find(|s| {
+            tool.field_for_slot(&s.name)
+                .is_some_and(|(f, _)| f == field)
+        })
+        .map_or(field, |s| s.name.as_str());
+    // The words that only name what the tool returns ("members" in "the VIP members") name no
+    // one value.
+    let own = toolsearch::tokens(&tool.tool.replace('_', " "));
+    let said: Vec<String> = toolsearch::tokens(said)
+        .into_iter()
+        .filter(|w| !own.contains(w))
+        .collect();
+    let named = |text: &str| {
+        let words = toolsearch::tokens(&text.replace('_', " "));
+        !words.is_empty() && words.iter().all(|w| said.contains(w))
+    };
+    let mut found: Vec<Value> = Vec::new();
+    for r in step.uses.iter().filter_map(|u| view.get(u)) {
+        let Some(values) = r.slots.get(slot) else {
+            continue;
+        };
+        for row in r.output.as_ref().map(executor::rows).unwrap_or_default() {
+            let Some(id) = row
+                .get(slot)
+                .or_else(|| row.get("id"))
+                .filter(|v| values.contains(v))
+            else {
+                continue;
+            };
+            let by_name = row.get("name").and_then(Value::as_str).is_some_and(named);
+            let by_id = id.as_str().is_some_and(named);
+            if (by_name || by_id) && !found.contains(id) {
+                found.push(id.clone());
+            }
+        }
+    }
+    (found.len() == 1).then(|| found.remove(0))
+}
+
 /// A shopper's read narrowed by a yes/no they never mentioned ("questions" read as
 /// `answered: true` hides the one still waiting): such a filter is left out, so the read shows
 /// everything it would without it. A yes/no whose words the shopper said stays.
@@ -1817,6 +1869,36 @@ impl<'r> Turn<'r> {
                     }
                     let mut input = bound.input;
                     let mut notes = bound.notes;
+                    let mut undecided = bound.undecided;
+                    // A field still open that a used step lists values for (undecided among
+                    // several, or never filled: the tiers for `tier_id`): the one the request
+                    // names ("the VIP members"), without asking a model.
+                    let open: Vec<String> = tool
+                        .properties()
+                        .map(|p| {
+                            p.keys()
+                                .filter(|f| {
+                                    undecided.contains(f)
+                                        || (input.get(f.as_str()).is_none()
+                                            && step.uses.iter().any(|u| {
+                                                view.get(u).is_some_and(|r| {
+                                                    r.slots.contains_key(f.as_str())
+                                                })
+                                            }))
+                                })
+                                .cloned()
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    for field in open {
+                        if let Some(v) = named_in_request(&field, step, &tool, &view, &self.text) {
+                            notes.push(format!("{field}: {v}, named in the request"));
+                            if let Some(args) = input.as_object_mut() {
+                                args.insert(field.clone(), v);
+                            }
+                            undecided.retain(|f| *f != field);
+                        }
+                    }
                     if tool.is_write()
                         && self.surface == ChatSurface::Bo
                         && let Some(base) = self.replaceable_input(&tool.tool)
@@ -1826,7 +1908,7 @@ impl<'r> Turn<'r> {
                     if !tool.is_write() && self.surface == ChatSurface::Fo {
                         notes.extend(unasked_yes_no(&mut input, &tool, &self.text));
                     }
-                    self.undecided = bound.undecided;
+                    self.undecided = undecided;
                     self.call(plan, &step.id, &tool, input, notes)
                         .await
                         .map(Some)

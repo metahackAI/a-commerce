@@ -2021,6 +2021,56 @@ fn a_shoppers_read_drops_a_yes_no_they_never_mentioned() {
 }
 
 #[tokio::test]
+async fn the_one_the_request_names_is_taken_from_a_list_read_before() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![(
+            "plan",
+            json!({"interpretation": [], "about": "self", "reply_plan": "product_table", "steps": [
+                {"id": "tiers", "tool": "list_tiers", "args": {}, "uses": []},
+                {"id": "who", "tool": "search_members", "args": {"tier_id": "", "limit": 100}, "uses": ["tiers"]}]})
+            .to_string(),
+        )],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let mut manifest = fixtures::manifest();
+    manifest.push(
+        serde_json::from_value(fixtures::tool(
+            "search_members",
+            "customer.person.search_members",
+            "read",
+            "Find members by words, tier or state.",
+            json!([]),
+            json!([{"name": "customer_id", "many": true}]),
+            json!({"tier_id": {"type": "string", "description": "Tier."},
+                   "limit": {"type": "integer", "description": "Page size."}}),
+            json!([]),
+        ))
+        .unwrap(),
+    );
+    let commerce = Commerce::with_manifest(manifest);
+    turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say("Show me the VIP members"),
+        commerce.clone(),
+    )
+    .await;
+    let searched: Vec<Value> = commerce
+        .reads()
+        .into_iter()
+        .filter(|(t, _)| t == "search_members")
+        .map(|(_, input)| input)
+        .collect();
+    assert_eq!(searched, [json!({"tier_id": "vip", "limit": 100})]);
+}
+
+#[tokio::test]
 async fn a_list_that_found_nothing_is_shown_as_an_empty_table() {
     let glimmer = Scripted::new(
         "glimmer",
