@@ -35,9 +35,12 @@ web/
     │   ├── healthz/route.ts          컨테이너·Kubernetes 헬스 체크
     │   ├── media/garment/[file]/     상품 자리표시 그림(옷 모양 + 색, SVG)
     │   ├── (storefront)/             # /  쇼퍼. layout: StorefrontShell + 어시스턴트 서랍, AiProvider(surface="fo")
-    │   │   ├── page.tsx              홈(대상별 hero 배너, 진열)
+    │   │   ├── page.tsx              홈(대상별 hero 배너, 진열, 브랜드 띠, 기획전, 공지, 팝업)
     │   │   ├── ask/                  대화 + 캔버스 전체 화면(Workspace, F1·F2·F6)
-    │   │   ├── search/  c/[category_id]/  sale/[slug]/  compare/  p/[product_id]/ (상품 페이지는 JSON-LD 포함)
+    │   │   ├── search/  c/[category_id]/  sale/[slug]/  compare/  p/[product_id]/ (상품 페이지는 JSON-LD·Q&A 포함)
+    │   │   ├── collections/[collection_page_id]/  기획전(list_curations, get_curation)
+    │   │   ├── help/  help/notices/[notice_id]/  pages/[topic]/  공지·FAQ(`pages/shipping` = `help?topic=shipping`)
+    │   │   ├── community/[board_id]/  community/posts/[post_id]/  게시판·글·댓글
     │   │   ├── cart/  checkout/  checkout/gift/  gifts/[gift_id]/  orders/  orders/[order_id]/  account/  login/
     │   │   └── _lib/                 서버 호출, 응답 타입, JSON-LD
     │   └── bo/                       # 운영자
@@ -57,7 +60,7 @@ web/
     │   ├── blocks/{bo,fo}/           ui 이름 하나 = 컴포넌트 하나, registry.ts(모르는 블록은 제목과 why만 보이는 카드)
     │   ├── workspace/Workspace.tsx   대화 + 캔버스 (Astryx `ai-chat` 템플릿에서 시작)
     │   ├── bo/                       백오피스 페이지 부품(AgentDock, BoNav, StoreClock, ChangeSetView, TaskView, SalesChart …)
-    │   ├── fo/                       스토어프론트 부품(StorefrontShell, AssistantDrawer, ProductCard, CheckoutFlow, ReturnPanel …)
+    │   ├── fo/                       스토어프론트 부품(StorefrontShell, AssistantDrawer, ProductCard, CheckoutFlow, ReturnPanel, StoreContent, StorePopup …)
     │   ├── brand/Ailism.tsx          워드마크, 어시스턴트 얼굴, 브랜드 문구, 푸터
     │   └── PersonButton.tsx          사람의 결정 (Astryx Button + AlertDialog)
     ├── lib/                          api.ts(같은 출처 호출, CSRF), server-api.ts(서버 컴포넌트), session.ts(로그인)

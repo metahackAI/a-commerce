@@ -135,7 +135,10 @@ function EndContent() {
   );
 }
 
-/** The store's display categories; on a phone (the menu drawer) also the shopper's own pages. */
+/**
+ * The store's display categories, then what operators publish besides products (collections,
+ * community boards, help and notices); on a phone (the menu drawer) also the shopper's own pages.
+ */
 function NavLinks({categories}: {categories: NavCategory[]}) {
   const pathname = usePathname();
   const {isMobile} = useAppShellMobile();
@@ -145,6 +148,9 @@ function NavLinks({categories}: {categories: NavCategory[]}) {
         <TopNavItem key={c.id} label={c.name} href={`/c/${encodeURIComponent(c.id)}`} isSelected={pathname === `/c/${c.id}`} />
       ))}
       <TopNavItem label="Shop all" href="/search" isSelected={pathname === '/search'} />
+      <TopNavItem label="Collections" href="/collections" isSelected={pathname.startsWith('/collections')} />
+      <TopNavItem label="Community" href="/community" isSelected={pathname.startsWith('/community')} />
+      <TopNavItem label="Help" href="/help" isSelected={pathname.startsWith('/help')} />
       {isMobile ? (
         <>
           <TopNavItem label="Ask Ailism" href="/ask" isSelected={pathname === '/ask'} />
