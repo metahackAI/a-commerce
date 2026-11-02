@@ -22,6 +22,7 @@ struct Scripted {
     info: ModelInfo,
     answers: Mutex<Vec<(String, String)>>,
     asked: Mutex<Vec<String>>,
+    streams_nothing: std::sync::atomic::AtomicBool,
 }
 
 impl Scripted {
@@ -40,7 +41,16 @@ impl Scripted {
                     .collect(),
             ),
             asked: Mutex::new(Vec::new()),
+            streams_nothing: std::sync::atomic::AtomicBool::new(false),
         })
+    }
+
+    /// Answers a streamed call with no text, as a provider that streams structured output
+    /// apart does; a call without streaming gets the scripted answer.
+    fn streaming_nothing(self: Arc<Self>) -> Arc<Self> {
+        self.streams_nothing
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self
     }
 
     fn asked(&self) -> Vec<String> {
@@ -60,6 +70,16 @@ impl ChatModel for Scripted {
     ) -> BoxFuture<'a, Result<ChatResponse, LlmError>> {
         Box::pin(async move {
             self.asked.lock().unwrap().push(req.purpose.clone());
+            if on_delta.is_some()
+                && self
+                    .streams_nothing
+                    .load(std::sync::atomic::Ordering::SeqCst)
+            {
+                return Ok(ChatResponse {
+                    model: self.info.model.clone(),
+                    ..Default::default()
+                });
+            }
             let mut answers = self.answers.lock().unwrap();
             match answers.iter().position(|(p, _)| *p == req.purpose) {
                 Some(i) => Ok(ChatResponse {
@@ -1696,6 +1716,44 @@ async fn a_reply_with_made_up_numbers_is_written_again_and_what_was_read_is_show
     assert_eq!(b.len(), 1, "the tiers read, shown as a table");
     assert_eq!(b[0].ui, "product_table");
     assert_eq!(glimmer.asked().iter().filter(|p| *p == "reply").count(), 2);
+}
+
+#[tokio::test]
+async fn a_stream_without_the_reply_is_asked_again_without_streaming() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            ("plan", json!({"interpretation": [{"aspect": "who", "text": "VIP members"}], "about": "self",
+                "reply_plan": "text", "steps": [
+                {"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
+            .to_string()),
+            ("reply", "You have 1,284 VIP members.".into()),
+        ],
+    )
+    .streaming_nothing();
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say("Show me our member tiers."),
+        Commerce::new(),
+    )
+    .await;
+    assert_eq!(
+        message(&events),
+        "You have 1,284 VIP members.",
+        "the model's reply, not the plain one"
+    );
+    assert_eq!(glimmer.asked().iter().filter(|p| *p == "reply").count(), 2);
+    // Nothing streamed, so the reply comes in sentences.
+    assert!(events.iter().any(
+        |e| matches!(e, Event::MessageDelta { text } if text == "You have 1,284 VIP members.")
+    ));
 }
 
 fn on_facade(text: &str) -> TurnRequest {

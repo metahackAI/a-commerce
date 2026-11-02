@@ -371,10 +371,19 @@ struct PartialCall {
     arguments: String,
 }
 
+/// How much of a streamed body is kept in case it turns out not to be a stream.
+const HEAD_BYTES: usize = 1 << 20;
+
 /// Reads a streamed chat completion (server-sent events) chunk by chunk.
 #[derive(Debug, Default)]
 pub struct StreamReader {
     pending: Vec<u8>,
+    /// The start of the body, for a provider that answered `stream: true` with one JSON object.
+    head: Vec<u8>,
+    /// `data:` lines read: none means the body was not an event stream.
+    data_lines: usize,
+    /// Text some providers send apart from the answer (`reasoning_content`, `reasoning`).
+    reasoning: usize,
     model: String,
     text: String,
     calls: BTreeMap<u64, PartialCall>,
@@ -385,6 +394,10 @@ pub struct StreamReader {
 impl StreamReader {
     /// Takes the next bytes; returns the answer text that arrived in them.
     pub fn feed(&mut self, bytes: &[u8]) -> Vec<String> {
+        if self.head.len() < HEAD_BYTES {
+            let room = HEAD_BYTES - self.head.len();
+            self.head.extend_from_slice(&bytes[..bytes.len().min(room)]);
+        }
         self.pending.extend_from_slice(bytes);
         let mut deltas = Vec::new();
         while let Some(end) = self.pending.iter().position(|b| *b == b'\n') {
@@ -399,6 +412,7 @@ impl StreamReader {
 
     fn line(&mut self, line: &str) -> Option<String> {
         let data = line.strip_prefix("data:")?.trim_start();
+        self.data_lines += 1;
         if data == "[DONE]" {
             return None;
         }
@@ -434,6 +448,11 @@ impl StreamReader {
                 }
             }
         }
+        for key in ["reasoning_content", "reasoning"] {
+            if let Some(r) = delta.get(key).and_then(Value::as_str) {
+                self.reasoning += r.chars().count();
+            }
+        }
         let text = delta.get("content").and_then(Value::as_str)?;
         if text.is_empty() {
             return None;
@@ -442,11 +461,25 @@ impl StreamReader {
         Some(text.to_owned())
     }
 
-    /// The whole answer once the stream ended.
+    /// The whole answer once the stream ended. A body that was one JSON object (a provider
+    /// that does not stream) is read as a plain completion; a stream that carried no answer, only
+    /// reasoning, is an error that says so.
     pub fn finish(mut self) -> Result<ChatResponse, LlmError> {
         if !self.pending.is_empty() {
             let rest = String::from_utf8_lossy(&std::mem::take(&mut self.pending)).into_owned();
             self.line(rest.trim());
+        }
+        if self.data_lines == 0 {
+            let v: Value = serde_json::from_slice(&self.head).map_err(|e| {
+                LlmError::BadResponse(format!("neither an event stream nor JSON: {e}"))
+            })?;
+            return parse_completion(&v);
+        }
+        if self.text.trim().is_empty() && self.calls.is_empty() && self.reasoning > 0 {
+            return Err(LlmError::BadResponse(format!(
+                "the stream carried no answer text, only {} characters of reasoning",
+                self.reasoning
+            )));
         }
         let tool_calls = self
             .calls
@@ -623,6 +656,31 @@ mod tests {
         assert_eq!(r.usage.output_tokens, 6);
         assert_eq!(r.finish_reason.as_deref(), Some("stop"));
         assert_eq!(r.model, "m");
+    }
+
+    #[test]
+    fn a_provider_that_does_not_stream_is_read_as_one_answer() {
+        let body = r#"{"model":"m","choices":[{"message":{"content":"{\"text\": \"Hi.\"}"},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":4}}"#;
+        let mut reader = StreamReader::default();
+        for chunk in body.as_bytes().chunks(5) {
+            assert!(reader.feed(chunk).is_empty());
+        }
+        let r = reader.finish().unwrap();
+        assert_eq!(r.text, "{\"text\": \"Hi.\"}");
+        assert_eq!(r.usage.output_tokens, 4);
+    }
+
+    #[test]
+    fn a_stream_of_reasoning_only_is_an_error_that_says_so() {
+        let events = concat!(
+            "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"{\\\"text\\\": \\\"Hi.\\\"}\"}}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n",
+            "data: [DONE]\n\n"
+        );
+        let mut reader = StreamReader::default();
+        assert!(reader.feed(events.as_bytes()).is_empty());
+        let e = reader.finish().unwrap_err().to_string();
+        assert!(e.contains("only 15 characters of reasoning"), "{e}");
     }
 
     #[test]
