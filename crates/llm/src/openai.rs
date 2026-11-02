@@ -384,6 +384,10 @@ pub struct StreamReader {
     data_lines: usize,
     /// Text some providers send apart from the answer (`reasoning_content`, `reasoning`).
     reasoning: usize,
+    /// An error the provider sent inside the stream (`data: {"error": …}`).
+    error: Option<String>,
+    /// The first `data:` line, to say what a stream without an answer carried.
+    first: Option<String>,
     model: String,
     text: String,
     calls: BTreeMap<u64, PartialCall>,
@@ -416,7 +420,21 @@ impl StreamReader {
         if data == "[DONE]" {
             return None;
         }
+        if self.first.is_none() {
+            self.first = Some(data.chars().take(200).collect());
+        }
         let v: Value = serde_json::from_str(data).ok()?;
+        if self.error.is_none()
+            && (v.get("error").is_some()
+                || v.get("object").and_then(Value::as_str) == Some("error"))
+        {
+            let e = v.get("error").unwrap_or(&v);
+            self.error = Some(
+                e.get("message")
+                    .and_then(Value::as_str)
+                    .map_or_else(|| e.to_string(), str::to_owned),
+            );
+        }
         if let Some(m) = v.get("model").and_then(Value::as_str) {
             m.clone_into(&mut self.model);
         }
@@ -475,10 +493,22 @@ impl StreamReader {
             })?;
             return parse_completion(&v);
         }
-        if self.text.trim().is_empty() && self.calls.is_empty() && self.reasoning > 0 {
+        if let Some(e) = self.error.take() {
             return Err(LlmError::BadResponse(format!(
-                "the stream carried no answer text, only {} characters of reasoning",
-                self.reasoning
+                "the stream ended with an error: {e}"
+            )));
+        }
+        if self.text.trim().is_empty() && self.calls.is_empty() {
+            if self.reasoning > 0 {
+                return Err(LlmError::BadResponse(format!(
+                    "the stream carried no answer text, only {} characters of reasoning",
+                    self.reasoning
+                )));
+            }
+            return Err(LlmError::BadResponse(format!(
+                "the stream carried no answer ({} data lines; the first: {})",
+                self.data_lines,
+                self.first.as_deref().unwrap_or("none")
             )));
         }
         let tool_calls = self
@@ -681,6 +711,21 @@ mod tests {
         assert!(reader.feed(events.as_bytes()).is_empty());
         let e = reader.finish().unwrap_err().to_string();
         assert!(e.contains("only 15 characters of reasoning"), "{e}");
+    }
+
+    #[test]
+    fn an_error_inside_the_stream_is_the_error() {
+        let events = "data: {\"object\":\"error\",\"message\":\"guided decoding failed\"}\n\ndata: [DONE]\n\n";
+        let mut reader = StreamReader::default();
+        reader.feed(events.as_bytes());
+        let e = reader.finish().unwrap_err().to_string();
+        assert!(e.contains("guided decoding failed"), "{e}");
+        let empty =
+            "data: {\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}\n\ndata: [DONE]\n\n";
+        let mut reader = StreamReader::default();
+        reader.feed(empty.as_bytes());
+        let e = reader.finish().unwrap_err().to_string();
+        assert!(e.contains("no answer (2 data lines"), "{e}");
     }
 
     #[test]
