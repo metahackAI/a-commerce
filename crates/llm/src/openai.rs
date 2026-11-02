@@ -270,7 +270,18 @@ pub fn request_body(
             .collect();
         body["tool_choice"] = json!("auto");
     }
-    if let Some(out) = &req.output {
+    // The streamed ways a provider may need (`StreamVariant`), for streamed calls only.
+    let variant = if stream {
+        req.stream_variant
+    } else {
+        StreamVariant::Configured
+    };
+    if variant == StreamVariant::WithoutThinking {
+        body["chat_template_kwargs"] = json!({"enable_thinking": false});
+    }
+    if let (StreamVariant::StructuredOutputs, Some(out)) = (variant, &req.output) {
+        body["structured_outputs"] = json!({"json": out.schema});
+    } else if let Some(out) = &req.output {
         match structured {
             StructuredOutput::JsonSchema => {
                 body["response_format"] = json!({"type": "json_schema",
@@ -651,6 +662,19 @@ mod tests {
         assert_eq!(
             b["response_format"]["type"], "json_schema",
             "only a stream changes the field"
+        );
+        let current = plan_request().stream_variant(StreamVariant::StructuredOutputs);
+        let b = request_body("m", StructuredOutput::JsonSchema, &current, true);
+        assert!(b.get("response_format").is_none());
+        assert_eq!(b["structured_outputs"]["json"]["type"], "object");
+        let calm = plan_request().stream_variant(StreamVariant::WithoutThinking);
+        let b = request_body("m", StructuredOutput::JsonSchema, &calm, true);
+        assert_eq!(b["chat_template_kwargs"]["enable_thinking"], false);
+        assert_eq!(b["response_format"]["type"], "json_schema");
+        let b = request_body("m", StructuredOutput::JsonSchema, &calm, false);
+        assert!(
+            b.get("chat_template_kwargs").is_none(),
+            "only a stream changes the body"
         );
         let bare = plan_request().stream_variant(StreamVariant::WithoutUsage);
         let b = request_body("m", StructuredOutput::JsonSchema, &bare, true);

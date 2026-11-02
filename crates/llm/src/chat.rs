@@ -108,18 +108,32 @@ pub enum StreamVariant {
     /// As the model is configured (`structured_output`), with `stream_options.include_usage`.
     #[default]
     Configured,
-    /// vLLM's `guided_json` field, whatever the model is configured with.
+    /// vLLM's current `structured_outputs: {json}` field (vLLM 0.10 and later).
+    StructuredOutputs,
+    /// As configured, with the chat template's thinking turned off
+    /// (`chat_template_kwargs.enable_thinking: false`): a reasoning model whose parser keeps a
+    /// streamed answer back while it waits for reasoning to end.
+    WithoutThinking,
+    /// vLLM's older `guided_json` field, whatever the model is configured with.
     GuidedJson,
     /// As configured, without `stream_options` (the usage is then not counted).
     WithoutUsage,
 }
 
 impl StreamVariant {
-    pub const ALL: [StreamVariant; 3] = [Self::Configured, Self::GuidedJson, Self::WithoutUsage];
+    pub const ALL: [StreamVariant; 5] = [
+        Self::Configured,
+        Self::StructuredOutputs,
+        Self::WithoutThinking,
+        Self::GuidedJson,
+        Self::WithoutUsage,
+    ];
 
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Configured => "configured",
+            Self::StructuredOutputs => "structured_outputs",
+            Self::WithoutThinking => "without_thinking",
             Self::GuidedJson => "guided_json",
             Self::WithoutUsage => "without_usage",
         }
