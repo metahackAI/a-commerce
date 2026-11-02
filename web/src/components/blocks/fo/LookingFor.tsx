@@ -38,7 +38,7 @@ function Chip({block, chip}: {block: UiBlock; chip: LookingForData['chips'][numb
         description={source ? `From ${source}` : undefined}
         onRemove={chip.removable === false ? undefined : () => say(own ? own.label : `Remove “${chip.label}”`)}
       />
-      <Intents says={intentsFor(block, 'chip', chip.label)} />
+      <Intents says={intentsFor(block, 'chip', chip.label)} about={target.context} />
     </HStack>
   );
 }

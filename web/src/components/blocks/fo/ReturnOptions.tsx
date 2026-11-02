@@ -74,7 +74,7 @@ function OptionCard({block, option, isSelected}: {block: UiBlock; option: Option
             ))}
           </HStack>
         ) : null}
-        <Intents says={intentsFor(block, 'return_option', option.kind)} />
+        <Intents says={intentsFor(block, 'return_option', option.kind)} about={target.context} />
       </VStack>
     </Card>
   );

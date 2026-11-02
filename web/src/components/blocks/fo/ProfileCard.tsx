@@ -47,7 +47,7 @@ function FactRow({block, fact}: {block: UiBlock; fact: Fact}) {
           <Text type="supporting" color="secondary">
             {[words(fact.key), fact.source ? (SOURCE[fact.source] ?? words(fact.source)) : null].filter(Boolean).join(' · ')}
           </Text>
-          <Intents says={intentsFor(block, 'profile_fact', id)} />
+          <Intents says={intentsFor(block, 'profile_fact', id)} about={target.context} />
         </VStack>
       }
       endContent={

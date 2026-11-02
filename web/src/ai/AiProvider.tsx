@@ -37,8 +37,12 @@ interface AiState {
   liveTurn: string | null;
   /** Elements the person picked as "this" for the next message. */
   picked: ElementContext[];
-  /** `taskId`: the task this message works on ("Ask the agent to work on it"). */
-  send: (text: string, taskId?: string) => Promise<void>;
+  /**
+   * `taskId`: the task this message works on ("Ask the agent to work on it"). `about`: elements
+   * the message is about besides the picked ones, such as the element a suggested sentence belongs
+   * to ("Tell me more about this one" under one product).
+   */
+  send: (text: string, taskId?: string, about?: ElementContext[]) => Promise<void>;
   /** A block's `say` button: sends its intent as `ui_event`, shown as `label` in the transcript. */
   sendEvent: (blockId: string, actionId: string, label: string, args?: Record<string, unknown>) => Promise<void>;
   /** Steps of the current (or last) turn. */
@@ -228,10 +232,10 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
   const stop = useCallback(() => running.current?.abort(), []);
 
   const send = useCallback(
-    async (text: string, taskId?: string) => {
+    async (text: string, taskId?: string, about: ElementContext[] = []) => {
       // One turn at a time: a message sent while one runs waits for the person to stop it.
       if (running.current) return;
-      const context = picked;
+      const context = [...picked, ...about.filter(a => !picked.some(p => p.element_ref === a.element_ref))];
       const turnId = nextId('turn');
       setMessages(m => [...m, {id: nextId('msg'), sender: 'user', text, context, turn_id: turnId}]);
       setPicked([]);
