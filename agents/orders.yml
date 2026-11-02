@@ -2,7 +2,7 @@
 id: orders
 surface: bo
 title: Orders agent
-description: Orders, returns and refunds, deliveries, and messages to customers about them.
+description: Orders, returns and refunds, deliveries, customers and their history, and messages to customers - one at a time or as scheduled campaigns.
 home_domains: [fulfillment, sales, messaging]
 tool_scope:
   domains: [fulfillment, sales, messaging, customer, catalog, platform]
@@ -29,3 +29,6 @@ route_when_said:
   - shipment
   - tracking
   - message the customer
+  - customer
+  - campaign
+  - campaigns

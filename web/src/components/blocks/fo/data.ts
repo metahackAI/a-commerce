@@ -117,3 +117,25 @@ export interface ProfileCardData {
   /** Remembered preferences (with the memory the Forget button undoes) and saved sizes. */
   facts: {key: string; value: unknown; source?: string | null; memory_id?: string | null}[];
 }
+
+export interface RecordListData {
+  /** What the rows are: orders, subscriptions, returns, coupons, points, reviews, questions, notices, faqs, promotions, collections, alerts, addresses, messages, delivery, policy, tier, memories, or records. */
+  kind: string;
+  /** The tool that read them. */
+  tool?: string;
+  summary?: {label: string; value?: string | null; amount?: MoneyLike; rating?: number | null; detail?: string[]; href?: string | null} | null;
+  rows: {
+    id: string;
+    title: string;
+    subtitle?: string;
+    image?: string;
+    href?: string;
+    status?: string;
+    amount?: MoneyLike;
+    rating?: number;
+    dates?: {label: string; at: string}[];
+    meta?: string[];
+    body?: string;
+  }[];
+  total: number;
+}

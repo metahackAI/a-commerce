@@ -91,7 +91,7 @@ request ─► route ─► tool search ─► plan ─► execute ─► check 
                                  configured)
 ```
 
-- **Route**: five agents (`agents/*.yml`): `promotion`, `orders`, `catalog`, and `insights` in the back office, `shopper` on the storefront. A request that contains a phrase an agent names goes to it without a model call; otherwise the router model picks.
+- **Route**: six agents (`agents/*.yml`): `promotion`, `orders`, `catalog`, `insights`, and `marketplace` in the back office, `shopper` on the storefront. A request that contains a phrase an agent names goes to it without a model call; otherwise the router model picks.
 - **Tool search**: the model never sees all tools. The harness scores the agent's tools by word match (BM25 over name, description, and fields, plus a share for the agent's home domains) and adds graph neighbors (tools that produce what a hit consumes, or consume what it produces), 5 to 8 candidates. No model call. Embedding search is not built.
 - **Plan**: a short ordered list of tool calls. Glimmer (the worker) plans first; a plan of more than three steps or across domains, or one that failed, goes to Muse Spark (the planner) when Spark is configured. Every agent names worker `glimmer` and planner `spark` (`agents/models.yml`). On the live demo Spark is not configured, so every model call runs on Glimmer.
 - **Execute**: reads run directly. Writes are previewed first. A write that needs a person goes into a change set, which the agent submits and a person approves with a button; the agent can never approve or run it. Writes that need no approval (cart, a remembered preference) run once their preview passes.

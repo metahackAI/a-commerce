@@ -28,6 +28,31 @@ tool_search:
     text: [remember, shown]
     decline: [message, evaluate]
     markdown: [sale, prices]
+    # The storefront's own records, which a product search cannot answer.
+    wishlist: [wishlist, member, keeps]
+    saved: [wishlist]
+    favorite: [wishlist]
+    point: [loyalty, balance]
+    reward: [loyalty, balance]
+    sale: [promotion, active]
+    deal: [promotion, active]
+    discount: [promotion, coupon]
+    coupon: [member, coupon]
+    say: [review, summary]
+    review: [summary]
+    question: [answer]
+    announcement: [notice]
+    window: [return, policy, faq]
+    remember: [profile, preference]
+    # The back office's.
+    customer: [member, search]
+    vip: [member, tier]
+    changed: [action, log]
+    happened: [action, log]
+    seller: [seller, partner]
+    marketplace: [seller, channel]
+    reported: [report, post, community]
+    low: [inventory, stock]
 
 router:
   # Below this the surface's default agent (or the conversation's last agent) takes the turn.

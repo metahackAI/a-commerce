@@ -237,6 +237,19 @@ mod tests {
         );
         assert_eq!(to("What needs me today?"), Some("promotion".to_owned()));
         assert_eq!(to("Hello there"), None);
+        // Each kind of record the back office keeps has an agent that reads it.
+        for (said, agent) in [
+            ("Find the customer Jamie", "orders"),
+            ("What campaigns are scheduled?", "orders"),
+            ("What coupons are active?", "promotion"),
+            ("What changed this morning?", "promotion"),
+            ("Show me the VIP members", "insights"),
+            ("Show me the reported community posts", "catalog"),
+            ("Which sellers are on the marketplace?", "marketplace"),
+            ("How is the seller dashboard looking?", "marketplace"),
+        ] {
+            assert_eq!(to(said).as_deref(), Some(agent), "{said}");
+        }
         let fo = p.for_surface(ChatSurface::Fo);
         assert!(by_phrase(&fo, "Why did sales drop yesterday?").is_none());
     }

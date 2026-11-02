@@ -62,11 +62,12 @@ route_when_said: [weekend sale, coupon, banner, needs me]   # 모델 없이 이 
 |---|---|---|---|
 | `promotion` | bo (기본) | promotion, merchandising | promotion, merchandising, catalog, search, customer, platform |
 | `orders` | bo | fulfillment, sales, messaging | fulfillment, sales, messaging, customer, catalog, platform |
-| `catalog` | bo | catalog, merchandising | catalog, merchandising, search, platform (B4: 공급사 시트 → 초안, `product_drafts` 블록) |
-| `insights` | bo | analytics | analytics (읽기만) |
+| `catalog` | bo | catalog, merchandising | catalog, merchandising, search, platform, community (B4: 공급사 시트 → 초안, `product_drafts` 블록. 리뷰·문의·커뮤니티 글 관리) |
+| `insights` | bo | analytics | analytics, customer (읽기만. 등급별 회원 목록은 `search_members`) |
+| `marketplace` | bo | partner, integration | partner, integration, catalog, sales, platform (판매자·계약·등급, 판매 채널과 그 주문·클레임·상품 가져오기) |
 | `shopper` | fo (기본) | search, catalog, sales | search, catalog, merchandising, promotion, sales, fulfillment, customer, messaging (`kinds: [read, write]`, W$ 툴은 범위 밖) |
 
-라우터는 에이전트 파일이 아니라 런타임의 한 단계(`router.rs`)입니다. 다섯 에이전트 모두 `models: {worker: glimmer, planner: spark}`입니다. 어느 에이전트의 범위에도 `community`, `partner`, `integration`이 없어서 이 도메인의 툴은 대화가 아니라 REST로만 부릅니다.
+라우터는 에이전트 파일이 아니라 런타임의 한 단계(`router.rs`)입니다. 여섯 에이전트 모두 `models: {worker: glimmer, planner: spark}`입니다. `community`는 catalog, `partner`·`integration`은 marketplace의 범위입니다(외부에서 들어오는 이벤트 툴은 `audience: internal`이라 어느 에이전트에도 보이지 않음).
 
 - **라우터**는 작업 모델(Glimmer)에 에이전트 설명 목록과 요청을 주고 가이드 디코딩으로 `{agent, confidence}` 하나를 고르게 합니다. 확신이 `runtime.yml` `router.min_confidence`(0.5)보다 낮으면 대화의 이전 에이전트, 없으면 면(bo/fo)의 기본 에이전트로 갑니다. 그 전에 아래 라우팅 힌트를 보고, 다음으로 요청에 든 에이전트별 `route_when_said` 문구(소문자: insights의 `why did sales`, orders의 `return request`, catalog의 `low on stock`, promotion의 `weekend sale`·`needs me`) 중 가장 긴 것의 에이전트로 모델 없이 보냅니다(두 에이전트가 같은 길이로 맞으면 모델이 고름). 열린 변경셋이 있는 대화는 그 에이전트가 이어 받고(다음 말은 대개 고침), 문장을 말하지 않는 버튼(`ui_event`)도 대화의 에이전트가 이어 받습니다.
 - **라우팅 힌트**(`agents/runtime.yml` `router.hints`): 요청에 든 말(대소문자 무시, 예 "supplier sheet")이나 첨부 종류(`sheet`)가 그 면의 에이전트 하나만 가리키면 모델을 부르지 않고 그 에이전트로 갑니다. 버튼 의도(`ui_event`)는 힌트를 쓰지 않습니다.

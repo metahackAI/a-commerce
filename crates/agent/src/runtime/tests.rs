@@ -288,6 +288,28 @@ impl ToolClient for Commerce {
                     json!({"id": "cart_1", "lines": [{"cart_line_id": "cln_1", "name": "Packable windbreaker", "size": "M", "quantity": 1}],
                     "subtotal": {"value": 89.00, "currency": "USD"}, "total": {"value": 71.20, "currency": "USD"}})
                 }
+                "get_my_orders" => json!({"items": [
+                    {"id": "ord_20268", "order_number": "20268", "order_status": "delivered",
+                     "order_date": "2026-09-08T09:14:00-04:00",
+                     "ordered_item": [{"id": "oit_1", "product_id": "prd_windbreaker", "name": "Packable windbreaker",
+                                       "size": "M", "color": "Black", "order_quantity": 1}],
+                     "total": {"value": 89.00, "currency": "USD"}}], "total": 1}),
+                "get_order" => {
+                    json!({"id": "ord_20268", "order_number": "20268", "order_status": "delivered",
+                    "ordered_item": [{"id": "oit_1", "product_id": "prd_windbreaker", "name": "Packable windbreaker",
+                                      "size": "M", "color": "Black", "order_quantity": 1}],
+                    "totals": {"total": {"value": 89.00, "currency": "USD"}}})
+                }
+                "get_payment" => {
+                    json!({"payment_status": "payment_complete", "label": "Card ending 4821",
+                    "amount": {"value": 89.00, "currency": "USD"}})
+                }
+                "list_reviews" => json!({"items": [
+                    {"id": "rev_1", "product_id": "prd_windbreaker", "review_rating": 5,
+                     "author": {"name": "Jordan P."}, "review_body": "Packs into its pocket."}], "total": 1}),
+                "list_questions" => json!({"items": [
+                    {"id": "qst_1", "product_id": "prd_windbreaker", "text": "Does the hood roll in?",
+                     "accepted_answer": {"text": "Yes, into the collar."}}], "total": 1}),
                 _ => json!({"items": [], "total": 0}),
             })
         })
@@ -1424,6 +1446,104 @@ fn manifest_with_analytics() -> Vec<ToolSpec> {
     let mut m = fixtures::manifest();
     m.extend(analytics.items);
     m
+}
+
+/// The shopper's records: orders, a payment, reviews and questions.
+fn manifest_with_records() -> Vec<ToolSpec> {
+    let read = |tool: &str, address: &str, summary: &str| {
+        json!({"tool": tool, "address": address, "kind": "read", "summary": summary,
+               "consumes": [], "produces": [], "checks": [],
+               "input_schema": {"type": "object", "additionalProperties": false, "properties": {
+                   "order_id": {"type": "string", "description": "Order."},
+                   "product_id": {"type": "string", "description": "Product."}}, "required": []}})
+    };
+    let records: crate::tools::Manifest = serde_json::from_value(json!({"items": [
+        read("get_my_orders", "sales.order.get_my_orders", "The shopper's own orders, newest first."),
+        read("get_order", "sales.order.get_order", "One order with its lines, delivery and payment."),
+        read("get_payment", "sales.payment.get_payment", "How an order was paid."),
+        read("list_reviews", "catalog.review.list_reviews", "Reviews of a product."),
+        read("list_questions", "catalog.question.list_questions", "Questions about a product and their answers."),
+    ]}))
+    .unwrap();
+    let mut m = fixtures::manifest();
+    m.extend(records.items);
+    m
+}
+
+async fn shopper_turn(plan: Value, said: &str) -> Vec<Event> {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![("plan", plan.to_string())],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    turn(
+        &rt,
+        principal("cus_jamie", Surface::Fo),
+        ChatSurface::Fo,
+        say(said),
+        Commerce::with_manifest(manifest_with_records()),
+    )
+    .await
+}
+
+#[tokio::test]
+async fn a_shoppers_orders_are_shown_as_records_whatever_block_the_plan_named() {
+    for reply_plan in ["text", "product_list", "record_list"] {
+        let events = shopper_turn(
+            json!({"interpretation": [], "about": "self", "reply_plan": reply_plan, "steps": [
+                {"id": "s1", "tool": "get_my_orders", "args": {}, "uses": []}]}),
+            "Show me my orders",
+        )
+        .await;
+        let b = blocks(&events);
+        assert_eq!(b.len(), 1, "{reply_plan}: {b:?}");
+        assert_eq!(b[0].ui, "record_list", "{reply_plan}");
+        assert_eq!(b[0].data["kind"], "orders");
+        assert_eq!(b[0].data["rows"][0]["title"], "Order #20268");
+    }
+}
+
+#[tokio::test]
+async fn an_order_is_shown_from_the_order_read_not_its_payment() {
+    for reply_plan in ["order_detail", "text"] {
+        let events = shopper_turn(
+            json!({"interpretation": [], "about": "self", "reply_plan": reply_plan, "steps": [
+                {"id": "s1", "tool": "get_order", "args": {"order_id": "ord_20268"}, "uses": []},
+                {"id": "s2", "tool": "get_payment", "args": {"order_id": "ord_20268"}, "uses": []}]}),
+            "Show me order 20268",
+        )
+        .await;
+        let b = blocks(&events);
+        assert_eq!(b.len(), 1, "{reply_plan}: {b:?}");
+        assert_eq!(b[0].ui, "order_detail", "{reply_plan}");
+        assert_eq!(b[0].data["order_number"], "20268");
+        assert_eq!(b[0].data["lines"][0]["name"], "Packable windbreaker");
+    }
+}
+
+#[tokio::test]
+async fn products_come_with_the_reviews_and_questions_read_about_them() {
+    let events = shopper_turn(
+        json!({"interpretation": [], "about": "self", "reply_plan": "product_list", "steps": [
+            {"id": "s1", "tool": "search_products", "args": {"query": "windbreaker"}, "uses": []},
+            {"id": "s2", "tool": "list_reviews", "args": {"product_id": "prd_windbreaker"}, "uses": ["s1"]},
+            {"id": "s3", "tool": "list_questions", "args": {"product_id": "prd_windbreaker"}, "uses": ["s1"]}]}),
+        "What do people say about the windbreaker?",
+    )
+    .await;
+    let b = blocks(&events);
+    let uis: Vec<&str> = b.iter().map(|b| b.ui.as_str()).collect();
+    assert_eq!(uis, ["product_list", "record_list", "record_list"]);
+    assert_eq!(b[1].data["kind"], "reviews");
+    assert_eq!(b[2].data["kind"], "questions");
+    assert_eq!(
+        b[2].data["rows"][0]["body"],
+        "The store: Yes, into the collar."
+    );
 }
 
 /// What Muse Glimmer answered for scene B3 (recorded): two reads and the explainer block.
