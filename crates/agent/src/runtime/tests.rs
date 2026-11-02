@@ -1935,6 +1935,38 @@ async fn a_reply_with_made_up_numbers_is_written_again_and_what_was_read_is_show
     assert_eq!(glimmer.asked().iter().filter(|p| *p == "reply").count(), 2);
 }
 
+#[test]
+fn a_shoppers_read_drops_a_yes_no_they_never_mentioned() {
+    let tool: ToolSpec = serde_json::from_value(fixtures::tool(
+        "list_questions",
+        "catalog.question.list_questions",
+        "read",
+        "Questions about a product.",
+        json!([]),
+        json!([]),
+        json!({"product_id": {"type": "string", "description": "Product."},
+               "answered": {"type": "boolean", "description": "Answered or not."}}),
+        json!([]),
+    ))
+    .unwrap();
+    let mut input = json!({"product_id": "prd_windbreaker", "answered": true, "limit": 20});
+    let notes = unasked_yes_no(
+        &mut input,
+        &tool,
+        "What questions have people asked about the windbreaker?",
+    );
+    assert_eq!(input, json!({"product_id": "prd_windbreaker", "limit": 20}));
+    assert_eq!(notes, ["answered: true was not asked for, left out"]);
+    for said in [
+        "Show me the answered questions",
+        "Which ones are still unanswered?",
+    ] {
+        let mut input = json!({"answered": false});
+        assert!(unasked_yes_no(&mut input, &tool, said).is_empty(), "{said}");
+        assert_eq!(input["answered"], false);
+    }
+}
+
 #[tokio::test]
 async fn a_list_that_found_nothing_is_shown_as_an_empty_table() {
     let glimmer = Scripted::new(
