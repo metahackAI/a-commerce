@@ -44,7 +44,11 @@ export default async function OrdersPage({searchParams}: {searchParams: Promise<
           ok: true as const,
           data: claims.data.items.map((c): ReturnHistoryItem => {
             const o = byOrder.get(c.order_id);
+            const first = o?.ordered_item[0];
             return {
+              product_id: first?.product_id,
+              image: first?.image,
+              color: first?.color,
               id: c.id,
               claim_type: c.claim_type,
               order_id: c.order_id,

@@ -9,13 +9,13 @@ import {Heading, Text} from '@astryxdesign/core/Text';
 import type {ReactNode} from 'react';
 
 import {ConversationList} from '@/components/chat/History';
-import {AddressList, CouponList, LoyaltyView, MemoryList, MessageList, SignOutButton, WishlistView} from '@/components/fo/AccountViews';
+import {AddressList, CouponList, LoyaltyView, MemoryList, MessageList, RestockAlertList, SignOutButton, SubscriptionList, WishlistView} from '@/components/fo/AccountViews';
 import {ErrorNotice} from '@/components/fo/ErrorNotice';
 import type {Page} from '@/lib/api';
 
 import {words} from '../_lib/format';
 import {load, shopper, type Loaded} from '../_lib/server';
-import type {Address, LoyaltyBalance, MemberCoupon, Preference, Profile, StoreMessage, WishlistItem} from '../_lib/types';
+import type {Address, LoyaltyBalance, MemberCoupon, Preference, Profile, RestockAlert, StoreMessage, Subscription, WishlistItem} from '../_lib/types';
 
 export const metadata: Metadata = {title: 'Account'};
 
@@ -65,7 +65,7 @@ export default async function AccountPage() {
     );
   }
 
-  const [profile, memories, addresses, wishlist, coupons, loyalty, messages] = await Promise.all([
+  const [profile, memories, addresses, wishlist, coupons, loyalty, messages, subscriptions, alerts] = await Promise.all([
     load<Profile>('/v1/customer/people/me'),
     load<Page<Preference>>('/v1/customer/people/me/preferences', {limit: 50}),
     load<Page<Address>>('/v1/customer/people/me/addresses', {limit: 20}),
@@ -73,6 +73,8 @@ export default async function AccountPage() {
     load<Page<MemberCoupon>>('/v1/promotion/customers/me/coupons', {limit: 50}),
     load<LoyaltyBalance>('/v1/promotion/customers/me/loyalty'),
     load<Page<StoreMessage>>('/v1/messaging/notifications', {customer_id: 'me', limit: 10}),
+    load<Page<Subscription>>('/v1/sales/subscriptions', {limit: 20}),
+    load<Page<RestockAlert>>('/v1/catalog/restock-alerts', {limit: 20}),
   ]);
   const p = profile.ok ? profile.data : null;
 
@@ -115,6 +117,12 @@ export default async function AccountPage() {
               </Section>
               <Section title="Wishlist">
                 <Loadable loaded={wishlist}>{d => <WishlistView initial={d.items} />}</Loadable>
+              </Section>
+              <Section title="Subscriptions" subtitle="What the store sends you on a schedule.">
+                <Loadable loaded={subscriptions}>{d => <SubscriptionList subscriptions={d.items} />}</Loadable>
+              </Section>
+              <Section title="Back-in-stock alerts" subtitle="Sizes you are waiting for; you hear the day they are back.">
+                <Loadable loaded={alerts}>{d => <RestockAlertList alerts={d.items} />}</Loadable>
               </Section>
               <Section title="Addresses">
                 <Loadable loaded={addresses}>{d => <AddressList addresses={d.items} />}</Loadable>

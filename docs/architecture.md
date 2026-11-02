@@ -417,7 +417,7 @@ Areas of the business have their own agents that people can talk to. A specialis
 | Insights agent | back office | analytics | "Why were Thursday's sales down?" | no |
 | Shopper agent | storefront | search, catalog, merchandising, promotion, sales, fulfillment, customer, messaging | "A light jacket that packs small for a trip" | only writes that need no approval (cart, preferences); placing the order is the shopper's button |
 
-Specialists are data (`agents/*.yml`: tool scope, home domains, instructions, allowed blocks, models), not code. The five agents after the router are the ones built ([backend/agent.md](backend/agent.md) §2). No agent's scope includes `community`, `partner`, or `integration` yet, so those tools are reached over REST, not in a conversation.
+Specialists are data (`agents/*.yml`: tool scope, home domains, instructions, allowed blocks, models), not code. The six agents after the router are the ones built ([backend/agent.md](backend/agent.md) §2). `community` is in the catalog agent's scope, `partner` and `integration` in the marketplace agent's.
 
 ### 6.4 Policy as data
 

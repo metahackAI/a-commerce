@@ -14,7 +14,7 @@ use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use serde_json::json;
+use serde_json::{Value, json};
 
 /// What the chat handlers share.
 pub struct App {
@@ -56,6 +56,7 @@ pub fn routes(app: Arc<App>) -> Router {
             post(crate::voice::transcribe).layer(DefaultBodyLimit::max(LARGEST_RECORDING)),
         )
         .route("/chat/{surface}/conversations", get(conversations))
+        .route("/chat/{surface}/streaming", get(streaming))
         .route(
             "/chat/{surface}/conversations/{conversation_id}",
             get(conversation),
@@ -278,6 +279,37 @@ async fn conversation(
     }
 }
 
+/// `GET /chat/{surface}/streaming`: whether each model's replies stream now, and how, as the
+/// background check found (docs/backend/agent.md §7). For anyone signed in on that surface.
+async fn streaming(
+    State(app): State<Arc<App>>,
+    Path(surface): Path<String>,
+    headers: HeaderMap,
+) -> Response {
+    let result = (|| {
+        let surface = surface_of(&surface)?;
+        caller(&app, &headers, surface)?;
+        let runtime = app
+            .runtime
+            .clone()
+            .ok_or_else(|| unavailable("the agent definitions did not load (see /readyz)"))?;
+        let models: Vec<Value> = runtime
+            .stream_states()
+            .into_iter()
+            .map(|(alias, state)| {
+                let mut v = serde_json::to_value(state).unwrap_or(Value::Null);
+                v["model"] = json!(alias);
+                v
+            })
+            .collect();
+        Ok::<_, ToolError>(json!({"models": models}))
+    })();
+    match result {
+        Ok(v) => Json(v).into_response(),
+        Err(e) => error(&e),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -470,6 +502,28 @@ mod tests {
                 .contains("event: turn.done"),
             "{body}"
         );
+    }
+
+    #[tokio::test]
+    async fn streaming_says_per_model_whether_replies_stream_to_signed_in_callers() {
+        let Some(f) = fixture() else {
+            eprintln!("openssl not available; skipping");
+            return;
+        };
+        let get = |token: Option<String>| {
+            let mut r = Request::get("/chat/bo/streaming");
+            if let Some(t) = token {
+                r = r.header(header::AUTHORIZATION, format!("Bearer {t}"));
+            }
+            r.body(Body::empty()).unwrap()
+        };
+        let res = f.app.clone().oneshot(get(None)).await.unwrap();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+        let t = token(&f, &operator().on_behalf());
+        let res = f.app.clone().oneshot(get(Some(t))).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        // No model is configured in the test environment.
+        assert_eq!(text(res).await, r#"{"models":[]}"#);
     }
 
     #[tokio::test]

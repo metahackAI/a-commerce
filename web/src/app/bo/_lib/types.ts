@@ -510,6 +510,8 @@ export interface OrderSummary {
   customer_id: string;
   order_date: string;
   total: Money;
+  /** What was ordered (search_orders `ordered_item`): each line's product and its picture. */
+  ordered_item?: {id: string; product_id: string; variant_id: string; name: string; size?: string | null; color?: string | null; image?: string | null; order_quantity: number}[];
 }
 
 export interface PostalAddress {
@@ -535,6 +537,8 @@ export interface Order {
     name: string;
     size?: string | null;
     color?: string | null;
+    /** The ordered color's picture. */
+    image?: string | null;
     order_quantity: number;
     price: Money;
     discount?: Money | null;

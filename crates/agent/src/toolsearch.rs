@@ -48,6 +48,10 @@ const STOP: &[&str] = &[
     "their", "them", "this", "to", "up", "we", "what", "when", "which", "with", "you", "your",
 ];
 
+/// How well a read of the same records must fit the words, as a share of an anchor's score, to
+/// come with it.
+const SIBLING_SHARE: f64 = 0.6;
+
 /// Lowercase words with a light stem (plural `s`), stop words removed.
 pub fn tokens(text: &str) -> Vec<String> {
     text.split(|c: char| !c.is_alphanumeric())
@@ -253,7 +257,7 @@ pub fn search(
             );
         }
     }
-    let limit = cfg.max_candidates + out.len();
+    let mut limit = cfg.max_candidates + out.len();
 
     // The anchors first, then their neighbours, then the remaining hits.
     let pinned_tools: Vec<String> = out.iter().map(|c| c.tool.clone()).collect();
@@ -267,6 +271,32 @@ pub fn search(
             },
             &mut out,
         );
+        // A tool's words are its records' words: "show my wishlist" matches adding to the
+        // wishlist as well as listing it, "what changed" one log entry (which needs its id) as
+        // well as the search over them. When the words fit both about as well, the best other
+        // read of the same records comes with it, so asking about something can read it.
+        let needs_more = h.tool.is_write() || h.tool.tool.starts_with("get_");
+        if needs_more
+            && let Some(read) = hits.iter().find(|r| {
+                !r.tool.is_write()
+                    && r.tool.tool != h.tool.tool
+                    && r.score >= h.score * SIBLING_SHARE
+                    && r.tool.domain() == h.tool.domain()
+                    && r.tool.resource() == h.tool.resource()
+            })
+            && !out.iter().any(|c| c.tool == read.tool.tool)
+        {
+            // On top of the room the graph's next steps have.
+            limit += 1;
+            push(
+                Candidate {
+                    tool: read.tool.tool.clone(),
+                    score: read.score,
+                    via: Via::Match,
+                },
+                &mut out,
+            );
+        }
     }
     // A plan is a chain of writes, so the graph follows the writes first: a write's neighbours
     // are the plan's next steps, a read's only what can be done with what it lists.
@@ -642,6 +672,68 @@ mod tests {
             &p.runtime.tool_search,
         );
         assert!(names(&found).contains(&"search_products"), "{found:?}");
+    }
+
+    #[test]
+    fn a_write_found_by_its_records_words_brings_the_read_of_them() {
+        let tool = |name: &str, address: &str, kind: &str, summary: &str, consumes, produces| {
+            serde_json::from_value::<ToolSpec>(crate::tools::fixtures::tool(
+                name,
+                address,
+                kind,
+                summary,
+                consumes,
+                produces,
+                json!({}),
+                json!([]),
+            ))
+            .unwrap()
+        };
+        let item = json!([{"name": "wishlist_item_id", "many": false}]);
+        let mut m = vec![
+            tool(
+                "add_to_wishlist",
+                "customer.wishlist.add",
+                "write",
+                "Show a product on the member's wishlist: the wishlist keeps it.",
+                json!([]),
+                item.clone(),
+            ),
+            tool(
+                "list_wishlist",
+                "customer.wishlist.list",
+                "read",
+                "The products a member keeps for later, newest first, with today's price.",
+                json!([]),
+                json!([]),
+            ),
+        ];
+        // What can be done with a wishlist item would otherwise take all the room.
+        for n in 0..10 {
+            m.push(tool(
+                &format!("change_item_{n}"),
+                "customer.item.change",
+                "write",
+                "Change a kept item.",
+                item.clone(),
+                json!([]),
+            ));
+        }
+        let p = repo();
+        let found = search(
+            &m,
+            p.get("shopper").unwrap(),
+            "Show my wishlist",
+            &[],
+            &p.runtime.tool_search,
+        );
+        let n = names(&found);
+        assert_eq!(&n[..2], ["add_to_wishlist", "list_wishlist"], "{found:#?}");
+        assert_eq!(
+            n.len(),
+            p.runtime.tool_search.max_candidates + 1,
+            "on top of the room: {found:#?}"
+        );
     }
 
     #[test]

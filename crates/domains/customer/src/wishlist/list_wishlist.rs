@@ -89,6 +89,7 @@ impl ReadOp<Cx> for ListWishlist {
                     item["price"] = json!(c.price)["value"].clone();
                     item["price_currency"] = json!(c.price.currency);
                     item["availability"] = json!(c.availability);
+                    item["image"] = json!(c.image);
                 }
                 item
             })

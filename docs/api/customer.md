@@ -604,7 +604,7 @@ schema.org 대응: `member_price` → `TierBenefitLoyaltyPrice`, `points_multipl
 - 요약: 관심 상품(지금 가격·재고 반영).
 - consumes → produces: `customer_id` → `product_id[]`
 - 입력: `customer_id`(✓, 쇼퍼는 `me`), `category_id?`, `limit`(기본 20, 최대 100), `cursor?`
-- 출력: `{"items": [{"product_id": "prd_field_jacket", "name": "Linen blend field jacket", "price": 128.00, "price_currency": "USD", "availability": "in_stock", "added_at": "2026-10-20T19:02:00-04:00"}], "total": 4}`
+- 출력: `{"items": [{"product_id": "prd_field_jacket", "name": "Linen blend field jacket", "price": 128.00, "price_currency": "USD", "availability": "in_stock", "image": "/media/products/prd_field_jacket-….webp", "added_at": "2026-10-20T19:02:00-04:00"}], "total": 4}`
 - 정책: 없음(읽기).
 - 에러: `customer_not_found` → `search_members`
 - 멱등성: 읽기.

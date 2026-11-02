@@ -12,6 +12,7 @@ import {MemoryNoteBlock} from './MemoryNote';
 import {OrderDetailBlock} from './OrderDetail';
 import {ProductListBlock} from './ProductList';
 import {ProfileCardBlock} from './ProfileCard';
+import {RecordListBlock} from './RecordList';
 import {ReturnOptionsBlock} from './ReturnOptions';
 
 export const foBlocks: Record<string, BlockComponent> = {
@@ -19,6 +20,7 @@ export const foBlocks: Record<string, BlockComponent> = {
   compare_table: CompareTableBlock,
   look_gallery: LookGalleryBlock,
   product_list: ProductListBlock,
+  record_list: RecordListBlock,
   fit_check: FitCheckBlock,
   gift_picker: GiftPickerBlock,
   cart: CartBlock,

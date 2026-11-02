@@ -747,7 +747,7 @@
 - 요약: 로그인한 쇼퍼의 재입고 알림 신청 목록.
 - consumes → produces: → `restock_alert_id[]`
 - 입력: `limit?`(기본 20), `cursor?`
-- 출력: `{items: [{id: "rsa_204", product_id: "prd_chore_coat", product_name: "Cotton chore coat", variant_id: "var_chore_coat_m_olive", size: "M", color: "Olive", channel: "email", availability: "out_of_stock", start_time: "2026-11-05T09:12:00-05:00", expires: "2027-02-03T09:12:00-05:00", notified_at: null}], total: 1}`. 최신 순이고, 알림이 나간 것(`notified_at`)과 만료된 것도 보입니다. 로그인하지 않으면 `forbidden`
+- 출력: `{items: [{id: "rsa_204", product_id: "prd_chore_coat", product_name: "Cotton chore coat", variant_id: "var_chore_coat_m_olive", size: "M", color: "Olive", image: "/media/products/prd_chore_coat-….webp", channel: "email", availability: "out_of_stock", start_time: "2026-11-05T09:12:00-05:00", expires: "2027-02-03T09:12:00-05:00", notified_at: null}], total: 1}`. 최신 순이고, 알림이 나간 것(`notified_at`)과 만료된 것도 보입니다. 로그인하지 않으면 `forbidden`
 - 프리뷰: 해당 없음(읽기)
 - 정책: 본인 것만
 - 에러: `invalid_filter` → `list_restock_subscriptions`
