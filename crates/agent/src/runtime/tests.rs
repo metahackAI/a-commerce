@@ -294,11 +294,21 @@ impl ToolClient for Commerce {
                      "ordered_item": [{"id": "oit_1", "product_id": "prd_windbreaker", "name": "Packable windbreaker",
                                        "size": "M", "color": "Black", "order_quantity": 1}],
                      "total": {"value": 89.00, "currency": "USD"}}], "total": 1}),
+                "get_order" if input["order_id"] == "ord_20105" => {
+                    json!({"id": "ord_20105", "order_number": "20105",
+                    "order_status": "delivered", "delivery": {"id": "dlv_20105"},
+                    "ordered_item": [{"id": "oit_9", "product_id": "prd_chore_coat", "name": "Cotton chore coat", "order_quantity": 1}]})
+                }
                 "get_order" => {
                     json!({"id": "ord_20268", "order_number": "20268", "order_status": "delivered",
+                    "delivery": {"id": "dlv_20268"},
                     "ordered_item": [{"id": "oit_1", "product_id": "prd_windbreaker", "name": "Packable windbreaker",
                                       "size": "M", "color": "Black", "order_quantity": 1}],
                     "totals": {"total": {"value": 89.00, "currency": "USD"}}})
+                }
+                "track_shipment" => {
+                    json!({"items": [{"at": "2026-09-11T15:05:00-04:00", "delivery_state": "delivered"}],
+                    "total": 1, "delivery_id": "dlv_20268", "carrier": "UPS", "tracking_number": "1Z1"})
                 }
                 "get_payment" => {
                     json!({"payment_status": "payment_complete", "label": "Card ending 4821",
@@ -1461,6 +1471,7 @@ fn manifest_with_records() -> Vec<ToolSpec> {
         read("get_my_orders", "sales.order.get_my_orders", "The shopper's own orders, newest first."),
         read("get_order", "sales.order.get_order", "One order with its lines, delivery and payment."),
         read("get_payment", "sales.payment.get_payment", "How an order was paid."),
+        read("track_shipment", "fulfillment.parcel_delivery.track_shipment", "Where an order's parcel is."),
         read("list_reviews", "catalog.review.list_reviews", "Reviews of a product."),
         read("list_questions", "catalog.question.list_questions", "Questions about a product and their answers."),
     ]}))
@@ -1523,6 +1534,21 @@ async fn an_order_is_shown_from_the_order_read_not_its_payment() {
         assert_eq!(b[0].data["order_number"], "20268");
         assert_eq!(b[0].data["lines"][0]["name"], "Packable windbreaker");
     }
+}
+
+#[tokio::test]
+async fn of_several_orders_read_the_one_whose_parcel_was_tracked_is_shown() {
+    let events = shopper_turn(
+        json!({"interpretation": [], "about": "self", "reply_plan": "order_detail", "steps": [
+            {"id": "s1", "tool": "get_order", "args": {"order_id": "ord_20268"}, "uses": []},
+            {"id": "s2", "tool": "track_shipment", "args": {"order_id": "ord_20268"}, "uses": ["s1"]},
+            {"id": "s3", "tool": "get_order", "args": {"order_id": "ord_20105"}, "uses": []}]}),
+        "Track my windbreaker order",
+    )
+    .await;
+    let b = blocks(&events);
+    assert_eq!(b.len(), 1, "{b:?}");
+    assert_eq!(b[0].data["order_number"], "20268");
 }
 
 #[tokio::test]
