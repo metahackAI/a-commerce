@@ -91,11 +91,13 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
       {!isLatest ? (
         <Banner status="info" title={`This is version ${cs.version}.`} description={`Decisions are made on the latest version (${latestVersion}).`} />
       ) : null}
-      {cs.state === 'live' && cs.undo_until ? (
-        <Banner status="success" title="Live" description={`Every change ran and was checked again. A person can undo it until ${dateTime(cs.undo_until)}.`} />
-      ) : null}
-      {cs.state === 'live' && !cs.undo_until ? (
-        <Banner status="success" title="Live" description="It ran and was checked again. It holds a change that can't be undone (a refund or a customer message)." />
+      {/* The header already says Live; this line only adds what it means. */}
+      {cs.state === 'live' ? (
+        <Text color="secondary">
+          {cs.undo_until
+            ? `Every change ran and was checked again. A person can undo it until ${dateTime(cs.undo_until)}.`
+            : "It ran and was checked again. It holds a change that can't be undone (a refund or a customer message)."}
+        </Text>
       ) : null}
       {cs.state === 'failed' ? (
         <Banner status="error" title="It failed" description="An item failed or did not match when checked again. What ran was undone in reverse order; see the verification and history below." />
