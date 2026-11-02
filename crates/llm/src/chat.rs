@@ -290,6 +290,10 @@ pub struct ModelInfo {
     /// What people see in the turn footer ("Muse Glimmer 30B").
     pub display_name: String,
     pub price: Option<Price>,
+    /// The ways to stream this model's reply, in the order to try them (`stream_reply` in
+    /// `agents/models.yml`; all of [`StreamVariant::ALL`] unless the file says otherwise, none
+    /// for a server whose streaming is known not to work).
+    pub stream_variants: Vec<StreamVariant>,
 }
 
 /// One chat model behind any provider. The runtime only talks to this trait, so tests use a

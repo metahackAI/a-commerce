@@ -105,6 +105,7 @@ mod tests {
             model: "muse-glimmer-30b".into(),
             display_name: "Muse Glimmer 30B".into(),
             price: Some(price),
+            stream_variants: crate::StreamVariant::ALL.to_vec(),
         };
         let ok = Ok(ChatResponse {
             usage: Usage {

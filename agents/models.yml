@@ -11,6 +11,12 @@ models:
     model_env: GLIMMER_MODEL
     structured_output: json_schema
     timeout_seconds: 30
+    # The ways to stream the reply, in order (crates/llm StreamVariant). The demo's endpoint
+    # streams no answer under any of them (Nov 2: json_schema, structured_outputs, thinking off
+    # and without stream usage give zero tokens; guided_json and plain text come back in the
+    # reasoning field as a copy of the prompt), while the same request unstreamed answers. So
+    # the reply is asked for once, unstreamed; list ways here again once the endpoint streams.
+    stream_reply: []
   spark:
     display_name: Muse Spark
     base_url_env: META_API_BASE_URL
