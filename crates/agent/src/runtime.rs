@@ -752,6 +752,35 @@ struct ShownBlock {
 
 /// Where a block sits on the canvas: the product views are one place (the same results laid
 /// out as a list, a gallery or a comparison), anything else by its kind; then its order.
+/// A shopper's read narrowed by a yes/no they never mentioned ("questions" read as
+/// `answered: true` hides the one still waiting): such a filter is left out, so the read shows
+/// everything it would without it. A yes/no whose words the shopper said stays.
+fn unasked_yes_no(input: &mut Value, tool: &ToolSpec, said: &str) -> Vec<String> {
+    let said = toolsearch::tokens(said);
+    let Some(args) = input.as_object_mut() else {
+        return Vec::new();
+    };
+    let required = tool.required();
+    let unasked: Vec<String> = args
+        .iter()
+        .filter(|(k, v)| v.is_boolean() && !required.contains(&k.as_str()))
+        .filter(|(k, _)| {
+            !toolsearch::tokens(&k.replace('_', " ")).iter().any(|w| {
+                let stem = w.trim_end_matches("ed");
+                stem.len() > 2 && said.iter().any(|s| s.contains(stem))
+            })
+        })
+        .map(|(k, _)| k.clone())
+        .collect();
+    unasked
+        .into_iter()
+        .map(|k| {
+            let v = args.remove(&k).unwrap_or(Value::Null);
+            format!("{k}: {v} was not asked for, left out")
+        })
+        .collect()
+}
+
 /// Whether a listed item is a product (`prd_…` as its `product_id` or `id`).
 fn is_product_item(item: &Value) -> bool {
     item.get("product_id")
@@ -1787,14 +1816,18 @@ impl<'r> Turn<'r> {
                         continue;
                     }
                     let mut input = bound.input;
+                    let mut notes = bound.notes;
                     if tool.is_write()
                         && self.surface == ChatSurface::Bo
                         && let Some(base) = self.replaceable_input(&tool.tool)
                     {
                         input = executor::merge(&base, &input);
                     }
+                    if !tool.is_write() && self.surface == ChatSurface::Fo {
+                        notes.extend(unasked_yes_no(&mut input, &tool, &self.text));
+                    }
                     self.undecided = bound.undecided;
-                    self.call(plan, &step.id, &tool, input, bound.notes)
+                    self.call(plan, &step.id, &tool, input, notes)
                         .await
                         .map(Some)
                 }
