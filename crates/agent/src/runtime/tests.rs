@@ -56,7 +56,7 @@ impl ChatModel for Scripted {
     fn chat<'a>(
         &'a self,
         req: &'a ChatRequest,
-        _: Option<DeltaSink<'a>>,
+        on_delta: Option<DeltaSink<'a>>,
     ) -> BoxFuture<'a, Result<ChatResponse, LlmError>> {
         Box::pin(async move {
             self.asked.lock().unwrap().push(req.purpose.clone());
@@ -64,7 +64,17 @@ impl ChatModel for Scripted {
             match answers.iter().position(|(p, _)| *p == req.purpose) {
                 Some(i) => Ok(ChatResponse {
                     model: self.info.model.clone(),
-                    text: answers.remove(i).1,
+                    text: {
+                        let text = answers.remove(i).1;
+                        // Streamed as a provider would: in small pieces, cut anywhere.
+                        if let Some(sink) = on_delta {
+                            let chars: Vec<char> = text.chars().collect();
+                            for piece in chars.chunks(7) {
+                                sink(&piece.iter().collect::<String>());
+                            }
+                        }
+                        text
+                    },
                     usage: Usage {
                         input_tokens: 100,
                         output_tokens: 20,
@@ -531,14 +541,21 @@ fn names(events: &[Event]) -> Vec<&'static str> {
     events.iter().map(Event::name).collect()
 }
 
+/// The blocks on screen when the turn ended: a block sent again with its id replaces itself in
+/// place, and a removed one is gone (the turn sends blocks while it works).
 fn blocks(events: &[Event]) -> Vec<&Block> {
-    events
-        .iter()
-        .filter_map(|e| match e {
-            Event::Block(b) => Some(b.as_ref()),
-            _ => None,
-        })
-        .collect()
+    let mut shown: Vec<&Block> = Vec::new();
+    for e in events {
+        match e {
+            Event::Block(b) => match shown.iter_mut().find(|s| s.block_id == b.block_id) {
+                Some(s) => *s = b.as_ref(),
+                None => shown.push(b.as_ref()),
+            },
+            Event::BlockRemoved { block_id } => shown.retain(|s| &s.block_id != block_id),
+            _ => {}
+        }
+    }
+    shown
 }
 
 fn done(events: &[Event]) -> (TurnUsage, Vec<String>) {
@@ -717,6 +734,51 @@ async fn b1_drafts_a_change_set_through_tools_and_never_approves() {
     let b = blocks(&events);
     assert_eq!(b.len(), 1);
     assert_eq!(b[0].ui, "change_set");
+
+    // The change set is on screen while it is drafted: each write sends it again, with the same
+    // id, and the first one comes before the turn checks the finished set and replies.
+    let sent: Vec<usize> = events
+        .iter()
+        .enumerate()
+        .filter(|(_, e)| matches!(e, Event::Block(x) if x.ui == "change_set"))
+        .map(|(i, _)| i)
+        .collect();
+    assert!(sent.len() >= 2, "sent {} times", sent.len());
+    assert!(events.iter().all(|e| match e {
+        Event::Block(x) if x.ui == "change_set" => x.block_id == b[0].block_id,
+        _ => true,
+    }));
+    let checking = events
+        .iter()
+        .position(|e| {
+            e.data()["summary"]
+                .as_str()
+                .is_some_and(|s| s.starts_with("Checking the change set"))
+        })
+        .expect("the finished set is checked");
+    assert!(
+        sent[0] < checking,
+        "the first change set block came at {} after the check at {checking}",
+        sent[0]
+    );
+
+    // The reply streams in pieces as it is written, and `message.done` carries the same text.
+    let deltas: Vec<String> = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::MessageDelta { text } => Some(text.clone()),
+            _ => None,
+        })
+        .collect();
+    assert!(deltas.len() > 5, "{} pieces", deltas.len());
+    let final_text = events
+        .iter()
+        .find_map(|e| match e {
+            Event::MessageDone { text, .. } => Some(text.clone()),
+            _ => None,
+        })
+        .unwrap();
+    assert_eq!(deltas.concat(), final_text);
     assert_eq!(b[0].data["change_set_id"], "cs_1042");
     assert_eq!(b[0].data["state"], "drafting");
     assert_eq!(b[0].data["understood"]["who"], "VIP members");
@@ -1613,6 +1675,23 @@ async fn a_reply_with_made_up_numbers_is_written_again_and_what_was_read_is_show
     )
     .await;
     assert_eq!(message(&events), "You have 1,284 VIP members.");
+    // The person saw the first reply being written; `message.reset` took it off the screen
+    // before the second one streamed.
+    let mut screen = String::new();
+    let mut resets = 0;
+    for e in &events {
+        match e {
+            Event::MessageDelta { text } => screen.push_str(text),
+            Event::MessageReset { .. } => {
+                assert_eq!(screen, "You have 9,999 VIP members.");
+                screen.clear();
+                resets += 1;
+            }
+            _ => {}
+        }
+    }
+    assert_eq!(resets, 1);
+    assert_eq!(screen, "You have 1,284 VIP members.");
     let b = blocks(&events);
     assert_eq!(b.len(), 1, "the tiers read, shown as a table");
     assert_eq!(b[0].ui, "product_table");

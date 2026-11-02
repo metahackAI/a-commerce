@@ -28,13 +28,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::blocks::change_set::{ChangeSetView, ItemView};
-use crate::blocks::{Block, insights, review, shop, shopper, table};
+use crate::blocks::{Action, Block, insights, review, shop, shopper, table};
 use crate::checker;
 use crate::client::{ItemRef, NewChangeSet, ToolClient};
 use crate::executor::{self, StepRecord};
 use crate::memory::{ConversationContext, OpenChangeSet, Owner};
 use crate::planner::{self, About, Plan, PlanInput, PlanStep};
 use crate::profile::{AgentProfile, ChatSurface, LayoutRule, Limits, Profiles};
+use crate::reply_stream::ReplyStream;
 use crate::router;
 use crate::store::{StepRow, StoreInfo, StoreSettings, SystemStore, TurnEnd, TurnLog, TurnStart};
 use crate::stream::{Command, Emitter, Event, StepKind, StepStatus, TurnUsage};
@@ -570,6 +571,48 @@ struct Turn<'r> {
     problems: Vec<String>,
     /// Steps not called because what they build on came back empty: the tool and why.
     skipped: Vec<(String, String)>,
+    /// The reply as the model writes it (`message.delta` while it is written).
+    reply_stream: Arc<ReplyStream>,
+    /// Whether the person saw a reply stream in this turn (then `message.done` alone ends it).
+    streamed: bool,
+    /// Blocks on screen this turn, by place (`products#0`, `change_set#0`): the id they were
+    /// sent with and what they showed, so a block that changes keeps its id and replaces itself.
+    shown: Vec<ShownBlock>,
+}
+
+/// A block sent this turn: where it sits, its id, and what it showed (to skip sending it again).
+#[derive(Debug, Clone)]
+struct ShownBlock {
+    place: String,
+    block_id: String,
+    sent: Value,
+}
+
+/// Where a block sits on the canvas: the product views are one place (the same results laid
+/// out as a list, a gallery or a comparison), anything else by its kind; then its order.
+fn place_of(ui: &str, nth: usize) -> String {
+    let family = match ui {
+        "compare_table" | "look_gallery" | "product_list" => "products",
+        other => other,
+    };
+    format!("{family}#{nth}")
+}
+
+/// Points block references (`block:blk_…` in a block's data or an Open action's target) at the
+/// ids blocks keep.
+fn rename_block_ids(v: &mut Value, renamed: &[(String, String)]) {
+    match v {
+        Value::String(text) => {
+            for (from, to) in renamed {
+                if text.contains(from.as_str()) {
+                    *text = text.replace(from.as_str(), to);
+                }
+            }
+        }
+        Value::Array(items) => items.iter_mut().for_each(|i| rename_block_ids(i, renamed)),
+        Value::Object(map) => map.values_mut().for_each(|i| rename_block_ids(i, renamed)),
+        _ => {}
+    }
 }
 
 impl<'r> Turn<'r> {
@@ -596,6 +639,9 @@ impl<'r> Turn<'r> {
             ctx: p.context,
             turn_id: TurnId::generate().as_str().to_owned(),
             profile,
+            reply_stream: Arc::new(ReplyStream::new(emit.clone())),
+            streamed: false,
+            shown: Vec::new(),
             emit,
             tools,
             clock: TurnClock {
@@ -922,12 +968,21 @@ impl<'r> Turn<'r> {
             if self.usage.len() as u32 >= self.limits.model_calls || self.time_left().is_zero() {
                 return None;
             }
+            // Each attempt (another model, or a check asking again) starts a fresh reply.
+            self.reply_stream.reset("The reply is being written again.");
             let left = self.time_left();
             let started_at = self.clock.now();
             let t = Instant::now();
-            let res = tokio::time::timeout(left, model.chat(&req, None))
+            // The reply streams to the person as it is written; a model that answered nothing
+            // leaves nothing on screen for the next one.
+            let stream = self.reply_stream.clone();
+            let sink = move |d: &str| stream.push(d);
+            let res = tokio::time::timeout(left, model.chat(&req, Some(&sink)))
                 .await
                 .unwrap_or(Err(LlmError::Timeout(left.as_secs())));
+            if !self.reply_stream.shown().is_empty() {
+                self.streamed = true;
+            }
             let record = UsageRecord::new(
                 model.info(),
                 purpose,
@@ -1647,6 +1702,11 @@ impl<'r> Turn<'r> {
             (_, ChatSurface::Fo) => self.run_shopper_write(step, tool, input, &notes).await,
         }?;
         self.history.push(record.clone());
+        // What this result already shows goes on screen now, not when the turn ends.
+        let wrote_change_set = tool.kind != ToolKind::Read
+            && self.tool_set != ToolSet::Facade
+            && self.surface == ChatSurface::Bo;
+        self.progress_blocks(wrote_change_set).await;
         Ok(record)
     }
 
@@ -2741,6 +2801,30 @@ impl<'r> Turn<'r> {
     }
 
     fn build_blocks(&mut self) {
+        let out = self.compose_blocks(false);
+        self.publish_blocks(out, true);
+    }
+
+    /// After a step: the blocks its results already make, on screen while the turn goes on. A
+    /// write into the change set reads the change set again, so its items appear one by one.
+    async fn progress_blocks(&mut self, wrote_change_set: bool) {
+        if self.emit.is_closed() {
+            return;
+        }
+        if wrote_change_set
+            && self.draft.as_ref().is_some_and(|d| d.touched)
+            && let Some(view) = self.change_set_view().await
+        {
+            self.view = Some(view);
+        }
+        let out = self.compose_blocks(true);
+        self.publish_blocks(out, false);
+    }
+
+    /// The blocks the turn's results make, in the order they are shown. While the turn still
+    /// works (`progress`), only blocks built from what it has read so far: no stand-in table
+    /// of the last list read, which the final answer may not keep.
+    fn compose_blocks(&self, progress: bool) -> Vec<Block> {
         let reply_plan = self
             .plan
             .as_ref()
@@ -2845,7 +2929,7 @@ impl<'r> Turn<'r> {
         // The plan's block could not be made from what was read, or the plan chose text: when
         // nothing else is shown, show the last list read as it is, so the person sees what the
         // turn found (products as a list on the storefront, anything else as a table).
-        let block = if block.is_none() && out.is_empty() && cards.is_empty() {
+        let block = if block.is_none() && out.is_empty() && cards.is_empty() && !progress {
             self.found_block(&allowed)
         } else {
             block
@@ -2858,8 +2942,71 @@ impl<'r> Turn<'r> {
             out.extend(cards);
             out.extend(block);
         }
-        for b in out {
-            self.emit.send(Event::Block(Box::new(b.clone())));
+        out
+    }
+
+    /// Sends the turn's blocks: each keeps the id of the block in its place shown earlier this
+    /// turn (so it replaces it, in place), and one that did not change is not sent again. At the
+    /// end of the turn (`last`) blocks the answer does not keep are taken off the screen, failed
+    /// checks are pointed at, and the blocks are kept for the reply and the turn log.
+    fn publish_blocks(&mut self, out: Vec<Block>, last: bool) {
+        // First where each block sits and the id it keeps there; then blocks that point at
+        // another (a gift picker at its checkout card) point at that one's kept id.
+        let mut counts: BTreeMap<String, usize> = BTreeMap::new();
+        let mut places: Vec<String> = Vec::with_capacity(out.len());
+        let mut renamed: Vec<(String, String)> = Vec::new();
+        for b in &out {
+            let nth = counts.entry(place_of(&b.ui, 0)).or_default();
+            let place = place_of(&b.ui, *nth);
+            *nth += 1;
+            if let Some(s) = self.shown.iter().find(|s| s.place == place) {
+                renamed.push((b.block_id.clone(), s.block_id.clone()));
+            }
+            places.push(place);
+        }
+        let mut kept: Vec<String> = Vec::new();
+        let mut placed: Vec<Block> = Vec::with_capacity(out.len());
+        for (mut b, place) in out.into_iter().zip(places) {
+            if let Some((_, id)) = renamed.iter().find(|(from, _)| *from == b.block_id) {
+                b.block_id.clone_from(id);
+            }
+            rename_block_ids(&mut b.data, &renamed);
+            for a in &mut b.actions {
+                if let Action::Open { target, .. } = a {
+                    let mut t = Value::String(std::mem::take(target));
+                    rename_block_ids(&mut t, &renamed);
+                    *target = t.as_str().unwrap_or_default().to_owned();
+                }
+            }
+            let sent = serde_json::to_value(&b).unwrap_or(Value::Null);
+            match self.shown.iter_mut().find(|s| s.place == place) {
+                Some(s) if s.sent == sent => {}
+                Some(s) => {
+                    s.sent = sent;
+                    self.emit.send(Event::Block(Box::new(b.clone())));
+                }
+                None => {
+                    self.shown.push(ShownBlock {
+                        place: place.clone(),
+                        block_id: b.block_id.clone(),
+                        sent,
+                    });
+                    self.emit.send(Event::Block(Box::new(b.clone())));
+                }
+            }
+            kept.push(place);
+            placed.push(b);
+        }
+        if !last {
+            return;
+        }
+        for gone in self.shown.iter().filter(|s| !kept.contains(&s.place)) {
+            self.emit.send(Event::BlockRemoved {
+                block_id: gone.block_id.clone(),
+            });
+        }
+        self.shown.retain(|s| kept.contains(&s.place));
+        for b in placed {
             if matches!(b.ui.as_str(), "change_set" | "product_drafts")
                 && let Some(failed) = b.data["checks"].as_array().and_then(|c| {
                     c.iter()
@@ -3271,8 +3418,12 @@ impl<'r> Turn<'r> {
 
     async fn finish(self, reply: Option<String>, error: Option<Value>) {
         if let Some(text) = &reply {
-            for piece in sentences(text) {
-                self.emit.send(Event::MessageDelta { text: piece });
+            // A streamed reply is on screen already; `message.done` carries the one that stands
+            // (a check may have changed it). A reply nobody saw written comes in sentences.
+            if !self.streamed {
+                for piece in sentences(text) {
+                    self.emit.send(Event::MessageDelta { text: piece });
+                }
             }
             self.emit.send(Event::MessageDone {
                 message_id: format!("msg_{}", acom_core::id::new_suffix()),

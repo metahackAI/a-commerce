@@ -80,11 +80,21 @@ pub enum Event {
     MessageDelta {
         text: String,
     },
+    /// The reply streamed so far is dropped: a check turned it down and a new one follows (or
+    /// `message.done` carries the reply that stands).
+    MessageReset {
+        reason: String,
+    },
     MessageDone {
         message_id: String,
         text: String,
     },
+    /// A block, new or again with the same `block_id` (it replaces the one shown, in place).
     Block(Box<Block>),
+    /// A block shown while the turn worked that its final answer does not keep.
+    BlockRemoved {
+        block_id: String,
+    },
     MemorySaved {
         memory_id: String,
         text: String,
@@ -116,8 +126,10 @@ impl Event {
             Self::TurnStarted { .. } => "turn.started",
             Self::Step { .. } => "agent.step",
             Self::MessageDelta { .. } => "message.delta",
+            Self::MessageReset { .. } => "message.reset",
             Self::MessageDone { .. } => "message.done",
             Self::Block(_) => "ui.block",
+            Self::BlockRemoved { .. } => "ui.block.removed",
             Self::MemorySaved { .. } => "memory.saved",
             Self::UiCommand { .. } => "ui.command",
             Self::ChangeSetUpdated { .. } => "change_set.updated",
@@ -148,10 +160,12 @@ impl Event {
                 v
             }
             Self::MessageDelta { text } => json!({"text": text}),
+            Self::MessageReset { reason } => json!({"reason": reason}),
             Self::MessageDone { message_id, text } => {
                 json!({"message_id": message_id, "text": text})
             }
             Self::Block(b) => serde_json::to_value(b).unwrap_or(Value::Null),
+            Self::BlockRemoved { block_id } => json!({"block_id": block_id}),
             Self::MemorySaved { memory_id, text } => json!({"memory_id": memory_id, "text": text}),
             Self::UiCommand {
                 command,
@@ -283,6 +297,16 @@ mod tests {
             state: "waiting_for_approval".into(),
         };
         assert_eq!(cs.name(), "change_set.updated");
+        let reset = Event::MessageReset {
+            reason: "numbers".into(),
+        };
+        assert_eq!(reset.name(), "message.reset");
+        assert_eq!(reset.data()["reason"], "numbers");
+        let removed = Event::BlockRemoved {
+            block_id: "blk_1".into(),
+        };
+        assert_eq!(removed.name(), "ui.block.removed");
+        assert_eq!(removed.data()["block_id"], "blk_1");
         assert_eq!(
             Event::Error {
                 code: "x".into(),
