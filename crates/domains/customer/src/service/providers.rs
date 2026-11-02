@@ -41,6 +41,8 @@ pub struct ProductCard {
     pub price: Money,
     /// `in_stock` when any variant can be bought, else the first variant's availability word.
     pub availability: String,
+    /// The product's picture.
+    pub image: Option<String>,
 }
 
 /// The given products that exist (unknown ids are left out).

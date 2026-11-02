@@ -49,6 +49,8 @@ pub enum OrderRowField {
     OrderDate,
     /// What the shopper pays.
     Total,
+    /// What was ordered: each line's product, size, color, picture and quantity.
+    OrderedItem,
 }
 
 impl OrderRowField {
@@ -60,6 +62,7 @@ impl OrderRowField {
             OrderRowField::CustomerId => "customer_id",
             OrderRowField::OrderDate => "order_date",
             OrderRowField::Total => "total",
+            OrderRowField::OrderedItem => "ordered_item",
         }
     }
 }
@@ -191,6 +194,10 @@ impl ReadOp<Cx> for SearchOrders {
             offset: page.offset,
         };
         let (orders, total) = repo::orders(&mut tx, &filter).await?;
+        // Each row says what was ordered, as the products it was.
+        let ids: Vec<String> = orders.iter().map(|o| o.id.clone()).collect();
+        let lines = repo::items(&mut tx, &ids).await?;
+        let facts = super::item_facts(&mut tx, &lines).await?;
         tx.commit().await.map_err(ToolError::from)?;
         let fields: Vec<String> = input
             .fields
@@ -205,7 +212,12 @@ impl ReadOp<Cx> for SearchOrders {
                     json!({"id": o.id, "order_number": o.order_number,
                            "order_status": o.order_status, "customer_id": o.customer_id,
                            "order_date": cx.time.format(o.order_date),
-                           "total": repo::money(o.total_payment_due_value, &o.total_payment_due_currency)?}),
+                           "total": repo::money(o.total_payment_due_value, &o.total_payment_due_currency)?,
+                           "ordered_item": lines
+                               .iter()
+                               .filter(|i| i.order_id == o.id)
+                               .map(|i| super::item_json(i, &facts, false))
+                               .collect::<Result<Vec<_>, _>>()?}),
                     &fields,
                 ))
             })

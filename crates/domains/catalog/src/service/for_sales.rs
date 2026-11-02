@@ -273,6 +273,8 @@ pub struct ProductSummary {
     pub price: Money,
     /// `in_stock` when any variant can be bought, else the first variant's availability word.
     pub availability: String,
+    /// The product's picture.
+    pub image: Option<String>,
 }
 
 /// Summaries of the given products that exist and have at least one offer.
@@ -284,15 +286,23 @@ pub async fn product_summaries(
         return Ok(Vec::new());
     }
     #[allow(clippy::type_complexity)]
-    let rows: Vec<(String, String, Decimal, String, bool, String)> = sqlx::query_as(
+    let rows: Vec<(
+        String,
+        String,
+        Decimal,
+        String,
+        bool,
+        String,
+        Option<String>,
+    )> = sqlx::query_as(
         "SELECT g.id, g.name, min(o.price), min(o.price_currency::text),
                 bool_or(o.availability = 'in_stock' AND o.inventory_level > 0),
-                min(o.availability)
+                min(o.availability), g.image
          FROM catalog.product_group g
          JOIN catalog.product v ON v.tenant_id = g.tenant_id AND v.product_group_id = g.id
          JOIN catalog.offer o ON o.tenant_id = v.tenant_id AND o.product_id = v.id
          WHERE g.tenant_id = $1 AND g.id = ANY($2)
-         GROUP BY g.id, g.name",
+         GROUP BY g.id, g.name, g.image",
     )
     .bind(tx.tenant.as_str())
     .bind(product_ids)
@@ -300,8 +310,9 @@ pub async fn product_summaries(
     .await
     .map_err(db)?;
     rows.into_iter()
-        .map(|(id, name, price, currency, any_in_stock, first)| {
+        .map(|(id, name, price, currency, any_in_stock, first, image)| {
             Ok(ProductSummary {
+                image,
                 price: money(price, &currency, &id)?,
                 product_id: id,
                 name,

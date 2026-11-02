@@ -101,16 +101,33 @@ pub fn action_log(output: &Value) -> Option<Block> {
 pub fn order_detail(output: &Value) -> Option<Block> {
     let number = output.get("order_number")?;
     let mut data = Map::new();
-    for k in [
-        "order_number",
-        "status",
-        "lines",
-        "delivery",
-        "payment",
-        "totals",
-    ] {
+    data.insert(
+        "order_id".to_owned(),
+        output.get("id").cloned().unwrap_or(Value::Null),
+    );
+    for k in ["order_number", "delivery", "payment", "totals"] {
         data.insert(k.to_owned(), output.get(k).cloned().unwrap_or(Value::Null));
     }
+    // get_order says `order_status` and `ordered_item`; the block's `status` and `lines` are those,
+    // each line the product it was, with the ordered color's picture.
+    let status = output.get("order_status").or_else(|| output.get("status"));
+    data.insert("status".to_owned(), status.cloned().unwrap_or(Value::Null));
+    let lines: Vec<Value> = output
+        .get("ordered_item")
+        .or_else(|| output.get("lines"))
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .map(|l| {
+            json!({"order_item_id": l.get("id"), "product_id": l.get("product_id"),
+                   "variant_id": l.get("variant_id"), "name": l.get("name"), "size": l.get("size"),
+                   "color": l.get("color"), "image": l.get("image"),
+                   "quantity": l.get("order_quantity").or_else(|| l.get("quantity")),
+                   "price": l.get("price"),
+                   "status": l.get("order_item_status").or_else(|| l.get("status"))})
+        })
+        .collect();
+    data.insert("lines".to_owned(), Value::Array(lines));
     let title = format!(
         "Order #{}",
         number
@@ -161,6 +178,17 @@ mod tests {
         assert_eq!(log.data["entries"][0]["tool"], "set_price");
         assert_eq!(log.data["entries"][0]["actor"], "sys_runner");
         let order = order_detail(&json!({"order_number": "20402", "status": "delivered"})).unwrap();
+        // What get_order answers: its lines and status become the block's.
+        let read = order_detail(&json!({"id": "ord_20402", "order_number": "20402", "order_status": "delivered",
+            "ordered_item": [{"id": "oln_20402_1", "product_id": "prd_chelsea_boots", "variant_id": "var_chelsea_boots_9_tan",
+                "name": "Leather chelsea boots", "size": "9", "color": "Tan", "image": "/media/products/boots.webp",
+                "order_quantity": 1, "price": {"value": 312.0, "currency": "USD"}, "order_item_status": "delivered"}]}))
+        .unwrap();
+        assert_eq!(read.data["status"], "delivered");
+        assert_eq!(read.data["order_id"], "ord_20402");
+        assert_eq!(read.data["lines"][0]["name"], "Leather chelsea boots");
+        assert_eq!(read.data["lines"][0]["image"], "/media/products/boots.webp");
+        assert_eq!(read.data["lines"][0]["quantity"], 1);
         assert_eq!(order.title, "Order #20402");
         assert!(order_detail(&json!({})).is_none());
     }

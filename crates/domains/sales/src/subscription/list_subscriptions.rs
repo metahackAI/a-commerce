@@ -101,11 +101,31 @@ impl ReadOp<Cx> for ListSubscriptions {
             page.offset,
         )
         .await?;
+        // Each line shows the subscribed color's picture.
+        let mut variant_ids: Vec<String> = Vec::new();
+        for r in &rows {
+            variant_ids.extend(super::lines_of(r)?.into_iter().map(|l| l.variant_id));
+        }
+        variant_ids.sort_unstable();
+        variant_ids.dedup();
+        let images: std::collections::HashMap<String, String> =
+            acom_catalog::service::for_sales::variants(&mut tx, &variant_ids)
+                .await?
+                .into_iter()
+                .filter_map(|v| Some((v.variant_id, v.image?)))
+                .collect();
         tx.commit().await.map_err(ToolError::from)?;
         let items: Vec<Value> = rows
             .iter()
-            .map(|r| subscription_json(r, &cx.time))
-            .collect::<Result<_, _>>()?;
+            .map(|r| {
+                let mut v = subscription_json(r, &cx.time)?;
+                for line in v["lines"].as_array_mut().into_iter().flatten() {
+                    let image = line["variant_id"].as_str().and_then(|id| images.get(id));
+                    line["image"] = json!(image);
+                }
+                Ok(v)
+            })
+            .collect::<Result<_, ToolError>>()?;
         let mut v = json!({"items": items, "total": total});
         if let Some(c) = page.next_cursor(rows.len(), total) {
             v["next_cursor"] = json!(c);
