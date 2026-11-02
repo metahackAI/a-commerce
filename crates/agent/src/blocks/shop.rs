@@ -76,13 +76,33 @@ fn facts(item: &Value, max: usize) -> Vec<Value> {
                         && matches!(v, Value::String(_) | Value::Number(_) | Value::Bool(_))
                 })
                 .take(max)
-                .map(|(k, v)| {
-                    let text = v.as_str().map_or_else(|| v.to_string(), str::to_owned);
-                    json!(format!("{}: {text}", words(k)))
-                })
+                .map(|(k, v)| json!(fact_line(k, v)))
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// One fact as a shopper reads it: stock in words ("In stock", "39 left"), word values without
+/// underscores, anything else as "name: value".
+fn fact_line(key: &str, value: &Value) -> String {
+    let text = value
+        .as_str()
+        .map_or_else(|| value.to_string(), str::to_owned);
+    let plain = |s: &str| {
+        let w = words(s);
+        let mut c = w.chars();
+        c.next()
+            .map(|f| f.to_uppercase().chain(c).collect())
+            .unwrap_or_default()
+    };
+    match key {
+        "availability" => plain(&text),
+        "inventory_level" => format!("{text} left"),
+        _ if value.is_string() && text.chars().all(|c| c.is_ascii_lowercase() || c == '_') => {
+            format!("{}: {}", words(key), words(&text))
+        }
+        _ => format!("{}: {text}", words(key)),
+    }
 }
 
 /// Whether a profile fact matches a rule's `when_profile` entry: a fact key (`compares_specs`),
@@ -587,6 +607,10 @@ mod tests {
                 .element
                 .starts_with("compare_column:prd_")
         );
+
+        assert_eq!(fact_line("availability", &json!("in_stock")), "In stock");
+        assert_eq!(fact_line("inventory_level", &json!(39)), "39 left");
+        assert_eq!(fact_line("fit", &json!("runs_small")), "fit: runs small");
 
         let g = products("look_gallery", &jackets(), None).unwrap();
         assert_eq!(g.data["items"][0]["image"], "w.jpg");
