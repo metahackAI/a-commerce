@@ -33,6 +33,7 @@ export default async function StorefrontLayout({children}: {children: ReactNode}
           session: who.session,
           isShopper: who.isShopper,
           isGuest: who.isGuest,
+          isOperator: who.isOperator,
           name: p?.name ?? who.session.user?.name ?? null,
           tierId: p?.tier_id ?? null,
         }}

@@ -14,6 +14,11 @@ export interface ShopperInfo {
   isShopper: boolean;
   /** A guest session: may browse and keep a cart. */
   isGuest: boolean;
+  /**
+   * A signed-in operator. On the storefront they shop as their browser session (a cart, the
+   * assistant), like a guest who is known by name; their operator work stays in the back office.
+   */
+  isOperator: boolean;
   name: string | null;
   tierId: string | null;
 }

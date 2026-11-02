@@ -177,6 +177,40 @@ fn anonymous(tenant: &TenantId) -> Principal {
     }
 }
 
+/// The header the web app sends with storefront requests (`fo`); back-office requests send `bo`.
+const SURFACE_HEADER: &str = "x-acom-surface";
+
+/// Whether a request comes from the storefront: its chat route, or an API call the storefront's
+/// pages mark with [`SURFACE_HEADER`].
+fn from_storefront(target: Target, upstream_path: &str, headers: &HeaderMap) -> bool {
+    match target {
+        Target::Agent => upstream_path.starts_with("/chat/fo/"),
+        Target::Commerce => headers
+            .get(SURFACE_HEADER)
+            .and_then(|v| v.to_str().ok())
+            .is_some_and(|v| v.eq_ignore_ascii_case("fo")),
+        Target::Mcp | Target::Web => false,
+    }
+}
+
+/// How a signed-in operator shops: on the storefront they are a shopper without a customer
+/// account, tied to this browser session (its cart and conversation) and shown by name. Operator
+/// powers stay in the back office; anyone else is unchanged.
+fn on_storefront(p: Principal) -> Principal {
+    match (p.kind, p.session_id.clone()) {
+        (ActorKind::Operator, Some(session)) => Principal {
+            subject: session.clone(),
+            kind: ActorKind::Shopper,
+            tenant: p.tenant,
+            surface: Surface::Fo,
+            scopes: scopes::guest(),
+            name: p.name,
+            session_id: Some(session),
+        },
+        _ => p,
+    }
+}
+
 /// Finds the caller's session, checks CSRF for state changes, and opens a guest session for a
 /// first state change. Returns the principal and any cookies to set.
 async fn caller(
@@ -274,6 +308,11 @@ async fn proxy(State(gw): State<Arc<Gateway>>, mut req: Request) -> Response {
             Err(res) => return *res,
         };
         set_cookies = cookies;
+        let principal = if from_storefront(target, &upstream_path, &headers) {
+            on_storefront(principal)
+        } else {
+            principal
+        };
         // A chat turn acts for the person but can never act as the person.
         let (principal, ttl) = if target == Target::Agent {
             (principal.on_behalf(), TURN_TOKEN_SECONDS)
@@ -460,6 +499,54 @@ mod tests {
         assert!(!p.scopes.is_empty());
         assert!(p.customer_id().is_none());
         assert!(changes_state(&Method::POST) && !changes_state(&Method::GET));
+    }
+
+    #[test]
+    fn an_operator_on_the_storefront_shops_as_their_browser_session() {
+        let tenant = TenantId::parse("store_northwind").unwrap();
+        let mut operator = anonymous(&tenant);
+        operator.subject = "adm_admin".into();
+        operator.kind = ActorKind::Operator;
+        operator.surface = Surface::Bo;
+        operator.scopes = scopes::admin();
+        operator.name = Some("Admin".into());
+        operator.session_id = Some("ses_7".into());
+
+        let shopper = on_storefront(operator.clone());
+        assert_eq!(shopper.kind, ActorKind::Shopper);
+        assert_eq!(shopper.surface, Surface::Fo);
+        assert_eq!(shopper.subject, "ses_7");
+        assert_eq!(shopper.session_id.as_deref(), Some("ses_7"));
+        assert_eq!(shopper.name.as_deref(), Some("Admin"));
+        assert_eq!(shopper.scopes, scopes::guest());
+        // Its chat token passes the agent's storefront check and carries no operator power.
+        let agent = shopper.on_behalf();
+        assert_eq!(agent.surface, Surface::Fo);
+        assert!(!agent.has_scope("changeset:draft"));
+
+        // Shoppers and guests are themselves already.
+        let guest = anonymous(&tenant);
+        assert_eq!(on_storefront(guest.clone()).subject, guest.subject);
+    }
+
+    #[test]
+    fn storefront_requests_are_its_chat_and_marked_api_calls() {
+        let mut marked = HeaderMap::new();
+        marked.insert(SURFACE_HEADER, HeaderValue::from_static("fo"));
+        let plain = HeaderMap::new();
+        assert!(from_storefront(Target::Agent, "/chat/fo/turns", &plain));
+        assert!(!from_storefront(Target::Agent, "/chat/bo/turns", &marked));
+        assert!(from_storefront(
+            Target::Commerce,
+            "/v1/sales/carts/mine",
+            &marked
+        ));
+        assert!(!from_storefront(
+            Target::Commerce,
+            "/v1/sales/carts/mine",
+            &plain
+        ));
+        assert!(!from_storefront(Target::Web, "/", &marked));
     }
 
     #[test]
