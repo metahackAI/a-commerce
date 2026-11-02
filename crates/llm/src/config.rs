@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use serde::Deserialize;
 
-use crate::chat::{ChatModel, ModelInfo};
+use crate::chat::{ChatModel, ModelInfo, StreamVariant};
 use crate::openai::{OpenAiCompatible, StructuredOutput};
 use crate::usage::Price;
 
@@ -42,6 +42,11 @@ pub struct ModelConfig {
     pub price: Option<Price>,
     #[serde(default = "default_timeout")]
     pub timeout_seconds: u64,
+    /// The ways to stream the reply, in order (`configured`, `plain_text`, `structured_outputs`,
+    /// `without_thinking`, `guided_json`, `without_usage`). Leave out to try them all; `[]` for a
+    /// server whose streaming does not work, so the reply is asked for once, unstreamed.
+    #[serde(default)]
+    pub stream_reply: Option<Vec<StreamVariant>>,
 }
 
 fn default_timeout() -> u64 {
@@ -106,6 +111,10 @@ impl ModelsFile {
                 model,
                 display_name: c.display_name.clone(),
                 price: c.price.clone(),
+                stream_variants: c
+                    .stream_reply
+                    .clone()
+                    .unwrap_or_else(|| StreamVariant::ALL.to_vec()),
             };
             let api_key = c.api_key_env.as_deref().and_then(env);
             match OpenAiCompatible::new(
@@ -140,6 +149,7 @@ models:
     base_url_env: GLIMMER_BASE_URL
     model_env: GLIMMER_MODEL
     structured_output: guided_json
+    stream_reply: [plain_text, configured]
   spark:
     display_name: Muse Spark
     base_url_env: META_API_BASE_URL
@@ -163,6 +173,20 @@ models:
         let glimmer = set.get("glimmer").unwrap().info();
         assert_eq!(glimmer.model, "muse-glimmer-30b");
         assert_eq!(glimmer.display_name, "Muse Glimmer 30B");
+        // The file names the ways to stream its reply; a model that names none gets them all.
+        assert_eq!(
+            glimmer.stream_variants,
+            [StreamVariant::PlainText, StreamVariant::Configured]
+        );
+        let spark = ModelsFile::parse(FILE)
+            .unwrap()
+            .configure(&|n: &str| Some(format!("x-{n}")))
+            .get("spark")
+            .unwrap()
+            .info()
+            .clone();
+        assert_eq!(spark.stream_variants, StreamVariant::ALL);
+        assert!(ModelsFile::parse("models: {x: {display_name: X, base_url_env: A, model_env: B, stream_reply: [sideways]}}").is_err());
     }
 
     #[test]

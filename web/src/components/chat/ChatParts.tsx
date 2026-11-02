@@ -21,7 +21,7 @@ import {Spinner} from '@astryxdesign/core/Spinner';
 import {Text} from '@astryxdesign/core/Text';
 import {Token} from '@astryxdesign/core/Token';
 import {RectangleStackIcon} from '@heroicons/react/24/outline';
-import type {CSSProperties, ReactNode} from 'react';
+import {useEffect, useRef, useState, type CSSProperties, type ReactNode} from 'react';
 
 import {useAi} from '@/ai/AiProvider';
 import type {ChatMessage as Message, ElementContext, UiBlock} from '@/ai/types';
@@ -252,7 +252,9 @@ export function Transcript({
     if (m.sender === 'assistant') {
       items.push(
         <ChatMessage key={m.id} sender="assistant" name={AILISM.assistant} avatar={<AilismAvatar size="sm" />}>
-          <ChatMessageBubble>{m.text}</ChatMessageBubble>
+          <ChatMessageBubble>
+            <WrittenText text={m.text} live={turnId != null && turnId === ai.liveTurn} />
+          </ChatMessageBubble>
           {button}
         </ChatMessage>,
       );
@@ -283,6 +285,51 @@ export function Transcript({
       </ChatMessageList>
     </ChatLayout>
   );
+}
+
+/** Characters per second the reply is written out at, and the most it may lag behind. */
+const WRITE_CPS = 90;
+const WRITE_MAX_LAG_MS = 1200;
+
+/**
+ * The reply as it is being written. Pieces arrive as the model writes them (or a sentence at a
+ * time where the model's server does not stream); the text is written out evenly from what has
+ * arrived, never ahead of it, and catches up within about a second. A reply that is not live (an
+ * earlier turn, a reload) shows whole. Reduced motion shows it whole too.
+ */
+function WrittenText({text, live}: {text: string; live: boolean}) {
+  const [shown, setShown] = useState(live ? 0 : text.length);
+  const shownRef = useRef(shown);
+  const textRef = useRef(text);
+  textRef.current = text;
+  const behind = shown < text.length;
+  useEffect(() => {
+    if (!behind) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      shownRef.current = textRef.current.length;
+      setShown(shownRef.current);
+      return;
+    }
+    let raf = 0;
+    let last = performance.now();
+    const step = (now: number) => {
+      const goal = textRef.current.length;
+      const lag = goal - shownRef.current;
+      if (lag <= 0) return;
+      // An even pace, faster when far behind, so the text is never much more than a second late.
+      const rate = Math.max(WRITE_CPS, (lag * 1000) / WRITE_MAX_LAG_MS);
+      const next = Math.min(goal, shownRef.current + Math.max(1, Math.round((rate * (now - last)) / 1000)));
+      last = now;
+      shownRef.current = next;
+      setShown(next);
+      if (next < goal) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [behind]);
+  // A reset makes the text shorter: write on from what is there.
+  if (shownRef.current > text.length) shownRef.current = text.length;
+  return <>{text.slice(0, Math.min(shown, text.length))}</>;
 }
 
 /** A person's or the system's line in the conversation, with what it was about when it named something. */

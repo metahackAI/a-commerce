@@ -39,6 +39,7 @@ impl Recorded {
                 model: "glimmer-test".into(),
                 display_name: "Muse Glimmer 30B".into(),
                 price: None,
+                stream_variants: acom_llm::StreamVariant::ALL.to_vec(),
             },
             answers: Mutex::new(Vec::new()),
             asked: Mutex::new(Vec::new()),

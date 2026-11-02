@@ -33,6 +33,7 @@ impl Scripted {
                 model: format!("{alias}-test"),
                 display_name: display.into(),
                 price: None,
+                stream_variants: acom_llm::StreamVariant::ALL.to_vec(),
             },
             answers: Mutex::new(
                 answers
