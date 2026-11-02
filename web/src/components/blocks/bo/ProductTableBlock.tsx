@@ -24,7 +24,7 @@ export function ProductTableBlock({block}: BlockProps) {
 
   return (
     <BlockFrame block={block} kind="product_table" id={block.block_id} label="Products">
-      <RowsTable rows={rows} columns={columns} kind="product_row" blockId={block.block_id} intentsFor={intentsFor} empty="No products" />
+      <RowsTable rows={rows} columns={columns} kind="product_row" blockId={block.block_id} intentsFor={intentsFor} empty="Nothing found" />
       {typeof d.total === 'number' ? (
         <Text type="supporting" color="secondary">
           {`${count(rows.length)} shown of ${count(d.total)}`}

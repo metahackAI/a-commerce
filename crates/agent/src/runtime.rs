@@ -3339,12 +3339,22 @@ impl<'r> Turn<'r> {
         if allowed("record_list") {
             return self.record_block();
         }
-        let read = self.last_output(|r| {
-            r.kind == ToolKind::Read
-                && r.output
-                    .as_ref()
-                    .is_some_and(|o| !shop::items_of(o).is_empty())
-        })?;
+        // The last list read that found something, else the last that found nothing.
+        let read = self
+            .last_output(|r| {
+                r.kind == ToolKind::Read
+                    && r.output
+                        .as_ref()
+                        .is_some_and(|o| !shop::items_of(o).is_empty())
+            })
+            .or_else(|| {
+                self.last_output(|r| {
+                    r.kind == ToolKind::Read
+                        && r.output
+                            .as_ref()
+                            .is_some_and(|o| o.get("items").is_some_and(Value::is_array))
+                })
+            })?;
         if allowed("product_table") {
             table::product_table(read.output.as_ref()?)
         } else {
