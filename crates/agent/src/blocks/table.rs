@@ -12,7 +12,14 @@ const COLUMNS: usize = 6;
 pub fn product_table(output: &Value) -> Option<Block> {
     let items = items_of(output);
     if items.is_empty() {
-        return None;
+        // A search that found nothing still answers: an empty table says so.
+        return output.get("items").and_then(Value::as_array).map(|_| {
+            Block::new(
+                "product_table",
+                "Nothing found",
+                json!({"columns": [], "rows": [], "total": 0}),
+            )
+        });
     }
     let mut columns: Vec<String> = Vec::new();
     for i in &items {

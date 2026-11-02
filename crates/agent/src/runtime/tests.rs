@@ -1936,6 +1936,39 @@ async fn a_reply_with_made_up_numbers_is_written_again_and_what_was_read_is_show
 }
 
 #[tokio::test]
+async fn a_list_that_found_nothing_is_shown_as_an_empty_table() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![(
+            "plan",
+            json!({"interpretation": [], "about": "self", "reply_plan": "text", "steps": [
+                {"id": "s1", "tool": "get_policy", "args": {"key": "campaign_hours"}, "uses": []}]})
+            .to_string(),
+        )],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say("What campaigns are scheduled?"),
+        Commerce::new(),
+    )
+    .await;
+    let b = blocks(&events);
+    assert_eq!(b.len(), 1, "{b:?}");
+    assert_eq!(
+        (b[0].ui.as_str(), b[0].title.as_str()),
+        ("product_table", "Nothing found")
+    );
+    assert_eq!(b[0].data["total"], 0);
+}
+
+#[tokio::test]
 async fn a_reply_that_copies_what_a_check_told_it_is_not_the_answer() {
     let asked = "Show me the change sets waiting for approval";
     let glimmer = Scripted::new(
