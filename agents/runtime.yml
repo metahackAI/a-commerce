@@ -43,6 +43,7 @@ tool_search:
     question: [answer]
     announcement: [notice]
     window: [return, policy, faq]
+    return: [policy, faq]
     remember: [profile, preference]
     # The back office's.
     customer: [member, search]

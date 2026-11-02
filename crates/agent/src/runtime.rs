@@ -3365,14 +3365,32 @@ impl<'r> Turn<'r> {
         })
     }
 
-    /// The order this turn read, with its lines (`get_order`; not its payment or delivery).
+    /// The order this turn read, with its lines (`get_order`; not its payment or delivery). Of
+    /// several (each of the shopper's orders read to find one), the one whose parcel the turn
+    /// tracked, else the last read.
     fn order_detail_block(&self) -> Option<Block> {
-        self.last_output(|r| {
-            r.output
-                .as_ref()
-                .is_some_and(|o| o.get("order_number").is_some() && o.get("ordered_item").is_some())
-        })
-        .and_then(|r| table::order_detail(r.output.as_ref()?))
+        let orders: Vec<&Value> = self
+            .history
+            .iter()
+            .rev()
+            .filter_map(|r| r.output.as_ref())
+            .filter(|o| o.get("order_number").is_some() && o.get("ordered_item").is_some())
+            .collect();
+        // `track_shipment` names its parcel `delivery_id`, `get_delivery` as its `id`.
+        let tracked = self
+            .last_output(|r| matches!(r.tool.as_str(), "track_shipment" | "get_delivery"))
+            .and_then(|r| {
+                let o = r.output.as_ref()?;
+                o.get("delivery_id").or_else(|| o.get("id"))?.as_str()
+            });
+        let order = tracked
+            .and_then(|t| {
+                orders
+                    .iter()
+                    .find(|o| o.pointer("/delivery/id").and_then(Value::as_str) == Some(t))
+            })
+            .or_else(|| orders.first())?;
+        table::order_detail(order)
     }
 
     /// The read a records answer shows: the newest one with a shape of its own, else the newest
