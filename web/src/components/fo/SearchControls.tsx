@@ -213,7 +213,8 @@ export function BrowseLayout({filters, children}: {filters: ReactNode; children:
   if (isPhone) {
     return (
       <VStack gap={4}>
-        <style>{'.acom-filters-folded .acom-filters-title { display: none; }'}</style>
+        {/* One "Filters" title (the fold's), and a fold a thumb can hit, not just its line of text. */}
+        <style>{'.acom-filters-folded .acom-filters-title { display: none; } .acom-filters-folded .astryx-collapsible-trigger { min-height: 44px; }'}</style>
         {filters ? (
           <div className="acom-filters-folded">
             <Collapsible trigger={<Text type="label">Filters</Text>} defaultIsOpen={false}>
