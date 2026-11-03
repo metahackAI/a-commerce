@@ -1,7 +1,9 @@
+import {headers} from 'next/headers';
 import type {ReactNode} from 'react';
 
 import {AiProvider} from '@/ai/AiProvider';
 import type {Page} from '@/lib/api';
+import {deviceOf} from '@/lib/device';
 import {StorefrontShell, type NavCategory} from '@/components/fo/StorefrontShell';
 
 import {load, orElse, shopper} from './_lib/server';
@@ -25,6 +27,7 @@ export default async function StorefrontLayout({children}: {children: ReactNode}
     .slice(0, 5)
     .map(c => ({id: c.id, name: c.name}));
   const p = profile && profile.ok ? profile.data : null;
+  const device = deviceOf((await headers()).get('user-agent'));
 
   return (
     <AiProvider surface="fo">
@@ -38,7 +41,8 @@ export default async function StorefrontLayout({children}: {children: ReactNode}
           tierId: p?.tier_id ?? null,
         }}
         cartLines={cart.ok ? cart.data.lines.length : 0}
-        categories={nav}>
+        categories={nav}
+        device={device}>
         {children}
       </StorefrontShell>
     </AiProvider>

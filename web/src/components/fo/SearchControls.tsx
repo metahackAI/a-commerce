@@ -24,6 +24,8 @@ import {price, words} from '@/app/(storefront)/_lib/format';
 import type {Facet} from '@/app/(storefront)/_lib/types';
 import {hrefWith, type SearchParamsState} from '@/app/(storefront)/_lib/search-href';
 
+import {useStorefront} from './StorefrontContext';
+
 /** Values a group shows before "More". */
 const VISIBLE = 5;
 const PANEL_WIDTH = 240;
@@ -209,7 +211,9 @@ export function FilterPanel({
  * fold, closed, into a section above the results, so the results come first.
  */
 export function BrowseLayout({filters, children}: {filters: ReactNode; children: ReactNode}) {
-  const isPhone = useMediaQuery(PHONE);
+  // On a phone the server already draws the folded filters, so nothing jumps after hydration.
+  const {device} = useStorefront();
+  const isPhone = useMediaQuery(PHONE, device === 'phone');
   if (isPhone) {
     return (
       <VStack gap={4}>
