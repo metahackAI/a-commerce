@@ -25,7 +25,8 @@
   {"id": "cart_jamie",
    "customer_id": "cus_jamie",
    "lines": [{"cart_line_id": "cln_1", "product_id": "prd_windbreaker", "variant_id": "var_windbreaker_m_slate",
-              "name": "Packable windbreaker", "color": "Slate", "size": "M", "quantity": 1,
+              "name": "Packable windbreaker", "color": "Slate", "size": "M",
+              "image": "/media/products/prd_windbreaker--slate.webp", "quantity": 1,
               "price": {"value": 89.00, "currency": "USD"}, "note": null}],
    "subtotal": {"value": 89.00, "currency": "USD"},
    "discounts": [{"label": "VIP weekend", "amount": {"value": 17.80, "currency": "USD"},
@@ -36,6 +37,7 @@
    "payment": {"payment_method": "credit_card", "label": "Card ending 4821"},
    "coupons_recorded": [{"coupon_id": "cpn_vipweekend20", "code": "VIPWEEKEND20", "promotion_id": "promo_1042"}]}
   ```
+  - `lines[].image`는 그 변형(색)의 사진, 없으면 상품 사진. 주문 줄(`ordered_item[].image`)과 같습니다.
   - `lines[].price`는 정가(할인 전 단가), 할인은 `discounts[]`에 프로모션마다 한 줄. `discount_layer`는 `item_price` | `order_discount` | `add_on`([enums.md](enums.md) §1.11).
   - `coupons_recorded[]`는 주문에 기록될 쿠폰입니다. 프로모션 쿠폰은 혜택을 기록할 뿐 두 번째 할인을 더하지 않습니다(`coupon.records_benefit_only`).
   - `delivery.arrives`는 날짜(`YYYY-MM-DD`), 저장된 기본 배송지 기준.

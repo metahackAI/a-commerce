@@ -29,9 +29,14 @@ function firstText(row: Record<string, unknown>, keys: string[]): string | null 
   return null;
 }
 
-/** The id a row is about, if it carries one. */
+/**
+ * The id a row is about, if it carries one: its own `id` when that names a record with a page of
+ * its own (an order in a list of orders, not the customer it names), else the first id it
+ * carries (a cart or order line is about its product).
+ */
 export function rowId(row: Record<string, unknown>): string | null {
-  return firstText(row, ID_KEYS);
+  const own = firstText(row, ['id']);
+  return own && entityHref(own) ? own : firstText(row, ID_KEYS);
 }
 
 function rowName(row: Record<string, unknown>): string | null {
