@@ -221,6 +221,9 @@ export function AiProvider({surface, children}: {surface: Surface; children: Rea
                 usage: (data.usage ?? {}) as TurnUsage,
                 models: Array.isArray(data.models) ? data.models.map(String) : [],
               });
+              // A shopper's turn writes without approval (a cart line, a saved size): the
+              // storefront's pages read the cart and orders on the server, so they read again.
+              if (surface === 'fo') router.refresh();
               break;
             case 'error': {
               const message = typeof data.message === 'string' ? data.message : 'Something went wrong.';
