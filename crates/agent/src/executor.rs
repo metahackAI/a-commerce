@@ -103,14 +103,38 @@ fn listed<'a>(output: &'a Value, slot: &str) -> Option<&'a Vec<Value>> {
         .find_map(|p| output.get(p).and_then(Value::as_array))
 }
 
-/// Slots a read produced.
+/// Slots a read produced. A read of one record (`get_promotion`) also gives the id it was read
+/// by, when the record carries it: the next step can take the promotion from it as well as from
+/// the search before it.
 pub fn slots_from_read(tool: &ToolSpec, output: &Value) -> BTreeMap<String, Vec<Value>> {
-    tool.produces
+    let mut out: BTreeMap<String, Vec<Value>> = tool
+        .produces
         .iter()
         .enumerate()
         .map(|(n, s)| (s.name.clone(), values_in(output, s, n == 0)))
         .filter(|(_, v)| !v.is_empty())
-        .collect()
+        .collect();
+    if output.get("items").is_none() {
+        for slot in tool.consumes.iter().filter(|s| !s.many) {
+            let prefix = tool
+                .field_for_slot(&slot.name)
+                .and_then(|(f, _)| tool.properties().and_then(|p| p.get(&f)))
+                .and_then(id_prefix);
+            let own = [output.get(&slot.name), output.get("id")]
+                .into_iter()
+                .flatten()
+                .find(|v| {
+                    v.as_str()
+                        .zip(prefix)
+                        .is_some_and(|(s, p)| s.strip_prefix(p).is_some_and(|r| r.starts_with('_')))
+                });
+            if let Some(v) = own {
+                out.entry(slot.name.clone())
+                    .or_insert_with(|| vec![v.clone()]);
+            }
+        }
+    }
+    out
 }
 
 /// Slots a write waiting in a change set will produce: placeholders for the runner.
@@ -164,7 +188,8 @@ fn takes_handle(schema: Option<&Value>) -> bool {
 
 /// Whether the model wrote a stand-in instead of a value for a slot field: the field's or
 /// slot's own name (`"promotion_id"`), an id prefix alone (`"promo_"`), a template
-/// (`"<promotion id>"`, `"{s1.id}"`), or for an id field, a value without the id's prefix.
+/// (`"<promotion id>"`, `"{s1.id}"`), or for an id field, a value without the id's prefix or
+/// with more after it than an id is made of (`"promo_???"`).
 /// Such a value is treated as missing, so the step's `uses` fill it.
 fn is_stand_in(v: &Value, field: &str, slot: &str, schema: Option<&Value>) -> bool {
     let one = |s: &str| {
@@ -189,7 +214,13 @@ fn is_stand_in(v: &Value, field: &str, slot: &str, schema: Option<&Value>) -> bo
                 let n = rest.split_once("].").map_or("", |(n, _)| n);
                 return n.is_empty() || !n.bytes().all(|b| b.is_ascii_digit());
             }
-            return !t.starts_with(&prefix) || t.len() == prefix.len();
+            // After the prefix only what an id is made of: `promo_???` marks where one goes.
+            return t.strip_prefix(&prefix).is_none_or(|rest| {
+                rest.is_empty()
+                    || !rest
+                        .bytes()
+                        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+            });
         }
         false
     };
@@ -1160,6 +1191,49 @@ mod tests {
             vec![json!("adr_home"), json!("adr_work")]
         );
         assert!(values_in(&json!({"id": "cus_jamie"}), &slot, false).is_empty());
+    }
+
+    #[test]
+    fn a_record_read_by_its_id_hands_that_id_on() {
+        let (_, orders, order) = member_order_tools();
+        let read = record(
+            "o1",
+            &order,
+            json!({"id": "ord_01m6gca7b028fw0nq7gdfg2kxq", "order_status": "paid"}),
+        );
+        assert_eq!(
+            read.slots.get("order_id"),
+            Some(&vec![json!("ord_01m6gca7b028fw0nq7gdfg2kxq")])
+        );
+        // An `id` of another kind is not the one it was read by; a list is not one record.
+        assert!(
+            record("o2", &order, json!({"id": "cus_jamie"}))
+                .slots
+                .is_empty()
+        );
+        assert!(
+            !record("o3", &orders, json!({"items": [], "total": 0}))
+                .slots
+                .contains_key("order_id")
+        );
+        let done = BTreeMap::from([("o1".to_owned(), read)]);
+        let b = bind(
+            &step(
+                "again",
+                "get_order",
+                json!({"order_id": "ord_???"}),
+                &["o1"],
+            ),
+            &order,
+            &done,
+            &["o1".to_owned()],
+            &BTreeMap::new(),
+        );
+        assert_eq!(
+            b.input["order_id"], "ord_01m6gca7b028fw0nq7gdfg2kxq",
+            "{:?}",
+            b.notes
+        );
     }
 
     #[test]

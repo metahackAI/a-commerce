@@ -69,7 +69,7 @@ pub struct GetSalesTrendInput {
     #[serde(rename = "acom:metrics", alias = "metrics")]
     #[schemars(example = ["revenue", "order_count"])]
     pub metrics: Option<Vec<TrendMetric>>,
-    /// Splits every point by category or member tier.
+    /// Splits every point by category, member tier or promotion.
     #[serde(rename = "acom:dimension", alias = "dimension")]
     #[schemars(example = &"member_tier")]
     pub dimension: Option<Dimension>,
@@ -147,11 +147,14 @@ pub(super) fn empty_bucket(date: NaiveDate) -> Bucket {
     Bucket {
         observation_date: Some(date),
         dimension: None,
+        dimension_name: None,
         placed: 0,
         cancelled: 0,
         order_count: 0,
         revenue_value: Decimal::ZERO,
         returned: 0,
+        units: 0,
+        discount_value: Decimal::ZERO,
     }
 }
 
@@ -205,7 +208,7 @@ impl ReadOp<Cx> for GetSalesTrend {
                     "value": figure(cx, *m, b),
                 });
                 if let Some(d) = input.dimension {
-                    item["acom:dimension"] = json!({d.key(): b.dimension});
+                    item["acom:dimension"] = d.label(b);
                 }
                 items.push(item);
             }

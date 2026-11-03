@@ -64,19 +64,20 @@
 
 ### `get_sales_overview` — Kind: R
 - 논리 주소 · REST: `analytics.sales.get_sales_overview` · `POST /v1/analytics/sales/overview`
-- 요약: 기간의 판매 핵심 지표(매출, 주문 수, 객단가, 취소·반품률) 한 번에.
-- consumes → produces: → metrics
+- 요약: 기간의 판매 핵심 지표(매출, 주문 수, 객단가, 취소·반품률) 한 번에. 프로모션 하나를 주면 그 프로모션이 값을 매긴 줄의 성과(매출·주문·수량·할인액).
+- consumes → produces: `promotion_id`(선택) → metrics
 - 입력:
   | 필드 | 타입 | 필수 | 설명 · 예 |
   |---|---|:--:|---|
   | `valid_from` / `valid_through` | Date | ✓ | 기간 |
-  | `acom:metrics` | enum[] | | `revenue` \| `order_count` \| `average_order_value` \| `cancellation_rate` \| `return_rate`. 기본 전부 |
-  | `acom:dimensions` | enum[] | | `category`(상품의 대표 표준 카테고리, 줄 금액) \| `member_tier`(주문한 회원의 지금 등급). 차원마다 항목 목록 하나 |
+  | `acom:metrics` | enum[] | | `revenue` \| `order_count` \| `average_order_value` \| `cancellation_rate` \| `return_rate` \| `units`(판매 수량) \| `discount`(줄 할인액). 기본은 나누기가 허용하는 전부. `units`·`discount`는 줄 단위라 `category`·`promotion`으로 나누거나 `promotion_id`를 줄 때만 |
+  | `acom:dimensions` | enum[] | | `category`(상품의 대표 표준 카테고리, 줄 금액) \| `member_tier`(주문한 회원의 지금 등급) \| `promotion`(줄에 값을 매긴 프로모션, 줄 금액. 프로모션 없는 줄은 `promotion_id: null`, `name: "No promotion"`). 차원마다 항목 목록 하나 |
+  | `promotion_id` | string | | 이 프로모션이 값을 매긴 줄만(`promo_` id). `acom:dimensions`와 함께 쓰지 않음. 팔린 게 없으면 0 |
   | `compare_from` / `compare_through` | Date | | 비교 기간(증감 계산). 둘 다 있어야 함 |
-- 출력: `{"items": [{"acom:metric": "revenue", "value": {"value": 18240.00, "currency": "USD"}, "acom:dimension": null, "acom:change_rate": -0.1929}], "total": 5, "valid_from": "2026-11-05", "valid_through": "2026-11-05"}` — 금액 지표의 `value`는 `{value, currency}`, 비율 지표는 0–1. `cancellation_rate` = 취소된 주문 / 결제된 주문, `return_rate` = 반품 요청(거절·철회 제외)이 있는 주문 / 취소되지 않은 주문. `acom:change_rate`는 비교 기간 대비 상대 변화(비교 값이 0이면 null)
+- 출력: `{"items": [{"acom:metric": "revenue", "value": {"value": 18240.00, "currency": "USD"}, "acom:dimension": null, "acom:change_rate": -0.1929}], "total": 5, "valid_from": "2026-11-05", "valid_through": "2026-11-05"}` — 금액 지표의 `value`는 `{value, currency}`, 비율 지표는 0–1. `cancellation_rate` = 취소된 주문 / 결제된 주문, `return_rate` = 반품 요청(거절·철회 제외)이 있는 주문 / 취소되지 않은 주문. `acom:change_rate`는 비교 기간 대비 상대 변화(비교 값이 0이면 null). `promotion`으로 나눈 항목의 `acom:dimension`은 `{"promotion_id": "promo_autumn_knit", "name": "Autumn knitwear 15%"}`. 줄 금액은 `analytics.order_line_summary`(migration 0035에서 `promotion_id`·`promotion_name`·`discount_value` 추가)에서 읽음
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음(읽기)
-- 에러: `invalid_period` → `get_sales_overview` · `dimension_not_supported`(취소·반품률은 주문 단위라 `category`로 나눌 수 없음. 허용 차원으로) → `get_sales_overview`
+- 에러: `invalid_period` → `get_sales_overview` · `dimension_not_supported`(취소·반품률은 주문 단위라 `category`·`promotion`으로 나눌 수 없음, `units`·`discount`는 줄 단위라 나누기 없이 줄 수 없음, `promotion_id`에 다른 차원. 허용 차원으로) → `get_sales_overview`
 - 멱등성: 읽기(부작용 없음)
 
 ### `get_sales_trend` — Kind: R

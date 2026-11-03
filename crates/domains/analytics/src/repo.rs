@@ -204,6 +204,9 @@ pub async fn campaign_sales(
 pub struct Bucket {
     pub observation_date: Option<NaiveDate>,
     pub dimension: Option<String>,
+    /// What the dimension value is called, where it has a name (a promotion's).
+    #[sqlx(default)]
+    pub dimension_name: Option<String>,
     /// Paid orders, cancelled ones included.
     pub placed: i64,
     pub cancelled: i64,
@@ -212,6 +215,11 @@ pub struct Bucket {
     pub revenue_value: Decimal,
     /// Orders with a return asked for (and not declined or withdrawn).
     pub returned: i64,
+    /// Units sold and what they were given off (line splits only; 0 otherwise).
+    #[sqlx(default)]
+    pub units: i64,
+    #[sqlx(default)]
+    pub discount_value: Decimal,
 }
 
 /// How buckets are cut: by day, week (starting Monday) or month, or the whole period.
@@ -240,6 +248,7 @@ pub enum Split {
     None,
     MemberTier,
     Category,
+    Promotion,
 }
 
 /// Order figures of `[from, through]` per bucket.
@@ -273,16 +282,25 @@ pub async fn buckets(
                  GROUP BY 1, 2 ORDER BY 1, 2"
             )
         }
-        Split::Category => format!(
-            "SELECT {date} AS observation_date, category_id AS dimension,
-                    count(DISTINCT order_id) AS placed, 0::bigint AS cancelled,
-                    count(DISTINCT order_id) AS order_count,
-                    coalesce(sum(revenue_value), 0) AS revenue_value, 0::bigint AS returned
-             FROM analytics.order_line_summary
-             WHERE tenant_id = $1 AND observation_date BETWEEN $2 AND $3
-               AND revenue_currency = $4
-             GROUP BY 1, 2 ORDER BY 1, 2"
-        ),
+        Split::Category | Split::Promotion => {
+            let (dim, name) = if split == Split::Category {
+                ("category_id", "NULL::text")
+            } else {
+                ("promotion_id", "max(promotion_name)")
+            };
+            format!(
+                "SELECT {date} AS observation_date, {dim} AS dimension, {name} AS dimension_name,
+                        count(DISTINCT order_id) AS placed, 0::bigint AS cancelled,
+                        count(DISTINCT order_id) AS order_count,
+                        coalesce(sum(revenue_value), 0) AS revenue_value, 0::bigint AS returned,
+                        coalesce(sum(order_quantity), 0)::bigint AS units,
+                        coalesce(sum(discount_value), 0) AS discount_value
+                 FROM analytics.order_line_summary
+                 WHERE tenant_id = $1 AND observation_date BETWEEN $2 AND $3
+                   AND revenue_currency = $4
+                 GROUP BY 1, 2 ORDER BY 1, 2"
+            )
+        }
     };
     sqlx::query_as(sqlx::AssertSqlSafe(sql))
         .bind(tx.tenant.as_str())
