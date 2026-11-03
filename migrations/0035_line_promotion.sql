@@ -36,3 +36,5 @@ COMMENT ON COLUMN analytics.order_line_summary.promotion_name IS
   'schema:name — that promotion''s name; NULL when none applied.';
 COMMENT ON COLUMN analytics.order_line_summary.discount_value IS
   'schema:discount — what the line was given off its price, as a positive amount, in major units.';
+COMMENT ON VIEW analytics.order_line_summary IS
+  'schema:OrderItem/acom:OrderLineSummary — one row per line of the orders that count as sales (paid, not cancelled): day, variant, product, category, campaign, promotion, units, discount and net amount, never who bought it.';

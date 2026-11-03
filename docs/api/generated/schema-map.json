@@ -785,7 +785,7 @@
     "table": "order_line_summary",
     "kind": "view",
     "term": "schema:OrderItem/acom:OrderLineSummary",
-    "description": "one row per line of the orders that count as sales (paid, not cancelled): day, variant, product, category, campaign, units and net amount, never who bought it.",
+    "description": "one row per line of the orders that count as sales (paid, not cancelled): day, variant, product, category, campaign, promotion, units, discount and net amount, never who bought it.",
     "columns": [
       {
         "name": "tenant_id",
@@ -856,6 +856,27 @@
         "nullable": true,
         "term": "acom:revenue",
         "description": "ISO 4217 code of revenue_value."
+      },
+      {
+        "name": "promotion_id",
+        "type": "",
+        "nullable": true,
+        "term": "acom:promotionId",
+        "description": "promotion whose price or discount applied to the line (promo_ id); NULL when none did."
+      },
+      {
+        "name": "promotion_name",
+        "type": "",
+        "nullable": true,
+        "term": "schema:name",
+        "description": "that promotion's name; NULL when none applied."
+      },
+      {
+        "name": "discount_value",
+        "type": "",
+        "nullable": true,
+        "term": "schema:discount",
+        "description": "what the line was given off its price, as a positive amount, in major units."
       }
     ]
   },
