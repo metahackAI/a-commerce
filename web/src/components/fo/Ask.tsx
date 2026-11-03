@@ -15,12 +15,22 @@ import {useCallback} from 'react';
 import {useAi} from '@/ai/AiProvider';
 import type {ElementContext} from '@/ai/types';
 
-import {useStorefront} from './StorefrontContext';
+import {useStorefrontIfAny} from './StorefrontContext';
+
+const stayOpen = () => {};
+
+/**
+ * Opens the storefront's assistant. A storefront block shown in the back office (an order on the
+ * owner's conversation) is already in an open conversation, so there is nothing to open.
+ */
+function useOpenAssistant(): () => void {
+  return useStorefrontIfAny()?.openAssistant ?? stayOpen;
+}
 
 /** Sends a sentence to the assistant and opens it; `about` is the element the sentence is about. */
 export function useSay() {
   const ai = useAi();
-  const {openAssistant} = useStorefront();
+  const openAssistant = useOpenAssistant();
   return useCallback(
     (text: string, about?: ElementContext) => {
       openAssistant();
@@ -33,7 +43,7 @@ export function useSay() {
 /** A block's `say` button: sends the block's intent (`ui_event`) and opens the assistant. */
 export function useSayEvent() {
   const ai = useAi();
-  const {openAssistant} = useStorefront();
+  const openAssistant = useOpenAssistant();
   return useCallback(
     (blockId: string, actionId: string, label: string, args?: Record<string, unknown>) => {
       openAssistant();
@@ -45,7 +55,7 @@ export function useSayEvent() {
 
 /** "Ask about this": picks the element as context for the next message and opens the assistant. */
 export function AskButton({target, label}: {target: {ask: () => void}; label: string}) {
-  const {openAssistant} = useStorefront();
+  const openAssistant = useOpenAssistant();
   return (
     <IconButton
       label={`Ask about ${label}`}
