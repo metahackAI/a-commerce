@@ -34,7 +34,9 @@ tool_search:
     favorite: [wishlist]
     point: [loyalty, balance]
     reward: [loyalty, balance]
-    sale: [promotion, active]
+    # A sale is also the prices an operator sets ("run a 20% weekend sale"): without `prices` the
+    # promotion agent's set_sale_prices drops out of the candidates.
+    sale: [promotion, active, prices]
     deal: [promotion, active]
     discount: [promotion, coupon]
     coupon: [member, coupon]
