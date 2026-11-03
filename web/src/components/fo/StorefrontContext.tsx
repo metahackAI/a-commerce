@@ -6,6 +6,7 @@
 
 import {createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode} from 'react';
 
+import type {Device} from '@/lib/device';
 import type {Session} from '@/lib/session';
 
 export interface ShopperInfo {
@@ -30,6 +31,8 @@ export interface CompareEntry {
 
 interface StorefrontState extends ShopperInfo {
   cartLines: number;
+  /** The device the request came from (its User-Agent), for the first, server-drawn layout. */
+  device: Device;
   isAssistantOpen: boolean;
   openAssistant: () => void;
   setAssistantOpen: (open: boolean) => void;
@@ -57,10 +60,12 @@ function readCompare(): CompareEntry[] {
 export function StorefrontProvider({
   shopper,
   cartLines,
+  device,
   children,
 }: {
   shopper: ShopperInfo;
   cartLines: number;
+  device: Device;
   children: ReactNode;
 }) {
   const [isAssistantOpen, setAssistantOpen] = useState(false);
@@ -90,6 +95,7 @@ export function StorefrontProvider({
     () => ({
       ...shopper,
       cartLines,
+      device,
       isAssistantOpen,
       openAssistant: () => setAssistantOpen(true),
       setAssistantOpen,
@@ -97,7 +103,7 @@ export function StorefrontProvider({
       toggleCompare,
       clearCompare: () => save([]),
     }),
-    [shopper, cartLines, isAssistantOpen, compare, toggleCompare, save],
+    [shopper, cartLines, device, isAssistantOpen, compare, toggleCompare, save],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
