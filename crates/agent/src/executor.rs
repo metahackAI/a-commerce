@@ -248,6 +248,14 @@ fn is_hollow(v: Option<&Value>, schema: Option<&Value>) -> bool {
         .any(|k| is_empty(o.get(k)))
 }
 
+/// Money written as zero (`{"value": 0, "currency": "USD"}`): what a model writes for a figure it
+/// has not read. Where a step it builds on read that figure, the read wins. Plain numbers (a
+/// quantity, a position) are left alone: zero is often meant there.
+fn is_zero_amount(v: Option<&Value>) -> bool {
+    matches!(v, Some(Value::Object(o)) if o.contains_key("currency")
+        && o.get("value").and_then(Value::as_f64).is_some_and(|x| x == 0.0))
+}
+
 fn is_empty(v: Option<&Value>) -> bool {
     match v {
         None | Some(Value::Null) => true,
@@ -672,7 +680,8 @@ pub fn bind(
 
     for field in tool.required() {
         let schema = tool.properties().and_then(|p| p.get(field));
-        if !is_empty(input.get(field)) && !is_hollow(input.get(field), schema) {
+        let zero = is_zero_amount(input.get(field));
+        if !is_empty(input.get(field)) && !is_hollow(input.get(field), schema) && !zero {
             continue;
         }
         // `client_total` may take a result's `total`; an id never takes another entity's `id`.
@@ -684,7 +693,7 @@ pub fn bind(
             let out = r.output.as_ref()?;
             out.get(field)
                 .or_else(|| short.and_then(|s| out.get(s)))
-                .filter(|v| !v.is_null())
+                .filter(|v| !v.is_null() && !(zero && is_zero_amount(Some(v))))
                 .map(|v| (r.step.clone(), v.clone()))
         });
         if let Some((source, v)) = found {
@@ -1549,6 +1558,39 @@ mod tests {
             "{:?}",
             b.notes
         );
+        // Written as zero: the cart read the total, so the cart's total.
+        let b = bind(
+            &step(
+                "s2",
+                "prepare_order",
+                json!({"delivery_mode": "saved", "client_total": {"value": 0, "currency": "USD"}}),
+                &["s1"],
+            ),
+            get(&m, "prepare_order"),
+            &done,
+            &["s1".into()],
+            &BTreeMap::new(),
+        );
+        assert_eq!(
+            b.input["client_total"]["value"],
+            json!(71.20),
+            "{:?}",
+            b.notes
+        );
+        // A zero nothing read stays: the server's check says what the total is.
+        let b = bind(
+            &step(
+                "s2",
+                "prepare_order",
+                json!({"delivery_mode": "saved", "client_total": {"value": 0, "currency": "USD"}}),
+                &[],
+            ),
+            get(&m, "prepare_order"),
+            &done,
+            &["s1".into()],
+            &BTreeMap::new(),
+        );
+        assert_eq!(b.input["client_total"]["value"], json!(0));
     }
 
     fn with_nested_slot() -> ToolSpec {

@@ -113,3 +113,8 @@ export function useStorefront(): StorefrontState {
   if (!ctx) throw new Error('useStorefront must be used inside <StorefrontProvider>');
   return ctx;
 }
+
+/** The storefront's state where there is one: storefront blocks also show in the back office. */
+export function useStorefrontIfAny(): StorefrontState | null {
+  return useContext(Ctx);
+}
