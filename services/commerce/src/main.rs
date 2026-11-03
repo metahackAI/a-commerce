@@ -308,6 +308,55 @@ fn page_image(api: Arc<acom_http::Api>) -> Router {
         .with_state(api)
 }
 
+/// `POST /v1/platform/tasks/{task_id}/pickup-ended`: the gateway's task pickup ended its turn
+/// without a change set (docs/api/platform.md, internal endpoints). Only a system caller.
+fn pickup_ended(api: Arc<acom_http::Api>) -> Router {
+    use acom_contract::{ErrorCode, ToolError};
+    use axum::extract::{Path, State};
+    use axum::response::IntoResponse;
+    use serde_json::{Value, json};
+    Router::new()
+        .route(
+            "/v1/platform/tasks/{task_id}/pickup-ended",
+            axum::routing::post(
+                |State(api): State<Arc<acom_http::Api>>,
+                 caller: acom_http::Caller,
+                 Path(task): Path<String>,
+                 axum::Json(body): axum::Json<Value>| async move {
+                    let refuse = |e: ToolError| acom_http::ApiError(e).into_response();
+                    if caller.principal.kind != acom_core::enums::ActorKind::System {
+                        return refuse(
+                            ToolError::new(ErrorCode::FORBIDDEN, "Only the system notes a pickup.")
+                                .detail(json!({"reason": "actor_kind", "required": "system"})),
+                        );
+                    }
+                    let cx = match api
+                        .runtime
+                        .context(caller.principal.clone(), caller.request_id.clone())
+                        .await
+                    {
+                        Ok(cx) => cx,
+                        Err(e) => return refuse(e),
+                    };
+                    let mut tx = match cx.begin().await {
+                        Ok(tx) => tx,
+                        Err(e) => return refuse(ToolError::from(e)),
+                    };
+                    let conversation = body["conversation_id"].as_str();
+                    let reply = body["reply"].as_str().unwrap_or_default();
+                    match acom_platform::note_undrafted(&mut tx, &task, conversation, reply).await {
+                        Ok(out) => match tx.commit().await {
+                            Ok(()) => axum::Json(out).into_response(),
+                            Err(e) => refuse(ToolError::from(e)),
+                        },
+                        Err(e) => refuse(e),
+                    }
+                },
+            ),
+        )
+        .with_state(api)
+}
+
 /// The REST surface: every operation, the change-set endpoints, and the event stream.
 fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
     let key = cli
@@ -342,6 +391,7 @@ fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
     };
     Ok(acom_http::router(api.clone())
         .merge(bot_report(api.clone()))
+        .merge(pickup_ended(api.clone()))
         .merge(page_image(api.clone()))
         .merge(demo_reset(api, reset)))
 }

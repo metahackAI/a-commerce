@@ -917,7 +917,7 @@ tables:
     - {tenant_id: store_northwind, id: job_watch_returns, kind: watcher.returns_over_refund_threshold, run_at: "2026-11-06T11:10:00-05:00", payload: {}, attempts: 0}
     - {tenant_id: store_northwind, id: job_watch_stock, kind: watcher.stock_out_forecast, run_at: "2026-11-06T11:40:00-05:00", payload: {}, attempts: 0}
     - {tenant_id: store_northwind, id: job_watch_price, kind: watcher.price_below_cost, run_at: "2026-11-06T11:55:00-05:00", payload: {}, attempts: 0}
-    - {tenant_id: store_northwind, id: job_watch_bot, kind: watcher.ailism_bot, run_at: "2026-11-06T12:00:00-05:00", payload: {}, attempts: 0}
+    - {tenant_id: store_northwind, id: job_watch_bot, kind: watcher.ailism_bot, run_at: "2026-11-06T11:00:00-05:00", payload: {}, attempts: 0}
     - {tenant_id: store_northwind, id: job_promo_denim_bundle_start, kind: promotion.start, run_at: "2026-11-13T00:00:00-05:00", payload: {promotion_id: promo_denim_bundle}, attempts: 0}
     - {tenant_id: store_northwind, id: job_promo_denim_bundle_end, kind: promotion.end, run_at: "2026-11-21T00:00:00-05:00", payload: {promotion_id: promo_denim_bundle}, attempts: 0}
     - {tenant_id: store_northwind, id: job_promo_autumn_knit_end, kind: promotion.end, run_at: "2026-11-16T00:00:00-05:00", payload: {promotion_id: promo_autumn_knit}, attempts: 0}

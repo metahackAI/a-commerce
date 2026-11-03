@@ -250,6 +250,7 @@ async fn work(gw: Arc<Gateway>, mut rx: mpsc::UnboundedReceiver<String>) {
 async fn pick_up(gw: &Gateway, http: &reqwest::Client, task: &str) -> Result<String, String> {
     let request_id = format!("req_pickup_{task}");
     let token = system_token(gw, &request_id)?;
+    let system = token.clone();
     let read = |path: String| {
         let token = token.clone();
         async move {
@@ -334,16 +335,76 @@ async fn pick_up(gw: &Gateway, http: &reqwest::Client, task: &str) -> Result<Str
             text.chars().take(300).collect::<String>()
         ));
     }
-    // Read the turn to its end; the change set and the task carry the result.
-    let (mut tail, mut done) = (Vec::new(), false);
+    // Read the turn to its end; the change set and the task carry the result. The stream is
+    // kept (up to a bound) for its conversation and its last answer.
+    let (mut tail, mut done, mut stream) = (Vec::new(), false, Vec::new());
     while let Some(chunk) = r.chunk().await.map_err(|e| e.to_string())? {
         done |= saw_turn_done(&mut tail, &chunk);
+        if stream.len() < STREAM_KEPT {
+            stream.extend_from_slice(&chunk);
+        }
     }
-    Ok(if done {
-        format!("turn done as {acts_as}")
-    } else {
-        format!("turn ended without turn.done as {acts_as}")
-    })
+    // A turn that drafted nothing (it only read, or its write failed) leaves the task waiting
+    // for a person, with the conversation and what the agent answered.
+    let after = read(format!("/v1/platform/tasks/{task}")).await?;
+    let drafted = !after["related"]["change_set_id"].is_null();
+    if !drafted {
+        let (conversation, reply) = turn_outcome(&String::from_utf8_lossy(&stream));
+        let r = http
+            .post(format!(
+                "{}/v1/platform/tasks/{task}/pickup-ended",
+                gw.commerce
+            ))
+            .bearer_auth(&system)
+            .header("content-type", "application/json")
+            .body(json!({"conversation_id": conversation, "reply": reply}).to_string())
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+        if !r.status().is_success() {
+            return Err(format!("pickup-ended: {}", r.status()));
+        }
+    }
+    Ok(format!(
+        "turn {} as {acts_as}, {}",
+        if done {
+            "done"
+        } else {
+            "ended without turn.done"
+        },
+        if drafted {
+            "drafted"
+        } else {
+            "nothing drafted"
+        }
+    ))
+}
+
+/// How much of a picked-up turn's stream is kept to read its outcome.
+const STREAM_KEPT: usize = 512 * 1024;
+
+/// The conversation of a turn stream and the text of its last answer (`message.done`).
+fn turn_outcome(stream: &str) -> (Option<String>, String) {
+    let (mut event, mut conversation, mut reply) = ("", None, String::new());
+    for line in stream.lines() {
+        if let Some(e) = line.strip_prefix("event:") {
+            event = e.trim();
+        } else if let Some(data) = line.strip_prefix("data:")
+            && let Ok(v) = serde_json::from_str::<Value>(data.trim())
+        {
+            if conversation.is_none()
+                && let Some(c) = v["conversation_id"].as_str()
+            {
+                conversation = Some(c.to_owned());
+            }
+            if event == "message.done"
+                && let Some(t) = v["text"].as_str()
+            {
+                t.clone_into(&mut reply);
+            }
+        }
+    }
+    (conversation, reply)
 }
 
 /// Feeds one chunk of a turn stream: true when [`TURN_DONE`] is in it, also when chunks split
@@ -373,6 +434,21 @@ mod tests {
             r#"{"task_id": "task_2", "state": "working", "created": true, "origin": "automation"}"#;
         assert_eq!(new_agent_task("task.updated", automation), None);
         assert_eq!(new_agent_task("change_set.updated", new), None);
+    }
+
+    #[test]
+    fn a_turn_stream_gives_its_conversation_and_last_answer() {
+        let stream = "event: turn.started\ndata: {\"conversation_id\": \"conv_1\", \"turn_id\": \"turn_1\"}\n\n\
+                      event: message.done\ndata: {\"text\": \"I could not find the question.\"}\n\n\
+                      event: turn.done\ndata: {}\n\n";
+        assert_eq!(
+            turn_outcome(stream),
+            (
+                Some("conv_1".to_owned()),
+                "I could not find the question.".to_owned()
+            )
+        );
+        assert_eq!(turn_outcome(""), (None, String::new()));
     }
 
     #[test]
