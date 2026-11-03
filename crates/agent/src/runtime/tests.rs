@@ -1652,6 +1652,43 @@ async fn of_several_orders_read_the_one_whose_parcel_was_tracked_is_shown() {
     assert_eq!(b[0].data["order_number"], "20268");
 }
 
+#[test]
+fn a_list_read_one_row_at_a_time_counts_from_its_first_row() {
+    let rec = |step: &str, order: &str| StepRecord {
+        step: step.into(),
+        tool: "get_order".into(),
+        kind: ToolKind::Read,
+        input: json!({}),
+        output: Some(json!({"order_number": order})),
+        preview: None,
+        item: None,
+        slots: BTreeMap::new(),
+    };
+    let numbers = |h: &[StepRecord]| -> Vec<String> {
+        newest_first(h, |_| true)
+            .iter()
+            .map(|r| {
+                r.output.as_ref().unwrap()["order_number"]
+                    .as_str()
+                    .unwrap()
+                    .to_owned()
+            })
+            .collect()
+    };
+    // `s2` ran once per row of a list sorted newest first: its first row is the newest order.
+    let each = [
+        rec("s1", "1"),
+        rec("s2", "29202"),
+        rec("s2", "20381"),
+        rec("s2", "20105"),
+    ];
+    assert_eq!(numbers(&each), ["29202", "20381", "20105", "1"]);
+    // Separate steps: the last read comes first, as before.
+    let steps = [rec("s1", "20268"), rec("s2", "20105")];
+    assert_eq!(numbers(&steps), ["20105", "20268"]);
+    assert!(numbers(&[]).is_empty());
+}
+
 #[tokio::test]
 async fn what_the_agent_always_has_at_hand_does_not_crowd_out_the_answer() {
     let events = shopper_turn(
