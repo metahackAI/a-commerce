@@ -19,7 +19,7 @@ import type {BotCycleSummary, BotDecision, BotFeedback, BotStatus} from '@/app/b
 import {PageFrame, PageSection} from '../PageFrame';
 import {StateToken} from '../StateToken';
 import {DataTable} from '../tables';
-import {TargetFact} from '../targets';
+import {TargetRegion} from '../targets';
 import {BotTabs, DecisionCard, FeedbackForm, FeedbackList, RunNowButton, useBotEvents} from './parts';
 
 const MODE: Record<string, string> = {
@@ -35,7 +35,7 @@ function every(minutes: number): string {
 
 function Tile({label, value, note}: {label: string; value: string; note?: string}) {
   return (
-    <TargetFact target={{kind: 'bot_figure', label: `${label}: ${value}`, ids: {figure: label}, term: 'acom:Bot'}} label={label}>
+    <TargetRegion target={{kind: 'bot_figure', label: `${label}: ${value}`, ids: {figure: label}, term: 'acom:Bot'}}>
       <Card variant="muted">
         <VStack gap={1}>
           <Text type="supporting" color="secondary">
@@ -51,7 +51,7 @@ function Tile({label, value, note}: {label: string; value: string; note?: string
           ) : null}
         </VStack>
       </Card>
-    </TargetFact>
+    </TargetRegion>
   );
 }
 

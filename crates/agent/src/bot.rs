@@ -261,7 +261,7 @@ fn report_schema(areas: &[&str], most: u32) -> Value {
     json!({"type": "object", "additionalProperties": false,
       "required": ["summary", "findings", "proposals"],
       "properties": {
-        "summary": {"type": "string", "maxLength": 500},
+        "summary": {"type": "string", "maxLength": 700},
         "findings": {"type": "array", "maxItems": 8, "items": {"type": "object",
           "additionalProperties": false, "required": ["area", "text", "severity"],
           "properties": {"area": area, "text": {"type": "string", "maxLength": 300}, "severity": level}}},
@@ -287,8 +287,14 @@ fn report_schema(areas: &[&str], most: u32) -> Value {
 }
 
 /// Evidence lines with a number the snapshot does not hold are dropped: the bot does not
-/// invent figures.
+/// invent figures. A summary the length limit stopped keeps its finished sentences.
 fn grounded(report: &mut Value, sources: &[&Value]) {
+    if let Some(summary) = report.get("summary").and_then(Value::as_str)
+        && !summary.trim_end().ends_with(['.', '!', '?'])
+        && let Some(kept) = checker::whole_sentences(summary)
+    {
+        report["summary"] = json!(kept);
+    }
     let Some(proposals) = report.get_mut("proposals").and_then(Value::as_array_mut) else {
         return;
     };

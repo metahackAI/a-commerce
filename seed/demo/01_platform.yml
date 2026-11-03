@@ -39,6 +39,7 @@ tables:
     - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:fulfillment"}
     - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:messaging"}
     - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:analytics"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:read:community"}
     - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:write:catalog"}
     - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:write:merchandising"}
     - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:write:promotion"}
