@@ -3498,6 +3498,9 @@ impl<'r> Turn<'r> {
                    "drafted": v.items.iter().map(|i| json!({"tool": i.tool, "changes": i.changes_total})).collect::<Vec<_>>(),
                    "checks": v.check_count(),
                    "failed_checks": v.failed_checks().iter().map(|c| json!({"rule": c.rule, "detail": c.detail})).collect::<Vec<_>>(),
+                   // What passing checks found ("moved to 15%", "2 excluded"): how the draft met
+                   // the request, so the reply does not guess it from the request alone.
+                   "passed_checks": v.items.iter().flat_map(|i| &i.checks).filter(|c| c.passed).filter_map(|c| c.detail.as_deref()).collect::<Vec<_>>(),
                    "left_out": v.left_out.len()})
         });
         let reads: Vec<Value> = self
