@@ -8,9 +8,106 @@ use super::{Action, Block, SuggestedIntent, words};
 /// Columns a table shows at most.
 const COLUMNS: usize = 6;
 
+/// Figures read as a table (`get_sales_overview`, `get_sales_trend`): one item per figure
+/// (`acom:metric`, `value`, maybe a day and a split), laid out one row per day and split with a
+/// column per figure. A split by something named shows its name. With a split and no days, the
+/// largest first figure comes first ("which promotion sold most"). `None` when the items are not
+/// figures.
+fn figures(items: &[Value]) -> Option<(Vec<String>, Vec<Value>)> {
+    let is_figure =
+        |i: &Value| i.get("acom:metric").is_some_and(Value::is_string) && i.get("value").is_some();
+    if items.is_empty() || !items.iter().all(is_figure) {
+        return None;
+    }
+    let mut keys: Vec<String> = Vec::new();
+    let mut metrics: Vec<String> = Vec::new();
+    let mut rows: Vec<(String, Map<String, Value>)> = Vec::new();
+    let mut dated = false;
+    for i in items {
+        let mut at = Map::new();
+        if let Some(d) = i.get("observation_date").filter(|d| !d.is_null()) {
+            at.insert("observation_date".into(), d.clone());
+            dated = true;
+        }
+        for (k, v) in i
+            .get("acom:dimension")
+            .and_then(Value::as_object)
+            .into_iter()
+            .flatten()
+        {
+            if k == "name" {
+                continue;
+            }
+            // `promotion_id` shows as the promotion's name where the split gives one.
+            let shown = i["acom:dimension"]
+                .get("name")
+                .filter(|n| !n.is_null())
+                .unwrap_or(v);
+            let key = k.strip_suffix("_id").unwrap_or(k).to_owned();
+            at.insert(key, shown.clone());
+        }
+        let id = Value::Object(at.clone()).to_string();
+        let metric = i["acom:metric"].as_str().unwrap_or_default().to_owned();
+        if !metrics.contains(&metric) {
+            metrics.push(metric.clone());
+        }
+        for k in at.keys() {
+            if !keys.contains(k) {
+                keys.push(k.clone());
+            }
+        }
+        match rows.iter_mut().find(|(r, _)| *r == id) {
+            Some((_, row)) => {
+                row.insert(metric, i["value"].clone());
+            }
+            None => {
+                at.insert(metric, i["value"].clone());
+                rows.push((id, at));
+            }
+        }
+    }
+    let first = metrics.first().cloned().unwrap_or_default();
+    if !dated && !keys.is_empty() {
+        let size = |r: &Map<String, Value>| {
+            r.get(&first)
+                .map(|v| v.get("value").unwrap_or(v))
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0)
+        };
+        rows.sort_by(|a, b| size(&b.1).total_cmp(&size(&a.1)));
+    }
+    let mut columns = keys;
+    columns.extend(metrics);
+    columns.truncate(COLUMNS);
+    let rows = rows
+        .into_iter()
+        .map(|(_, r)| {
+            Value::Object(
+                columns
+                    .iter()
+                    .map(|c| (c.clone(), r.get(c).cloned().unwrap_or(Value::Null)))
+                    .collect(),
+            )
+        })
+        .collect();
+    Some((columns, rows))
+}
+
 /// A list read as a table: the plain fields the rows share, in first-seen order.
 pub fn product_table(output: &Value) -> Option<Block> {
     let items = items_of(output);
+    if let Some((columns, rows)) = figures(&items) {
+        let cols: Vec<Value> = columns
+            .iter()
+            .map(|c| json!({"key": c, "label": words(c)}))
+            .collect();
+        let n = rows.len();
+        return Some(Block::new(
+            "product_table",
+            format!("{n} of {n}"),
+            json!({"columns": cols, "rows": rows, "total": n}),
+        ));
+    }
     if items.is_empty() {
         // A search that found nothing still answers: an empty table says so.
         return output.get("items").and_then(Value::as_array).map(|_| {
@@ -153,6 +250,33 @@ pub fn order_detail(output: &Value) -> Option<Block> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn figures_become_one_row_per_split_with_a_column_per_figure() {
+        let money = |v: f64| json!({"value": v, "currency": "USD"});
+        let out = json!({"items": [
+            {"acom:metric": "revenue", "value": money(105.0), "acom:dimension": {"promotion_id": "promo_birthday", "name": "Birthday coupon"}},
+            {"acom:metric": "order_count", "value": 3, "acom:dimension": {"promotion_id": "promo_birthday", "name": "Birthday coupon"}},
+            {"acom:metric": "revenue", "value": money(5831.0), "acom:dimension": {"promotion_id": "promo_autumn_knit", "name": "Autumn knitwear 15%"}},
+            {"acom:metric": "order_count", "value": 42, "acom:dimension": {"promotion_id": "promo_autumn_knit", "name": "Autumn knitwear 15%"}}
+        ], "total": 4});
+        let b = product_table(&out).unwrap_or_else(|| panic!("a table"));
+        assert_eq!(b.data["columns"][0]["key"], "promotion");
+        assert_eq!(b.data["rows"].as_array().map(Vec::len), Some(2));
+        // The largest first: the knitwear sale before the birthday coupon.
+        assert_eq!(b.data["rows"][0]["promotion"], "Autumn knitwear 15%");
+        assert_eq!(b.data["rows"][0]["order_count"], 42);
+        assert_eq!(b.data["rows"][1]["revenue"]["value"], 105.0);
+
+        // Days stay in their order, one row a day.
+        let trend = json!({"items": [
+            {"observation_date": "2026-11-04", "acom:metric": "revenue", "value": money(10.0)},
+            {"observation_date": "2026-11-05", "acom:metric": "revenue", "value": money(30.0)}
+        ]});
+        let b = product_table(&trend).unwrap_or_else(|| panic!("a table"));
+        assert_eq!(b.data["rows"][0]["observation_date"], "2026-11-04");
+        assert_eq!(b.data["columns"][1]["key"], "revenue");
+    }
 
     #[test]
     fn tables_show_shared_plain_fields() {
