@@ -2377,8 +2377,9 @@ impl<'r> Turn<'r> {
             .await
             .ok()?;
         // It fills what is open. What the arguments already hold stays: a bound `$item[1]…` is
-        // not the model's to swap for a promotion it saw in a list.
-        let merged = executor::merge(&v, &r.value);
+        // not the model's to swap for a promotion it saw in a list, nor a bound picture inside
+        // the content it writes.
+        let merged = executor::fill_under(&v, &r.value);
         Some(acom_llm::repair(
             &merged,
             &tool.input_schema,

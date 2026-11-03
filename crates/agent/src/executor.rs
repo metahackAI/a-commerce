@@ -958,6 +958,26 @@ fn has_empty_inner_list(v: &Value) -> bool {
     })
 }
 
+/// What the arguments model wrote, under what the arguments already held: a held value stays,
+/// down to a field inside an object (a bound picture in the banner content the model writes
+/// around it).
+pub fn fill_under(written: &Value, held: &Value) -> Value {
+    match (written, held) {
+        (Value::Object(w), Value::Object(h)) => {
+            let mut out = w.clone();
+            for (k, v) in h {
+                let next = match out.get(k) {
+                    Some(x) => fill_under(x, v),
+                    None => v.clone(),
+                };
+                out.insert(k.clone(), next);
+            }
+            Value::Object(out)
+        }
+        (_, h) => h.clone(),
+    }
+}
+
 /// A correction keeps what the item had and changes what the model said.
 pub fn merge(base: &Value, changes: &Value) -> Value {
     match (base, changes) {
@@ -1628,6 +1648,21 @@ mod tests {
             &BTreeMap::new(),
         );
         assert_eq!(b.input["client_total"]["value"], json!(0));
+    }
+
+    #[test]
+    fn what_the_arguments_held_stays_under_what_the_model_wrote() {
+        let held = json!({"slot_id": "slot_home_hero", "promotion_id": "$item[1].promotion_id",
+                          "content": {"image_product_id": "prd_a"}});
+        let written = json!({"slot_id": "slot_x", "audience": "vip", "promotion_id": "promo_old",
+                             "content": {"headline": "Sale", "image_source": "product",
+                                         "image_product_id": "prd_made_up"}});
+        assert_eq!(
+            fill_under(&written, &held),
+            json!({"slot_id": "slot_home_hero", "audience": "vip",
+                   "promotion_id": "$item[1].promotion_id",
+                   "content": {"headline": "Sale", "image_source": "product", "image_product_id": "prd_a"}})
+        );
     }
 
     fn with_nested_slot() -> ToolSpec {
