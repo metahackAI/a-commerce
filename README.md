@@ -77,7 +77,7 @@ Method: [eval/README.md](eval/README.md).
 
 - **Counted by reading every reply.** Done means the answer is right and the reply commits to it. "I can't confirm from this page", or a "none" with no data read behind it, is not done. A write must wait for approval. The runner's automatic score misses some right answers and passes some hedged ones; it gives 0% / 11% / 22% on held-out and 12% / 25% / 75% on fresh. The rules, every held-out task and both scores: [eval/results/2026-11-03-glimmer-judged.md](eval/results/2026-11-03-glimmer-judged.md).
 - **The fresh set is the cleaner number.** It was written on Nov 2 against the code we measured and shown to no one building the agent. The held-out tasks are in this repository and were run on Nov 1 to check whether design-set changes carry over.
-- **On held-out, a2api and A-Commerce answered the same three read tasks; the writes differ.** The screen API runs writes at once, so through it the photo request to a customer went out with no approval in all 10 runs. A-Commerce drafted it as a change set waiting for a person, all 10 times (principle 2).
+- **On held-out, a2api and A-Commerce answered the same three read tasks; the writes differ.** The screen API runs writes at once, so through it the photo request to a customer went out, and the knit sale was paused, with no approval in all 10 runs each. A-Commerce drafted it as a change set waiting for a person, all 10 times (principle 2).
 - **About half of the asks are still not done.** The agent answers from the first page of a long list, or describes a change wrongly ("paused until Monday", when a pause has no end).
 
 ## How we use Meta models

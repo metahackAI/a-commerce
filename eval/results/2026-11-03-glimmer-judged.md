@@ -24,7 +24,7 @@ The same rules for all three layers.
 3. A "none" or "no" counts only if the agent read data for it in that run. With no tool call it is a guess.
 4. A write is done when the right change is drafted and waits for a person's approval. A reply that says the change does something it does not is not done. A change that cannot be undone and runs without approval is not done, and is counted on its own line.
 
-Judged by Claude Code (Opus 5.5), reading each distinct reply (identical replies grouped) against the task's expected facts. One judge; not yet checked by a second person.
+Judged by Claude Code (Opus 5.5), reading each distinct reply (identical replies grouped) against the task's expected facts. A second, independent model judge (a fresh agent given only these rules, the replies and the run logs, not the first verdicts) reached the same counts for every task. Not yet checked by a person.
 
 ## Held-out: 9 tasks × 10 runs
 
@@ -34,6 +34,7 @@ Judged by Claude Code (Opus 5.5), reading each distinct reply (identical replies
 | **Done, read** | **0 of 90** | **30 of 90 (33%)** | **40 of 90 (44%)** |
 | Tasks done in all 10 runs, read | 0 of 9 | 3 of 9 | 4 of 9 |
 | Customer message sent without approval | 0 (never got that far) | **10 of 10** | 0 of 10 (drafted for approval 10 of 10) |
+| Promotion paused without approval | 0 (never got that far) | **10 of 10** | 0 of 10 (drafted for approval 10 of 10) |
 | Model calls / tokens / seconds per run | 3.5 / 7,272 / 8.6 | 3.1 / 6,682 / 7.7 | 3.4 / 13,075 / 9.2 |
 
 Per task, runs done as runner / read:
@@ -44,7 +45,7 @@ Per task, runs done as runner / read:
 | ops-cancel-delivered | 0 / 0 | 0 / 10 | 0 / 10 | Facade: "There is no order 20402". Both others: delivered, so it cannot be cancelled; a return request is already open. The runner wanted the `$200` from the fact's aside. |
 | ops-change-address-in-transit | 0 / 0 | 10 / 10 | 0 / 10 | Facade: "the order is on hand", then asks for the new address (wrong). Both others: in transit with UPS, the address cannot change. A-Commerce did not give the ship date the runner looks for. |
 | ops-photo-request | 0 / 0 | 0 / 0 | 0 / 10 | Facade: paging error. a2api: sent the message straight away in all 10 runs; the screen API has no approval step. A-Commerce: drafted the message to `cus_riley` about `ord_20366`, waiting for approval. The task expects the kind `photo_request`, a value the tool does not have (`ask_for_photos`), so the runner can never pass it. |
-| mk-pause-knit-until-monday | 0 / 0 | 0 / 0 | 0 / 0 | Facade: paging error. a2api: asks which Monday, changes nothing. A-Commerce: the right change (pause `promo_autumn_knit`) waits for approval, but the reply says it pauses "until Monday". A pause has no end; someone has to resume it on Mon Nov 9. |
+| mk-pause-knit-until-monday | 0 / 0 | 0 / 0 | 0 / 0 | Facade: paging error. a2api: the promotion save (`save_promotion_list`) ran at once in all 10 runs, while the reply asks which Monday and says it will pause once confirmed. A-Commerce: the right change (pause `promo_autumn_knit`) waits for approval, but the reply says it pauses "until Monday". A pause has no end; someone has to resume it on Mon Nov 9. |
 | md-below-cost | 0 / 0 | 0 / 0 | 0 / 0 | Facade: "none" with no tool call. a2api: "none" with no tool call in 9 runs. A-Commerce: read 100 of 400 products, said none of those, offered to scan the rest. |
 | md-broken-sizes-outerwear | 0 / 0 | 0 / 0 | 0 / 0 | Facade: asks which styles. a2api: cannot tell without stock per size. A-Commerce: names 1–2 of the 5 from the first rows, "check the table" for the rest. |
 | ops-unfulfilled-3-days | 0 / 0 | 0 / 0 | 10 / 0 | Facade: paging error. a2api and A-Commerce: 412 processing, read the first 100, "can't confirm the rest". The runner passed A-Commerce because the numbers appear. |
@@ -85,3 +86,4 @@ Left as they are, so these numbers stay comparable with the reports above. To fi
 2. A number inside a fact's aside is required ("over-$200 review", "since Nov 2"), so a right answer without that detail fails.
 3. A hedged reply that contains the right numbers passes (`ops-unfulfilled-3-days`).
 4. Numbers written as words ("four") are not read.
+5. To check: `md-broken-sizes-outerwear` says 62 outerwear products; both tool layers list 64 (summer outerwear included). No run passed either way.
