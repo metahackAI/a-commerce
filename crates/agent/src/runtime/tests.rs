@@ -79,6 +79,14 @@ impl Scripted {
         self.asked.lock().unwrap().clone()
     }
 
+    /// One more answer, written once an earlier turn has run (a block id it showed).
+    fn will_answer(&self, purpose: &str, answer: String) {
+        self.answers
+            .lock()
+            .unwrap()
+            .push((purpose.to_owned(), answer));
+    }
+
     fn reply_inputs(&self) -> Vec<String> {
         self.reply_inputs.lock().unwrap().clone()
     }
@@ -1235,6 +1243,110 @@ async fn a_cart_answer_after_adding_to_it_shows_the_cart_read_again() {
         assert_eq!(b[0].ui, "cart", "{steps}");
         assert_eq!(b[0].data["lines"][0]["name"], "Packable windbreaker");
     }
+}
+
+#[test]
+fn of_two_names_the_request_says_the_longer_one_is_meant() {
+    let m = fixtures::manifest();
+    let tool = |name: &str| m.iter().find(|t| t.tool == name).unwrap();
+    let out = json!({"items": [
+        {"category_id": "cat_outerwear", "name": "Outerwear"},
+        {"category_id": "cat_summer_outerwear", "name": "Summer outerwear"},
+        {"category_id": "cat_knitwear", "name": "Knitwear"}]});
+    let read = StepRecord {
+        step: "c".into(),
+        tool: "search_products".into(),
+        kind: ToolKind::Read,
+        input: json!({}),
+        slots: executor::slots_from_read(tool("search_products"), &out),
+        output: Some(out),
+        preview: None,
+        item: None,
+    };
+    let view = BTreeMap::from([("c".to_owned(), read)]);
+    let step = PlanStep {
+        id: "s".into(),
+        tool: "set_sale_prices".into(),
+        args: json!({}),
+        uses: vec!["c".into()],
+        each: None,
+        when: None,
+    };
+    let named =
+        |said: &str| named_in_request("category_id", &step, tool("set_sale_prices"), &view, said);
+    assert_eq!(
+        named("Run a 20% weekend sale on summer outerwear for VIP members."),
+        Some(json!("cat_summer_outerwear"))
+    );
+    assert_eq!(
+        named("Mark all outerwear down 10%."),
+        Some(json!("cat_outerwear"))
+    );
+    assert_eq!(named("Outerwear and knitwear at 10% off."), None);
+    assert_eq!(named("A sale on shoes."), None);
+}
+
+#[tokio::test]
+async fn an_earlier_block_written_where_an_id_goes_is_used_for_the_row_the_plan_names() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![(
+            "plan",
+            json!({"interpretation": [], "about": "self", "reply_plan": "product_list", "steps": [
+                {"id": "f", "tool": "search_products", "args": {"query": "light jacket"}, "uses": []}]})
+            .to_string(),
+        )],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let commerce = Commerce::new();
+    let first = turn(
+        &rt,
+        principal("cus_jamie", Surface::Fo),
+        ChatSurface::Fo,
+        say("I need a light jacket for spring trips."),
+        commerce.clone(),
+    )
+    .await;
+    let shown = blocks(&first);
+    let block_id = shown[0].block_id.clone();
+    let conversation = first[0].data()["conversation_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    // The model writes the block's id under the product prefix ("prd_01…" for "blk_01…"), and
+    // names the product only in what it understood.
+    let (_, body) = block_id.split_once('_').unwrap();
+    glimmer.will_answer(
+        "plan",
+        json!({"about": "self", "reply_plan": "cart",
+            "interpretation": [{"aspect": "products", "text": "The windbreaker is the Packable windbreaker."}],
+            "steps": [{"id": "a", "tool": "add_to_cart", "uses": [],
+                "args": {"mode": "product_options", "product_id": format!("prd_{body}"), "size": "M", "color": "Black"}}]})
+        .to_string(),
+    );
+    let mut req = say("Add the black one in M to my cart.");
+    req.conversation_id = Some(conversation);
+    turn(
+        &rt,
+        principal("cus_jamie", Surface::Fo),
+        ChatSurface::Fo,
+        req,
+        commerce.clone(),
+    )
+    .await;
+    let added: Vec<Value> = commerce
+        .previews()
+        .into_iter()
+        .filter(|(tool, _, _)| tool == "add_to_cart")
+        .map(|(_, input, _)| input)
+        .collect();
+    assert_eq!(added.len(), 1, "{:?}", commerce.calls());
+    assert_eq!(added[0]["product_id"], "prd_windbreaker", "{added:?}");
+    assert_eq!(added[0]["size"], "M");
 }
 
 #[tokio::test]

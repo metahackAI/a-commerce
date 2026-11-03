@@ -171,6 +171,21 @@ impl ConversationContext {
             .find(|b| b.get("block_id").and_then(Value::as_str) == Some(block_id))
     }
 
+    /// The earlier block a value names: the block's id (`blk_01…`), or its id's body under another
+    /// prefix (`prd_01…`), which is how a model writes "the one in that block" where an id goes.
+    pub fn block_named_by(&self, value: &str) -> Option<&str> {
+        let body = value
+            .split_once('_')
+            .map(|(_, b)| b)
+            .filter(|b| !b.is_empty())?;
+        self.turns
+            .iter()
+            .rev()
+            .flat_map(|t| t.blocks.iter())
+            .filter_map(|b| b.get("block_id").and_then(Value::as_str))
+            .find(|id| id.split_once('_').is_some_and(|(_, b)| b == body))
+    }
+
     /// The most recent earlier block of one of these kinds.
     pub fn last_block(&self, uis: &[&str]) -> Option<&Value> {
         self.turns.iter().rev().find_map(|t| {
@@ -287,6 +302,10 @@ mod tests {
         assert!(c.history(4)[1].ends_with("[showed refund_review blk_7]"));
         assert_eq!(c.block("blk_7").unwrap()["ui"], "refund_review");
         assert!(c.block("blk_8").is_none());
+        assert_eq!(c.block_named_by("blk_7"), Some("blk_7"));
+        assert_eq!(c.block_named_by("clm_7"), Some("blk_7"));
+        assert_eq!(c.block_named_by("clm_8"), None);
+        assert_eq!(c.block_named_by("clm_"), None);
         assert_eq!(
             c.last_block(&["change_set", "refund_review"]).unwrap()["ui"],
             "refund_review"

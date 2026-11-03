@@ -831,7 +831,8 @@ fn named_in_request(
         let words = toolsearch::tokens(&text.replace('_', " "));
         !words.is_empty() && words.iter().all(|w| said.contains(w))
     };
-    let mut found: Vec<Value> = Vec::new();
+    // Each value named, with the words that name it.
+    let mut found: Vec<(Value, Vec<String>)> = Vec::new();
     for r in step.uses.iter().filter_map(|u| view.get(u)) {
         let Some(values) = r.slots.get(slot) else {
             continue;
@@ -844,14 +845,29 @@ fn named_in_request(
             else {
                 continue;
             };
-            let by_name = row.get("name").and_then(Value::as_str).is_some_and(named);
-            let by_id = id.as_str().is_some_and(named);
-            if (by_name || by_id) && !found.contains(id) {
-                found.push(id.clone());
+            let name = row
+                .get("name")
+                .and_then(Value::as_str)
+                .filter(|n| named(n))
+                .or_else(|| id.as_str().filter(|i| named(i)));
+            if let Some(name) = name
+                && !found.iter().any(|(f, _)| f == id)
+            {
+                found.push((id.clone(), toolsearch::tokens(&name.replace('_', " "))));
             }
         }
     }
-    (found.len() == 1).then(|| found.remove(0))
+    // A name inside another one that is named too is not the one meant: "summer outerwear" names
+    // Summer outerwear, not Outerwear.
+    let within = |w: &[String], o: &[String]| o.len() > w.len() && w.iter().all(|x| o.contains(x));
+    let mut meant = found
+        .iter()
+        .filter(|(_, w)| !found.iter().any(|(_, o)| within(w, o)))
+        .map(|(v, _)| v.clone());
+    match (meant.next(), meant.next()) {
+        (Some(v), None) => Some(v),
+        _ => None,
+    }
 }
 
 /// The records that fit, the last read first. A step run once per row of a list (`each`) read
@@ -1977,6 +1993,26 @@ impl<'r> Turn<'r> {
                 );
                 continue;
             }
+            let mut step = step.clone();
+            // A block shown earlier written where an id goes (`product_id: "prd_01…"` for the
+            // block `blk_01…`): the step means a row of that block, so it uses the block, and
+            // binding picks the row as it would from any step it uses.
+            let mut block_refs = Vec::new();
+            if let Value::Object(args) = &mut step.args {
+                let named: Vec<(String, String)> = args
+                    .iter()
+                    .filter_map(|(k, v)| Some((k.clone(), self.ctx.block_named_by(v.as_str()?)?)))
+                    .map(|(k, id)| (k, id.to_owned()))
+                    .collect();
+                for (k, id) in named {
+                    if let Some(v) = args.remove(&k) {
+                        block_refs.push(format!("{k}: {v} names the block {id}, so a row of it"));
+                    }
+                    if !step.uses.contains(&id) {
+                        step.uses.push(id);
+                    }
+                }
+            }
             // Blocks shown earlier in the conversation stand in for steps (`blk_…`).
             for id in step.uses.iter().chain(step.each.iter()) {
                 if id.starts_with("blk_")
@@ -1992,17 +2028,19 @@ impl<'r> Turn<'r> {
             let each = step
                 .each
                 .clone()
-                .or_else(|| executor::implied_each(step, &tool, &view));
+                .or_else(|| executor::implied_each(&step, &tool, &view));
             // An opaque id the plan made up is taken out, so binding fills it from the steps it
             // uses or it is asked for, instead of calling with an id that names nothing.
-            let mut step = step.clone();
-            let made_up =
-                executor::unseen_ids(&mut step.args, &tool.input_schema, &self.seen_text(), "");
+            let seen = self.seen_text();
+            let made_up = executor::unseen_ids(&mut step.args, &tool.input_schema, &seen, "");
+            let guessed = executor::guessed_ids(&mut step, &tool, &view, &seen);
             let step = &step;
             let result = match &each {
                 Some(source) => self.run_each(plan, step, &tool, source, &view).await,
                 None => {
                     let mut bound = executor::bind(step, &tool, &view, &order, &self.pointed);
+                    bound.notes.extend(block_refs);
+                    bound.notes.extend(guessed);
                     bound.notes.extend(
                         made_up
                             .iter()
@@ -2045,9 +2083,22 @@ impl<'r> Turn<'r> {
                                 .collect()
                         })
                         .unwrap_or_default();
+                    // What the plan says it understood, which the person sees ("The windbreaker
+                    // is the Packable windbreaker"), names one where the request only points
+                    // ("the black one").
+                    let understood = plan
+                        .interpretation
+                        .iter()
+                        .fold(self.text.clone(), |all, u| format!("{all}\n{}", u.text));
                     for field in open {
-                        if let Some(v) = named_in_request(&field, step, &tool, &view, &self.text) {
-                            notes.push(format!("{field}: {v}, named in the request"));
+                        let named = named_in_request(&field, step, &tool, &view, &self.text)
+                            .map(|v| (v, "named in the request"))
+                            .or_else(|| {
+                                named_in_request(&field, step, &tool, &view, &understood)
+                                    .map(|v| (v, "named in what I understood"))
+                            });
+                        if let Some((v, how)) = named {
+                            notes.push(format!("{field}: {v}, {how}"));
                             if let Some(args) = input.as_object_mut() {
                                 args.insert(field.clone(), v);
                             }
@@ -2328,8 +2379,9 @@ impl<'r> Turn<'r> {
             .await
             .ok()?;
         // It fills what is open. What the arguments already hold stays: a bound `$item[1]…` is
-        // not the model's to swap for a promotion it saw in a list.
-        let merged = executor::merge(&v, &r.value);
+        // not the model's to swap for a promotion it saw in a list, nor a bound picture inside
+        // the content it writes.
+        let merged = executor::fill_under(&v, &r.value);
         Some(acom_llm::repair(
             &merged,
             &tool.input_schema,
