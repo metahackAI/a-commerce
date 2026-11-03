@@ -1023,6 +1023,7 @@ impl<'r> Turn<'r> {
         }
         self.finish_change_set().await;
         self.compare_for_layout().await;
+        self.cart_for_reply().await;
         self.build_blocks();
         let reply = self.reply().await;
         self.finish(Some(reply), None).await;
@@ -2182,10 +2183,20 @@ impl<'r> Turn<'r> {
         notes.extend(repaired.notes.iter().cloned());
         notes.extend(asked);
         let input = repaired.value;
-        // Same read with the same arguments earlier this turn: reuse its result.
+        // Same read with the same arguments earlier this turn: reuse its result. Not across a
+        // write that ran (a shopper's cart change, a direct write): what it read may have
+        // changed. A back-office write only waits in the change set, so the store is the same.
+        let ran = self.surface == ChatSurface::Fo || self.tool_set == ToolSet::Facade;
+        let since = if ran {
+            self.history
+                .iter()
+                .rposition(|r| r.kind != ToolKind::Read)
+                .map_or(0, |i| i + 1)
+        } else {
+            0
+        };
         if !tool.is_write()
-            && let Some(prev) = self
-                .history
+            && let Some(prev) = self.history[since..]
                 .iter()
                 .find(|r| r.tool == tool.tool && r.input == input)
                 .cloned()
@@ -3226,6 +3237,42 @@ impl<'r> Turn<'r> {
                 &tool,
                 json!({"product_ids": ids}),
                 vec!["product_ids: the top results, for the comparison the layout shows".into()],
+            )
+            .await;
+    }
+
+    /// A cart answer after the turn changed something: a write returns only what it touched (the
+    /// line `add_to_cart` added), so the cart is read once more and shown as it is now, not as
+    /// read before the change or not at all.
+    async fn cart_for_reply(&mut self) {
+        let Some(plan) = self.plan.clone() else {
+            return;
+        };
+        if plan.reply_plan.as_deref() != Some("cart") {
+            return;
+        }
+        let shows_cart = self
+            .history
+            .iter()
+            .rposition(|r| r.output.as_ref().is_some_and(|o| o.get("lines").is_some()));
+        let wrote = self.history.iter().rposition(|r| r.kind != ToolKind::Read);
+        if shows_cart.is_some() && wrote.is_none_or(|w| shows_cart > Some(w)) {
+            return;
+        }
+        let Some(tool) = self
+            .tool("get_cart")
+            .filter(|t| self.profile.allows(t))
+            .cloned()
+        else {
+            return;
+        };
+        let _ = self
+            .call(
+                &plan,
+                "cart",
+                &tool,
+                json!({}),
+                vec!["the cart as it is after this turn, for the cart the reply shows".into()],
             )
             .await;
     }

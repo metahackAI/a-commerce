@@ -1184,6 +1184,60 @@ async fn shoppers_cart_writes_run_and_orders_are_only_prepared() {
 }
 
 #[tokio::test]
+async fn a_cart_answer_after_adding_to_it_shows_the_cart_read_again() {
+    let find =
+        json!({"id": "f", "tool": "search_products", "args": {"query": "windbreaker"}, "uses": []});
+    let add = json!({"id": "a", "tool": "add_to_cart", "args": {"size": "M"}, "uses": ["f"]});
+    let read = |id: &str| json!({"id": id, "tool": "get_cart", "args": {}, "uses": []});
+    for (steps, cart_reads) in [
+        // Added, never read: the cart is read once more.
+        (json!([find, add]), 1),
+        // Read before the change: stale, read again.
+        (json!([read("r"), find, add]), 2),
+        // Read after the change: shown as read.
+        (json!([find, add, read("r")]), 1),
+    ] {
+        let glimmer = Scripted::new(
+            "glimmer",
+            "Muse Glimmer 30B",
+            vec![(
+                "plan",
+                json!({"interpretation": [], "about": "self", "reply_plan": "cart", "steps": steps})
+                    .to_string(),
+            )],
+        );
+        let rt = runtime(
+            std::slice::from_ref(&glimmer),
+            Arc::new(MemoryLog::default()),
+        );
+        let commerce = Commerce::new();
+        let events = turn(
+            &rt,
+            principal("cus_jamie", Surface::Fo),
+            ChatSurface::Fo,
+            say("Add the black one in M to my cart."),
+            commerce.clone(),
+        )
+        .await;
+        let calls = commerce.calls();
+        let reads = calls
+            .iter()
+            .filter(|c| c.as_str() == "read get_cart")
+            .count();
+        assert_eq!(reads, cart_reads, "{steps}: {calls:?}");
+        assert_eq!(
+            calls.last().map(String::as_str),
+            Some("read get_cart"),
+            "{steps}: {calls:?}"
+        );
+        let b = blocks(&events);
+        assert_eq!(b.len(), 1, "{steps}: {b:?}");
+        assert_eq!(b[0].ui, "cart", "{steps}");
+        assert_eq!(b[0].data["lines"][0]["name"], "Packable windbreaker");
+    }
+}
+
+#[tokio::test]
 async fn nothing_is_remembered_about_a_gift_recipient_and_made_up_numbers_are_dropped() {
     let glimmer = Scripted::new(
         "glimmer",
