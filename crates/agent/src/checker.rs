@@ -294,6 +294,20 @@ pub fn repeats_request(reply: &str, request: &str) -> bool {
     request.chars().count() >= 20 && flat(reply).contains(&request)
 }
 
+/// The reply without the request it repeated, if whole sentences are left: what it says besides
+/// the request ("Which promotion sold most? … Autumn knitwear 15% led with $5,550.50.").
+pub fn without_request(reply: &str, request: &str) -> Option<String> {
+    let flat = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
+    let (reply, request) = (flat(reply), flat(request));
+    // ASCII case only, so the lowered text keeps the reply's byte positions.
+    let at = reply
+        .to_ascii_lowercase()
+        .find(&request.to_ascii_lowercase())
+        .filter(|_| request.chars().count() >= 20)?;
+    let rest = format!("{} {}", &reply[..at], &reply[at + request.len()..]);
+    whole_sentences(rest.trim()).filter(|r| !repeats_request(r, &request))
+}
+
 /// The reply with every date said as weekday, month and day ("Sun Nov 2", "Monday, November 2")
 /// given the weekday that date falls on, in the year nearest `today`. A small model names the
 /// weekday of a date wrong now and then; the calendar does not.
@@ -579,5 +593,26 @@ mod tests {
             asked
         ));
         assert!(!repeats_request("Hi there. Hi!", "Hi!"));
+    }
+
+    #[test]
+    fn what_a_reply_says_besides_the_request_it_repeated_is_the_answer() {
+        let asked = "Which promotion brought the most sales this week?";
+        assert_eq!(
+            without_request(
+                "which promotion brought the most  sales this week? Autumn knitwear 15% led with $5,550.50.",
+                asked
+            )
+            .as_deref(),
+            Some("Autumn knitwear 15% led with $5,550.50.")
+        );
+        // Nothing but the request, or no finished sentence after it: no answer in it.
+        assert_eq!(without_request(asked, asked), None);
+        assert_eq!(
+            without_request(&format!("{asked} The results show a search…"), asked),
+            None
+        );
+        // Not repeated: nothing to take out.
+        assert_eq!(without_request("Autumn knitwear 15% led.", asked), None);
     }
 }

@@ -71,7 +71,7 @@
   |---|---|:--:|---|
   | `valid_from` / `valid_through` | Date | ✓ | 기간 |
   | `acom:metrics` | enum[] | | `revenue` \| `order_count` \| `average_order_value` \| `cancellation_rate` \| `return_rate` \| `units`(판매 수량) \| `discount`(줄 할인액). 기본은 나누기가 허용하는 전부. `units`·`discount`는 줄 단위라 `category`·`promotion`으로 나누거나 `promotion_id`를 줄 때만 |
-  | `acom:dimensions` | enum[] | | `category`(상품의 대표 표준 카테고리, 줄 금액) \| `member_tier`(주문한 회원의 지금 등급) \| `promotion`(줄에 값을 매긴 프로모션, 줄 금액. 프로모션 없는 줄은 `promotion_id: null`, `name: "No promotion"`). 차원마다 항목 목록 하나 |
+  | `acom:dimensions` | enum[] | | `category`(상품의 대표 표준 카테고리, 줄 금액) \| `member_tier`(주문한 회원의 지금 등급) \| `promotion`(줄에 값을 매긴 프로모션, 줄 금액. 프로모션 없는 줄은 `promotion_id: null`, `name: "Without a promotion"`. 문장 속에서 "No promotion generated …"처럼 '어떤 프로모션도 …않았다'로 읽히지 않게 이 이름). 차원마다 항목 목록 하나 |
   | `promotion_id` | string | | 이 프로모션이 값을 매긴 줄만(`promo_` id). `acom:dimensions`와 함께 쓰지 않음. 팔린 게 없으면 0 |
   | `compare_from` / `compare_through` | Date | | 비교 기간(증감 계산). 둘 다 있어야 함 |
 - 출력: `{"items": [{"acom:metric": "revenue", "value": {"value": 18240.00, "currency": "USD"}, "acom:dimension": null, "acom:change_rate": -0.1929}], "total": 5, "valid_from": "2026-11-05", "valid_through": "2026-11-05"}` — 금액 지표의 `value`는 `{value, currency}`, 비율 지표는 0–1. `cancellation_rate` = 취소된 주문 / 결제된 주문, `return_rate` = 반품 요청(거절·철회 제외)이 있는 주문 / 취소되지 않은 주문. `acom:change_rate`는 비교 기간 대비 상대 변화(비교 값이 0이면 null). `promotion`으로 나눈 항목의 `acom:dimension`은 `{"promotion_id": "promo_autumn_knit", "name": "Autumn knitwear 15%"}`. 줄 금액은 `analytics.order_line_summary`(migration 0035에서 `promotion_id`·`promotion_name`·`discount_value` 추가)에서 읽음

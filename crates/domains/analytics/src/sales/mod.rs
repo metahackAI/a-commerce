@@ -24,8 +24,8 @@ pub enum Dimension {
     Category,
     /// The tier the shopper is in now; guest orders have no tier.
     MemberTier,
-    /// The promotion that priced the line (line amounts, without shipping); lines no promotion
-    /// priced have none.
+    /// The promotion that priced the line (line amounts, without shipping); the lines no
+    /// promotion priced are one more row, "Without a promotion", which is not a promotion.
     Promotion,
 }
 
@@ -47,11 +47,12 @@ impl Dimension {
     fn label(self, b: &Bucket) -> Value {
         let mut v = json!({self.key(): b.dimension});
         if self == Self::Promotion {
-            // The lines no promotion priced are one row too; named so it is not read as the total.
+            // The lines no promotion priced are one row too; named so it is not read as the total,
+            // nor, in a sentence, as "no promotion did …" ("No promotion generated $77,987").
             v["name"] = json!(
                 b.dimension_name
                     .as_deref()
-                    .or(b.dimension.is_none().then_some("No promotion"))
+                    .or(b.dimension.is_none().then_some("Without a promotion"))
             );
         }
         v

@@ -524,7 +524,7 @@ async fn sales_and_customer_overviews_on_the_demo_store() {
     assert_eq!(knit["acom:dimension"]["name"], "Autumn knitwear 15%");
     assert_eq!(
         of(&promotions, None, "revenue")["acom:dimension"]["name"],
-        "No promotion"
+        "Without a promotion"
     );
     assert!(
         promotions["items"]

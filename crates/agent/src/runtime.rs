@@ -4066,7 +4066,7 @@ impl<'r> Turn<'r> {
         }
         let mut text = draft.text;
         // A reply that repeats the request is the model thinking aloud: ask once for the answer
-        // itself, else fall back to the plain reply.
+        // itself, else keep what it says besides the request, else fall back to the plain reply.
         if checker::repeats_request(&text, &self.text) {
             self.reject_last_call("the reply repeated the request");
             self.log_rejected_reply(
@@ -4075,19 +4075,21 @@ impl<'r> Turn<'r> {
                 json!({"reply": text}),
             )
             .await;
-            if self.usage.len() >= self.limits.model_calls as usize {
-                return fallback;
-            }
-            let mut again = req.clone();
-            again.messages.push(Message::assistant(text.clone()));
-            again.messages.push(Message::user(REPEATED_REQUEST));
-            match self
-                .reply_text(&worker, again, &prompt)
-                .await
-                .and_then(ReplyDraft::finished)
-            {
-                Some(t) if !checker::repeats_request(&t, &self.text) => text = t,
-                _ => return fallback,
+            let besides = checker::without_request(&text, &self.text);
+            let answered = if self.usage.len() < self.limits.model_calls as usize {
+                let mut again = req.clone();
+                again.messages.push(Message::assistant(text.clone()));
+                again.messages.push(Message::user(REPEATED_REQUEST));
+                self.reply_text(&worker, again, &prompt)
+                    .await
+                    .and_then(ReplyDraft::finished)
+                    .filter(|t| !checker::repeats_request(t, &self.text))
+            } else {
+                None
+            };
+            match answered.or(besides) {
+                Some(t) => text = t,
+                None => return fallback,
             }
         }
         // Tool and field names mean nothing to the person: ask once for plain words, and keep

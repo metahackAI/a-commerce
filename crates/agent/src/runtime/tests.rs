@@ -2483,6 +2483,38 @@ async fn a_reply_that_copies_what_a_check_told_it_is_not_the_answer() {
 }
 
 #[tokio::test]
+async fn a_reply_that_keeps_repeating_the_request_keeps_what_it_says_besides() {
+    let asked = "Which tier has the most members this week?";
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            (
+                "plan",
+                json!({"interpretation": [], "about": "self", "reply_plan": "text", "steps": [
+                {"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
+                .to_string(),
+            ),
+            ("reply", format!("{asked} Gold has the most members.")),
+            ("reply", format!("{asked} Gold has the most members.")),
+        ],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say(asked),
+        Commerce::new(),
+    )
+    .await;
+    assert_eq!(message(&events), "Gold has the most members.");
+}
+
+#[tokio::test]
 async fn replies_stream_only_where_the_background_check_saw_streaming_work() {
     let plan = || {
         json!({"interpretation": [{"aspect": "who", "text": "VIP members"}], "about": "self",
