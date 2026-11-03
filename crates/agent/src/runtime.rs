@@ -2031,14 +2031,16 @@ impl<'r> Turn<'r> {
                 .or_else(|| executor::implied_each(&step, &tool, &view));
             // An opaque id the plan made up is taken out, so binding fills it from the steps it
             // uses or it is asked for, instead of calling with an id that names nothing.
-            let made_up =
-                executor::unseen_ids(&mut step.args, &tool.input_schema, &self.seen_text(), "");
+            let seen = self.seen_text();
+            let made_up = executor::unseen_ids(&mut step.args, &tool.input_schema, &seen, "");
+            let guessed = executor::guessed_ids(&mut step, &tool, &view, &seen);
             let step = &step;
             let result = match &each {
                 Some(source) => self.run_each(plan, step, &tool, source, &view).await,
                 None => {
                     let mut bound = executor::bind(step, &tool, &view, &order, &self.pointed);
                     bound.notes.extend(block_refs);
+                    bound.notes.extend(guessed);
                     bound.notes.extend(
                         made_up
                             .iter()

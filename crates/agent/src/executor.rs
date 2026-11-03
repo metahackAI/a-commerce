@@ -166,6 +166,96 @@ pub fn slots_from_commit(tool: &ToolSpec, result: &Value) -> BTreeMap<String, Ve
     out
 }
 
+/// Word ids a model wrote for a slot where a step it uses lists that slot's ids, that none of
+/// them is and that nothing it was shown holds (`seen`): `slot_main_hero` beside
+/// `slot_home_hero`, a guess at a name. The listed id that shares most of its words takes its
+/// place when only one does; otherwise it is taken out, and binding decides from the list as for
+/// a missing value. Returns a note for each. A value people say (an order number) is the
+/// server's to find, and a value seen anywhere is the model's choice.
+pub fn guessed_ids(
+    step: &mut PlanStep,
+    tool: &ToolSpec,
+    done: &BTreeMap<String, StepRecord>,
+    seen: &str,
+) -> Vec<String> {
+    let mut notes = Vec::new();
+    let Value::Object(args) = &mut step.args else {
+        return notes;
+    };
+    for slot in &tool.consumes {
+        let Some((field, false)) = tool.field_for_slot(&slot.name) else {
+            continue;
+        };
+        let schema = tool.properties().and_then(|p| p.get(&field));
+        let Some(written) = args.get(&field).and_then(Value::as_str).map(str::to_owned) else {
+            continue;
+        };
+        if takes_handle(schema) || written.starts_with("$item[") || holds_whole(seen, &written) {
+            continue;
+        }
+        let listed: Vec<Value> = step
+            .uses
+            .iter()
+            .filter_map(|u| done.get(u)?.slots.get(&slot.name))
+            .flatten()
+            .cloned()
+            .collect();
+        if listed.is_empty() || listed.iter().any(|l| l.as_str() == Some(&written)) {
+            continue;
+        }
+        match closest_id(&written, &listed) {
+            Some(id) => {
+                notes.push(format!(
+                    "{field}: {written} is not listed; {id} shares its words"
+                ));
+                args.insert(field, id);
+            }
+            None => {
+                notes.push(format!("{field}: {written} is none of those listed"));
+                args.remove(&field);
+            }
+        }
+    }
+    notes
+}
+
+/// Whether `text` holds `id` as a whole id, not as the start of a longer one (`cat_summer` in
+/// `cat_summer_outerwear`).
+fn holds_whole(text: &str, id: &str) -> bool {
+    let part = |c: char| c.is_ascii_alphanumeric() || c == '_';
+    text.match_indices(id).any(|(at, _)| {
+        !text[..at].chars().next_back().is_some_and(part)
+            && !text[at + id.len()..].chars().next().is_some_and(part)
+    })
+}
+
+/// Of listed ids, the one that shares most words with a written id after the prefix (`main`,
+/// `hero` in `slot_main_hero`), when exactly one shares most.
+fn closest_id(written: &str, listed: &[Value]) -> Option<Value> {
+    let words = |id: &str| -> Vec<String> {
+        id.split('_')
+            .skip(1)
+            .filter(|w| !w.is_empty())
+            .map(str::to_lowercase)
+            .collect()
+    };
+    let mine = words(written);
+    let shared = |id: &str| words(id).iter().filter(|w| mine.contains(w)).count();
+    let best = listed
+        .iter()
+        .filter_map(Value::as_str)
+        .map(shared)
+        .max()
+        .filter(|n| *n > 0)?;
+    let mut at_best = listed
+        .iter()
+        .filter(|l| l.as_str().is_some_and(|id| shared(id) == best));
+    match (at_best.next(), at_best.next()) {
+        (Some(id), None) => Some(id.clone()),
+        _ => None,
+    }
+}
+
 /// The ids of one slot that a write's changes are about (`product_id` in each price change of a
 /// sale), in the preview's order.
 fn changed_ids(preview: &Preview, slot: &str) -> Vec<Value> {
@@ -1648,6 +1738,59 @@ mod tests {
             &BTreeMap::new(),
         );
         assert_eq!(b.input["client_total"]["value"], json!(0));
+    }
+
+    #[test]
+    fn a_word_id_nothing_shows_is_the_listed_one_it_is_closest_to() {
+        let m = manifest();
+        let listed = record(
+            "s1",
+            get(&m, "search_products"),
+            json!({"items": [{"product_id": "prd_a", "category_id": "cat_summer_outerwear"},
+                             {"product_id": "prd_b", "category_id": "cat_summer_dresses"},
+                             {"product_id": "prd_c", "category_id": "cat_outerwear"}]}),
+        );
+        let seen = listed.output.as_ref().unwrap().to_string();
+        let done = BTreeMap::from([("s1".to_owned(), listed)]);
+        let sale = |category: &str, uses: &[&str], seen: &str| {
+            let mut s = step(
+                "s2",
+                "set_sale_prices",
+                json!({"percent_off": 20, "category_id": category}),
+                uses,
+            );
+            let notes = guessed_ids(&mut s, get(&m, "set_sale_prices"), &done, seen);
+            let b = bind(
+                &s,
+                get(&m, "set_sale_prices"),
+                &done,
+                &["s1".into()],
+                &BTreeMap::new(),
+            );
+            (b, notes)
+        };
+        // Listed: stays.
+        assert_eq!(
+            sale("cat_outerwear", &["s1"], &seen).0.input["category_id"],
+            "cat_outerwear"
+        );
+        // One listed id shares the most words: that one.
+        let (b, notes) = sale("cat_dresses", &["s1"], &seen);
+        assert_eq!(b.input["category_id"], "cat_summer_dresses", "{notes:?}");
+        let (b, notes) = sale("cat_outerwear_summer", &["s1"], &seen);
+        assert_eq!(b.input["category_id"], "cat_summer_outerwear", "{notes:?}");
+        // Two share as many: not guessed, the list decides (several, so undecided).
+        let (b, _) = sale("cat_summer", &["s1"], &seen);
+        assert!(b.input.get("category_id").is_none(), "{}", b.input);
+        assert!(b.undecided.contains(&"category_id".to_owned()));
+        // Seen somewhere (an earlier turn's screen): the model's choice stays.
+        let (b, _) = sale("cat_summer", &["s1"], &format!("{seen} cat_summer"));
+        assert_eq!(b.input["category_id"], "cat_summer");
+        // A step that uses nothing that lists the slot keeps what it wrote.
+        assert_eq!(
+            sale("cat_shoes", &[], &seen).0.input["category_id"],
+            "cat_shoes"
+        );
     }
 
     #[test]
