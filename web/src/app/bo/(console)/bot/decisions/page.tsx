@@ -1,4 +1,6 @@
-import {BotDecisions, DECISION_VIEWS} from '@/components/bo/bot/BotDecisions';
+import {BotDecisions} from '@/components/bo/bot/BotDecisions';
+
+import {DECISION_VIEWS} from '../../../_lib/bot';
 
 import {param, read, type SearchParams} from '../../../_lib/server';
 import type {BotDecision, BotStatus, Page} from '../../../_lib/types';

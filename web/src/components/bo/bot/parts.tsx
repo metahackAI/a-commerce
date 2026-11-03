@@ -13,7 +13,6 @@ import {Button} from '@astryxdesign/core/Button';
 import {TextArea} from '@astryxdesign/core/TextArea';
 import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/SegmentedControl';
 import {Token} from '@astryxdesign/core/Token';
-import {List, ListItem} from '@astryxdesign/core/List';
 
 import {PersonButton} from '@/components/PersonButton';
 import {dateTime, words} from '@/app/bo/_lib/format';
@@ -23,7 +22,7 @@ import type {BotDecision, BotEffect, BotFeedback} from '@/app/bo/_lib/types';
 import {useBoSession} from '../BoSession';
 import {NavTabs} from '../NavTabs';
 import {StateToken} from '../StateToken';
-import {TargetCard, TargetRow} from '../targets';
+import {TargetBlock, TargetCard} from '../targets';
 import {useStoreEvents} from '../useStoreEvents';
 
 export const AREA_LABEL: Record<string, string> = {
@@ -168,36 +167,40 @@ export function FeedbackList({items}: {items: BotFeedback[]}) {
     );
   }
   return (
-    <List hasDividers edge="flush">
+    <VStack gap={3}>
       {items.map(f => (
-        <TargetRow
+        <TargetBlock
           key={f.id}
           target={{kind: 'bot_feedback', label: `${words(f.kind)}: ${f.text}`, ids: {bot_feedback_id: f.id}, term: 'acom:BotFeedback'}}>
-          <ListItem
-            label={f.text}
-            description={`${words(f.kind)} · ${f.by} · ${dateTime(f.at)}${f.decision_id ? ` · on ${f.decision_id}` : ''}`}
-            endContent={
-              f.state === 'open' && canUseBot(session?.scopes) ? (
-                <PersonButton
-                  action={{
-                    label: 'Close',
-                    method: 'POST',
-                    path: `/v1/platform/bot/feedback/${encodeURIComponent(f.id)}/close`,
-                    body: {},
-                    confirm: 'Close it? The bot stops reading it in its analyses.',
-                  }}
-                  size="sm"
-                  variant="secondary"
-                  onDone={() => router.refresh()}
-                />
-              ) : (
-                <StateToken state={f.state} />
-              )
-            }
-          />
-        </TargetRow>
+          <HStack gap={3} vAlign="center" wrap="wrap">
+            <StackItem size="fill">
+              <VStack gap={0}>
+                <Text>{f.text}</Text>
+                <Text type="supporting" color="secondary">
+                  {`${words(f.kind)} · ${f.by} · ${dateTime(f.at)}${f.decision_id ? ` · on ${f.decision_id}` : ''}`}
+                </Text>
+              </VStack>
+            </StackItem>
+            {f.state === 'open' && canUseBot(session?.scopes) ? (
+              <PersonButton
+                action={{
+                  label: 'Close',
+                  method: 'POST',
+                  path: `/v1/platform/bot/feedback/${encodeURIComponent(f.id)}/close`,
+                  body: {},
+                  confirm: 'Close it? The bot stops reading it in its analyses.',
+                }}
+                size="sm"
+                variant="secondary"
+                onDone={() => router.refresh()}
+              />
+            ) : (
+              <StateToken state={f.state} />
+            )}
+          </HStack>
+        </TargetBlock>
       ))}
-    </List>
+    </VStack>
   );
 }
 
