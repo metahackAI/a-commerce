@@ -190,7 +190,12 @@ pub fn guessed_ids(
         let Some(written) = args.get(&field).and_then(Value::as_str).map(str::to_owned) else {
             continue;
         };
-        if takes_handle(schema) || written.starts_with("$item[") || holds_whole(seen, &written) {
+        // A stand-in (`tpl_...`) is `bind`'s to fill from the list; a placeholder is the runner's.
+        if takes_handle(schema)
+            || written.starts_with("$item[")
+            || is_stand_in(&Value::String(written.clone()), &field, &slot.name, schema)
+            || holds_whole(seen, &written)
+        {
             continue;
         }
         let listed: Vec<Value> = step
@@ -1782,6 +1787,15 @@ mod tests {
         // Two share as many: not guessed, the list decides (several, so undecided).
         let (b, _) = sale("cat_summer", &["s1"], &seen);
         assert!(b.input.get("category_id").is_none(), "{}", b.input);
+        assert!(b.undecided.contains(&"category_id".to_owned()));
+        // A stand-in is left to `bind`, which says so (several listed, so undecided).
+        let (b, notes) = sale("cat_...", &["s1"], &seen);
+        assert!(notes.is_empty(), "{notes:?}");
+        assert!(
+            b.notes.iter().any(|n| n.contains("stand-in")),
+            "{:?}",
+            b.notes
+        );
         assert!(b.undecided.contains(&"category_id".to_owned()));
         // Seen somewhere (an earlier turn's screen): the model's choice stays.
         let (b, _) = sale("cat_summer", &["s1"], &format!("{seen} cat_summer"));
