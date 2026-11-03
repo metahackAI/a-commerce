@@ -854,6 +854,24 @@ fn named_in_request(
     (found.len() == 1).then(|| found.remove(0))
 }
 
+/// The records that fit, the last read first. A step run once per row of a list (`each`) read
+/// its rows one after another in the list's order: that run counts in its own order, its first
+/// row first.
+fn newest_first(history: &[StepRecord], fits: impl Fn(&StepRecord) -> bool) -> Vec<&StepRecord> {
+    let end = history.iter().rposition(&fits).map_or(0, |i| i + 1);
+    let start = end
+        - history[..end]
+            .iter()
+            .rev()
+            .take_while(|r| fits(r) && r.step == history[end - 1].step)
+            .count();
+    history[start..end]
+        .iter()
+        .chain(history[..start].iter().rev())
+        .filter(|r| fits(r))
+        .collect()
+}
+
 /// A shopper's read narrowed by a yes/no they never mentioned ("questions" read as
 /// `answered: true` hides the one still waiting): such a filter is left out, so the read shows
 /// everything it would without it. A yes/no whose words the shopper said stays.
@@ -3660,14 +3678,17 @@ impl<'r> Turn<'r> {
 
     /// The order this turn read, with its lines (`get_order`; not its payment or delivery). Of
     /// several (each of the shopper's orders read to find one), the one whose parcel the turn
-    /// tracked, else the one holding what the request names, else the last read.
+    /// tracked, else the one holding what the request names, else the last read (`newest_first`: of
+    /// a list's orders read one by one, the list's first, the newest of a list sorted by date).
     fn order_detail_block(&self) -> Option<Block> {
-        let orders: Vec<&Value> = self
-            .history
-            .iter()
-            .rev()
+        let is_order = |r: &StepRecord| {
+            r.output
+                .as_ref()
+                .is_some_and(|o| o.get("order_number").is_some() && o.get("ordered_item").is_some())
+        };
+        let orders: Vec<&Value> = newest_first(&self.history, is_order)
+            .into_iter()
             .filter_map(|r| r.output.as_ref())
-            .filter(|o| o.get("order_number").is_some() && o.get("ordered_item").is_some())
             .collect();
         // `track_shipment` names its parcel `delivery_id`, `get_delivery` as its `id`.
         let tracked = self
