@@ -132,6 +132,7 @@ dependencies = [
  "acom-facade",
  "acom-http",
  "acom-mcp",
+ "acom-platform",
  "acom-policy",
  "acom-registry",
  "acom-server",

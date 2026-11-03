@@ -10518,6 +10518,403 @@
   },
   {
     "schema": "platform",
+    "table": "bot_cycle",
+    "kind": "table",
+    "term": "acom:BotCycle",
+    "description": "one look Ailism Bot took at the store: the snapshot it read, its report and what it cost. id prefix bcy_.",
+    "id_prefix": "bcy",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix bcy_; the same value the API, logs and events use."
+      },
+      {
+        "name": "bot_trigger",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:botTrigger",
+        "description": "what started the cycle: its schedule or a person. values: bot_trigger",
+        "values": [
+          "schedule",
+          "manual"
+        ],
+        "values_list": "bot_trigger"
+      },
+      {
+        "name": "requested_by",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:requestedBy",
+        "description": "the operator who ran it now (adm_ id); NULL for a scheduled cycle."
+      },
+      {
+        "name": "cycle_state",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:botCycleState",
+        "description": "observing while the bot reads and analyses, then done or failed. values: bot_cycle_state",
+        "values": [
+          "observing",
+          "done",
+          "failed"
+        ],
+        "values_list": "bot_cycle_state"
+      },
+      {
+        "name": "bot_mode",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:botMode",
+        "description": "the mode the cycle ran in. values: bot_mode",
+        "values": [
+          "off",
+          "observe",
+          "propose"
+        ],
+        "values_list": "bot_mode"
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the cycle opened (API at)."
+      },
+      {
+        "name": "end_time",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:endTime",
+        "description": "when the report came back or the cycle failed."
+      },
+      {
+        "name": "snapshot",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:snapshot",
+        "description": "what the bot read, in order: {areas, reads[{tool, args, result}]}."
+      },
+      {
+        "name": "anomalies",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:anomalies",
+        "description": "warning signs found by rule in the snapshot: [{area, code, text, severity}]."
+      },
+      {
+        "name": "report",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "acom:report",
+        "description": "the analysis: {summary, findings[], proposals[]} with each proposal's outcome (opened or why not)."
+      },
+      {
+        "name": "usage",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:usage",
+        "description": "what the cycle cost: {model, model_calls, input_tokens, output_tokens, reads}."
+      },
+      {
+        "name": "error",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:error",
+        "description": "why a failed cycle failed."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change."
+      }
+    ]
+  },
+  {
+    "schema": "platform",
+    "table": "bot_decision",
+    "kind": "table",
+    "term": "acom:BotDecision",
+    "description": "one proposal Ailism Bot opened as a task for the operations agent to draft and a person to decide. id prefix bdc_.",
+    "id_prefix": "bdc",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix bdc_; the same value the API, logs and events use."
+      },
+      {
+        "name": "cycle_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:botCycleId",
+        "description": "the cycle that proposed it.",
+        "references": "platform.bot_cycle"
+      },
+      {
+        "name": "task_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:taskId",
+        "description": "the task it opened; its change set and state are the decision's.",
+        "references": "platform.task"
+      },
+      {
+        "name": "bot_area",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:botArea",
+        "description": "the area it is about. values: bot_area",
+        "values": [
+          "pricing",
+          "inventory",
+          "promotions",
+          "merchandising",
+          "catalog_content",
+          "returns",
+          "questions_reviews",
+          "community"
+        ],
+        "values_list": "bot_area"
+      },
+      {
+        "name": "title",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:title",
+        "description": "one line shown on the decision list."
+      },
+      {
+        "name": "request_text",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:requestText",
+        "description": "the sentence the operations agent drafts the change from."
+      },
+      {
+        "name": "reason",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:reason",
+        "description": "why the bot proposes it, from the snapshot."
+      },
+      {
+        "name": "evidence",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:evidence",
+        "description": "figures from the snapshot it rests on: [text]."
+      },
+      {
+        "name": "expected_effect",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:expectedEffect",
+        "description": "what should change and by when: {metric, direction, horizon_days}."
+      },
+      {
+        "name": "bot_risk",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:botRisk",
+        "description": "how much could go wrong if it is wrong. values: bot_risk",
+        "values": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "values_list": "bot_risk"
+      },
+      {
+        "name": "related_entities",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "schema:object",
+        "description": "entities the decision is about: [{entity, id}]."
+      },
+      {
+        "name": "cause_key",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:causeKey",
+        "description": "area and entities, to find an open or recently turned down decision about the same thing."
+      },
+      {
+        "name": "revises_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:revises",
+        "description": "the decision a person asked again with a correction; this one replaces it.",
+        "references": "platform.bot_decision"
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change."
+      }
+    ]
+  },
+  {
+    "schema": "platform",
+    "table": "bot_feedback",
+    "kind": "table",
+    "term": "acom:BotFeedback",
+    "description": "what a person told Ailism Bot: an opinion, a standing directive, or a correction asked of a decision. id prefix bfb_.",
+    "id_prefix": "bfb",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix bfb_; the same value the API, logs and events use."
+      },
+      {
+        "name": "decision_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:botDecisionId",
+        "description": "the decision it is about; NULL for the bot as a whole.",
+        "references": "platform.bot_decision"
+      },
+      {
+        "name": "feedback_kind",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:botFeedbackKind",
+        "description": "feedback, directive or correction. values: bot_feedback_kind",
+        "values": [
+          "feedback",
+          "directive",
+          "correction"
+        ],
+        "values_list": "bot_feedback_kind"
+      },
+      {
+        "name": "text",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:text",
+        "description": "what the person wrote."
+      },
+      {
+        "name": "feedback_state",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:botFeedbackState",
+        "description": "open feedback goes into every analysis until a person closes it. values: bot_feedback_state",
+        "values": [
+          "open",
+          "closed"
+        ],
+        "values_list": "bot_feedback_state"
+      },
+      {
+        "name": "created_by",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:createdBy",
+        "description": "the operator who wrote it (adm_ id)."
+      },
+      {
+        "name": "closed_by",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:closedBy",
+        "description": "the operator who closed it."
+      },
+      {
+        "name": "closed_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:closedAt",
+        "description": "when it was closed."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change."
+      }
+    ]
+  },
+  {
+    "schema": "platform",
     "table": "change_set",
     "kind": "table",
     "term": "schema:ItemList/acom:ChangeSet",

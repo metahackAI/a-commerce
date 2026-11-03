@@ -147,6 +147,10 @@ fn person_scope(scope: &str) -> (&'static str, &'static str) {
             "Undo a live change set, or a remembered preference",
         ),
         "human:task" => ("platform", "Put tasks away from the task list"),
+        "human:bot" => (
+            "platform",
+            "Run Ailism Bot, change its settings, and give it feedback",
+        ),
         "human:order" => ("sales", "Place orders and start subscriptions"),
         "human:cancel" => ("fulfillment", "Cancel orders"),
         "human:return" => ("fulfillment", "Send return requests"),

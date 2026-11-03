@@ -4095,7 +4095,7 @@ impl<'r> Turn<'r> {
 /// its first half and says how many items it left out, a string keeps its first half and ends
 /// in `…`. Cutting the biggest part first keeps detail where the result is small: a 20-product
 /// search loses products before the first products lose their sizes.
-fn compact(v: &Value, budget: usize) -> Value {
+pub(crate) fn compact(v: &Value, budget: usize) -> Value {
     let mut out = v.clone();
     while json_chars(&out) > budget && halve_biggest(&mut out) {}
     out

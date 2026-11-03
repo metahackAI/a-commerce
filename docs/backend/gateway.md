@@ -12,7 +12,7 @@
 | `shopper` | 회원 또는 비회원 쇼퍼 | 쿠키 세션(비회원은 익명 세션) | 쇼퍼 툴, `human:order`·`human:return` 등 |
 | `agent_on_behalf` | 우리 에이전트가 위 사람을 대신함 | 게이트웨이가 채팅 요청에 붙여 발급 | 그 사람의 툴 스코프 **에서 `human:*`와 `admin:*`를 뺀 것** |
 | `external_agent` | ChatGPT·Gemini 등 | 설계만 있음: `/mcp`와 외부 토큰을 내부 토큰으로 바꾸는 길이 아직 없음(§6) | 정해진 스코프 없음(설계는 읽기, 장바구니, 주문 준비) |
-| `system` | 변경셋 실행기(`sys_runner`), 예약 작업(`sys_scheduler`), 감시 작업의 고침(`sys_watcher`), 게이트웨이의 할 일 맡기기 읽기(`sys_task_pickup`) | `commerce` 내부, 게이트웨이 | 모든 `tools:*`, `human:*` 없음 |
+| `system` | 변경셋 실행기(`sys_runner`), 예약 작업(`sys_scheduler`), 감시 작업의 고침(`sys_watcher`), 게이트웨이의 할 일 맡기기 읽기(`sys_task_pickup`), Ailism Bot의 보고(`sys_ailism_bot`) | `commerce` 내부, 게이트웨이 | 모든 `tools:*`, `human:*` 없음 |
 
 **스토어프론트의 운영자.** 운영자 세션도 스토어프론트에서는 쇼퍼처럼 씁니다. 스토어프론트의 채팅(`/api/chat/fo/*`)과, 웹이 `x-acom-surface: fo`를 붙인 API 호출(스토어프론트 페이지의 서버·브라우저 호출)에서는, 게이트웨이가 운영자 주체를 **그 브라우저 세션에 묶인 비회원 쇼퍼**로 바꿉니다. subject는 세션 id(`ses_…`), surface는 `fo`, 스코프는 비회원 스코프이고, 이름은 운영자 이름을 그대로 씁니다. 그래서 장바구니와 대화가 그 세션에 붙고 운영자 권한은 스토어프론트로 넘어가지 않습니다. 백오피스 호출(`x-acom-surface: bo` 또는 헤더 없음)은 운영자 그대로입니다. 쇼퍼와 비회원은 바뀌지 않습니다.
 
@@ -78,6 +78,7 @@
 - **레이트 리밋:** 게이트웨이에는 아직 없습니다. 한도가 업무 규칙인 곳(커뮤니티 글쓰기, 계정 찾기, 전시 캐시 비우기)은 그 오퍼레이션이 정책 값으로 `rate_limited`를 냅니다.
 - **관측성:** 요청 id를 만들어(`X-Request-Id`가 오면 이어받음, `acom-server`) 내부 토큰과 로그에 싣고 응답 헤더로 돌려줍니다. 이 id가 에이전트 턴과 커머스 액션 로그를 잇습니다.
 - **할 일 맡기기:** 스토어가 `platform.yml` `task_pickup.enabled`를 켜면, 게이트웨이가 커머스 이벤트(`GET /v1/platform/events`)를 구독하다가 감시 작업이 **새로 만든** `agent_noticed` 할 일(`task.updated`의 `created: true`)의 요청 문장을 `POST /chat/bo/turns {message, task_id}`로 보냅니다. 토큰은 `task_pickup.acts_as` 운영자의 위임 토큰(§3, `human:*` 없음)이라 초안은 승인 대기에서 멈춥니다. 데모 스토어는 켜 두었고 `acts_as`는 `adm_sj`입니다(`seed/demo/01_platform.yml`의 정책 덮어쓰기). 갱신된 할 일과 시드의 할 일은 맡지 않고, 턴은 하나씩 순서대로 돌립니다. 정책과 할 일을 읽는 요청은 `sys_task_pickup` 시스템 주체로 서명합니다. 코드: `services/gateway/src/pickup.rs`.
+- **Ailism Bot:** 같은 이벤트 구독에서 주기가 열리면(`bot.cycle.updated`, `observing`) 게이트웨이가 봇의 운영자(`get_bot_status`의 `acts_as`: `bot.acts_as`, 없으면 `task_pickup.acts_as`)의 위임 토큰으로 agent 서비스의 `POST /bot/analyze`를 부르고, 돌아온 보고서 본문을 `sys_ailism_bot` 시스템 토큰으로 commerce의 내부 `POST /v1/platform/bot/cycles/{id}/report`에 넘깁니다. 분석이 안 되면 `failed`로 보고해 주기가 열린 채 남지 않습니다. 보고가 연 할 일(`watcher: ailism_bot`)은 위 할 일 맡기기로 운영 에이전트에게 가는데, `task_pickup.enabled`가 아니라 봇 설정(`bot.mode: propose`와 봇의 운영자)을 따릅니다. 주기는 할 일과 다른 줄에서 하나씩 돕니다. [../api/platform.md](../api/platform.md#bot).
 - **타임아웃:** 게이트웨이는 따로 두지 않습니다. 채팅 턴은 에이전트의 턴 상한(60초)에서 멈춥니다. 업스트림이 답하지 않으면 502, 세션 저장소가 답하지 않으면 503이고, 둘 다 `{"error": {"code": "upstream_unavailable", ...}}`입니다.
 
 ## 6. 로그인과 세션 API (`/api/auth/*`)

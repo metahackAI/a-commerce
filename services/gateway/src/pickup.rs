@@ -7,6 +7,13 @@
 //!
 //! Only new tasks are picked up: a refreshed or seeded task stays for a person to hand over.
 //! Turns run one at a time, in the order the tasks appeared.
+//!
+//! Ailism Bot (docs/api/platform.md#bot) rides the same events: a cycle that opens
+//! (`bot.cycle.updated`, `observing`) goes to the agent's analysis with the on-behalf token of the
+//! operator the bot works for, and the report that comes back goes to commerce with the
+//! gateway's system token. The tasks the report opens come back as `task.updated` and are picked
+//! up here like any other, by the bot's own settings (its mode and operator) rather than
+//! `task_pickup`.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -27,11 +34,13 @@ const TURN_DONE: &[u8] = b"event: turn.done";
 /// Starts following the store's events, and the worker that hands new tasks to the agent.
 pub fn spawn(gw: Arc<Gateway>) {
     let (tx, rx) = mpsc::unbounded_channel::<String>();
+    let (cycles, cycles_rx) = mpsc::unbounded_channel::<String>();
     tokio::spawn(work(gw.clone(), rx));
+    tokio::spawn(work_cycles(gw.clone(), cycles_rx));
     tokio::spawn(async move {
         let http = reqwest::Client::new();
         loop {
-            if let Err(e) = follow(&gw, &http, &tx).await {
+            if let Err(e) = follow(&gw, &http, &tx, &cycles).await {
                 tracing::warn!(error = %e, "task pickup: events stream");
             }
             tokio::time::sleep(RECONNECT).await;
@@ -41,7 +50,12 @@ pub fn spawn(gw: Arc<Gateway>) {
 
 /// A token for the gateway's own reads in commerce.
 fn system_token(gw: &Gateway, request_id: &str) -> Result<String, String> {
-    let p = Principal::system(gw.sessions.tenant.clone(), SUBJECT);
+    system_token_as(gw, request_id, SUBJECT)
+}
+
+/// A system token for `subject` (`sys_task_pickup`, `sys_ailism_bot`).
+fn system_token_as(gw: &Gateway, request_id: &str, subject: &str) -> Result<String, String> {
+    let p = Principal::system(gw.sessions.tenant.clone(), subject);
     gw.signer
         .sign(&p, request_id, now_seconds(), REQUEST_TOKEN_SECONDS)
         .map_err(|e| e.to_string())
@@ -52,6 +66,7 @@ async fn follow(
     gw: &Gateway,
     http: &reqwest::Client,
     queue: &mpsc::UnboundedSender<String>,
+    cycles: &mpsc::UnboundedSender<String>,
 ) -> Result<(), String> {
     let token = system_token(gw, "req_task_pickup_events")?;
     let mut r = http
@@ -74,10 +89,12 @@ async fn follow(
             let line = line.trim_end();
             if let Some(e) = line.strip_prefix("event:") {
                 e.trim().clone_into(&mut event);
-            } else if let Some(data) = line.strip_prefix("data:")
-                && let Some(task) = new_agent_task(&event, data)
-            {
-                let _ = queue.send(task);
+            } else if let Some(data) = line.strip_prefix("data:") {
+                if let Some(task) = new_agent_task(&event, data) {
+                    let _ = queue.send(task);
+                } else if let Some(cycle) = new_bot_cycle(&event, data) {
+                    let _ = cycles.send(cycle);
+                }
             }
         }
     }
@@ -90,6 +107,130 @@ fn new_agent_task(event: &str, data: &str) -> Option<String> {
     (event == "task.updated" && v["created"] == true && v["origin"] == "agent_noticed")
         .then(|| v["task_id"].as_str().map(str::to_owned))
         .flatten()
+}
+
+/// The cycle id of a `bot.cycle.updated` event that announces a cycle to analyse.
+fn new_bot_cycle(event: &str, data: &str) -> Option<String> {
+    let v: Value = serde_json::from_str(data.trim()).ok()?;
+    (event == "bot.cycle.updated" && v["state"] == "observing")
+        .then(|| v["cycle_id"].as_str().map(str::to_owned))
+        .flatten()
+}
+
+/// The subject commerce sees for the bot's reports (the action log's actor).
+const BOT_SUBJECT: &str = "sys_ailism_bot";
+
+async fn work_cycles(gw: Arc<Gateway>, mut rx: mpsc::UnboundedReceiver<String>) {
+    let http = reqwest::Client::new();
+    while let Some(cycle) = rx.recv().await {
+        let (gw, http, id) = (gw.clone(), http.clone(), cycle.clone());
+        match tokio::spawn(async move { run_cycle(&gw, &http, &id).await }).await {
+            Ok(Ok(outcome)) => tracing::info!(cycle = %cycle, outcome = %outcome, "ailism bot"),
+            Ok(Err(e)) => tracing::warn!(cycle = %cycle, error = %e, "ailism bot"),
+            Err(e) => tracing::error!(cycle = %cycle, error = %e, "ailism bot panicked"),
+        }
+    }
+}
+
+/// Analyses one cycle for the bot's operator and gives the report to commerce. A cycle that
+/// cannot be analysed is still reported, as failed, so it does not stay open.
+async fn run_cycle(gw: &Gateway, http: &reqwest::Client, cycle: &str) -> Result<String, String> {
+    let request_id = format!("req_bot_{cycle}");
+    let system = system_token_as(gw, &request_id, BOT_SUBJECT)?;
+    let status = commerce_get(gw, http, &system, "/v1/platform/bot").await?;
+    let analysed = match status["acts_as"].as_str() {
+        None => Err(
+            "No operator to work for: set the bot's acts_as (or task_pickup.acts_as).".to_owned(),
+        ),
+        Some(acts_as) => analyse_as(gw, http, &request_id, acts_as).await,
+    };
+    let body = analysed.unwrap_or_else(|why| json!({"state": "failed", "error": why}));
+    let r = http
+        .post(format!(
+            "{}/v1/platform/bot/cycles/{cycle}/report",
+            gw.commerce
+        ))
+        .bearer_auth(&system)
+        .header("content-type", "application/json")
+        .body(body.to_string())
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let status = r.status();
+    let text = r.text().await.unwrap_or_default();
+    if !status.is_success() {
+        return Err(format!(
+            "report: {status} {}",
+            text.chars().take(300).collect::<String>()
+        ));
+    }
+    let v: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
+    Ok(format!(
+        "{}: {} opened, {} skipped",
+        v["state"].as_str().unwrap_or("?"),
+        v["opened"].as_array().map_or(0, Vec::len),
+        v["skipped"].as_array().map_or(0, Vec::len)
+    ))
+}
+
+/// The agent's analysis, run with `acts_as`'s on-behalf token (read tools, no `human:*`).
+async fn analyse_as(
+    gw: &Gateway,
+    http: &reqwest::Client,
+    request_id: &str,
+    acts_as: &str,
+) -> Result<Value, String> {
+    let operator = gw
+        .sessions
+        .operator(acts_as)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("operator {acts_as} is not active"))?;
+    let token = gw
+        .signer
+        .sign(
+            &operator.on_behalf(),
+            request_id,
+            now_seconds(),
+            TURN_TOKEN_SECONDS,
+        )
+        .map_err(|e| e.to_string())?;
+    let r = http
+        .post(format!("{}/bot/analyze", gw.agent))
+        .bearer_auth(token)
+        .header("content-type", "application/json")
+        .body("{}")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let status = r.status();
+    let text = r.text().await.map_err(|e| e.to_string())?;
+    if !status.is_success() {
+        return Err(format!(
+            "analysis: {status} {}",
+            text.chars().take(300).collect::<String>()
+        ));
+    }
+    serde_json::from_str(&text).map_err(|e| format!("analysis: {e}"))
+}
+
+async fn commerce_get(
+    gw: &Gateway,
+    http: &reqwest::Client,
+    token: &str,
+    path: &str,
+) -> Result<Value, String> {
+    let r = http
+        .get(format!("{}{path}", gw.commerce))
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !r.status().is_success() {
+        return Err(format!("{path}: {}", r.status()));
+    }
+    let text = r.text().await.map_err(|e| e.to_string())?;
+    serde_json::from_str::<Value>(&text).map_err(|e| format!("{path}: {e}"))
 }
 
 async fn work(gw: Arc<Gateway>, mut rx: mpsc::UnboundedReceiver<String>) {
@@ -126,22 +267,34 @@ async fn pick_up(gw: &Gateway, http: &reqwest::Client, task: &str) -> Result<Str
         }
     };
 
-    let policy = read("/v1/platform/policies?key=task_pickup".into()).await?;
-    let value = |key: &str| {
-        policy["items"]
-            .as_array()
-            .and_then(|items| items.iter().find(|i| i["key"] == key))
-            .map(|i| i["value"].clone())
-            .unwrap_or(Value::Null)
-    };
-    if value("task_pickup.enabled") != true {
-        return Ok("off".into());
-    }
-    let Some(acts_as) = value("task_pickup.acts_as").as_str().map(String::from) else {
-        return Err("task_pickup.acts_as names no operator".into());
-    };
-
     let t = read(format!("/v1/platform/tasks/{task}")).await?;
+    // The bot's tasks follow the bot's settings: drafted in propose mode, for its operator.
+    let acts_as = if t["watcher"]["key"] == "ailism_bot" {
+        let bot = read("/v1/platform/bot".into()).await?;
+        if bot["settings"]["mode"] != "propose" {
+            return Ok("bot not proposing".into());
+        }
+        let Some(a) = bot["acts_as"].as_str().map(String::from) else {
+            return Err("the bot names no operator to work for".into());
+        };
+        a
+    } else {
+        let policy = read("/v1/platform/policies?key=task_pickup".into()).await?;
+        let value = |key: &str| {
+            policy["items"]
+                .as_array()
+                .and_then(|items| items.iter().find(|i| i["key"] == key))
+                .map(|i| i["value"].clone())
+                .unwrap_or(Value::Null)
+        };
+        if value("task_pickup.enabled") != true {
+            return Ok("off".into());
+        }
+        let Some(a) = value("task_pickup.acts_as").as_str().map(String::from) else {
+            return Err("task_pickup.acts_as names no operator".into());
+        };
+        a
+    };
     let open = matches!(t["state"].as_str(), Some("needs_you" | "working"));
     let drafted = !t["related"]["change_set_id"].is_null();
     let request = t["request"].as_str().map(str::trim).unwrap_or_default();
@@ -220,6 +373,18 @@ mod tests {
             r#"{"task_id": "task_2", "state": "working", "created": true, "origin": "automation"}"#;
         assert_eq!(new_agent_task("task.updated", automation), None);
         assert_eq!(new_agent_task("change_set.updated", new), None);
+    }
+
+    #[test]
+    fn only_a_cycle_that_opens_goes_to_the_analysis() {
+        let open = r#"{"cycle_id": "bcy_1", "state": "observing", "trigger": "manual"}"#;
+        assert_eq!(
+            new_bot_cycle("bot.cycle.updated", open).as_deref(),
+            Some("bcy_1")
+        );
+        let done = r#"{"cycle_id": "bcy_1", "state": "done"}"#;
+        assert_eq!(new_bot_cycle("bot.cycle.updated", done), None);
+        assert_eq!(new_bot_cycle("task.updated", open), None);
     }
 
     #[test]

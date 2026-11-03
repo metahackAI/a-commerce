@@ -780,3 +780,131 @@ export interface StoreMessage {
   date_sent: string;
   read?: boolean;
 }
+
+// Ailism Bot (docs/api/platform.md#bot).
+
+export type BotMode = 'off' | 'observe' | 'propose';
+
+export const BOT_AREAS = [
+  'pricing',
+  'inventory',
+  'promotions',
+  'merchandising',
+  'catalog_content',
+  'returns',
+  'questions_reviews',
+  'community',
+] as const;
+
+export interface BotSettings {
+  mode: BotMode;
+  acts_as: string | null;
+  model: string;
+  every_minutes: number;
+  areas: Record<string, boolean>;
+  max_proposals_per_cycle: number;
+  max_open_decisions: number;
+  cooldown_days: number;
+  directives: string[];
+}
+
+export interface BotStatus {
+  settings: BotSettings;
+  /** The operator the drafts are made for (its own setting, else the task pickup's). */
+  acts_as: string | null;
+  next_run_at: string | null;
+  last_cycle: {id: string; state: string; trigger: string; at: string; summary: string | null; error: string | null} | null;
+  /** Decisions by state (`bot_decision_state`). */
+  decisions: Record<string, number>;
+  open_feedback: number;
+}
+
+export interface BotCycleSummary {
+  id: string;
+  trigger: string;
+  state: string;
+  mode: string;
+  at: string;
+  end_time: string | null;
+  summary: string | null;
+  proposals: number;
+  opened: number;
+  anomalies: number;
+  error: string | null;
+}
+
+export interface BotEffect {
+  metric?: string;
+  direction?: 'up' | 'down';
+  horizon_days?: number;
+}
+
+export interface BotProposal {
+  area: string;
+  title: string;
+  request: string;
+  reason?: string;
+  evidence?: string[];
+  expected_effect?: BotEffect;
+  risk?: string;
+  about?: {entity: string; id: string}[];
+  outcome?: {opened?: string; skipped?: string};
+}
+
+export interface BotAnomaly {
+  area: string;
+  code: string;
+  text: string;
+  severity: string;
+}
+
+export interface BotCycle {
+  id: string;
+  trigger: string;
+  requested_by: string | null;
+  state: string;
+  mode: string;
+  at: string;
+  end_time: string | null;
+  snapshot: {at?: string; areas?: string[]; reads?: {area: string; tool: string; args?: unknown; result?: unknown; error?: string}[]};
+  anomalies: BotAnomaly[];
+  report: {summary?: string; findings?: {area: string; text: string; severity: string}[]; proposals?: BotProposal[]} | null;
+  usage: {model?: string; model_calls?: number; input_tokens?: number; output_tokens?: number; reads?: number};
+  decisions: string[];
+  error: string | null;
+}
+
+export interface BotFeedback {
+  id: string;
+  kind: 'feedback' | 'directive' | 'correction';
+  text: string;
+  decision_id: string | null;
+  state: 'open' | 'closed';
+  by: string;
+  at: string;
+  closed_at: string | null;
+}
+
+export interface BotDecision {
+  id: string;
+  cycle_id: string;
+  task_id: string;
+  change_set_id: string | null;
+  change_set_number: number | null;
+  conversation_id: string | null;
+  area: string;
+  title: string;
+  request: string;
+  reason: string;
+  evidence: string[];
+  expected_effect: BotEffect;
+  risk: string;
+  about: {entity: string; id: string}[];
+  revises: string | null;
+  state: string;
+  summary: string | null;
+  /** A count in lists; the feedback itself in `get_bot_decision`. */
+  feedback: number | BotFeedback[];
+  at: string;
+  updated_at: string;
+}

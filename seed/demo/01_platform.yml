@@ -49,6 +49,7 @@ tables:
     - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "human:reject"}
     - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "human:undo"}
     - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "human:task"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "human:bot"}
     - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:platform"}
     - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:catalog"}
     - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:merchandising"}
@@ -68,6 +69,7 @@ tables:
     - {tenant_id: store_northwind, role_id: rol_operator, scope: "human:reject"}
     - {tenant_id: store_northwind, role_id: rol_operator, scope: "human:undo"}
     - {tenant_id: store_northwind, role_id: rol_operator, scope: "human:task"}
+    - {tenant_id: store_northwind, role_id: rol_operator, scope: "human:bot"}
     - {tenant_id: store_northwind, role_id: rol_catalog_admin, scope: "tools:read:catalog"}
     - {tenant_id: store_northwind, role_id: rol_catalog_admin, scope: "tools:read:search"}
     - {tenant_id: store_northwind, role_id: rol_catalog_admin, scope: "tools:read:merchandising"}
@@ -112,6 +114,7 @@ tables:
     - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:read:integration"}
     - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "tools:write:integration"}
     - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:task"}
+    - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:bot"}
     - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:order"}
     - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:cancel"}
     - {tenant_id: store_northwind, role_id: rol_platform_admin, scope: "human:return"}
@@ -913,6 +916,7 @@ tables:
     - {tenant_id: store_northwind, id: job_watch_returns, kind: watcher.returns_over_refund_threshold, run_at: "2026-11-06T11:10:00-05:00", payload: {}, attempts: 0}
     - {tenant_id: store_northwind, id: job_watch_stock, kind: watcher.stock_out_forecast, run_at: "2026-11-06T11:40:00-05:00", payload: {}, attempts: 0}
     - {tenant_id: store_northwind, id: job_watch_price, kind: watcher.price_below_cost, run_at: "2026-11-06T11:55:00-05:00", payload: {}, attempts: 0}
+    - {tenant_id: store_northwind, id: job_watch_bot, kind: watcher.ailism_bot, run_at: "2026-11-06T12:00:00-05:00", payload: {}, attempts: 0}
     - {tenant_id: store_northwind, id: job_promo_denim_bundle_start, kind: promotion.start, run_at: "2026-11-13T00:00:00-05:00", payload: {promotion_id: promo_denim_bundle}, attempts: 0}
     - {tenant_id: store_northwind, id: job_promo_denim_bundle_end, kind: promotion.end, run_at: "2026-11-21T00:00:00-05:00", payload: {promotion_id: promo_denim_bundle}, attempts: 0}
     - {tenant_id: store_northwind, id: job_promo_autumn_knit_end, kind: promotion.end, run_at: "2026-11-16T00:00:00-05:00", payload: {promotion_id: promo_autumn_knit}, attempts: 0}

@@ -19,6 +19,7 @@
 //! | [`store`] | the `agent` schema |
 
 pub mod blocks;
+pub mod bot;
 pub mod checker;
 pub mod client;
 pub mod executor;

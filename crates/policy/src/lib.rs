@@ -6,6 +6,7 @@
 //! operations that read them are built. Design: `docs/backend/commerce.md` §4.
 
 pub mod approval;
+pub mod bot;
 pub mod watchers;
 
 use std::collections::BTreeMap;
@@ -15,6 +16,7 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 pub use approval::Approval;
+pub use bot::{Bot, BotAreas, BotMode};
 pub use watchers::{AmountThreshold, RunFix, Schedule, Watchers};
 
 /// The policy files every store has, one per domain plus `approval`, in load order.

@@ -18,6 +18,7 @@ mod action_log;
 mod admin_user;
 mod api_key;
 mod auth;
+mod bot;
 mod change_set;
 mod r#enum;
 mod menu;
@@ -36,6 +37,7 @@ use acom_contract::{ApprovalNeed, ErrorCode, RegistryBuilder, ToolError};
 use acom_store::{Cx, Page};
 use serde_json::{Value, json};
 
+pub use bot::report::record as record_bot_report;
 pub use task::TASK_NOT_FOUND;
 
 /// Adds every platform operation to the registry.
@@ -72,7 +74,19 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .write(org::set_org::SetOrg)
         .read(api_key::list_api_keys::ListApiKeys)
         .write(api_key::issue_api_key::IssueApiKey)
-        .write(api_key::revoke_api_key::RevokeApiKey);
+        .write(api_key::revoke_api_key::RevokeApiKey)
+        .read(bot::get_bot_status::GetBotStatus)
+        .read(bot::list_bot_cycles::ListBotCycles)
+        .read(bot::get_bot_cycle::GetBotCycle)
+        .read(bot::list_bot_decisions::ListBotDecisions)
+        .read(bot::get_bot_decision::GetBotDecision)
+        .read(bot::list_bot_feedback::ListBotFeedback)
+        .person(bot::run_bot_cycle::RunBotCycle)
+        .person(bot::update_bot_settings::UpdateBotSettings)
+        .person(bot::give_bot_feedback::GiveBotFeedback)
+        .person(bot::close_bot_feedback::CloseBotFeedback)
+        .person(bot::rerequest_bot_decision::RerequestBotDecision)
+        .job(bot::watch::AilismBotCycle);
 }
 
 /// Shared by the reads: a time input in store time.

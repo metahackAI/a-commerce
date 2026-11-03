@@ -57,6 +57,7 @@ pub fn routes(app: Arc<App>) -> Router {
         )
         .route("/chat/{surface}/conversations", get(conversations))
         .route("/chat/{surface}/streaming", get(streaming))
+        .route("/bot/analyze", post(bot_analyze))
         .route(
             "/chat/{surface}/conversations/{conversation_id}",
             get(conversation),
@@ -190,6 +191,28 @@ async fn turns(
     .await;
     match started {
         Ok(rx) => event_stream(rx),
+        Err(e) => error(&e),
+    }
+}
+
+/// `POST /bot/analyze`: one Ailism Bot cycle's reading and analysis (docs/api/platform.md#bot),
+/// for the operator the bot works for. Only the gateway calls it, with that operator's
+/// back-office on-behalf token; the answer is the body of the cycle's report, which the gateway
+/// gives to commerce. Read tools only.
+async fn bot_analyze(State(app): State<Arc<App>>, headers: HeaderMap) -> Response {
+    let started = async {
+        let c = caller(&app, &headers, ChatSurface::Bo)?;
+        let runtime = app
+            .runtime
+            .clone()
+            .ok_or_else(|| unavailable("the agent definitions did not load (see /readyz)"))?;
+        let tools =
+            HttpToolClient::new(app.http.clone(), &app.commerce_url, &c.token, &c.request_id);
+        Ok::<_, ToolError>(acom_agent::bot::analyze(&runtime, &tools).await)
+    }
+    .await;
+    match started {
+        Ok(v) => Json(v).into_response(),
         Err(e) => error(&e),
     }
 }

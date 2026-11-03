@@ -1910,6 +1910,72 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `platform.bot_cycle`
+
+`acom:BotCycle` — one look Ailism Bot took at the store: the snapshot it read, its report and what it cost. id prefix bcy_. · id `bcy_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix bcy_; the same value the API, logs and events use. |
+| `bot_trigger` | text |  | `acom:botTrigger` | what started the cycle: its schedule or a person. values: bot_trigger Values: `schedule` · `manual`. |
+| `requested_by` | text | ✓ | `acom:requestedBy` | the operator who ran it now (adm_ id); NULL for a scheduled cycle. |
+| `cycle_state` | text |  | `acom:botCycleState` | observing while the bot reads and analyses, then done or failed. values: bot_cycle_state Values: `observing` · `done` · `failed`. |
+| `bot_mode` | text |  | `acom:botMode` | the mode the cycle ran in. values: bot_mode Values: `off` · `observe` · `propose`. |
+| `start_time` | timestamptz |  | `schema:startTime` | when the cycle opened (API at). |
+| `end_time` | timestamptz | ✓ | `schema:endTime` | when the report came back or the cycle failed. |
+| `snapshot` | jsonb |  | `acom:snapshot` | what the bot read, in order: {areas, reads[{tool, args, result}]}. |
+| `anomalies` | jsonb |  | `acom:anomalies` | warning signs found by rule in the snapshot: [{area, code, text, severity}]. |
+| `report` | jsonb | ✓ | `acom:report` | the analysis: {summary, findings[], proposals[]} with each proposal's outcome (opened or why not). |
+| `usage` | jsonb |  | `acom:usage` | what the cycle cost: {model, model_calls, input_tokens, output_tokens, reads}. |
+| `error` | text | ✓ | `acom:error` | why a failed cycle failed. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change. |
+
+### `platform.bot_decision`
+
+`acom:BotDecision` — one proposal Ailism Bot opened as a task for the operations agent to draft and a person to decide. id prefix bdc_. · id `bdc_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix bdc_; the same value the API, logs and events use. |
+| `cycle_id` | text |  | `acom:botCycleId` | the cycle that proposed it. → `platform.bot_cycle` |
+| `task_id` | text |  | `acom:taskId` | the task it opened; its change set and state are the decision's. → `platform.task` |
+| `bot_area` | text |  | `acom:botArea` | the area it is about. values: bot_area Values: `pricing` · `inventory` · `promotions` · `merchandising` · `catalog_content` · `returns` · `questions_reviews` · `community`. |
+| `title` | text |  | `acom:title` | one line shown on the decision list. |
+| `request_text` | text |  | `acom:requestText` | the sentence the operations agent drafts the change from. |
+| `reason` | text |  | `acom:reason` | why the bot proposes it, from the snapshot. |
+| `evidence` | jsonb |  | `acom:evidence` | figures from the snapshot it rests on: [text]. |
+| `expected_effect` | jsonb |  | `acom:expectedEffect` | what should change and by when: {metric, direction, horizon_days}. |
+| `bot_risk` | text |  | `acom:botRisk` | how much could go wrong if it is wrong. values: bot_risk Values: `low` · `medium` · `high`. |
+| `related_entities` | jsonb |  | `schema:object` | entities the decision is about: [{entity, id}]. |
+| `cause_key` | text |  | `acom:causeKey` | area and entities, to find an open or recently turned down decision about the same thing. |
+| `revises_id` | text | ✓ | `acom:revises` | the decision a person asked again with a correction; this one replaces it. → `platform.bot_decision` |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change. |
+
+### `platform.bot_feedback`
+
+`acom:BotFeedback` — what a person told Ailism Bot: an opinion, a standing directive, or a correction asked of a decision. id prefix bfb_. · id `bfb_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix bfb_; the same value the API, logs and events use. |
+| `decision_id` | text | ✓ | `acom:botDecisionId` | the decision it is about; NULL for the bot as a whole. → `platform.bot_decision` |
+| `feedback_kind` | text |  | `acom:botFeedbackKind` | feedback, directive or correction. values: bot_feedback_kind Values: `feedback` · `directive` · `correction`. |
+| `text` | text |  | `schema:text` | what the person wrote. |
+| `feedback_state` | text |  | `acom:botFeedbackState` | open feedback goes into every analysis until a person closes it. values: bot_feedback_state Values: `open` · `closed`. |
+| `created_by` | text |  | `acom:createdBy` | the operator who wrote it (adm_ id). |
+| `closed_by` | text | ✓ | `acom:closedBy` | the operator who closed it. |
+| `closed_at` | timestamptz | ✓ | `acom:closedAt` | when it was closed. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change. |
+
 ### `platform.change_set`
 
 `schema:ItemList/acom:ChangeSet` — previews from one request that a person approves, runs, verifies and can undo as a unit. id prefix cs_. · id `cs_…`

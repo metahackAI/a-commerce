@@ -442,6 +442,53 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:botMode, how far Ailism Bot goes.
+    BotMode = "bot_mode" { Off = "off", Observe = "observe", Propose = "propose" }
+}
+
+word_enum! {
+    /// acom:botArea, what Ailism Bot looks at.
+    BotArea = "bot_area" {
+        Pricing = "pricing", Inventory = "inventory", Promotions = "promotions",
+        Merchandising = "merchandising", CatalogContent = "catalog_content", Returns = "returns",
+        QuestionsReviews = "questions_reviews", Community = "community",
+    }
+}
+
+word_enum! {
+    /// acom:botCycleState of one Ailism Bot cycle.
+    BotCycleState = "bot_cycle_state" { Observing = "observing", Done = "done", Failed = "failed" }
+}
+
+word_enum! {
+    /// acom:botTrigger, what started a cycle.
+    BotTrigger = "bot_trigger" { Schedule = "schedule", Manual = "manual" }
+}
+
+word_enum! {
+    /// acom:botDecisionState, computed from the decision's task and change set.
+    BotDecisionState = "bot_decision_state" {
+        Drafting = "drafting", NeedsYou = "needs_you", Waiting = "waiting", Running = "running",
+        Live = "live", Rejected = "rejected", Failed = "failed", Undone = "undone", Dismissed = "dismissed",
+    }
+}
+
+word_enum! {
+    /// acom:botRisk the bot gives a proposal.
+    BotRisk = "bot_risk" { Low = "low", Medium = "medium", High = "high" }
+}
+
+word_enum! {
+    /// acom:botFeedbackKind.
+    BotFeedbackKind = "bot_feedback_kind" { Feedback = "feedback", Directive = "directive", Correction = "correction" }
+}
+
+word_enum! {
+    /// acom:botFeedbackState.
+    BotFeedbackState = "bot_feedback_state" { Open = "open", Closed = "closed" }
+}
+
+word_enum! {
     /// acom:addressUsage.
     AddressUsage = "address_usage" { Shipping = "shipping", Billing = "billing", Return = "return" }
 }
@@ -807,6 +854,14 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (ReturnFees::LIST, ReturnFees::WORDS),
     (TaskState::LIST, TaskState::WORDS),
     (TaskOrigin::LIST, TaskOrigin::WORDS),
+    (BotMode::LIST, BotMode::WORDS),
+    (BotArea::LIST, BotArea::WORDS),
+    (BotCycleState::LIST, BotCycleState::WORDS),
+    (BotTrigger::LIST, BotTrigger::WORDS),
+    (BotDecisionState::LIST, BotDecisionState::WORDS),
+    (BotRisk::LIST, BotRisk::WORDS),
+    (BotFeedbackKind::LIST, BotFeedbackKind::WORDS),
+    (BotFeedbackState::LIST, BotFeedbackState::WORDS),
     (AddressUsage::LIST, AddressUsage::WORDS),
     (PreferenceKey::LIST, PreferenceKey::WORDS),
     (ActorKind::LIST, ActorKind::WORDS),

@@ -224,6 +224,10 @@ route_when_said: [weekend sale, coupon, banner, needs me]   # 모델 없이 이 
 
 운영자 홈의 할 일 목록(반품 대기, 품절 임박, 원가 이하 판매 등)은 에이전트가 만드는 것이 아닙니다. `commerce`의 감시 작업이 정책 기준으로 **할 일**(`platform.task`)을 만들고, 에이전트는 운영자가 그 항목을 열 때 항목의 요청 문장으로 새 턴을 시작합니다(턴의 `task_id`로 만든 변경셋이 할 일에 묶임). 스토어가 `task_pickup`을 켜면(데모 스토어는 켜 두었고 `acts_as`는 `adm_sj`) 감시 작업이 새로 연 `agent_noticed` 할 일을 게이트웨이가 그 운영자의 이름으로 사람보다 먼저 같은 턴으로 넘겨, 누가 묻기 전에 초안이 기다립니다([gateway.md](gateway.md) §5). 감시 작업은 셋입니다: `watcher.returns_over_refund_threshold`(fulfillment)와 `watcher.stock_out_forecast`(sales)는 `agent_noticed`, `watcher.price_below_cost`(catalog)는 고침 변경셋을 스스로 만드는 `automation`입니다. 감지는 결정적이고, 처리는 대화입니다.
 
+### 10.1 Ailism Bot의 분석
+
+Ailism Bot([../api/platform.md](../api/platform.md#bot))의 한 주기는 턴이 아니라 `acom-agent`의 `bot::analyze`입니다(agent 서비스 `POST /bot/analyze`, 게이트웨이만 부름). `get_bot_status`로 설정을 읽고, 켜진 영역마다 정해진 읽기 툴을 정해진 인자로 부릅니다(가격: `search_products` 가격순·`get_policy price_floor`·진행 중 프로모션, 재고: 재고 적은 순, 프로모션: 다음 7일 프로모션·재고 많은 순·어제 매출 변화, 머천다이징: 메인 슬롯·컬렉션, 상품 정보: 최신 상품, 반품: 기다리는 요청, 문의·리뷰: 답 없는 문의·낮은 리뷰, 커뮤니티: 게시판마다 신고된 글). 이상 신호는 규칙으로 뽑고(원가 아래 가격, 품절 사이즈, 어제 매출 감소, 사진 없는 상품, 기다리는 반품·문의, 신고된 글), 열린 할 일·열린 피드백·최근 결정과 함께 `bot.model`에 `prompts/bot.md`로 보고서를 받습니다(가이드 디코딩, 제안 수는 `bot.max_proposals_per_cycle` 이하, 두 번까지 시도). 근거(`evidence`) 가운데 스냅샷에 없는 숫자가 든 줄은 버립니다. 쓰기 툴은 부르지 않고, 제안을 거르고 할 일로 여는 것은 commerce가 합니다.
+
 ---
 
 ## 11. 크레이트 구성

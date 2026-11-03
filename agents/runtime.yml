@@ -85,3 +85,4 @@ prompts:
   planner: prompts/planner.md
   arguments: prompts/arguments.md
   reply: prompts/reply.md
+  bot: prompts/bot.md

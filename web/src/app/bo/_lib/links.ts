@@ -26,6 +26,10 @@ export function entityHref(id: string | null | undefined): string | null {
       return `/bo/activity/${enc}`;
     case 'slot':
       return `/bo/merchandising?slot=${enc}`;
+    case 'bcy':
+      return `/bo/bot/history/${enc}`;
+    case 'bdc':
+      return `/bo/bot/decisions?decision=${enc}`;
     default:
       return null;
   }
