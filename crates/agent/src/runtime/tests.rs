@@ -25,6 +25,8 @@ struct Scripted {
     streams_nothing: std::sync::atomic::AtomicBool,
     /// Streams the background check's request but nothing in a turn (the demo's endpoint did).
     streams_check_only: std::sync::atomic::AtomicBool,
+    /// Answers a reply held to a schema with a server error, as the demo's endpoint once did.
+    fails_on_reply_schema: std::sync::atomic::AtomicBool,
 }
 
 impl Scripted {
@@ -46,7 +48,14 @@ impl Scripted {
             asked: Mutex::new(Vec::new()),
             streams_nothing: std::sync::atomic::AtomicBool::new(false),
             streams_check_only: std::sync::atomic::AtomicBool::new(false),
+            fails_on_reply_schema: std::sync::atomic::AtomicBool::new(false),
         })
+    }
+
+    fn failing_on_reply_schema(self: Arc<Self>) -> Arc<Self> {
+        self.fails_on_reply_schema
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self
     }
 
     fn streaming_the_check_only(self: Arc<Self>) -> Arc<Self> {
@@ -101,6 +110,18 @@ impl ChatModel for Scripted {
                     model: self.info.model.clone(),
                     text,
                     ..Default::default()
+                });
+            }
+            if req.purpose == "reply"
+                && req.output.is_some()
+                && req.stream_variant != acom_llm::StreamVariant::PlainText
+                && self
+                    .fails_on_reply_schema
+                    .load(std::sync::atomic::Ordering::SeqCst)
+            {
+                return Err(LlmError::Http {
+                    status: 500,
+                    message: "Internal server error".into(),
                 });
             }
             if on_delta.is_some()
@@ -1371,8 +1392,9 @@ async fn a_failing_tool_with_a_next_tool_revises_the_plan_once_more() {
         ]
     );
     // The revision asks the planner model first; with no scripted answer there, the worker plans.
-    assert_eq!(spark.asked(), ["plan", "reply"]);
-    assert_eq!(glimmer.asked(), ["plan", "plan", "reply"]);
+    // Replies fail as a server error, so each model is asked once more without the schema.
+    assert_eq!(spark.asked(), ["plan", "reply", "reply"]);
+    assert_eq!(glimmer.asked(), ["plan", "plan", "reply", "reply"]);
     assert!(events.iter().any(|e| matches!(e, Event::Step { kind: StepKind::Plan, summary, .. } if summary.starts_with("Changing the plan"))));
     // Jamie is signed in, so not on a first visit: the plain list.
     assert_eq!(blocks(&events)[0].ui, "product_list");
@@ -2314,6 +2336,38 @@ async fn replies_stream_only_where_the_background_check_saw_streaming_work() {
     );
     assert_eq!(replies(&dumb), 3);
     assert_eq!(rt.stream_state("glimmer"), StreamState::Unknown);
+}
+
+#[tokio::test]
+async fn a_reply_the_server_failed_on_is_asked_again_without_its_schema() {
+    let plan = json!({"interpretation": [{"aspect": "who", "text": "VIP members"}], "about": "self",
+        "reply_plan": "text", "steps": [{"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
+    .to_string();
+    let model = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            ("plan", plan),
+            ("reply", "You have 1,284 VIP members.".into()),
+        ],
+    )
+    .failing_on_reply_schema();
+    let rt = runtime(std::slice::from_ref(&model), Arc::new(MemoryLog::default()));
+    rt.assume_streaming("glimmer", StreamState::Off);
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say("Show me our member tiers."),
+        Commerce::new(),
+    )
+    .await;
+    assert_eq!(
+        message(&events),
+        "You have 1,284 VIP members.",
+        "the model's reply, not the plain one"
+    );
+    assert_eq!(model.asked().iter().filter(|p| *p == "reply").count(), 2);
 }
 
 #[tokio::test]
