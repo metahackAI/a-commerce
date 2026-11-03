@@ -29,6 +29,7 @@ pub const HUMAN: &[&str] = &[
     "human:reject",
     "human:undo",
     "human:task",
+    "human:bot",
     "human:order",
     "human:cancel",
     "human:return",

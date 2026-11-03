@@ -201,6 +201,56 @@ fn demo_reset(api: Arc<acom_http::Api>, reset: DemoReset) -> Router {
         .with_state(api)
 }
 
+/// `POST /v1/platform/bot/cycles/{bot_cycle_id}/report`: the end of an Ailism Bot cycle, from the
+/// gateway (docs/api/platform.md#bot, internal endpoints). Only a system caller; never a tool.
+fn bot_report(api: Arc<acom_http::Api>) -> Router {
+    use acom_contract::{ErrorCode, ToolError};
+    use axum::extract::{Path, State};
+    use axum::response::IntoResponse;
+    use serde_json::{Value, json};
+    Router::new()
+        .route(
+            "/v1/platform/bot/cycles/{bot_cycle_id}/report",
+            axum::routing::post(
+                |State(api): State<Arc<acom_http::Api>>,
+                 caller: acom_http::Caller,
+                 Path(cycle): Path<String>,
+                 axum::Json(body): axum::Json<Value>| async move {
+                    let refuse = |e: ToolError| acom_http::ApiError(e).into_response();
+                    if caller.principal.kind != acom_core::enums::ActorKind::System {
+                        return refuse(
+                            ToolError::new(
+                                ErrorCode::FORBIDDEN,
+                                "Only the system reports a bot cycle.",
+                            )
+                            .detail(json!({"reason": "actor_kind", "required": "system"})),
+                        );
+                    }
+                    let cx = match api
+                        .runtime
+                        .context(caller.principal.clone(), caller.request_id.clone())
+                        .await
+                    {
+                        Ok(cx) => cx,
+                        Err(e) => return refuse(e),
+                    };
+                    let mut tx = match cx.begin().await {
+                        Ok(tx) => tx,
+                        Err(e) => return refuse(ToolError::from(e)),
+                    };
+                    match acom_platform::record_bot_report(&mut tx, &cycle, &body).await {
+                        Ok(out) => match tx.commit().await {
+                            Ok(()) => axum::Json(out).into_response(),
+                            Err(e) => refuse(ToolError::from(e)),
+                        },
+                        Err(e) => refuse(e),
+                    }
+                },
+            ),
+        )
+        .with_state(api)
+}
+
 /// The REST surface: every operation, the change-set endpoints, and the event stream.
 fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
     let key = cli
@@ -229,7 +279,9 @@ fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
         seed_dir: cli.seed_dir.clone(),
         demo_mode: cli.demo_mode,
     };
-    Ok(acom_http::router(api.clone()).merge(demo_reset(api, reset)))
+    Ok(acom_http::router(api.clone())
+        .merge(bot_report(api.clone()))
+        .merge(demo_reset(api, reset)))
 }
 
 /// When `seed` loads the demo store.

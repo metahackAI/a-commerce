@@ -1,10 +1,10 @@
 'use client';
 
 // The back office's side navigation: the brand, Ask Ailism from any page (also ⌘K or Ctrl+K), the
-// work with how many tasks need a decision, the store's sections with a section's sub-pages under
-// it while one of its pages is open (as the Shopify admin shows them), the rules and data, and at
-// the bottom the store's time (movable in demo mode) and who is signed in, with Sign out in their
-// menu.
+// work with how many tasks need a decision and Ailism Bot (the manager AI) beside it, the store's
+// sections with a section's sub-pages under it while one of its pages is open (as the Shopify
+// admin shows them), the rules and data, and at the bottom the store's time (movable in demo mode)
+// and who is signed in, with Sign out in their menu.
 
 import {useEffect, type MouseEvent} from 'react';
 import {usePathname, useRouter} from 'next/navigation';
@@ -29,6 +29,7 @@ import {
   ReceiptPercentIcon,
   ScaleIcon,
   ShoppingBagIcon,
+  SparklesIcon,
   TagIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline';
@@ -42,6 +43,7 @@ import {
   ReceiptPercentIcon as ReceiptPercentSolid,
   ScaleIcon as ScaleSolid,
   ShoppingBagIcon as ShoppingBagSolid,
+  SparklesIcon as SparklesSolid,
   TagIcon as TagSolid,
   UsersIcon as UsersSolid,
 } from '@heroicons/react/24/solid';
@@ -66,6 +68,17 @@ interface NavLink {
 
 const WORK: NavLink[] = [
   {label: 'Inbox', href: '/bo', icon: InboxIcon, selectedIcon: InboxSolid, also: ['/bo/tasks']},
+  {
+    label: 'Ailism Bot',
+    href: '/bo/bot',
+    icon: SparklesIcon,
+    selectedIcon: SparklesSolid,
+    children: [
+      {label: 'AI decisions', href: '/bo/bot/decisions'},
+      {label: 'History', href: '/bo/bot/history'},
+      {label: 'Settings', href: '/bo/bot/settings'},
+    ],
+  },
   {label: 'Change sets', href: '/bo/change-sets', icon: ClipboardDocumentListIcon, selectedIcon: ClipboardDocumentListSolid},
   {label: 'Activity', href: '/bo/activity', icon: QueueListIcon, selectedIcon: QueueListSolid},
 ];

@@ -54,7 +54,7 @@ export function dot(state: string) {
  * open task is checked again; a done one was last changed by finishing.
  */
 function watcherLine(task: TaskSummary): string | null {
-  if (!task.watcher || !task.updated_at) return null;
+  if (!task.watcher || task.watcher === 'ailism_bot' || !task.updated_at) return null;
   if (task.state !== 'needs_you' && task.state !== 'working') return null;
   const updated = Date.parse(task.updated_at);
   if (Number.isNaN(updated) || updated <= Date.parse(task.at)) return null;
@@ -116,7 +116,7 @@ function TaskRow({
         {task.title}
       </Link>
       <Text type="supporting" color="secondary">
-        {`${ORIGIN[task.origin] ?? words(task.origin)} · ${dateTime(task.at)}${task.tag ? ` · ${words(task.tag)}` : ''}`}
+        {`${task.watcher === 'ailism_bot' ? 'Ailism Bot proposed' : (ORIGIN[task.origin] ?? words(task.origin))} · ${dateTime(task.at)}${task.tag ? ` · ${words(task.tag)}` : ''}`}
       </Text>
     </VStack>
   );
@@ -305,7 +305,7 @@ export function TaskList({tasks, blockId, intentsFor}: {tasks: TaskSummary[]; bl
                   {task.title}
                 </Link>
                 <Text type="supporting" color="secondary">
-                  {`${ORIGIN[task.origin] ?? words(task.origin)} · ${dateTime(task.at)}${task.tag ? ` · ${words(task.tag)}` : ''}`}
+                  {`${task.watcher === 'ailism_bot' ? 'Ailism Bot proposed' : (ORIGIN[task.origin] ?? words(task.origin))} · ${dateTime(task.at)}${task.tag ? ` · ${words(task.tag)}` : ''}`}
                 </Text>
                 {task.summary ? <Text>{task.summary}</Text> : null}
                 <HStack gap={1}>

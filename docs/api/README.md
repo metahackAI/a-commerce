@@ -80,6 +80,11 @@ a-commerce API
 | `POST /v1/platform/change-sets/{id}/reject` | `{reason}` | 운영자 | `human:reject` | 변경셋 거절 | 〃 |
 | `POST /v1/platform/change-sets/{id}/undo` | — | 운영자 | `human:undo` | 변경셋의 모든 변경을 역순으로 되돌림(기한 안) | 〃 |
 | `POST /v1/platform/tasks/{task_id}/dismiss` | `{reason?}` | 운영자 | `human:task` | 할 일 치우기 | [platform.md](platform.md#task) |
+| `POST /v1/platform/bot/cycles` | `{}` | 운영자 | `human:bot` | Ailism Bot 주기 지금 돌리기 | [platform.md](platform.md#bot) |
+| `PUT /v1/platform/bot/settings` | 바꿀 설정 | 운영자 | `human:bot` | Ailism Bot 설정(정책 덮어쓰기) | 〃 |
+| `POST /v1/platform/bot/feedback` | `{kind, text, bot_decision_id?}` | 운영자 | `human:bot` | 봇에게 피드백·지시·재요청 남기기 | 〃 |
+| `POST /v1/platform/bot/feedback/{bot_feedback_id}/close` | — | 운영자 | `human:bot` | 피드백 닫기 | 〃 |
+| `POST /v1/platform/bot/decisions/{bot_decision_id}/rerequest` | `{text}` | 운영자 | `human:bot`(+ 기다리는 변경셋이 있으면 `human:reject`) | 봇의 결정을 고칠 내용과 함께 다시 요청 | 〃 |
 | `POST /v1/sales/orders` | `{preview_id}` | 쇼퍼 | `human:order` | 주문하기(`prepare_order`·`prepare_gift_order`의 프리뷰) | [sales.md](sales.md) |
 | `POST /v1/sales/subscriptions` | `{preview_id}` | 쇼퍼 | `human:order` | 정기 주문 시작(`prepare_subscription`의 프리뷰) | 〃 |
 | `POST /v1/sales/gift-orders/{id}/accept` | `{delivery_address, size?, color?}` | 선물 받는 사람 | `human:order` | 선물 수락(가격은 못 바꿈) | 〃 |
@@ -293,6 +298,7 @@ a-commerce API
 | policy | **`get_policy`** R · `list_policies` R |
 | change_set | **`get_change_set`** R · `search_change_sets` R · **`verify_change_set`** R · 사람 전용 `POST /v1/platform/change-sets/{id}/approve`, `…/reject`, `…/undo` · 런타임 전용 만들기·항목·제출(§2.2) |
 | task | `list_tasks` R · `get_task` R · 사람 전용 `POST /v1/platform/tasks/{task_id}/dismiss` |
+| bot | `get_bot_status` R · `list_bot_cycles` R · `get_bot_cycle` R · `list_bot_decisions` R · `get_bot_decision` R · `list_bot_feedback` R · 사람 전용 `POST /v1/platform/bot/cycles`, `PUT /v1/platform/bot/settings`, `POST /v1/platform/bot/feedback`, `…/feedback/{bot_feedback_id}/close`, `…/decisions/{bot_decision_id}/rerequest` · 내부 `POST /v1/platform/bot/cycles/{bot_cycle_id}/report` |
 | demo_clock | 런타임 전용 `GET`·`PUT /v1/platform/demo-clock`(§2.2) — 예약 작업([platform.md](platform.md#예약-작업))을 시각에 맞춰 실행 |
 | action_log | `search_action_log` R · `get_action_log` R |
 | schema | `describe_data` R (DB 데이터 사전) |
@@ -380,6 +386,7 @@ get_my_orders ──order_id──▶ get_return_options ──▶ (사람) POST
 | `consent.marketing_gate` ([customer.yml](../../policies/customer.yml)), `messaging.quiet_hours`, `messaging.daily_send_cap` | [messaging.yml](../../policies/messaging.yml) | `send_bulk`, `create_campaign` | `get_consent`, `create_campaign` |
 | 승인 판정 `thresholds.*`, `customer_messages`, `no_approval`, `preview_only` | [approval.yml](../../policies/approval.yml) | 모든 W·W$ (체크가 아니라 `needs_approval`·`approval_reason`) | (사람 승인) |
 | 할 일 감시 `watchers.*` | [platform.yml](../../policies/platform.yml) | `list_tasks`, `get_task`(감시 작업이 만듦) | — |
+| Ailism Bot `bot.*`, `watchers.ailism_bot` | [platform.yml](../../policies/platform.yml) | `get_bot_status`, `list_bot_decisions`(봇이 엶) | `update_bot_settings`(사람 전용) |
 
 ## 7. 평가용 화면형 파사드
 

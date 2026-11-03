@@ -284,6 +284,14 @@ impl ToolClient for Commerce {
                 "list_display_slots" => {
                     json!({"items": [{"id": "slot_home_hero", "name": "Main page hero"}], "total": 1})
                 }
+                "get_bot_status" => json!({"settings": {"mode": "propose", "model": "glimmer",
+                    "max_proposals_per_cycle": 2, "directives": ["Never discount new arrivals."],
+                    "areas": {"pricing": true, "inventory": false, "promotions": false, "merchandising": false,
+                              "catalog_content": false, "returns": true, "questions_reviews": false, "community": false}},
+                    "acts_as": "adm_sj"}),
+                "search_return_requests" => {
+                    json!({"items": [{"claim_id": "clm_20402", "amount": {"value": 240.0, "currency": "USD"}}], "total": 12})
+                }
                 "get_cart" => {
                     json!({"id": "cart_1", "lines": [{"cart_line_id": "cln_1", "name": "Packable windbreaker", "size": "M", "quantity": 1}],
                     "subtotal": {"value": 89.00, "currency": "USD"}, "total": {"value": 71.20, "currency": "USD"}})
@@ -462,6 +470,16 @@ impl ToolClient for Commerce {
                 number: None,
                 version,
                 state: "waiting_for_approval".into(),
+            })
+        })
+    }
+
+    fn store(&self) -> BoxFuture<'_, Result<crate::store::StoreSettings, ToolError>> {
+        Box::pin(async {
+            Ok(crate::store::StoreSettings {
+                time: settings().time,
+                currency: "USD".into(),
+                now: settings().now,
             })
         })
     }
@@ -2104,6 +2122,52 @@ async fn the_one_the_request_names_is_taken_from_a_list_read_before() {
         .map(|(_, input)| input)
         .collect();
     assert_eq!(searched, [json!({"tier_id": "vip", "limit": 100})]);
+}
+
+#[tokio::test]
+async fn the_bot_reads_the_areas_on_finds_signs_by_rule_and_keeps_only_figures_it_read() {
+    let report = json!({"summary": "12 return requests wait.", "findings": [],
+        "proposals": [{"area": "returns", "title": "Review the 12 return requests", "request": "Review the return requests over $200.",
+                       "reason": "12 wait.", "evidence": ["12 requests wait", "99 customers are angry"],
+                       "expected_effect": {"metric": "waiting_returns", "direction": "down", "horizon_days": 2},
+                       "risk": "low", "about": []}]});
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![("bot_analysis", report.to_string())],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let commerce = Commerce::new();
+    let out = crate::bot::analyze(&rt, commerce.as_ref()).await;
+    assert_eq!(out["state"], "done", "{out:#}");
+    assert_eq!(out["snapshot"]["areas"], json!(["pricing", "returns"]));
+    let read: Vec<String> = commerce.reads().into_iter().map(|(t, _)| t).collect();
+    assert!(
+        read.contains(&"search_return_requests".to_owned()),
+        "{read:?}"
+    );
+    assert!(
+        !read.iter().any(|t| t == "list_boards"),
+        "community is off: {read:?}"
+    );
+    assert!(
+        commerce
+            .calls()
+            .iter()
+            .all(|c| c.starts_with("read ") || c == "manifest"),
+        "the bot only reads: {:?}",
+        commerce.calls()
+    );
+    assert_eq!(out["anomalies"][0]["code"], "returns_waiting");
+    assert_eq!(
+        out["report"]["proposals"][0]["evidence"],
+        json!(["12 requests wait"])
+    );
+    assert_eq!(out["usage"]["model_calls"], 1);
+    assert_eq!(glimmer.asked(), ["bot_analysis"]);
 }
 
 #[tokio::test]

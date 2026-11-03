@@ -644,12 +644,15 @@ async fn moving_the_clock_from_friday_to_saturday_runs_the_due_jobs_once() {
     })
     .await;
 
-    // Friday's three watchers were due (the promotion jobs come later in November).
+    // Friday's three watchers, Ailism Bot's noon cycle and Saturday's loyalty expiry were due
+    // (the promotion jobs come later in November).
     let mut kinds: Vec<&str> = due.iter().map(|(_, k)| k.as_str()).collect();
     kinds.sort_unstable();
     assert_eq!(
         kinds,
         [
+            "loyalty.expire",
+            "watcher.ailism_bot",
             "watcher.price_below_cost",
             "watcher.returns_over_refund_threshold",
             "watcher.stock_out_forecast"

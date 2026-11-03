@@ -1,0 +1,71 @@
+'use client';
+
+// AI decisions (list_bot_decisions): what Ailism Bot proposed, grouped by where the change is —
+// waiting for a person, done, turned down — each with its reason, evidence and expected effect,
+// and the person's buttons (review the change set, ask again, feedback).
+
+import {Text} from '@astryxdesign/core/Text';
+import {VStack} from '@astryxdesign/core/Layout';
+
+import type {ApiErrorBody} from '@/lib/api';
+import type {BotDecision} from '@/app/bo/_lib/types';
+
+import {ErrorState} from '../ErrorState';
+import {NavTabs} from '../NavTabs';
+import {PageFrame} from '../PageFrame';
+import {Pager} from '../Pager';
+import {BotTabs, DecisionCard, RunNowButton, useBotEvents} from './parts';
+
+export const DECISION_VIEWS: {value: string; label: string; states: string[]}[] = [
+  {value: 'open', label: 'Needs a decision', states: ['waiting', 'needs_you', 'drafting']},
+  {value: 'done', label: 'Live', states: ['live', 'running']},
+  {value: 'turned_down', label: 'Turned down', states: ['rejected', 'dismissed', 'undone', 'failed']},
+  {value: 'all', label: 'All', states: []},
+];
+
+export function BotDecisions({
+  view,
+  items,
+  total,
+  params,
+  nextCursor,
+  error,
+  isOff,
+}: {
+  view: string;
+  items: BotDecision[];
+  total: number;
+  params: Record<string, string | string[] | undefined>;
+  nextCursor: string | null;
+  error: ApiErrorBody | null;
+  isOff: boolean;
+}) {
+  useBotEvents();
+  const current = DECISION_VIEWS.find(v => v.value === view) ?? DECISION_VIEWS[0];
+  return (
+    <PageFrame
+      title="AI decisions"
+      back={{href: '/bo/bot', label: 'Ailism Bot'}}
+      description="Each proposal of the bot became a task, and the operations agent drafts it as a change set. Review it there to approve or reject; ask again with a correction, or leave feedback the bot reads next time."
+      actions={<RunNowButton isOff={isOff} />}
+      toolbar={
+        <VStack gap={2}>
+          <BotTabs value="decisions" />
+          <NavTabs value={current.value} tabs={DECISION_VIEWS.map(v => ({value: v.value, label: v.label, href: `/bo/bot/decisions?view=${v.value}`}))} />
+        </VStack>
+      }>
+      {error ? <ErrorState error={error} title="The decisions could not be loaded." /> : null}
+      {!error && items.length === 0 ? (
+        <Text type="supporting" color="secondary">
+          {current.value === 'open' ? 'Nothing waits for a decision.' : 'No decisions here.'}
+        </Text>
+      ) : null}
+      <VStack gap={3}>
+        {items.map(d => (
+          <DecisionCard key={d.id} decision={d} />
+        ))}
+      </VStack>
+      <Pager base="/bo/bot/decisions" params={params} total={total} shown={items.length} nextCursor={nextCursor} noun="decisions" />
+    </PageFrame>
+  );
+}

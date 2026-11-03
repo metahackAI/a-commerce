@@ -72,6 +72,15 @@ pub struct PriceBelowCost {
     pub origin: TaskOrigin,
 }
 
+/// `watchers.ailism_bot`: when Ailism Bot's cycle runs (what it looks at is `bot`).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AilismBotWatch {
+    pub enabled: bool,
+    pub every_minutes: u32,
+    pub origin: TaskOrigin,
+}
+
 /// Every watcher's settings.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -79,6 +88,7 @@ pub struct Watchers {
     pub returns_over_refund_threshold: ReturnsOverRefundThreshold,
     pub stock_out_forecast: StockOutForecast,
     pub price_below_cost: PriceBelowCost,
+    pub ailism_bot: AilismBotWatch,
 }
 
 /// What the scheduler needs of any watcher.
@@ -106,6 +116,10 @@ impl Watchers {
             "price_below_cost" => {
                 let w = &self.price_below_cost;
                 (w.enabled, w.every_minutes, w.origin, w.run_fix)
+            }
+            "ailism_bot" => {
+                let w = &self.ailism_bot;
+                (w.enabled, w.every_minutes, w.origin, RunFix::Ask)
             }
             _ => return None,
         };

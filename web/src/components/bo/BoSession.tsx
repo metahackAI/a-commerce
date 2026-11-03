@@ -24,6 +24,7 @@ export function personScope(method: string, path: string): string | null {
   if (/\/change-sets\/[^/]+\/reject$/.test(path)) return 'human:reject';
   if (/\/change-sets\/[^/]+\/undo$/.test(path)) return 'human:undo';
   if (/\/tasks\/[^/]+\/dismiss$/.test(path)) return 'human:task';
+  if (/\/platform\/bot\/(cycles|settings|feedback(\/[^/]+\/close)?|decisions\/[^/]+\/rerequest)$/.test(path)) return 'human:bot';
   if (/\/platform\/demo-clock$/.test(path)) return 'admin:demo';
   return null;
 }

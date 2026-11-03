@@ -159,6 +159,14 @@
 | 채널 연결 `acom:connection_status` | `connected`, `degraded`, `disconnected` (§1.17) |
 | 할 일 `acom:task_state` | `needs_you`, `working`, `done`, `dismissed` |
 | 할 일 출처 `acom:task_origin` | `you_asked`, `agent_noticed`, `automation` |
+| Ailism Bot 모드 `acom:bot_mode` | `off`(돌지 않음), `observe`(보고서만), `propose`(할 일과 변경셋 초안까지) |
+| Ailism Bot 영역 `acom:bot_area` | `pricing`, `inventory`, `promotions`, `merchandising`, `catalog_content`, `returns`, `questions_reviews`, `community` |
+| Ailism Bot 주기 `acom:bot_cycle_state` | `observing`, `done`, `failed` |
+| Ailism Bot 주기 시작 `acom:bot_trigger` | `schedule`, `manual` |
+| Ailism Bot 결정 `acom:bot_decision_state` (할 일·변경셋에서 계산) | `drafting`, `needs_you`, `waiting`, `running`, `live`, `rejected`, `failed`, `undone`, `dismissed` |
+| Ailism Bot 제안의 위험 `acom:bot_risk` | `low`, `medium`, `high` |
+| Ailism Bot 피드백 `acom:bot_feedback_kind` | `feedback`, `directive`, `correction` |
+| Ailism Bot 피드백 상태 `acom:bot_feedback_state` | `open`, `closed` |
 | 예약 작업 `acom:job_state` (`job.updated` 이벤트, 열에서 계산) | `scheduled`, `retrying`, `done` |
 | 운영자 계정 `acom:admin_status` | `active`, `suspended`, `locked` |
 | 스토어 `acom:store_status` (API `acom:status`) | `active`, `suspended` |

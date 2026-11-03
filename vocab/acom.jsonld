@@ -36,6 +36,33 @@
       "rdfs:comment": "a community board shoppers write posts on, with who may write and how it is moderated. id prefix brd_."
     },
     {
+      "@id": "acom:BotCycle",
+      "@type": "rdfs:Class",
+      "rdfs:label": "BotCycle",
+      "rdfs:subClassOf": {
+        "@id": "schema:Thing"
+      },
+      "rdfs:comment": "one look Ailism Bot took at the store: the snapshot it read, its report and what it cost. id prefix bcy_."
+    },
+    {
+      "@id": "acom:BotDecision",
+      "@type": "rdfs:Class",
+      "rdfs:label": "BotDecision",
+      "rdfs:subClassOf": {
+        "@id": "schema:Thing"
+      },
+      "rdfs:comment": "one proposal Ailism Bot opened as a task for the operations agent to draft and a person to decide. id prefix bdc_."
+    },
+    {
+      "@id": "acom:BotFeedback",
+      "@type": "rdfs:Class",
+      "rdfs:label": "BotFeedback",
+      "rdfs:subClassOf": {
+        "@id": "schema:Thing"
+      },
+      "rdfs:comment": "what a person told Ailism Bot: an opinion, a standing directive, or a correction asked of a decision. id prefix bfb_."
+    },
+    {
       "@id": "acom:CacheInvalidation",
       "@type": "rdfs:Class",
       "rdfs:label": "CacheInvalidation",
@@ -854,6 +881,22 @@
       "rdfs:comment": "when winners are announced; NULL when not planned."
     },
     {
+      "@id": "acom:anomalies",
+      "@type": "rdf:Property",
+      "rdfs:label": "anomalies",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotCycle"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "warning signs found by rule in the snapshot: [{area, code, text, severity}]."
+    },
+    {
       "@id": "acom:apiKeyStatus",
       "@type": "rdf:Property",
       "rdfs:label": "apiKeyStatus",
@@ -1221,6 +1264,150 @@
       "rdfs:comment": "words that raise products in the ranking or exclude them, as [{term, effect}]; an excluded word finds nothing."
     },
     {
+      "@id": "acom:botArea",
+      "@type": "rdf:Property",
+      "rdfs:label": "botArea",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotDecision"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:BotArea"
+        }
+      ],
+      "rdfs:comment": "the area it is about. values: bot_area"
+    },
+    {
+      "@id": "acom:botCycleId",
+      "@type": "rdf:Property",
+      "rdfs:label": "botCycleId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotDecision"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:BotCycle"
+        }
+      ],
+      "rdfs:comment": "the cycle that proposed it."
+    },
+    {
+      "@id": "acom:botCycleState",
+      "@type": "rdf:Property",
+      "rdfs:label": "botCycleState",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotCycle"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:BotCycleState"
+        }
+      ],
+      "rdfs:comment": "observing while the bot reads and analyses, then done or failed. values: bot_cycle_state"
+    },
+    {
+      "@id": "acom:botDecisionId",
+      "@type": "rdf:Property",
+      "rdfs:label": "botDecisionId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotFeedback"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:BotDecision"
+        }
+      ],
+      "rdfs:comment": "the decision it is about; NULL for the bot as a whole."
+    },
+    {
+      "@id": "acom:botFeedbackKind",
+      "@type": "rdf:Property",
+      "rdfs:label": "botFeedbackKind",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotFeedback"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:BotFeedbackKind"
+        }
+      ],
+      "rdfs:comment": "feedback, directive or correction. values: bot_feedback_kind"
+    },
+    {
+      "@id": "acom:botFeedbackState",
+      "@type": "rdf:Property",
+      "rdfs:label": "botFeedbackState",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotFeedback"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:BotFeedbackState"
+        }
+      ],
+      "rdfs:comment": "open feedback goes into every analysis until a person closes it. values: bot_feedback_state"
+    },
+    {
+      "@id": "acom:botMode",
+      "@type": "rdf:Property",
+      "rdfs:label": "botMode",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotCycle"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:BotMode"
+        }
+      ],
+      "rdfs:comment": "the mode the cycle ran in. values: bot_mode"
+    },
+    {
+      "@id": "acom:botRisk",
+      "@type": "rdf:Property",
+      "rdfs:label": "botRisk",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotDecision"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:BotRisk"
+        }
+      ],
+      "rdfs:comment": "how much could go wrong if it is wrong. values: bot_risk"
+    },
+    {
+      "@id": "acom:botTrigger",
+      "@type": "rdf:Property",
+      "rdfs:label": "botTrigger",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotCycle"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:BotTrigger"
+        }
+      ],
+      "rdfs:comment": "what started the cycle: its schedule or a person. values: bot_trigger"
+    },
+    {
       "@id": "acom:broader",
       "@type": "rdf:Property",
       "rdfs:label": "broader",
@@ -1489,6 +1676,22 @@
         }
       ],
       "rdfs:comment": "why the tier changed. values: tier_change_cause"
+    },
+    {
+      "@id": "acom:causeKey",
+      "@type": "rdf:Property",
+      "rdfs:label": "causeKey",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotDecision"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "area and entities, to find an open or recently turned down decision about the same thing."
     },
     {
       "@id": "acom:changeSetId",
@@ -1807,6 +2010,38 @@
       "rdfs:comment": "Cancel, return, or exchange."
     },
     {
+      "@id": "acom:closedAt",
+      "@type": "rdf:Property",
+      "rdfs:label": "closedAt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotFeedback"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:DateTime"
+        }
+      ],
+      "rdfs:comment": "when it was closed."
+    },
+    {
+      "@id": "acom:closedBy",
+      "@type": "rdf:Property",
+      "rdfs:label": "closedBy",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotFeedback"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the operator who closed it."
+    },
+    {
       "@id": "acom:commissionRate",
       "@type": "rdf:Property",
       "rdfs:label": "commissionRate",
@@ -2079,6 +2314,22 @@
         }
       ],
       "rdfs:comment": "state of this issued coupon. values: coupon_status"
+    },
+    {
+      "@id": "acom:createdBy",
+      "@type": "rdf:Property",
+      "rdfs:label": "createdBy",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotFeedback"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the operator who wrote it (adm_ id)."
     },
     {
       "@id": "acom:ctaLabel",
@@ -2851,6 +3102,22 @@
       "rdfs:comment": "entered until a draw or an instant result decides it. values: entry_status"
     },
     {
+      "@id": "acom:error",
+      "@type": "rdf:Property",
+      "rdfs:label": "error",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotCycle"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "why a failed cycle failed."
+    },
+    {
       "@id": "acom:estimatedAt",
       "@type": "rdf:Property",
       "rdfs:label": "estimatedAt",
@@ -2952,6 +3219,9 @@
       "rdfs:label": "evidence",
       "schema:domainIncludes": [
         {
+          "@id": "acom:BotDecision"
+        },
+        {
           "@id": "acom:Claim"
         }
       ],
@@ -2960,7 +3230,7 @@
           "@id": "schema:StructuredValue"
         }
       ],
-      "rdfs:comment": "photos and documents attached: [{id, evidence_type, content_url}], evd_ ids."
+      "rdfs:comment": "figures from the snapshot it rests on: [text]."
     },
     {
       "@id": "acom:excluded",
@@ -2977,6 +3247,22 @@
         }
       ],
       "rdfs:comment": "entries left out and why: {previous_winners, invalid_entries}."
+    },
+    {
+      "@id": "acom:expectedEffect",
+      "@type": "rdf:Property",
+      "rdfs:label": "expectedEffect",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotDecision"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "what should change and by when: {metric, direction, horizon_days}."
     },
     {
       "@id": "acom:expiresAt",
@@ -5168,6 +5454,9 @@
       "rdfs:label": "reason",
       "schema:domainIncludes": [
         {
+          "@id": "acom:BotDecision"
+        },
+        {
           "@id": "acom:CacheInvalidation"
         },
         {
@@ -5571,6 +5860,22 @@
       "rdfs:comment": "short text answer shown with the blocks."
     },
     {
+      "@id": "acom:report",
+      "@type": "rdf:Property",
+      "rdfs:label": "report",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotCycle"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "the analysis: {summary, findings[], proposals[]} with each proposal's outcome (opened or why not)."
+    },
+    {
       "@id": "acom:reportReason",
       "@type": "rdf:Property",
       "rdfs:label": "reportReason",
@@ -5592,6 +5897,9 @@
       "rdfs:label": "requestText",
       "schema:domainIncludes": [
         {
+          "@id": "acom:BotDecision"
+        },
+        {
           "@id": "acom:ChangeSet"
         },
         {
@@ -5603,7 +5911,7 @@
           "@id": "schema:Text"
         }
       ],
-      "rdfs:comment": "the person's words, first request then each edit by conversation."
+      "rdfs:comment": "the sentence the operations agent drafts the change from."
     },
     {
       "@id": "acom:requestedAt",
@@ -5626,6 +5934,22 @@
         }
       ],
       "rdfs:comment": "when it was requested (store clock)."
+    },
+    {
+      "@id": "acom:requestedBy",
+      "@type": "rdf:Property",
+      "rdfs:label": "requestedBy",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotCycle"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the operator who ran it now (adm_ id); NULL for a scheduled cycle."
     },
     {
       "@id": "acom:requiredScope",
@@ -5750,6 +6074,22 @@
         }
       ],
       "rdfs:comment": "ISO 4217 code of revenue_value."
+    },
+    {
+      "@id": "acom:revises",
+      "@type": "rdf:Property",
+      "rdfs:label": "revises",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotDecision"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:BotDecision"
+        }
+      ],
+      "rdfs:comment": "the decision a person asked again with a correction; this one replaces it."
     },
     {
       "@id": "acom:revocationReason",
@@ -6321,6 +6661,9 @@
       "rdfs:label": "snapshot",
       "schema:domainIncludes": [
         {
+          "@id": "acom:BotCycle"
+        },
+        {
           "@id": "acom:TierChange"
         }
       ],
@@ -6329,7 +6672,7 @@
           "@id": "schema:StructuredValue"
         }
       ],
-      "rdfs:comment": "the result the change was based on: {metric, value}; NULL when none applies."
+      "rdfs:comment": "what the bot read, in order: {areas, reads[{tool, args, result}]}."
     },
     {
       "@id": "acom:soldOutAt",
@@ -6724,6 +7067,22 @@
       "rdfs:comment": "area label shown on the list, for example returns or pricing."
     },
     {
+      "@id": "acom:taskId",
+      "@type": "rdf:Property",
+      "rdfs:label": "taskId",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:BotDecision"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:Task"
+        }
+      ],
+      "rdfs:comment": "the task it opened; its change set and state are the decision's."
+    },
+    {
       "@id": "acom:taskOrigin",
       "@type": "rdf:Property",
       "rdfs:label": "taskOrigin",
@@ -6894,6 +7253,9 @@
       },
       "schema:domainIncludes": [
         {
+          "@id": "acom:BotDecision"
+        },
+        {
           "@id": "acom:ChangeSet"
         },
         {
@@ -7055,6 +7417,9 @@
       "@type": "rdf:Property",
       "rdfs:label": "usage",
       "schema:domainIncludes": [
+        {
+          "@id": "acom:BotCycle"
+        },
         {
           "@id": "schema:Action"
         },
@@ -7419,6 +7784,86 @@
       },
       "rdfs:comment": "Values of the board_type list (docs/api/enums.md).",
       "acom:wireList": "board_type"
+    },
+    {
+      "@id": "acom:BotArea",
+      "@type": "rdfs:Class",
+      "rdfs:label": "BotArea",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the bot_area list (docs/api/enums.md).",
+      "acom:wireList": "bot_area"
+    },
+    {
+      "@id": "acom:BotCycleState",
+      "@type": "rdfs:Class",
+      "rdfs:label": "BotCycleState",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the bot_cycle_state list (docs/api/enums.md).",
+      "acom:wireList": "bot_cycle_state"
+    },
+    {
+      "@id": "acom:BotDecisionState",
+      "@type": "rdfs:Class",
+      "rdfs:label": "BotDecisionState",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the bot_decision_state list (docs/api/enums.md).",
+      "acom:wireList": "bot_decision_state"
+    },
+    {
+      "@id": "acom:BotFeedbackKind",
+      "@type": "rdfs:Class",
+      "rdfs:label": "BotFeedbackKind",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the bot_feedback_kind list (docs/api/enums.md).",
+      "acom:wireList": "bot_feedback_kind"
+    },
+    {
+      "@id": "acom:BotFeedbackState",
+      "@type": "rdfs:Class",
+      "rdfs:label": "BotFeedbackState",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the bot_feedback_state list (docs/api/enums.md).",
+      "acom:wireList": "bot_feedback_state"
+    },
+    {
+      "@id": "acom:BotMode",
+      "@type": "rdfs:Class",
+      "rdfs:label": "BotMode",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the bot_mode list (docs/api/enums.md).",
+      "acom:wireList": "bot_mode"
+    },
+    {
+      "@id": "acom:BotRisk",
+      "@type": "rdfs:Class",
+      "rdfs:label": "BotRisk",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the bot_risk list (docs/api/enums.md).",
+      "acom:wireList": "bot_risk"
+    },
+    {
+      "@id": "acom:BotTrigger",
+      "@type": "rdfs:Class",
+      "rdfs:label": "BotTrigger",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the bot_trigger list (docs/api/enums.md).",
+      "acom:wireList": "bot_trigger"
     },
     {
       "@id": "acom:BusinessVerification",
@@ -8465,6 +8910,237 @@
       "rdfs:label": "Event",
       "acom:wireWord": "event",
       "schema:position": 4
+    },
+    {
+      "@id": "acom:BotAreaPricing",
+      "@type": "acom:BotArea",
+      "rdfs:label": "Pricing",
+      "acom:wireWord": "pricing",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:BotAreaInventory",
+      "@type": "acom:BotArea",
+      "rdfs:label": "Inventory",
+      "acom:wireWord": "inventory",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:BotAreaPromotions",
+      "@type": "acom:BotArea",
+      "rdfs:label": "Promotions",
+      "acom:wireWord": "promotions",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:BotAreaMerchandising",
+      "@type": "acom:BotArea",
+      "rdfs:label": "Merchandising",
+      "acom:wireWord": "merchandising",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:BotAreaCatalogContent",
+      "@type": "acom:BotArea",
+      "rdfs:label": "CatalogContent",
+      "acom:wireWord": "catalog_content",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:BotAreaReturns",
+      "@type": "acom:BotArea",
+      "rdfs:label": "Returns",
+      "acom:wireWord": "returns",
+      "schema:position": 6
+    },
+    {
+      "@id": "acom:BotAreaQuestionsReviews",
+      "@type": "acom:BotArea",
+      "rdfs:label": "QuestionsReviews",
+      "acom:wireWord": "questions_reviews",
+      "schema:position": 7
+    },
+    {
+      "@id": "acom:BotAreaCommunity",
+      "@type": "acom:BotArea",
+      "rdfs:label": "Community",
+      "acom:wireWord": "community",
+      "schema:position": 8
+    },
+    {
+      "@id": "acom:BotCycleStateObserving",
+      "@type": "acom:BotCycleState",
+      "rdfs:label": "Observing",
+      "acom:wireWord": "observing",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:BotCycleStateDone",
+      "@type": "acom:BotCycleState",
+      "rdfs:label": "Done",
+      "acom:wireWord": "done",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:BotCycleStateFailed",
+      "@type": "acom:BotCycleState",
+      "rdfs:label": "Failed",
+      "acom:wireWord": "failed",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:BotDecisionStateDrafting",
+      "@type": "acom:BotDecisionState",
+      "rdfs:label": "Drafting",
+      "acom:wireWord": "drafting",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:BotDecisionStateNeedsYou",
+      "@type": "acom:BotDecisionState",
+      "rdfs:label": "NeedsYou",
+      "acom:wireWord": "needs_you",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:BotDecisionStateWaiting",
+      "@type": "acom:BotDecisionState",
+      "rdfs:label": "Waiting",
+      "acom:wireWord": "waiting",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:BotDecisionStateRunning",
+      "@type": "acom:BotDecisionState",
+      "rdfs:label": "Running",
+      "acom:wireWord": "running",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:BotDecisionStateLive",
+      "@type": "acom:BotDecisionState",
+      "rdfs:label": "Live",
+      "acom:wireWord": "live",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:BotDecisionStateRejected",
+      "@type": "acom:BotDecisionState",
+      "rdfs:label": "Rejected",
+      "acom:wireWord": "rejected",
+      "schema:position": 6
+    },
+    {
+      "@id": "acom:BotDecisionStateFailed",
+      "@type": "acom:BotDecisionState",
+      "rdfs:label": "Failed",
+      "acom:wireWord": "failed",
+      "schema:position": 7
+    },
+    {
+      "@id": "acom:BotDecisionStateUndone",
+      "@type": "acom:BotDecisionState",
+      "rdfs:label": "Undone",
+      "acom:wireWord": "undone",
+      "schema:position": 8
+    },
+    {
+      "@id": "acom:BotDecisionStateDismissed",
+      "@type": "acom:BotDecisionState",
+      "rdfs:label": "Dismissed",
+      "acom:wireWord": "dismissed",
+      "schema:position": 9
+    },
+    {
+      "@id": "acom:BotFeedbackKindFeedback",
+      "@type": "acom:BotFeedbackKind",
+      "rdfs:label": "Feedback",
+      "acom:wireWord": "feedback",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:BotFeedbackKindDirective",
+      "@type": "acom:BotFeedbackKind",
+      "rdfs:label": "Directive",
+      "acom:wireWord": "directive",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:BotFeedbackKindCorrection",
+      "@type": "acom:BotFeedbackKind",
+      "rdfs:label": "Correction",
+      "acom:wireWord": "correction",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:BotFeedbackStateOpen",
+      "@type": "acom:BotFeedbackState",
+      "rdfs:label": "Open",
+      "acom:wireWord": "open",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:BotFeedbackStateClosed",
+      "@type": "acom:BotFeedbackState",
+      "rdfs:label": "Closed",
+      "acom:wireWord": "closed",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:BotModeOff",
+      "@type": "acom:BotMode",
+      "rdfs:label": "Off",
+      "acom:wireWord": "off",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:BotModeObserve",
+      "@type": "acom:BotMode",
+      "rdfs:label": "Observe",
+      "acom:wireWord": "observe",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:BotModePropose",
+      "@type": "acom:BotMode",
+      "rdfs:label": "Propose",
+      "acom:wireWord": "propose",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:BotRiskLow",
+      "@type": "acom:BotRisk",
+      "rdfs:label": "Low",
+      "acom:wireWord": "low",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:BotRiskMedium",
+      "@type": "acom:BotRisk",
+      "rdfs:label": "Medium",
+      "acom:wireWord": "medium",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:BotRiskHigh",
+      "@type": "acom:BotRisk",
+      "rdfs:label": "High",
+      "acom:wireWord": "high",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:BotTriggerSchedule",
+      "@type": "acom:BotTrigger",
+      "rdfs:label": "Schedule",
+      "acom:wireWord": "schedule",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:BotTriggerManual",
+      "@type": "acom:BotTrigger",
+      "rdfs:label": "Manual",
+      "acom:wireWord": "manual",
+      "schema:position": 2
     },
     {
       "@id": "acom:BusinessVerificationUnverified",

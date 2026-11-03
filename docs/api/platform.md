@@ -367,6 +367,200 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 
 ---
 
+## bot
+
+Ailism Bot(`acom:Bot`)은 백오피스를 맡는 관리자 AI입니다. 사람이 시킨 일을 하는 운영 에이전트와 달리, 정해진 주기마다 스스로 가게를 살피고 고칠 것을 찾아 **제안**합니다. 실행은 늘 사람이 합니다: 봇이 여는 것은 할 일(`task`)이고, 그 할 일을 운영 에이전트가 맡아 만든 변경셋을 사람이 승인합니다. 봇은 승인할 수 없고(시스템 주체), 사람 전용 엔드포인트도 부를 수 없습니다.
+
+**한 주기(`acom:BotCycle`, id `bcy_…`).**
+
+1. **시작.** 예약 작업 `watcher.ailism_bot`이 [platform.yml](../../policies/platform.yml) `watchers.ailism_bot.every_minutes`(기본 240분)마다, 또는 사람이 [`run_bot_cycle`](#사람-전용-post-v1platformbotcycles)로 주기를 엽니다(`observing`). `bot.mode`가 `off`면 열리지 않습니다. 이벤트 `bot.cycle.updated {cycle_id, state, trigger}`가 나갑니다.
+2. **관찰(모델 없음).** 게이트웨이가 이벤트를 받아 agent 서비스에 분석을 맡깁니다([../backend/gateway.md](../backend/gateway.md) §5). agent는 `bot.acts_as` 운영자(없으면 `task_pickup.acts_as`)의 위임 토큰(`human:*` 없음)으로 **읽기 툴만** 불러, 켜진 영역(`bot.areas`)의 상태를 정해진 순서로 모아 스냅샷을 만듭니다: 매출(`get_sales_overview`, `explain_sales_change`), 가격·재고(`search_products`, `suggest_reorder`), 프로모션(`list_active_promotions`), 머천다이징(`list_display_slots`, `list_curations`), 상품 정보, 반품(`search_return_requests`), 문의·리뷰(`list_questions`, `list_reviews`), 커뮤니티(`list_boards`, `list_posts`), 그리고 열린 할 일(`list_tasks`). 같은 데이터면 같은 스냅샷입니다. 이상 신호(`anomalies`)도 여기서 규칙으로 뽑습니다.
+3. **분석(모델).** 스냅샷과 함께 사람의 고정 지시(`bot.directives`와 열린 `directive` 피드백), 열린 피드백, 최근 결정과 그 결과(거절 사유 포함)를 `bot.model`(기본 `glimmer`)에 주고 보고서를 받습니다: `{summary, findings[{area, text, severity}], proposals[]}`. 제안마다 `{area, title, request, reason, evidence[], expected_effect{metric, direction, horizon_days}, risk, about[{entity, id}]}`이고, `request`는 운영 에이전트에게 줄 요청 문장입니다. 숫자는 스냅샷에 있는 것만 씁니다.
+4. **기록과 거르기(결정적).** agent가 보고서를 commerce에 돌려주면([내부 엔드포인트](#내부-엔드포인트) `POST /v1/platform/bot/cycles/{cycle_id}/report`) commerce가 주기를 끝내고(`done`) 제안을 거릅니다: 끈 영역, 같은 원인(`area`와 `about`)의 열린 결정, `bot.cooldown_days` 안에 거절·치운 같은 원인, 주기당 `bot.max_proposals_per_cycle`, 열린 결정 `bot.max_open_decisions`를 넘는 것은 열지 않고 이유를 보고서에 남깁니다. `mode: observe`면 아무것도 열지 않습니다.
+5. **제안 열기.** 남은 제안마다 결정(`acom:BotDecision`, id `bdc_…`)과 할 일(`origin: agent_noticed`, `watcher: ailism_bot`, `tag`는 영역, `request`는 제안의 요청 문장)을 만들고 `task.updated {created: true}`를 보냅니다. 게이트웨이가 그 할 일을 운영 에이전트에게 넘겨([task](#task)) 변경셋 초안이 만들어지고, 할 일이 Inbox의 "needs you"가 됩니다.
+6. **사람의 결정.** 승인·거절·되돌리기는 변경셋의 사람 전용 엔드포인트 그대로입니다. **재요청**([`…/rerequest`](#사람-전용-post-v1platformbotdecisionsbot_decision_idrerequest))은 기다리는 변경셋을 고칠 내용으로 거절하고, 같은 제안에 고칠 내용을 붙인 새 결정과 할 일을 열어 다시 초안을 만들게 합니다. 고칠 내용은 `correction` 피드백으로도 남습니다. **피드백**은 다음 주기들의 분석에 들어가고 사람이 닫을 때까지 열려 있습니다.
+
+결정의 상태(`acom:bot_decision_state`)는 저장하지 않고 할 일과 변경셋에서 계산합니다: 변경셋이 없거나 `drafting`이면 `drafting`(초안을 못 만들어 할 일이 사람을 기다리면 `needs_you`), `waiting_for_approval`이면 `waiting`, `running`·`verifying`이면 `running`, 그 밖에는 변경셋 상태 그대로(`live`, `rejected`, `failed`, `undone`), 할 일을 치웠으면 `dismissed`.
+
+설정은 모두 [platform.yml](../../policies/platform.yml) `bot`과 `watchers.ailism_bot`에 있고, 설정 화면은 사람 전용 [`PUT /v1/platform/bot/settings`](#사람-전용-put-v1platformbotsettings)로 스토어의 정책 덮어쓰기를 고칩니다.
+
+### `get_bot_status` — Kind: R
+- 논리 주소 · REST: `platform.bot.get` · `GET /v1/platform/bot`
+- 요약: Ailism Bot의 지금: 설정, 다음 주기, 마지막 주기, 결정 상태별 수, 열린 피드백 수.
+- consumes → produces: → `bot_cycle_id`
+- 입력: 없음
+- 출력(Fri Nov 6 11:00):
+  ```jsonc
+  {"settings": {"mode": "propose", "acts_as": null, "model": "glimmer", "every_minutes": 240,
+                "areas": {"pricing": true, "inventory": true, "promotions": true, "merchandising": true,
+                          "catalog_content": true, "returns": true, "questions_reviews": true, "community": true},
+                "max_proposals_per_cycle": 3, "max_open_decisions": 8, "cooldown_days": 7, "directives": []},
+   "acts_as": "adm_sj",
+   "next_run_at": "2026-11-06T12:00:00-05:00",
+   "last_cycle": {"id": "bcy_1106_0800", "state": "done", "trigger": "schedule", "at": "2026-11-06T08:00:00-05:00",
+                  "summary": "Linen shirt sells out in about 4 days; 3 questions wait for an answer."},
+   "decisions": {"drafting": 0, "needs_you": 0, "waiting": 2, "running": 0, "live": 1, "rejected": 1, "failed": 0, "undone": 0, "dismissed": 0},
+   "open_feedback": 1}
+  ```
+  `acts_as`는 실제로 초안을 만드는 운영자(`settings.acts_as`가 없으면 `task_pickup.acts_as`), `next_run_at`은 다음 예약 주기(꺼져 있으면 `null`).
+- 프리뷰: 해당 없음(읽기)
+- 정책: [platform.yml](../../policies/platform.yml) `bot`, `watchers.ailism_bot`
+- 에러: 없음
+- 멱등성: 읽기(부작용 없음)
+
+### `list_bot_cycles` — Kind: R
+- 논리 주소 · REST: `platform.bot.list_cycles` · `GET /v1/platform/bot/cycles`
+- 요약: Ailism Bot이 돈 주기, 최근 것부터.
+- consumes → produces: → `bot_cycle_id[]`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명 | 예 |
+  |---|---|:--:|---|---|
+  | `limit` | Integer, 1–100 | | 기본 20 | `20` |
+  | `cursor` | Text | | 이전 응답의 `next_cursor` | |
+- 출력:
+  ```jsonc
+  {"items": [{"id": "bcy_1106_0800", "trigger": "schedule", "state": "done", "mode": "propose",
+              "at": "2026-11-06T08:00:00-05:00", "end_time": "2026-11-06T08:01:12-05:00",
+              "summary": "Linen shirt sells out in about 4 days; 3 questions wait for an answer.",
+              "proposals": 3, "opened": 2, "anomalies": 1, "error": null}],
+   "total": 1}
+  ```
+- 프리뷰: 해당 없음(읽기)
+- 정책: 없음
+- 에러: `invalid_filter` → `list_bot_cycles`
+- 멱등성: 읽기(부작용 없음)
+
+### `get_bot_cycle` — Kind: R
+- 논리 주소 · REST: `platform.bot.get_cycle` · `GET /v1/platform/bot/cycles/{bot_cycle_id}`
+- 요약: 주기 하나의 전부: 스냅샷, 이상 신호, 보고서(제안마다 열었는지와 열지 않은 이유), 사용량, 연 결정.
+- consumes → produces: `bot_cycle_id` → `bot_decision_id[]`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명 | 예 |
+  |---|---|:--:|---|---|
+  | `bot_cycle_id` | Text, `^bcy_[a-z0-9_]+$` | ✓ | 주기 id | `"bcy_1106_0800"` |
+- 출력:
+  ```jsonc
+  {"id": "bcy_1106_0800", "trigger": "schedule", "requested_by": null, "state": "done", "mode": "propose",
+   "at": "2026-11-06T08:00:00-05:00", "end_time": "2026-11-06T08:01:12-05:00",
+   "snapshot": {"areas": ["pricing", "inventory", "…"], "reads": [{"tool": "suggest_reorder", "args": {}, "result": {"…": "…"}}]},
+   "anomalies": [{"area": "inventory", "code": "stock_out_soon", "text": "Linen shirt sells out in about 4 days", "severity": "high"}],
+   "report": {"summary": "…", "findings": [{"area": "inventory", "text": "…", "severity": "high"}],
+              "proposals": [{"area": "inventory", "title": "Reorder the linen shirt", "request": "Draft a reorder for the linen shirt.",
+                             "reason": "…", "evidence": ["38 left, 61 sold in 7 days"],
+                             "expected_effect": {"metric": "stockouts", "direction": "down", "horizon_days": 7},
+                             "risk": "low", "about": [{"entity": "product", "id": "prd_linen_shirt"}],
+                             "outcome": {"opened": "bdc_1106_0800_1"}},
+                            {"area": "pricing", "title": "…", "outcome": {"skipped": "A decision on the same products is still open."}}]},
+   "usage": {"model": "glimmer", "model_calls": 1, "input_tokens": 9120, "output_tokens": 640, "reads": 14},
+   "decisions": ["bdc_1106_0800_1"], "error": null}
+  ```
+- 프리뷰: 해당 없음(읽기)
+- 정책: 없음
+- 에러: `bot_cycle_not_found`(class `not_found`) → `list_bot_cycles`
+- 멱등성: 읽기(부작용 없음)
+
+### `list_bot_decisions` — Kind: R
+- 논리 주소 · REST: `platform.bot.list_decisions` · `GET /v1/platform/bot/decisions?state=waiting`
+- 요약: Ailism Bot이 연 결정(제안), 최근 것부터. 상태는 할 일과 변경셋에서 계산합니다.
+- consumes → produces: → `bot_decision_id[]`, `task_id[]`, `change_set_id[]`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명 | 예 |
+  |---|---|:--:|---|---|
+  | `state` | enum[] | | [enums.md](enums.md) §1.14 `bot_decision_state`. 없으면 전부 | `["waiting"]` |
+  | `area` | enum | | `bot.areas`의 키 하나 | `"inventory"` |
+  | `bot_cycle_id` | Text, `^bcy_[a-z0-9_]+$` | | 이 주기가 연 것만 | |
+  | `limit` | Integer, 1–100 | | 기본 20 | `20` |
+  | `cursor` | Text | | 이전 응답의 `next_cursor` | |
+- 출력:
+  ```jsonc
+  {"items": [{"id": "bdc_1106_0800_1", "cycle_id": "bcy_1106_0800", "task_id": "task_bot_1106_0800_1",
+              "change_set_id": "cs_1044", "change_set_number": 1044, "conversation_id": "conv_01jc9…",
+              "area": "inventory", "title": "Reorder the linen shirt", "request": "Draft a reorder for the linen shirt.",
+              "reason": "38 left and 61 sold in the last 7 days.", "evidence": ["38 left, 61 sold in 7 days"],
+              "expected_effect": {"metric": "stockouts", "direction": "down", "horizon_days": 7},
+              "risk": "low", "about": [{"entity": "product", "id": "prd_linen_shirt"}], "revises": null,
+              "state": "waiting", "summary": "Change set #1044 is waiting for your approval",
+              "feedback": 0, "at": "2026-11-06T08:01:12-05:00", "updated_at": "2026-11-06T08:03:40-05:00"}],
+   "total": 1}
+  ```
+- 프리뷰: 해당 없음(읽기)
+- 정책: 없음
+- 에러: `invalid_filter` → `list_bot_decisions`
+- 멱등성: 읽기(부작용 없음)
+
+### `get_bot_decision` — Kind: R
+- 논리 주소 · REST: `platform.bot.get_decision` · `GET /v1/platform/bot/decisions/{bot_decision_id}`
+- 요약: 결정 하나: 목록의 항목에 그 결정에 남긴 피드백 전부.
+- consumes → produces: `bot_decision_id` → `task_id`, `change_set_id`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명 | 예 |
+  |---|---|:--:|---|---|
+  | `bot_decision_id` | Text, `^bdc_[a-z0-9_]+$` | ✓ | 결정 id | `"bdc_1106_0800_1"` |
+- 출력: `list_bot_decisions`의 항목과 같고 `feedback`이 수 대신 목록(`list_bot_feedback`의 항목)입니다.
+- 프리뷰: 해당 없음(읽기)
+- 정책: 없음
+- 에러: `bot_decision_not_found`(class `not_found`) → `list_bot_decisions`
+- 멱등성: 읽기(부작용 없음)
+
+### `list_bot_feedback` — Kind: R
+- 논리 주소 · REST: `platform.bot.list_feedback` · `GET /v1/platform/bot/feedback?state=open`
+- 요약: 사람이 Ailism Bot에게 남긴 피드백·지시·재요청, 최근 것부터. 분석이 열린 것을 읽습니다.
+- consumes → produces: → `bot_feedback_id[]`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명 | 예 |
+  |---|---|:--:|---|---|
+  | `state` | enum | | `open` \| `closed`. 없으면 전부 | `"open"` |
+  | `bot_decision_id` | Text, `^bdc_[a-z0-9_]+$` | | 이 결정에 남긴 것만 | |
+  | `limit` | Integer, 1–100 | | 기본 20 | `20` |
+  | `cursor` | Text | | 이전 응답의 `next_cursor` | |
+- 출력:
+  ```jsonc
+  {"items": [{"id": "bfb_01", "kind": "directive", "text": "Never discount new arrivals.", "decision_id": null,
+              "state": "open", "by": "adm_sj", "at": "2026-11-06T09:10:00-05:00", "closed_at": null}],
+   "total": 1}
+  ```
+- 프리뷰: 해당 없음(읽기)
+- 정책: 없음
+- 에러: `invalid_filter` → `list_bot_feedback`
+- 멱등성: 읽기(부작용 없음)
+
+#### 사람 전용 `POST /v1/platform/bot/cycles`
+- 스코프: `human:bot`. 툴이 아니며 운영자가 Ailism Bot 화면의 "Run now"로만 누릅니다.
+- 본문: `{}`
+- 응답: `{"ok": true, "id": "bcy_1106_1102", "state": "observing"}` — 주기를 열고 `bot.cycle.updated`를 보냅니다. 이미 `observing`인 주기가 있으면 그 주기를 돌려줍니다(새로 열지 않음).
+- 에러: `invalid_state`(`bot.mode`가 `off`) → `null`
+- 멱등성: `Idempotency-Key`. 돌고 있는 주기가 있으면 그 주기.
+
+#### 사람 전용 `PUT /v1/platform/bot/settings`
+- 스코프: `human:bot`.
+- 본문: 바꿀 것만. `{"mode": "observe", "every_minutes": 120, "acts_as": "adm_sj", "model": "glimmer", "areas": {"community": false}, "max_proposals_per_cycle": 3, "max_open_decisions": 8, "cooldown_days": 7, "directives": ["Never discount new arrivals."]}`. `mode`는 [enums.md](enums.md) §1.14 `bot_mode`, `every_minutes`는 30–1440, `acts_as`는 활성 운영자 id(빈 문자열이면 지워서 `task_pickup.acts_as`를 씀), `model`은 `agents/models.yml`의 별칭.
+- 응답: `{"ok": true, "settings": {…}}` — `get_bot_status`의 `settings`. 스토어의 `platform` 정책 덮어쓰기에 `bot`과 `watchers.ailism_bot`(`enabled`는 `mode`가 `off`가 아닐 때 `true`, `every_minutes`)을 합쳐 씁니다. 액션 로그에 `UpdateAction`(instrument `update_bot_settings`)이 남습니다.
+- 에러: `invalid_input`(값이 범위 밖이거나 모르는 운영자) → `null`
+- 멱등성: 같은 본문이면 같은 결과.
+
+#### 사람 전용 `POST /v1/platform/bot/feedback`
+- 스코프: `human:bot`.
+- 본문: `{"kind": "feedback", "text": "Reorders under 50 units are not worth a change set.", "bot_decision_id": "bdc_1106_0800_1"}`. `kind`는 `feedback`(이 결정이나 봇 전반에 대한 의견) \| `directive`(앞으로 지킬 지시) \| `correction`(재요청: 할 일의 대화에 보낸 고칠 내용), `bot_decision_id`는 선택. `text` 1–1000자.
+- 응답: `{"ok": true, "id": "bfb_02", "state": "open"}`
+- 에러: `bot_decision_not_found` → `null` · `invalid_input` → `null`
+- 멱등성: `Idempotency-Key`.
+
+#### 사람 전용 `POST /v1/platform/bot/decisions/{bot_decision_id}/rerequest`
+- 스코프: `human:bot`. 기다리는 변경셋이 있으면 그것을 거절하므로 `human:reject`도 필요합니다.
+- 본문: `{"text": "Order 30 of each size, not 80."}`(1–1000자)
+- 응답: `{"ok": true, "id": "bdc_1106_0800_1_r4k2p9", "task_id": "task_bot_1106_0800_1_r4k2p9", "revises": "bdc_1106_0800_1", "rejected_change_set": "cs_1044", "feedback_id": "bfb_03"}` — 고칠 내용을 `correction` 피드백으로 남기고, 결정의 변경셋이 `drafting`·`waiting_for_approval`이면 "Asked again: …"로 거절하고, 열린 할 일은 치웁니다. 같은 제안(영역·제목·이유·근거·대상)에 요청 문장 끝에 고칠 내용을 붙인 새 결정(`revises`)과 할 일을 열고(거르기 없이), 운영 에이전트가 새 초안을 만듭니다.
+- 에러: `bot_decision_not_found` → `null` · `invalid_state`(이미 `running`·`live`: 되돌리기나 피드백으로) → `null` · `forbidden`(`human:reject` 없음) → `null` · `invalid_input` → `null`
+- 멱등성: `Idempotency-Key`.
+
+#### 사람 전용 `POST /v1/platform/bot/feedback/{bot_feedback_id}/close`
+- 스코프: `human:bot`.
+- 본문: `{}`
+- 응답: `{"ok": true, "id": "bfb_02", "state": "closed"}` — 닫은 피드백은 분석에 더 들어가지 않습니다.
+- 에러: `bot_feedback_not_found` → `null`
+- 멱등성: 이미 닫혔으면 같은 응답.
+
+---
+
 ## action_log
 
 > 액션 로그의 항목은 schema.org `Action`입니다(`UpdateAction`, `CreateAction`, `ScheduleAction`, `AssessAction`, `AuthorizeAction` …).
@@ -830,4 +1024,5 @@ drafting ──submit{version}──▶ waiting_for_approval ──approve{versi
 |---|---|---|
 | `GET /v1/platform/store` | 토큰만 | 요청 문맥의 스토어: `{store_id, currency, time_zone, now}`. `now`는 데모 모드면 데모 시계. agent 서비스가 턴마다 스토어 시각·통화를 여기서 받습니다(commerce 테이블을 직접 읽지 않음) |
 | `GET /v1/platform/previews/{preview_id}` | `changeset:draft` 또는 `tools:read:platform` | 저장된 프리뷰 하나: `{preview_id, operation, input, changes[], checks[], needs_approval, approval_reason, expires_at, state, change_set_id, policy_version, created_at}`. `state`는 [enums.md](enums.md) §1.9. 런타임이 실행 전 확인하거나 화면이 프리뷰를 다시 그릴 때 |
-| `GET /v1/platform/events` (SSE) | `tools:read:platform` | 스토어의 진행 이벤트: `change_set.updated {change_set_id, version, state}`, `task.updated {task_id, state, change_set_id?, created?, origin?}`(`created: true`와 `origin`은 감시 작업이 할 일을 새로 만들 때만), `job.updated {job_id, kind, state, run_at}`([예약 작업](#예약-작업)). 각 이벤트는 `id:`(스토어 안 순번)를 가지며 `Last-Event-ID`로 이어 받음. 백오피스 화면이 구독해 읽기를 다시 하고, 게이트웨이가 구독해 감시 작업이 연 할 일을 에이전트에게 넘김([task](#task)). 채팅 스트림([chat.md](chat.md) §2)으로는 흘리지 않음 |
+| `GET /v1/platform/events` (SSE) | `tools:read:platform` | 스토어의 진행 이벤트: `change_set.updated {change_set_id, version, state}`, `task.updated {task_id, state, change_set_id?, created?, origin?}`(`created: true`와 `origin`은 감시 작업이나 Ailism Bot이 할 일을 새로 만들 때만), `job.updated {job_id, kind, state, run_at}`([예약 작업](#예약-작업)), `bot.cycle.updated {cycle_id, state, trigger}`([bot](#bot)). 각 이벤트는 `id:`(스토어 안 순번)를 가지며 `Last-Event-ID`로 이어 받음. 백오피스 화면이 구독해 읽기를 다시 하고, 게이트웨이가 구독해 감시 작업이 연 할 일을 에이전트에게 넘김([task](#task)). 채팅 스트림([chat.md](chat.md) §2)으로는 흘리지 않음 |
+| `POST /v1/platform/bot/cycles/{bot_cycle_id}/report` | 시스템 주체(`actor_kind: system`)만 | Ailism Bot 주기의 끝([bot](#bot) 4–5): 본문 `{state: done \| failed, snapshot, anomalies[], report{summary, findings[], proposals[]}, usage, error?}`. `observing`인 주기만 받고(아니면 `invalid_state`), 제안을 걸러 결정과 할 일을 열고 `{cycle_id, state, opened[{decision_id, task_id}], skipped[{title, why}]}`를 돌려줌. 게이트웨이만 부름 |
