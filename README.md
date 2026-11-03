@@ -22,8 +22,9 @@ What to ask (the scenes of [docs/scenarios.md](docs/scenarios.md) §6, all on th
 
 | Where | Ask | What you should see |
 |---|---|---|
-| Back office | *Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.* | A change set with the VIP sale prices, checked against the store's rules: the overshirt would go under its price floor, and two products are too low on stock for a sale. (The scene's coupon and main-page banner items depend on the first TODO below.) |
+| Back office | *Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page.* | A change set with the VIP sale prices and a main-page banner for the sale, checked against the store's rules: the overshirt would go under its price floor, and two products are too low on stock for a sale. |
 | Back office | *Drop the low-stock ones. Give the overshirt 15% instead.* | Version 2 of the same change set, revised by talking, with the checks run again. Nothing changes until a person approves it. |
+| Back office | *Make a collection page called Cozy knits with our knitwear and scarves, and generate a picture for the top of the page.* | A draft page with a banner Muse Image drew at preview, so you see it before approving. After approval, *Publish col_cozy_knits from now until Nov 30.* puts it on the storefront at `/collections/col_cozy_knits`. |
 | Back office | *what needs my attention today?* | The task list: the Linen shirt reorder a watcher drafted before anyone asked, the returns review, and what finished this morning. |
 | Back office | *go through the return requests over $200 and tell me which ones to refund* | 12 requests sorted by the return policy: 9 refunds ($2,463.00), 2 photo requests, 1 decline. The refunds wait in a change set for a person. |
 | Back office | *why did sales drop yesterday?* | A sales explainer: the gap against a normal Thursday, the sizes that sold out, the weekly email that did not go out. |
@@ -246,7 +247,7 @@ cargo xtask eval --base http://localhost:8080 --set design --tool-set both   # t
 The back end is complete for the showcase: every specified operation is built. What remains is about the AI-native experience inside the store, not about connecting outside services.
 
 **Agent quality** (measured by the design set; each item names the task that shows it)
-- [ ] Bind later items of a change set to what earlier items produce (`$item[n]`), instead of an invented id: a coupon and a banner for a sale that does not exist yet (`b1-vip-weekend-sale`).
+- [x] Bind later items of a change set to what earlier items produce (`$item[n]`), instead of an invented id: the B1 banner points at `$item[1].promotion_id`, a curated page at the picture drafted before it. Still open: publishing a page in the same change set that creates it (`publish_curation` checks the id before the page exists).
 - [ ] Look up what the person named instead of asking for its id: "markdown on tees" should find the tees category, not ask for `category_id` (`md-end-of-season-markdown`).
 - [ ] Re-run `b2-returns-over-200`: the agent guessed a customer id to message about an order; `send_customer_message` now takes the order alone (Oct 31), which should remove the guess.
 - [ ] Say the exact times and amounts the results hold (an undo deadline of Nov 7 23:59, a banner verified at 09:36) (`mgr-what-needs-me-today`, `mgr-what-changed-this-morning`).
