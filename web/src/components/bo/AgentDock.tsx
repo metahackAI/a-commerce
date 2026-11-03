@@ -91,7 +91,7 @@ export function AgentComposer({placeholder, onSent}: {placeholder: string; onSen
 function AgentDrawer({isOpen, onOpenChange}: {isOpen: boolean; onOpenChange: (open: boolean) => void}) {
   const router = useRouter();
   return (
-    <Drawer isOpen={isOpen} onOpenChange={onOpenChange} label="Ask the agent" width={480} hasScrim={false} padding={0}>
+    <Drawer isOpen={isOpen} onOpenChange={onOpenChange} label="Ask the agent" width={480} hasScrim={false} padding={0} experimental={{isFullWidthOnMobile: true}}>
       {isOpen ? (
         <ChatPanel
           header={

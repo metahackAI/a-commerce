@@ -15,6 +15,17 @@ import type {AiTarget} from '@/ai/useAiTarget';
 
 import {AskHeaderCell, TargetRow} from './targets';
 
+/**
+ * The narrowest a column may get before the table scrolls sideways in its own box (Astryx wraps
+ * every table in one) instead of breaking prices, dates and ids letter by letter.
+ */
+export const COLUMN_MIN_WIDTH = 140;
+
+/** A table's minimum width for `columns` columns, plus the Ask column when the rows have it. */
+export function tableMinWidth(columns: number, hasAsk = false): number {
+  return columns * COLUMN_MIN_WIDTH + (hasAsk ? 48 : 0);
+}
+
 export interface Column<T> {
   header: string;
   /** Right-align figures. */
@@ -42,7 +53,7 @@ export function DataTable<T>({
 }) {
   if (rows.length === 0) return <EmptyState isCompact title={empty.title} description={empty.description} />;
   return (
-    <Table density="compact" verticalAlign="top" hasHover>
+    <Table density="compact" verticalAlign="top" hasHover style={{minWidth: tableMinWidth(columns.length, true)}}>
       <TableHeader>
         <TableRow isHeaderRow>
           {columns.map(c => (
@@ -99,10 +110,10 @@ export function RecordCell({href, name, id, image}: {href: string | null; name: 
   );
 }
 
-/** A figure in a cell, with tabular digits. */
+/** A figure in a cell, with tabular digits, kept on one line ($1,240.00 never breaks). */
 export function Figure({children, muted}: {children: ReactNode; muted?: boolean}) {
   return (
-    <Text hasTabularNumbers color={muted ? 'secondary' : undefined}>
+    <Text hasTabularNumbers color={muted ? 'secondary' : undefined} style={{whiteSpace: 'nowrap'}}>
       {children}
     </Text>
   );

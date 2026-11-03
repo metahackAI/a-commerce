@@ -12,7 +12,6 @@ import {Grid} from '@astryxdesign/core/Grid';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
 import {Link} from '@astryxdesign/core/Link';
 import {List, ListItem} from '@astryxdesign/core/List';
-import {NumberInput} from '@astryxdesign/core/NumberInput';
 import {Text} from '@astryxdesign/core/Text';
 import {useRouter} from 'next/navigation';
 import {useState} from 'react';
@@ -25,6 +24,7 @@ import {api, type ApiErrorBody} from '@/lib/api';
 import {AskButton} from './Ask';
 import {CartSummary} from './CartSummary';
 import {ErrorNotice} from './ErrorNotice';
+import {QuantityInput} from './QuantityInput';
 import {useStorefront} from './StorefrontContext';
 import {errorBody, write} from './write';
 
@@ -62,21 +62,7 @@ function LineRow({
             {[options, `${money(line.price)} each`, line.note].filter(Boolean).join(' · ')}
           </Text>
           <HStack gap={2} vAlign="end" wrap="wrap">
-            <NumberInput
-              label="Quantity"
-              isLabelHidden
-              value={line.quantity}
-              min={1}
-              isIntegerOnly
-              hasNumberSteppers
-              width={120}
-              size="sm"
-              isDisabled={isBusy}
-              onChange={v => {
-                const q = Math.round(v);
-                if (q >= 1 && q !== line.quantity) onQuantity(q);
-              }}
-            />
+            <QuantityInput label="Quantity" isLabelHidden value={line.quantity} size="sm" isDisabled={isBusy} onChange={onQuantity} />
             <Button label="Remove" size="sm" variant="ghost" isDisabled={isBusy} onClick={onRemove} />
             <AskButton target={target} label={line.name} />
           </HStack>

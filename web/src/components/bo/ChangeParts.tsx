@@ -17,6 +17,7 @@ import {entityHref, withParams} from '@/app/bo/_lib/links';
 import type {Change, Check} from '@/app/bo/_lib/types';
 
 import {AskButton, AskHeaderCell, SuggestedIntents, TargetRow, useAskReveal} from './targets';
+import {tableMinWidth} from '@/components/bo/tables';
 
 /** Intents for an element from a block's `suggested_intents` (`element: "change_row:prd_x"`). */
 export type IntentsFor = (kind: string, id: string) => string[] | undefined;
@@ -245,7 +246,7 @@ export function ChangesTable({
   }
   return (
     <VStack gap={2}>
-      <Table density="compact" verticalAlign="top">
+      <Table density="compact" verticalAlign="top" style={{minWidth: tableMinWidth(4, true)}}>
         <TableHeader>
           <TableRow isHeaderRow>
             <TableHeaderCell>Change</TableHeaderCell>

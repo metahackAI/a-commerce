@@ -25,7 +25,7 @@ const HISTORY_CSS = `
 .acom-history-row:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
 .acom-history-row[aria-current="true"] { background: var(--color-background-muted); }
 .acom-history-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-primary); font-size: var(--font-size-sm); }
-.acom-history-when { flex-shrink: 0; color: var(--color-text-secondary); font-size: var(--font-size-xs, 12px); font-variant-numeric: tabular-nums; }
+.acom-history-when { flex-shrink: 0; color: var(--color-text-secondary); font-size: var(--font-size-sm); font-variant-numeric: tabular-nums; }
 .acom-history-head { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-2); padding: 0 var(--spacing-2); }
 `;
 
@@ -47,6 +47,14 @@ export function useConversations(limit: number, enabled = true): {items: Convers
   return list;
 }
 
+/**
+ * When a conversation last moved and how long it is. The store runs on the demo clock, so many
+ * conversations share a time; the number of requests tells them apart.
+ */
+function detail(c: ConversationSummary): string {
+  return [whenText(c.last_turn_at ?? c.started_at), `${c.turns} ${c.turns === 1 ? 'request' : 'requests'}`].filter(Boolean).join(' · ');
+}
+
 /** Rows that open a conversation; the one on screen is marked. */
 function Rows({items, onOpen}: {items: ConversationSummary[]; onOpen: (id: string) => void}) {
   const ai = useAi();
@@ -61,7 +69,7 @@ function Rows({items, onOpen}: {items: ConversationSummary[]; onOpen: (id: strin
             title={conversationName(c)}
             onClick={() => onOpen(c.conversation_id)}>
             <span className="acom-history-name">{conversationName(c)}</span>
-            <span className="acom-history-when">{whenText(c.last_turn_at ?? c.started_at)}</span>
+            <span className="acom-history-when">{detail(c)}</span>
           </button>
         </li>
       ))}
@@ -104,7 +112,7 @@ export function HistoryMenu({label}: {label?: string}) {
         : list.items.map(c => ({
             id: c.conversation_id,
             label: conversationName(c),
-            description: [whenText(c.last_turn_at ?? c.started_at), c.conversation_id === ai.conversationId ? 'On screen' : null]
+            description: [detail(c), c.conversation_id === ai.conversationId ? 'On screen' : null]
               .filter(Boolean)
               .join(' · '),
             isDisabled: ai.isBusy,

@@ -29,6 +29,7 @@ import {ErrorState} from './ErrorState';
 import {PageFrame, PageSection} from './PageFrame';
 import {StateToken} from './StateToken';
 import {AskHeaderCell, TargetBlock, TargetFact, TargetRow} from './targets';
+import {tableMinWidth} from '@/components/bo/tables';
 
 const SLOT_LABEL: Record<string, string> = {who: 'Who', products: 'Products', benefit: 'Benefit', when: 'When', where: 'Where', other: 'Also'};
 
@@ -183,7 +184,7 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
 
       {cs.left_out && cs.left_out.length > 0 ? (
         <PageSection title="Left out" count={cs.left_out.length} description="Recorded in the preview, not changed.">
-          <Table density="compact">
+          <Table density="compact" style={{minWidth: tableMinWidth(3, true)}}>
             <TableHeader>
               <TableRow isHeaderRow>
                 <TableHeaderCell>What</TableHeaderCell>
@@ -241,7 +242,7 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
 
 function VerificationTable({verification}: {verification: Verification}) {
   return (
-    <Table density="compact" verticalAlign="top">
+    <Table density="compact" verticalAlign="top" style={{minWidth: tableMinWidth(4, true)}}>
       <TableHeader>
         <TableRow isHeaderRow>
           <TableHeaderCell>Item</TableHeaderCell>

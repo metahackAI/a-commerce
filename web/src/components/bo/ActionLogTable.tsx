@@ -15,6 +15,7 @@ import type {ActionEntry} from '@/app/bo/_lib/types';
 
 import {StateToken} from './StateToken';
 import {AskHeaderCell, TargetRow} from './targets';
+import {tableMinWidth} from '@/components/bo/tables';
 
 function objectId(a: ActionEntry): string | null {
   const o = a.object;
@@ -28,7 +29,7 @@ export function ActionLogTable({entries, blockId, empty}: {entries: ActionEntry[
     return <EmptyState isCompact title={empty ?? 'No actions recorded'} description="Every tool call, preview, approval and run is recorded here." />;
   }
   return (
-    <Table density="compact" verticalAlign="top">
+    <Table density="compact" verticalAlign="top" style={{minWidth: tableMinWidth(5, true)}}>
       <TableHeader>
         <TableRow isHeaderRow>
           <TableHeaderCell>When</TableHeaderCell>

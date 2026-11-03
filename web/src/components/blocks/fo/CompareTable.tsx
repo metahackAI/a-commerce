@@ -143,7 +143,7 @@ function PriceCell({
     <TableCell>
       <VStack gap={0.5} ref={target.ref} {...target.props}>
         <HStack gap={2} vAlign="center" wrap="wrap">
-          <Text type="body" weight="semibold" hasTabularNumbers>
+          <Text type="body" weight="semibold" hasTabularNumbers style={{ whiteSpace: "nowrap" }}>
             {shown || "—"}
           </Text>
           {list_ && list_ !== shown ? (
@@ -197,7 +197,8 @@ export function CompareTableBlock({ block }: BlockProps) {
       aside={aside}
       footer={<BlockActions block={general} />}
     >
-      <Table density="balanced" verticalAlign="top">
+      {/* Below this the table scrolls sideways in its box rather than cutting names and prices. */}
+      <Table density="balanced" verticalAlign="top" style={{ minWidth: 120 + products.length * 160 }}>
         <TableHeader>
           <TableRow>
             <TableHeaderCell scope="col">

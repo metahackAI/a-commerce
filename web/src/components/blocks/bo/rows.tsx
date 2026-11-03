@@ -14,6 +14,7 @@ import {entityHref} from '@/app/bo/_lib/links';
 import type {Change} from '@/app/bo/_lib/types';
 import {changeSubject, type IntentsFor} from '@/components/bo/ChangeParts';
 import {AskHeaderCell, TargetRow} from '@/components/bo/targets';
+import {tableMinWidth} from '@/components/bo/tables';
 
 const ID_KEYS = ['product_id', 'variant_id', 'claim_id', 'order_id', 'promotion_id', 'customer_id', 'id', 'draft_id'];
 const NAME_KEYS = ['name', 'title', 'label', 'item'];
@@ -94,7 +95,7 @@ export function RowsTable({
   const cols = columns ?? columnsOf(rows);
   const hasName = rows.some(r => rowName(r) || rowId(r));
   return (
-    <Table density="compact" verticalAlign="top">
+    <Table density="compact" verticalAlign="top" style={{minWidth: tableMinWidth(cols.length + (hasName ? 1 : 0), true)}}>
       <TableHeader>
         <TableRow isHeaderRow>
           {hasName ? <TableHeaderCell>Item</TableHeaderCell> : null}

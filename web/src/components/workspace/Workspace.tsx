@@ -12,7 +12,7 @@ import {Button} from '@astryxdesign/core/Button';
 import {Icon} from '@astryxdesign/core/Icon';
 import {IconButton} from '@astryxdesign/core/IconButton';
 import {HStack} from '@astryxdesign/core/Layout';
-import {ResizeHandle, useResizable, type ResizableProps} from '@astryxdesign/core/Resizable';
+import {ResizeHandle, type ResizableProps} from '@astryxdesign/core/Resizable';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {ChevronLeftIcon, ChevronRightIcon} from '@heroicons/react/24/outline';
 import {useSearchParams} from 'next/navigation';
@@ -28,7 +28,65 @@ import {ConversationActions, RecentConversations} from '@/components/chat/Histor
 /** Below this width of the workspace the canvas folds into the conversation. */
 const NARROW = 900;
 /** The conversation's width beside the canvas: where it starts, and how far a person can drag it. */
-const CHAT_WIDTH = {defaultSize: 420, minSize: 320, maxSize: '60%'} as const;
+const CHAT = {start: 420, min: 320};
+/** The canvas never gets narrower than this beside the conversation (a comparison stays readable). */
+const CANVAS_MIN = 480;
+
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+/**
+ * The conversation's width beside the canvas, and the handle that sets it. A person's choice is
+ * kept as a share of the workspace (per surface, in this browser), so it reads the same at any
+ * window size and a narrow window never overwrites it; until they drag, the conversation is 420 px.
+ */
+function useChatWidth(surface: string, width: number) {
+  const key = `acom-ws-chat-share-${surface}`;
+  const [share, setShare] = useState<number | null>(null);
+  const [resizing, setResizing] = useState(false);
+  const start = useRef(0);
+  useEffect(() => {
+    try {
+      const saved = Number(window.localStorage.getItem(key));
+      if (saved > 0 && saved < 1) setShare(saved);
+    } catch {
+      // No storage (private window): the width is not remembered.
+    }
+  }, [key]);
+  useEffect(() => {
+    if (resizing || share === null) return;
+    try {
+      window.localStorage.setItem(key, String(share));
+    } catch {
+      // As above.
+    }
+  }, [key, resizing, share]);
+
+  const max = Math.max(CHAT.min, width - CANVAS_MIN);
+  const size = Math.round(clamp(share === null ? CHAT.start : share * width, CHAT.min, max));
+  // The handle reports a drag (and each arrow key) as a move from where it started; while one runs
+  // the workspace is marked so the widths follow the pointer instead of animating behind it.
+  const handle: ResizableProps = {
+    _size: size,
+    _isCollapsed: false,
+    _collapsible: false,
+    _collapsedSize: 0,
+    _snaps: [],
+    _minSizePx: CHAT.min,
+    _maxSizePx: max,
+    _direction: 'horizontal',
+    _isResizableProps: true,
+    _onResizeStart: () => {
+      start.current = size;
+      setResizing(true);
+    },
+    _onResizeMove: delta => {
+      if (width > 0) setShare(clamp(start.current + delta, CHAT.min, max) / width);
+    },
+    _onResizeEnd: () => setResizing(false),
+    _onResizeCancel: () => setResizing(false),
+  };
+  return {size, handle, resizing};
+}
 
 // The three states share one tree so the change between them can animate: the chat column's width
 // and the canvas's growth are transitioned, the blocks rise in as they arrive.
@@ -203,25 +261,7 @@ export function Workspace({greeting, intro, composerPlaceholder, canvasTitle, st
   const hasBlocks = ai.blocks.length > 0;
   const mode: Mode = ai.messages.length === 0 && !hasBlocks ? 'empty' : hasBlocks && !narrow ? 'split' : 'talk';
 
-  const chat = useResizable({...CHAT_WIDTH, containerRef: root, autoSaveId: `acom-ws-chat-${ai.surface}`});
-  const [resizing, setResizing] = useState(false);
-  // The handle reports a drag through these; marking the workspace while one runs stops the
-  // widths from animating behind the pointer.
-  const handle: ResizableProps = {
-    ...chat.props,
-    _onResizeStart: () => {
-      setResizing(true);
-      chat.props._onResizeStart();
-    },
-    _onResizeEnd: () => {
-      setResizing(false);
-      chat.props._onResizeEnd();
-    },
-    _onResizeCancel: () => {
-      setResizing(false);
-      chat.props._onResizeCancel?.();
-    },
-  };
+  const chat = useChatWidth(ai.surface, width);
   const style = {'--acom-ws-chat-width': `${chat.size}px`} as CSSProperties;
 
   const turns = ai.resultTurns;
@@ -245,7 +285,7 @@ export function Workspace({greeting, intro, composerPlaceholder, canvasTitle, st
   }, [asked, openConversation]);
 
   return (
-    <div className="acom-ws" data-mode={mode} data-transport={ai.transport} data-resizing={resizing} ref={root} style={style}>
+    <div className="acom-ws" data-mode={mode} data-transport={ai.transport} data-resizing={chat.resizing} ref={root} style={style}>
       <ChatStyles />
       <style>{WORKSPACE_CSS}</style>
       <section className="acom-ws-chat" aria-label="Conversation">
@@ -288,7 +328,7 @@ export function Workspace({greeting, intro, composerPlaceholder, canvasTitle, st
         </div>
       </section>
       {mode === 'split' ? (
-        <ResizeHandle direction="horizontal" resizable={handle} hasDivider label="Resize the conversation" />
+        <ResizeHandle direction="horizontal" resizable={chat.handle} hasDivider label="Resize the conversation" />
       ) : null}
       <section className="acom-ws-canvas" aria-label={canvasTitle} aria-hidden={mode !== 'split'}>
         {turn && !narrow ? (

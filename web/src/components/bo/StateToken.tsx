@@ -101,13 +101,12 @@ const DOT: Record<TokenColor, StatusDotVariant> = {
 
 export function StateToken({state, label, size = 'sm'}: {state: string | null | undefined; label?: string; size?: 'sm' | 'md'}) {
   const text = label ?? words(state);
-  // The word is read out; the dot only repeats it in color.
+  // The word is read out; the dot only repeats it in color. A long state ("Waiting for approval")
+  // wraps in a narrow column rather than running under the next one.
   return (
     <HStack gap={1.5} vAlign="center">
       <StatusDot variant={DOT[stateColor(state)]} label={text} aria-hidden />
-      <Text type={size === 'md' ? 'label' : 'body'} maxLines={1}>
-        {text}
-      </Text>
+      <Text type={size === 'md' ? 'label' : 'body'}>{text}</Text>
     </HStack>
   );
 }
