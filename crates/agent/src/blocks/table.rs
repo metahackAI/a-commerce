@@ -16,7 +16,7 @@ const COLUMNS: usize = 6;
 fn figures(items: &[Value]) -> Option<(Vec<String>, Vec<Value>)> {
     let is_figure =
         |i: &Value| i.get("acom:metric").is_some_and(Value::is_string) && i.get("value").is_some();
-    if !items.iter().all(is_figure) {
+    if items.is_empty() || !items.iter().all(is_figure) {
         return None;
     }
     let mut keys: Vec<String> = Vec::new();
