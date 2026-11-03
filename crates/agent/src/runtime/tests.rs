@@ -22,6 +22,8 @@ struct Scripted {
     info: ModelInfo,
     answers: Mutex<Vec<(String, String)>>,
     asked: Mutex<Vec<String>>,
+    /// The last message of each reply call: what the reply was written from.
+    reply_inputs: Mutex<Vec<String>>,
     streams_nothing: std::sync::atomic::AtomicBool,
     /// Streams the background check's request but nothing in a turn (the demo's endpoint did).
     streams_check_only: std::sync::atomic::AtomicBool,
@@ -46,6 +48,7 @@ impl Scripted {
                     .collect(),
             ),
             asked: Mutex::new(Vec::new()),
+            reply_inputs: Mutex::new(Vec::new()),
             streams_nothing: std::sync::atomic::AtomicBool::new(false),
             streams_check_only: std::sync::atomic::AtomicBool::new(false),
             fails_on_reply_schema: std::sync::atomic::AtomicBool::new(false),
@@ -75,6 +78,10 @@ impl Scripted {
     fn asked(&self) -> Vec<String> {
         self.asked.lock().unwrap().clone()
     }
+
+    fn reply_inputs(&self) -> Vec<String> {
+        self.reply_inputs.lock().unwrap().clone()
+    }
 }
 
 impl ChatModel for Scripted {
@@ -89,6 +96,11 @@ impl ChatModel for Scripted {
     ) -> BoxFuture<'a, Result<ChatResponse, LlmError>> {
         Box::pin(async move {
             self.asked.lock().unwrap().push(req.purpose.clone());
+            if req.purpose == "reply"
+                && let Some(m) = req.messages.last()
+            {
+                self.reply_inputs.lock().unwrap().push(m.content.clone());
+            }
             // The background streaming check: any model can answer it.
             if req.purpose == "stream_check" {
                 let streams = !self
@@ -1161,6 +1173,14 @@ async fn shoppers_cart_writes_run_and_orders_are_only_prepared() {
     // No scripted reply: the plain reply stands in.
     assert!(message(&events).contains("only you can place it"));
     assert_eq!(done(&events).0.tool_calls, 5);
+    // The reply is written knowing the cart line was added; the order is only prepared.
+    let facts = glimmer.reply_inputs();
+    let saved = facts
+        .iter()
+        .find_map(|f| f.find("\"saved\"").map(|i| f[i..].to_owned()))
+        .expect("the reply's facts list what ran");
+    assert!(saved.contains("add_to_cart"), "{saved}");
+    assert!(!saved.contains("prepare_order"), "{saved}");
 }
 
 #[tokio::test]

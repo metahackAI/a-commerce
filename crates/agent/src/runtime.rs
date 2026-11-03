@@ -3509,9 +3509,10 @@ impl<'r> Turn<'r> {
             .filter(|r| r.kind == ToolKind::Read)
             .map(|r| json!({"tool": r.tool, "result": compact(r.output.as_ref().unwrap_or(&Value::Null), self.result_chars())}))
             .collect();
-        // Writes that ran at once (the facade's saves) and what they answered.
+        // Writes that ran this turn (a cart line, a saved preference, the facade's saves) and
+        // what they answered, so the reply says they are done instead of offering them.
         let saved: Vec<Value> = self
-            .direct_writes()
+            .ran_writes()
             .map(|r| json!({"tool": r.tool, "result": compact(r.output.as_ref().unwrap_or(&Value::Null), self.result_chars())}))
             .collect();
         // A block's summary (a review's counts and refund total) is what the reply may cite.
@@ -3531,11 +3532,13 @@ impl<'r> Turn<'r> {
                "interpretation": self.plan.as_ref().map(|p| p.interpretation.iter().map(|u| u.text.clone()).collect::<Vec<_>>())})
     }
 
-    /// Writes this turn ran at once, without a preview (the facade's saves).
-    fn direct_writes(&self) -> impl Iterator<Item = &StepRecord> {
+    /// Writes this turn ran: at once (the facade's saves), or after a preview that needed no
+    /// approval (a cart line). A write that waits for approval or is only prepared (an order for
+    /// the shopper's button) has no output.
+    fn ran_writes(&self) -> impl Iterator<Item = &StepRecord> {
         self.history
             .iter()
-            .filter(|r| r.kind != ToolKind::Read && r.preview.is_none() && r.output.is_some())
+            .filter(|r| r.kind != ToolKind::Read && r.output.is_some())
     }
 
     /// The last list a read returned, as a block this agent may show.
@@ -3763,7 +3766,8 @@ impl<'r> Turn<'r> {
                 _ => parts.push("Here is what I found.".into()),
             }
         }
-        for r in self.direct_writes() {
+        // Only the facade's saves, which have no block of their own; a cart line shows in its card.
+        for r in self.ran_writes().filter(|r| r.preview.is_none()) {
             parts.push(format!("{} is saved.", r.tool));
         }
         parts.dedup();
