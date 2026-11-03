@@ -2,6 +2,7 @@
 
 use serde_json::{Map, Value, json};
 
+use super::insights::{and_list, upper_first};
 use super::shop::items_of;
 use super::{Action, Block, SuggestedIntent, words};
 
@@ -11,9 +12,9 @@ const COLUMNS: usize = 6;
 /// Figures read as a table (`get_sales_overview`, `get_sales_trend`): one item per figure
 /// (`acom:metric`, `value`, maybe a day and a split), laid out one row per day and split with a
 /// column per figure. A split by something named shows its name. With a split and no days, the
-/// largest first figure comes first ("which promotion sold most"). `None` when the items are not
-/// figures.
-fn figures(items: &[Value]) -> Option<(Vec<String>, Vec<Value>)> {
+/// largest first figure comes first ("which promotion sold most"). Titled by what it shows
+/// ("Revenue by observation date and promotion"). `None` when the items are not figures.
+fn figures(items: &[Value]) -> Option<(String, Vec<String>, Vec<Value>)> {
     let is_figure =
         |i: &Value| i.get("acom:metric").is_some_and(Value::is_string) && i.get("value").is_some();
     if items.is_empty() || !items.iter().all(is_figure) {
@@ -76,6 +77,11 @@ fn figures(items: &[Value]) -> Option<(Vec<String>, Vec<Value>)> {
         };
         rows.sort_by(|a, b| size(&b.1).total_cmp(&size(&a.1)));
     }
+    let named = |names: &[String]| and_list(&names.iter().map(|n| words(n)).collect::<Vec<_>>());
+    let mut title = upper_first(&named(&metrics));
+    if !keys.is_empty() {
+        title = format!("{title} by {}", named(&keys));
+    }
     let mut columns = keys;
     columns.extend(metrics);
     columns.truncate(COLUMNS);
@@ -90,13 +96,13 @@ fn figures(items: &[Value]) -> Option<(Vec<String>, Vec<Value>)> {
             )
         })
         .collect();
-    Some((columns, rows))
+    Some((title, columns, rows))
 }
 
 /// A list read as a table: the plain fields the rows share, in first-seen order.
 pub fn product_table(output: &Value) -> Option<Block> {
     let items = items_of(output);
-    if let Some((columns, rows)) = figures(&items) {
+    if let Some((title, columns, rows)) = figures(&items) {
         let cols: Vec<Value> = columns
             .iter()
             .map(|c| json!({"key": c, "label": words(c)}))
@@ -104,7 +110,7 @@ pub fn product_table(output: &Value) -> Option<Block> {
         let n = rows.len();
         return Some(Block::new(
             "product_table",
-            format!("{n} of {n}"),
+            title,
             json!({"columns": cols, "rows": rows, "total": n}),
         ));
     }
@@ -261,6 +267,7 @@ mod tests {
             {"acom:metric": "order_count", "value": 42, "acom:dimension": {"promotion_id": "promo_autumn_knit", "name": "Autumn knitwear 15%"}}
         ], "total": 4});
         let b = product_table(&out).unwrap_or_else(|| panic!("a table"));
+        assert_eq!(b.title, "Revenue and order count by promotion");
         assert_eq!(b.data["columns"][0]["key"], "promotion");
         assert_eq!(b.data["rows"].as_array().map(Vec::len), Some(2));
         // The largest first: the knitwear sale before the birthday coupon.
@@ -274,6 +281,7 @@ mod tests {
             {"observation_date": "2026-11-05", "acom:metric": "revenue", "value": money(30.0)}
         ]});
         let b = product_table(&trend).unwrap_or_else(|| panic!("a table"));
+        assert_eq!(b.title, "Revenue by observation date");
         assert_eq!(b.data["rows"][0]["observation_date"], "2026-11-04");
         assert_eq!(b.data["columns"][1]["key"], "revenue");
     }

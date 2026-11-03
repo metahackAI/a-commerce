@@ -58,6 +58,8 @@ export function OrderDetailBlock({block}: BlockProps) {
         ? `By ${dateTime(delivery.expected_arrival_until)}`
         : null;
   const deliveryState = delivery?.delivery_state ?? delivery?.state ?? null;
+  // The frame's title already says the order number ("Order #29202"): the line under it adds the status.
+  const titled = block.title === `Order #${data.order_number}`;
   const pay = payment?.label ?? (payment?.card_last4 ? `Card ending ${payment.card_last4}` : payment?.payment_method ? words(payment.payment_method) : null);
 
   return (
@@ -73,9 +75,11 @@ export function OrderDetailBlock({block}: BlockProps) {
       }>
       <VStack gap={1} ref={target.ref} {...target.props}>
         <HStack gap={2} vAlign="center" wrap="wrap">
-          <Text type="body" weight="semibold">
-            Order #{data.order_number}
-          </Text>
+          {titled ? null : (
+            <Text type="body" weight="semibold">
+              Order #{data.order_number}
+            </Text>
+          )}
           {status ? <StatusTag label={words(status)} tone={statusVariant(status)} /> : null}
         </HStack>
       </VStack>

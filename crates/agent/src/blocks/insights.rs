@@ -49,7 +49,7 @@ fn short_money(v: &Value) -> Option<String> {
 }
 
 /// "M and L", "A, B and C".
-fn and_list(words: &[String]) -> String {
+pub(super) fn and_list(words: &[String]) -> String {
     match words {
         [] => String::new(),
         [one] => one.clone(),
@@ -64,7 +64,7 @@ fn lower_first(s: &str) -> String {
         .unwrap_or_default()
 }
 
-fn upper_first(s: &str) -> String {
+pub(super) fn upper_first(s: &str) -> String {
     let mut c = s.chars();
     c.next()
         .map(|f| f.to_uppercase().chain(c).collect())
