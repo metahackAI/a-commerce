@@ -270,8 +270,9 @@ pub fn request_body(
             .collect();
         body["tool_choice"] = json!("auto");
     }
-    // The streamed ways a provider may need (`StreamVariant`), for streamed calls only.
-    let variant = if stream {
+    // The streamed ways a provider may need (`StreamVariant`), for streamed calls only; plain
+    // text is also how a call is asked again without its schema when the server failed on it.
+    let variant = if stream || req.stream_variant == StreamVariant::PlainText {
         req.stream_variant
     } else {
         StreamVariant::Configured
@@ -691,6 +692,12 @@ mod tests {
                 .unwrap()
                 .contains("plain sentences")
         );
+        let b = request_body("m", StructuredOutput::JsonSchema, &plain, false);
+        assert!(
+            b.get("response_format").is_none(),
+            "plain text holds without a stream too"
+        );
+        assert_eq!(b["chat_template_kwargs"]["enable_thinking"], false);
         let calm = plan_request().stream_variant(StreamVariant::WithoutThinking);
         let b = request_body("m", StructuredOutput::JsonSchema, &calm, true);
         assert_eq!(b["chat_template_kwargs"]["enable_thinking"], false);

@@ -1342,6 +1342,36 @@ impl<'r> Turn<'r> {
             } else {
                 res
             };
+            // A server that failed on the request itself (a 5xx answer, not silence) may have
+            // failed on its schema: the same model is asked once more for the text alone,
+            // unstreamed, so the person still gets its reply rather than the plain one.
+            let res = match res {
+                Err(LlmError::Http { status, .. })
+                    if status >= 500
+                        && req.output.is_some()
+                        && (self.usage.len() as u32) < self.limits.model_calls
+                        && !self.time_left().is_zero() =>
+                {
+                    self.reply_stream.reset("The reply is being written again.");
+                    let plain = req.clone().stream_variant(StreamVariant::PlainText);
+                    let left = self.time_left();
+                    let started_at = self.clock.now();
+                    let t = Instant::now();
+                    let again = tokio::time::timeout(left, model.chat(&plain, None))
+                        .await
+                        .unwrap_or(Err(LlmError::Timeout(left.as_secs())));
+                    let record = UsageRecord::new(
+                        model.info(),
+                        purpose,
+                        started_at,
+                        t.elapsed().as_millis() as u64,
+                        &again,
+                    );
+                    self.record_call(record, None).await;
+                    again
+                }
+                other => other,
+            };
             if let Ok(r) = res
                 && !r.text.trim().is_empty()
             {
