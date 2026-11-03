@@ -50,6 +50,7 @@ export function BlockFrame({
   meta,
   children,
   hideActions,
+  onActionDone,
 }: {
   block: UiBlock;
   kind: string;
@@ -58,6 +59,8 @@ export function BlockFrame({
   meta?: ReactNode;
   children: ReactNode;
   hideActions?: (a: BlockAction) => boolean;
+  /** After one of the block's person buttons went through (the block reads its record again). */
+  onActionDone?: () => void;
 }) {
   const ai = useAi();
   const dock = useAgentDock();
@@ -105,13 +108,13 @@ export function BlockFrame({
             ))}
           </HStack>
         ) : null}
-        <BlockActions block={block} hide={hideActions} />
+        <BlockActions block={block} hide={hideActions} onDone={onActionDone} />
       </VStack>
     </Card>
   );
 }
 
-function RejectWithReason({action}: {action: Extract<BlockAction, {kind: 'person'}>}) {
+function RejectWithReason({action, onDone}: {action: Extract<BlockAction, {kind: 'person'}>; onDone?: () => void}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
@@ -129,6 +132,7 @@ function RejectWithReason({action}: {action: Extract<BlockAction, {kind: 'person
           onDone={() => {
             setOpen(false);
             router.refresh();
+            onDone?.();
           }}
         />
       </HStack>
@@ -137,7 +141,7 @@ function RejectWithReason({action}: {action: Extract<BlockAction, {kind: 'person
 }
 
 /** A block's buttons by kind (docs/api/chat.md §3.2). */
-export function BlockActions({block, hide}: {block: UiBlock; hide?: (a: BlockAction) => boolean}) {
+export function BlockActions({block, hide, onDone}: {block: UiBlock; hide?: (a: BlockAction) => boolean; onDone?: () => void}) {
   const ai = useAi();
   const dock = useAgentDock();
   const router = useRouter();
@@ -151,8 +155,17 @@ export function BlockActions({block, hide}: {block: UiBlock; hide?: (a: BlockAct
         switch (a.kind) {
           case 'person':
             if (!mayPress(session, a.method, a.path)) return null;
-            if (/\/reject$/.test(a.path)) return <RejectWithReason key={a.action_id} action={a} />;
-            return <PersonButton key={a.action_id} action={a} onDone={() => router.refresh()} />;
+            if (/\/reject$/.test(a.path)) return <RejectWithReason key={a.action_id} action={a} onDone={onDone} />;
+            return (
+              <PersonButton
+                key={a.action_id}
+                action={a}
+                onDone={() => {
+                  router.refresh();
+                  onDone?.();
+                }}
+              />
+            );
           case 'say':
             return (
               <Button

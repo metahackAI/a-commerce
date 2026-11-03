@@ -4,7 +4,8 @@
 // it was understood, the checks, the changes in groups, what was left out, a preview of what
 // customers will see, what runs after approval, and the undo deadline. Approve and reject are the
 // block's person buttons (PersonButton), shown only while the set waits for approval; undo only
-// while it is live.
+// while it is live. The state those follow is the set's now (useLiveChangeSet), not the one the
+// block was sent with: once approved, the block says Live and offers Undo instead of Approve.
 
 import {HStack, VStack} from '@astryxdesign/core/Layout';
 import {Heading, Text} from '@astryxdesign/core/Text';
@@ -18,7 +19,11 @@ import {List, ListItem} from '@astryxdesign/core/List';
 import type {BlockAction} from '@/ai/types';
 import type {ChangeSetBlockData, Understood} from '@/app/bo/_lib/blocks';
 import {dateTime, value, words} from '@/app/bo/_lib/format';
-import {ChecksList} from '@/components/bo/ChangeParts';
+import type {Change} from '@/app/bo/_lib/types';
+import {ChangesTable, ChecksList} from '@/components/bo/ChangeParts';
+import {mayPress, useBoSession} from '@/components/bo/BoSession';
+import {useLiveChangeSet} from '@/components/bo/useLiveChangeSet';
+import {PersonButton} from '@/components/PersonButton';
 import {StateToken} from '@/components/bo/StateToken';
 import {TargetBlock, TargetFact} from '@/components/bo/targets';
 
@@ -46,11 +51,19 @@ export function ChangeSetBlock({block}: BlockProps) {
   const request = Array.isArray(d.request) ? d.request : d.request ? [d.request] : [];
   const checks = d.checks ?? [];
   const failed = checks.filter(c => !c.passed).length;
+  const session = useBoSession();
+  const {live, follow} = useLiveChangeSet(d.change_set_id, {state: d.state, version: d.version, undo_until: d.undo?.until ?? null});
+  // A newer version replaced the one this block shows: its approval would be refused.
+  const replaced = live.version > d.version;
+  const name = d.number ? `#${d.number}` : d.change_set_id;
+  const undoPath = `/v1/platform/change-sets/${encodeURIComponent(d.change_set_id)}/undo`;
+  const undo = live.state === 'live' && live.undo_until !== null && !replaced && mayPress(session, 'POST', undoPath);
 
   // Buttons that no longer fit the state are left out; the server would refuse them anyway.
   const hide = (a: BlockAction) =>
     a.kind === 'person' &&
-    ((/\/(approve|reject)$/.test(a.path) && d.state !== 'waiting_for_approval') || (/\/undo$/.test(a.path) && d.state !== 'live'));
+    ((/\/(approve|reject)$/.test(a.path) && (live.state !== 'waiting_for_approval' || replaced)) ||
+      (/\/undo$/.test(a.path) && live.state !== 'live'));
 
   return (
     <BlockFrame
@@ -59,12 +72,13 @@ export function ChangeSetBlock({block}: BlockProps) {
       id={d.change_set_id}
       label={`Change set ${d.number ? `#${d.number}` : d.change_set_id} v${d.version}`}
       hideActions={hide}
+      onActionDone={follow}
       meta={
         <>
           <Text type="supporting" color="secondary">
-            {`${d.number ? `#${d.number}` : d.change_set_id} · v${d.version}`}
+            {`${name} · v${d.version}`}
           </Text>
-          <StateToken state={d.state} />
+          <StateToken state={replaced ? 'drafting' : live.state} label={replaced ? `Replaced by v${live.version}` : undefined} />
           {checks.length > 0 ? (
             <StateToken state={failed > 0 ? 'failed' : 'passed'} label={failed > 0 ? 'Some checks failed' : 'All checks passed'} />
           ) : null}
@@ -128,7 +142,13 @@ export function ChangeSetBlock({block}: BlockProps) {
                 ) : null}
               </HStack>
             </TargetBlock>
-            <RowsTable rows={g.rows ?? []} kind="change_row" blockId={block.block_id} ids={ids} intentsFor={intentsFor} empty="No rows in this group" />
+            {(g.rows ?? []).length > 0 ? (
+              <ChangesTable changes={(g.rows ?? []) as unknown as Change[]} ids={ids} blockId={block.block_id} intentsFor={intentsFor} />
+            ) : (
+              <Text type="supporting" color="secondary">
+                No rows in this group
+              </Text>
+            )}
             {g.more ? (
               <Text type="supporting" color="secondary">
                 {typeof g.more === 'number' ? `And ${g.more} more` : g.more}
@@ -182,8 +202,27 @@ export function ChangeSetBlock({block}: BlockProps) {
 
       <HStack gap={2} vAlign="center" wrap="wrap">
         <Text type="supporting" color="secondary">
-          {d.undo?.until ? `You can undo it until ${dateTime(d.undo.until)}.` : d.undo === null ? 'This change set can’t be undone.' : ''}
+          {replaced
+            ? `Version ${live.version} replaced this one; approve it on the full change set.`
+            : live.undo_until
+              ? `${live.state === 'live' ? 'Live. ' : ''}You can undo it until ${dateTime(live.undo_until)}.`
+              : d.undo === null
+                ? 'This change set can’t be undone.'
+                : ''}
         </Text>
+        {undo ? (
+          <PersonButton
+            action={{
+              label: 'Undo',
+              method: 'POST',
+              path: undoPath,
+              confirm: `Undo every change of ${name} in reverse order?${live.undo_until ? ` Undo is open until ${dateTime(live.undo_until)}.` : ''}`,
+            }}
+            variant="secondary"
+            size="sm"
+            onDone={follow}
+          />
+        ) : null}
         <Link href={`/bo/change-sets/${encodeURIComponent(d.change_set_id)}`}>Open the full change set</Link>
       </HStack>
     </BlockFrame>

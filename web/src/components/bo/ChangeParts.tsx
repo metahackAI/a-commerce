@@ -240,6 +240,12 @@ export function beforeAfter(c: Change, currency?: string): {from: string; to: st
   return {from: from === undefined || from === null ? '—' : value(from), to: to === undefined || to === null ? '—' : value(to)};
 }
 
+/** The element a chat block gave a change row (`change_row:<id>`), which its intents use. */
+function rowElement(c: Change): string | null {
+  const el = (c as Change & {element?: unknown}).element;
+  return typeof el === 'string' && el.startsWith('change_row:') ? el.slice('change_row:'.length) : null;
+}
+
 /** The changes of a preview as a table. `total` above the rows shown adds a "more" line. */
 export function ChangesTable({
   changes,
@@ -293,7 +299,7 @@ export function ChangesTable({
                   term: `acom:${c.entity}`,
                   blockId,
                 }}
-                intents={intentsFor?.('change_row', subject)}>
+                intents={intentsFor?.('change_row', rowElement(c) ?? subject)}>
                 <TableCell>
                   <Token label={c.op} size="sm" color={c.op === 'exclude' ? 'gray' : c.op === 'delete' || c.op === 'revoke' ? 'red' : 'default'} />
                 </TableCell>
