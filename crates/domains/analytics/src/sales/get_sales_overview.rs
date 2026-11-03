@@ -1,7 +1,7 @@
 //! `get_sales_overview` (docs/api/analytics.md#sales): the headline figures of a period.
 
 use acom_contract::{
-    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, ToolError,
+    ActionType, Audience, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot, ToolError,
 };
 use acom_store::Cx;
 use chrono::NaiveDate;
@@ -33,15 +33,22 @@ pub enum OverviewMetric {
     /// Orders with a return asked for (not declined or withdrawn) out of paid, not cancelled
     /// orders, 0–1.
     ReturnRate,
+    /// Units sold. Counted on lines: split by category or promotion, or give a promotion.
+    Units,
+    /// What lines were given off their prices, in the store's currency. Counted on lines, like
+    /// units.
+    Discount,
 }
 
 impl OverviewMetric {
-    const ALL: [Self; 5] = [
+    const ALL: [Self; 7] = [
         Self::Revenue,
         Self::OrderCount,
         Self::AverageOrderValue,
         Self::CancellationRate,
         Self::ReturnRate,
+        Self::Units,
+        Self::Discount,
     ];
 
     fn as_str(self) -> &'static str {
@@ -51,17 +58,20 @@ impl OverviewMetric {
             Self::AverageOrderValue => "average_order_value",
             Self::CancellationRate => "cancellation_rate",
             Self::ReturnRate => "return_rate",
+            Self::Units => "units",
+            Self::Discount => "discount",
         }
     }
 
-    /// Whether the figure can be split by `d`: rates belong to whole orders, which a category
-    /// split cuts into lines.
-    fn splits_by(self, d: Dimension) -> bool {
-        d == Dimension::MemberTier
-            || matches!(
-                self,
-                Self::Revenue | Self::OrderCount | Self::AverageOrderValue
-            )
+    /// Whether the figure can be given split by `d` (or not split, `None`): rates belong to
+    /// whole orders, which a category or promotion split cuts into lines; units and discounts are
+    /// only counted on lines.
+    fn splits_by(self, d: Option<Dimension>) -> bool {
+        match self {
+            Self::Revenue | Self::OrderCount | Self::AverageOrderValue => true,
+            Self::CancellationRate | Self::ReturnRate => d.is_none_or(|d| !d.by_line()),
+            Self::Units | Self::Discount => d.is_some_and(Dimension::by_line),
+        }
     }
 
     /// The figure as an exact decimal (for change rates), or `None` when it has no value.
@@ -77,6 +87,8 @@ impl OverviewMetric {
             }
             Self::ReturnRate => (b.order_count > 0)
                 .then(|| Decimal::from(b.returned) / Decimal::from(b.order_count)),
+            Self::Units => Some(Decimal::from(b.units)),
+            Self::Discount => Some(b.discount_value),
         }
     }
 
@@ -87,6 +99,8 @@ impl OverviewMetric {
             Self::AverageOrderValue => figure(cx, TrendMetric::AverageOrderValue, b),
             Self::CancellationRate => rate(Decimal::from(b.cancelled), Decimal::from(b.placed)),
             Self::ReturnRate => rate(Decimal::from(b.returned), Decimal::from(b.order_count)),
+            Self::Units => json!(b.units),
+            Self::Discount => money_json(cx, b.discount_value),
         }
     }
 }
@@ -100,15 +114,19 @@ pub struct GetSalesOverviewInput {
     /// Last store day, included; today at the latest.
     #[schemars(example = &"2026-11-05")]
     pub valid_through: NaiveDate,
-    /// Figures to give. Default all five.
+    /// Figures to give. Default all that the split allows.
     #[serde(rename = "acom:metrics", alias = "metrics")]
     #[schemars(example = ["revenue", "order_count"])]
     pub metrics: Option<Vec<OverviewMetric>>,
     /// Splits the figures by these, one list of items per dimension. Rates cannot be split by
-    /// category.
+    /// category or promotion. `promotion` gives every promotion's sales (and the lines none
+    /// priced).
     #[serde(rename = "acom:dimensions", alias = "dimensions")]
     #[schemars(example = ["member_tier"])]
     pub dimensions: Option<Vec<Dimension>>,
+    /// Only the lines this promotion priced: what it sold and gave away. Leave `dimensions` out.
+    #[schemars(regex(pattern = r"^promo_[a-z0-9_]+$"), example = &"promo_autumn_knit", extend("x-slot" = "promotion_id"))]
+    pub promotion_id: Option<String>,
     /// First day of a period to compare with; gives each figure an `acom:change_rate`.
     #[schemars(example = &"2026-10-29")]
     pub compare_from: Option<NaiveDate>,
@@ -129,8 +147,8 @@ impl Operation for GetSalesOverview {
         kind: Kind::Read,
         method: Method::Post,
         path: "/v1/analytics/sales/overview",
-        summary: "The key sales figures of a period at once: revenue, orders, average order value, cancellation and return rates, optionally by category or member tier and against a comparison period.",
-        consumes: &[],
+        summary: "The key sales figures of a period at once: revenue, orders, average order value, cancellation and return rates, optionally by category, member tier or promotion and against a comparison period; for one promotion, what it sold (revenue, orders, units) and the discount it gave.",
+        consumes: &[Slot::one("promotion_id")],
         produces: &[],
         checks: &[],
         errors: &[INVALID_PERIOD, DIMENSION_NOT_SUPPORTED],
@@ -170,24 +188,50 @@ impl ReadOp<Cx> for GetSalesOverview {
             .metrics
             .unwrap_or_else(|| OverviewMetric::ALL.to_vec());
         metrics.dedup();
+        let only = input.promotion_id;
         let dimensions: Vec<Option<Dimension>> = match input.dimensions {
+            Some(d) if only.is_some() && d.iter().any(|d| *d != Dimension::Promotion) => {
+                return Err(ToolError::new(
+                    DIMENSION_NOT_SUPPORTED,
+                    "promotion_id gives one promotion's lines, which are not split further; leave dimensions out.",
+                )
+                .next(NEXT)
+                .detail(json!({"field": "acom:dimensions", "reason": "enum", "allowed": ["promotion"]})));
+            }
+            _ if only.is_some() => vec![Some(Dimension::Promotion)],
             Some(d) if !d.is_empty() => d.into_iter().map(Some).collect(),
             _ => vec![None],
         };
-        for d in dimensions.iter().flatten() {
+        for d in &dimensions {
             if let Some(m) = metrics.iter().find(|m| !m.splits_by(*d))
                 && explicit
             {
+                let (why, allowed) = if d.is_some_and(Dimension::by_line) {
+                    (
+                        "it counts whole orders. Split it by member_tier, or leave it out",
+                        json!(["member_tier"]),
+                    )
+                } else {
+                    (
+                        "it is counted on order lines. Split it by category or promotion, or give a promotion_id",
+                        json!(["category", "promotion"]),
+                    )
+                };
                 return Err(ToolError::new(
                     DIMENSION_NOT_SUPPORTED,
                     format!(
-                        "{} cannot be split by {}: it counts whole orders. Split it by member_tier, or leave it out.",
+                        "{} cannot be given {}: {why}.",
                         m.as_str(),
-                        d.key()
+                        d.map_or_else(
+                            || "for all sales".to_owned(),
+                            |d| format!("split by {}", d.key())
+                        ),
                     ),
                 )
                 .next(NEXT)
-                .detail(json!({"field": "acom:dimensions", "reason": "enum", "allowed": ["member_tier"]})));
+                .detail(
+                    json!({"field": "acom:dimensions", "reason": "enum", "allowed": allowed}),
+                ));
             }
         }
 
@@ -204,6 +248,18 @@ impl ReadOp<Cx> for GetSalesOverview {
                 None => None,
             };
             let now = if d.is_none() { vec![whole(now)] } else { now };
+            // One promotion: its lines only, and zeros when nothing it priced has sold.
+            let now = match &only {
+                Some(id) => vec![
+                    now.into_iter()
+                        .find(|b| b.dimension.as_deref() == Some(id))
+                        .unwrap_or_else(|| Bucket {
+                            dimension: Some(id.clone()),
+                            ..whole(Vec::new())
+                        }),
+                ],
+                None => now,
+            };
             for b in &now {
                 let base = before.as_ref().and_then(|rows| {
                     rows.iter()
@@ -211,7 +267,7 @@ impl ReadOp<Cx> for GetSalesOverview {
                         .cloned()
                         .or_else(|| d.is_none().then(|| whole(rows.clone())))
                 });
-                for m in metrics.iter().filter(|m| d.is_none_or(|d| m.splits_by(d))) {
+                for m in metrics.iter().filter(|m| m.splits_by(d)) {
                     let change = match (&base, m.exact(b)) {
                         (Some(base), Some(v)) => match m.exact(base) {
                             Some(was) if !was.is_zero() => {
@@ -224,7 +280,7 @@ impl ReadOp<Cx> for GetSalesOverview {
                     items.push(json!({
                         "acom:metric": m.as_str(),
                         "value": m.value(cx, b),
-                        "acom:dimension": d.map(|d| json!({d.key(): b.dimension})),
+                        "acom:dimension": d.map(|d| d.label(b)),
                         "acom:change_rate": change,
                     }));
                 }
@@ -246,9 +302,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn rates_do_not_split_by_category() {
-        assert!(OverviewMetric::Revenue.splits_by(Dimension::Category));
-        assert!(!OverviewMetric::ReturnRate.splits_by(Dimension::Category));
-        assert!(OverviewMetric::ReturnRate.splits_by(Dimension::MemberTier));
+    fn rates_do_not_split_by_lines_and_line_figures_need_them() {
+        assert!(OverviewMetric::Revenue.splits_by(Some(Dimension::Category)));
+        assert!(!OverviewMetric::ReturnRate.splits_by(Some(Dimension::Category)));
+        assert!(!OverviewMetric::CancellationRate.splits_by(Some(Dimension::Promotion)));
+        assert!(OverviewMetric::ReturnRate.splits_by(Some(Dimension::MemberTier)));
+        assert!(OverviewMetric::ReturnRate.splits_by(None));
+        assert!(OverviewMetric::Units.splits_by(Some(Dimension::Promotion)));
+        assert!(!OverviewMetric::Discount.splits_by(None));
+        assert!(!OverviewMetric::Units.splits_by(Some(Dimension::MemberTier)));
     }
 }

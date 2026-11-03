@@ -366,7 +366,7 @@
       "rdfs:subClassOf": {
         "@id": "schema:OrderItem"
       },
-      "rdfs:comment": "one row per line of the orders that count as sales (paid, not cancelled): day, variant, product, category, campaign, units and net amount, never who bought it."
+      "rdfs:comment": "one row per line of the orders that count as sales (paid, not cancelled): day, variant, product, category, campaign, promotion, units, discount and net amount, never who bought it."
     },
     {
       "@id": "acom:OrderSummary",
@@ -5346,6 +5346,9 @@
           "@id": "acom:DisplayBooking"
         },
         {
+          "@id": "acom:OrderLineSummary"
+        },
+        {
           "@id": "schema:OrderItem"
         },
         {
@@ -5355,6 +5358,9 @@
       "schema:rangeIncludes": [
         {
           "@id": "acom:Promotion"
+        },
+        {
+          "@id": "schema:Text"
         }
       ],
       "rdfs:comment": "promotion whose price or discount applied to the line."

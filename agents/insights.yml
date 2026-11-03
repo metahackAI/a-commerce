@@ -2,14 +2,16 @@
 id: insights
 surface: bo
 title: Insights agent
-description: Questions about how the store is doing, answered from the numbers - why sales or revenue went up or down, daily revenue and orders, members and tiers and who is in them. Reads only; never changes anything.
+description: Questions about how the store is doing, answered from the numbers - why sales or revenue went up or down, daily revenue and orders, what a promotion sold, members and tiers and who is in them. Reads only; never changes anything.
 home_domains: [analytics]
 tool_scope:
-  domains: [analytics, customer]
+  # promotion: which promotion a question about its results means (search_promotions).
+  domains: [analytics, customer, promotion]
   kinds: [read]
   # Always among the candidates: every question here starts from these reads (and who the
-  # members are, which word matching ranks below one member's details).
-  always: [explain_sales_change, get_sales_trend, get_sales_overview, get_customer_overview, search_members]
+  # members are, which word matching ranks below one member's details; which promotion a name
+  # like "the Linen clearance" is, which shares no word with "promotion").
+  always: [explain_sales_change, get_sales_trend, get_sales_overview, get_customer_overview, search_members, search_promotions]
 blocks: [sales_explainer, product_table]
 models: {worker: glimmer, planner: spark}
 instructions: insights.md
@@ -31,6 +33,16 @@ route_when_said:
   - how many
   - members
   - customers by tier
+  # A promotion's results are sales figures; running or changing it stays with the promotion agent.
+  - promotion doing
+  - promotion did
+  - promotion bring
+  - promotion brought
+  - promotions brought
+  - by promotion
+  - per promotion
+  - promotion results
+  - promotion perform
 # What the sales_explainer block offers next, per cause (`explain_sales_change` items). Each is
 # a `say` button: pressing it sends `request` as the operator's next message, which another
 # agent turns into a change set. {placeholders} come from the cause; an action whose

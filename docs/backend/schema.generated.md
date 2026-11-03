@@ -166,7 +166,7 @@
 
 ### `analytics.order_line_summary` (view)
 
-`schema:OrderItem/acom:OrderLineSummary` — one row per line of the orders that count as sales (paid, not cancelled): day, variant, product, category, campaign, units and net amount, never who bought it.
+`schema:OrderItem/acom:OrderLineSummary` — one row per line of the orders that count as sales (paid, not cancelled): day, variant, product, category, campaign, promotion, units, discount and net amount, never who bought it.
 
 | column | type | null | term | description |
 |---|---|:--:|---|---|
@@ -180,6 +180,9 @@
 | `order_quantity` |  | ✓ | `schema:orderQuantity` | units sold on the line. |
 | `revenue_value` |  | ✓ | `acom:revenue` | price × quantity − line discount, in major units; shipping is not on lines. |
 | `revenue_currency` |  | ✓ | `acom:revenue` | ISO 4217 code of revenue_value. |
+| `promotion_id` |  | ✓ | `acom:promotionId` | promotion whose price or discount applied to the line (promo_ id); NULL when none did. |
+| `promotion_name` |  | ✓ | `schema:name` | that promotion's name; NULL when none applied. |
+| `discount_value` |  | ✓ | `schema:discount` | what the line was given off its price, as a positive amount, in major units. |
 
 ### `analytics.order_summary` (view)
 

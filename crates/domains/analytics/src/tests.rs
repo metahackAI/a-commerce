@@ -235,6 +235,17 @@ async fn trend_overview_and_customer_refusals() {
         .await
         .unwrap_err();
     assert_code(&e, "invalid_period", "get_sales_overview");
+    // Units are counted on lines; one promotion's lines are not split again.
+    for bad in [
+        json!({"valid_from": "2026-11-05", "valid_through": "2026-11-05", "acom:metrics": ["units"]}),
+        json!({"valid_from": "2026-11-05", "valid_through": "2026-11-05",
+               "promotion_id": "promo_autumn_knit", "acom:dimensions": ["category"]}),
+        json!({"valid_from": "2026-11-05", "valid_through": "2026-11-05",
+               "promotion_id": "promo_autumn_knit", "acom:metrics": ["return_rate"]}),
+    ] {
+        let e = GetSalesOverview.read(&cx, input(bad)).await.unwrap_err();
+        assert_code(&e, "dimension_not_supported", "get_sales_overview");
+    }
 
     let e = GetCustomerOverview
         .read(
@@ -487,6 +498,79 @@ async fn sales_and_customer_overviews_on_the_demo_store() {
         .map(|i| i["value"].as_i64().unwrap())
         .sum();
     assert_eq!(by_tier, 201, "every order lands in one tier (or none)");
+
+    // Every promotion's sales, named, and the lines no promotion priced; one promotion alone
+    // gives the same figures as its row.
+    let promotions = GetSalesOverview
+        .read(
+            &cx,
+            input(
+                json!({"valid_from": "2026-11-01", "valid_through": "2026-11-05",
+                         "acom:dimensions": ["promotion"]}),
+            ),
+        )
+        .await
+        .unwrap();
+    let of = |out: &Value, id: Option<&str>, m: &str| {
+        out["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["acom:dimension"]["promotion_id"].as_str() == id && i["acom:metric"] == m)
+            .cloned()
+            .unwrap_or_else(|| panic!("{id:?} {m} in {out}"))
+    };
+    let knit = of(&promotions, Some("promo_autumn_knit"), "revenue");
+    assert_eq!(knit["acom:dimension"]["name"], "Autumn knitwear 15%");
+    assert_eq!(
+        of(&promotions, None, "revenue")["acom:dimension"]["name"],
+        "No promotion"
+    );
+    assert!(
+        promotions["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|i| i["acom:metric"] != "return_rate"),
+        "rates are not split by lines"
+    );
+    let one = GetSalesOverview
+        .read(
+            &cx,
+            input(
+                json!({"valid_from": "2026-11-01", "valid_through": "2026-11-05",
+                         "promotion_id": "promo_autumn_knit"}),
+            ),
+        )
+        .await
+        .unwrap();
+    for m in ["revenue", "order_count", "units", "discount"] {
+        assert_eq!(
+            of(&one, Some("promo_autumn_knit"), m)["value"],
+            of(&promotions, Some("promo_autumn_knit"), m)["value"],
+            "{m}"
+        );
+    }
+    assert!(
+        of(&one, Some("promo_autumn_knit"), "units")["value"]
+            .as_i64()
+            .unwrap()
+            > 0
+    );
+    let none = GetSalesOverview
+        .read(
+            &cx,
+            input(
+                json!({"valid_from": "2026-11-01", "valid_through": "2026-11-05",
+                         "promotion_id": "promo_denim_bundle"}),
+            ),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        of(&none, Some("promo_denim_bundle"), "order_count")["value"],
+        0
+    );
 
     let members = GetCustomerOverview
         .read(

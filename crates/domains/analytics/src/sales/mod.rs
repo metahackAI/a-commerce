@@ -4,7 +4,9 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use crate::repo::Split;
+use serde_json::{Value, json};
+
+use crate::repo::{Bucket, Split};
 
 mod explain_sales_change;
 mod get_sales_overview;
@@ -22,6 +24,9 @@ pub enum Dimension {
     Category,
     /// The tier the shopper is in now; guest orders have no tier.
     MemberTier,
+    /// The promotion that priced the line (line amounts, without shipping); lines no promotion
+    /// priced have none.
+    Promotion,
 }
 
 impl Dimension {
@@ -29,13 +34,34 @@ impl Dimension {
         match self {
             Self::Category => Split::Category,
             Self::MemberTier => Split::MemberTier,
+            Self::Promotion => Split::Promotion,
         }
+    }
+
+    /// Whether the figures come from order lines (no cancellations or returns there).
+    fn by_line(self) -> bool {
+        matches!(self, Self::Category | Self::Promotion)
+    }
+
+    /// The bucket's value of this dimension, with its name where it has one.
+    fn label(self, b: &Bucket) -> Value {
+        let mut v = json!({self.key(): b.dimension});
+        if self == Self::Promotion {
+            // The lines no promotion priced are one row too; named so it is not read as the total.
+            v["name"] = json!(
+                b.dimension_name
+                    .as_deref()
+                    .or(b.dimension.is_none().then_some("No promotion"))
+            );
+        }
+        v
     }
 
     fn key(self) -> &'static str {
         match self {
             Self::Category => "category_id",
             Self::MemberTier => "member_tier",
+            Self::Promotion => "promotion_id",
         }
     }
 }
