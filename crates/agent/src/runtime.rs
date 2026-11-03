@@ -775,6 +775,8 @@ struct Turn<'r> {
     history: Vec<StepRecord>,
     /// Rows of blocks shown earlier that steps used this turn (`blk_…`).
     sources: Vec<StepRecord>,
+    /// What the models were given this turn, so an id a model writes can be traced to it.
+    shown_to_models: String,
     draft: Option<Draft>,
     view: Option<ChangeSetView>,
     blocks: Vec<Block>,
@@ -964,6 +966,7 @@ impl<'r> Turn<'r> {
             plan: None,
             history: Vec::new(),
             sources: Vec::new(),
+            shown_to_models: String::new(),
             draft: None,
             view: None,
             blocks: Vec::new(),
@@ -1212,6 +1215,7 @@ impl<'r> Turn<'r> {
         let mut last = String::from("no model answered");
         // Whether every model tried was down (silent, unreachable, failing), not just wrong.
         let mut all_down = true;
+        self.note_shown(&req);
         for model in self.models_for(prefer) {
             if self.usage.len() as u32 >= self.limits.model_calls {
                 return Err(Stop(format!(
@@ -1624,6 +1628,42 @@ impl<'r> Turn<'r> {
         self.rt.profiles.runtime.context.result_chars
     }
 
+    /// Keeps what a model call is given (its messages and the schema it answers in).
+    fn note_shown(&mut self, req: &ChatRequest) {
+        for m in &req.messages {
+            self.shown_to_models.push_str(&m.content);
+            self.shown_to_models.push('\n');
+        }
+        if let Some(o) = &req.output {
+            self.shown_to_models.push_str(&o.schema.to_string());
+        }
+    }
+
+    /// Everything an id may honestly come from this turn: what the models were given, the full
+    /// results, the request, what the person pointed at and the blocks shown earlier.
+    fn seen_text(&self) -> String {
+        let mut seen = format!("{}\n{}\n", self.shown_to_models, self.text);
+        for r in self.history.iter().chain(self.sources.iter()) {
+            seen.push_str(&r.input.to_string());
+            if let Some(o) = &r.output {
+                seen.push_str(&o.to_string());
+            }
+            for vs in r.slots.values() {
+                seen.push_str(&Value::Array(vs.clone()).to_string());
+            }
+        }
+        for vs in self.pointed.values() {
+            seen.push_str(&vs.join(" "));
+        }
+        for t in &self.ctx.turns {
+            seen.push_str(&Value::Array(t.blocks.clone()).to_string());
+        }
+        if let Some(cs) = self.open_change_set() {
+            seen.push_str(&cs.summary().to_string());
+        }
+        seen
+    }
+
     fn done_summaries(&self) -> Vec<Value> {
         self.history
             .iter()
@@ -1934,10 +1974,21 @@ impl<'r> Turn<'r> {
                 .each
                 .clone()
                 .or_else(|| executor::implied_each(step, &tool, &view));
+            // An opaque id the plan made up is taken out, so binding fills it from the steps it
+            // uses or it is asked for, instead of calling with an id that names nothing.
+            let mut step = step.clone();
+            let made_up =
+                executor::unseen_ids(&mut step.args, &tool.input_schema, &self.seen_text(), "");
+            let step = &step;
             let result = match &each {
                 Some(source) => self.run_each(plan, step, &tool, source, &view).await,
                 None => {
                     let mut bound = executor::bind(step, &tool, &view, &order, &self.pointed);
+                    bound.notes.extend(
+                        made_up
+                            .iter()
+                            .map(|(at, id)| format!("{at}: {id} is in nothing read or said")),
+                    );
                     let sources: Vec<&StepRecord> = step
                         .uses
                         .iter()
@@ -2063,8 +2114,16 @@ impl<'r> Turn<'r> {
         repaired.missing.append(&mut self.undecided);
         let mut asked = Vec::new();
         if !repaired.is_valid()
-            && let Some(fixed) = self.ask_arguments(tool, &repaired).await
+            && let Some(mut fixed) = self.ask_arguments(tool, &repaired).await
         {
+            // What it fills must come from something read or said: an id it made up names
+            // nothing, and planning again with the reason beats calling with it.
+            let seen = self.seen_text();
+            for (at, id) in executor::unseen_ids(&mut fixed.value, &tool.input_schema, &seen, "") {
+                fixed.errors.push(format!(
+                    "{at}: {id} is not an id any result, the request or the screen shows; read it first"
+                ));
+            }
             repaired = fixed;
             // The arguments model answers with the whole schema and fills what nobody asked
             // for, a yes/no filter included: left out again on the storefront.

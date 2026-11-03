@@ -32,7 +32,7 @@ pub struct PrepareOrderInput {
     #[schemars(example = &"saved")]
     pub delivery_mode: DeliveryMode,
     /// A saved address (`get_my_profile`, `list_addresses`). Needed with `saved`.
-    #[schemars(regex(pattern = r"^adr_[a-z0-9_]+$"), example = &"adr_home")]
+    #[schemars(regex(pattern = r"^adr_[a-z0-9_]+$"), example = &"adr_home", extend("x-slot" = "address_id"))]
     pub delivery_address_id: Option<String>,
     /// The address for this order. Needed with `one_time`.
     #[schemars(example = json!({"name": "Jamie", "street_address": "12 Harbor St, Apt 3",
@@ -58,7 +58,7 @@ impl Operation for PrepareOrder {
         method: Method::Post,
         path: "/v1/sales/orders/prepare",
         summary: "Prepare an order from the caller's own cart for the checkout card: lines, discounts, shipping, total, delivery and payment, re-checked by the server. Preview only; only the shopper's Place order button orders.",
-        consumes: &[Slot::one("cart_id")],
+        consumes: &[Slot::one("cart_id"), Slot::one("address_id")],
         produces: &[Slot::one("preview_id")],
         checks: &[
             "checkout_validation.common_payment_method_exists",

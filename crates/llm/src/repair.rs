@@ -448,6 +448,18 @@ fn is_suffix_word(s: &str) -> bool {
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
 }
 
+/// Text that only holds a place: dots or an ellipsis alone, or a description in angle brackets
+/// (`<recipient name>`; markup like `<p>Hi</p>` is text).
+fn is_placeholder(s: &str) -> bool {
+    let t = s.trim();
+    let dots = !t.is_empty() && t.chars().all(|c| c == '.' || c == '…') && t != ".";
+    let described = t
+        .strip_prefix('<')
+        .and_then(|r| r.strip_suffix('>'))
+        .is_some_and(|inner| !inner.trim().is_empty() && !inner.contains(['<', '>', '/']));
+    dots || described
+}
+
 fn fix_string(
     v: &Value,
     schema: &Value,
@@ -473,6 +485,15 @@ fn fix_string(
     // `$item[n].slot`: what an earlier change-set item will produce, bound when the set runs.
     if raw.starts_with("$item[") {
         return Some(Value::String(raw));
+    }
+
+    // A placeholder the model left (`...`, `<recipient name>`) says nothing: sent as it is, it
+    // would put "..." on an order as the recipient.
+    if is_placeholder(&raw) {
+        out.errors.push(format!(
+            "{path} needs a real value; {raw:?} is a placeholder."
+        ));
+        return None;
     }
 
     if let Some(Value::Array(allowed)) = schema.get("enum") {
@@ -691,6 +712,26 @@ mod tests {
             time,
             currency: "USD".into(),
         }
+    }
+
+    #[test]
+    fn a_placeholder_is_not_a_value() {
+        let schema = json!({"type": "object", "additionalProperties": false, "required": ["recipient_name"],
+            "properties": {"recipient_name": {"type": "string", "description": "Who."},
+                           "card_message": {"type": "string", "description": "Note."}}});
+        for p in ["...", "…", "<recipient name>"] {
+            let r = repair(&json!({"recipient_name": p}), &schema, &env());
+            assert!(!r.is_valid(), "{p}: {:?}", r.value);
+            assert!(r.errors[0].contains("placeholder"), "{:?}", r.errors);
+        }
+        let ok = repair(
+            &json!({"recipient_name": "Sam", "card_message": "Happy birthday..."}),
+            &schema,
+            &env(),
+        );
+        assert!(ok.is_valid(), "{:?}", ok.errors);
+        let markup = repair(&json!({"recipient_name": "<p>Sam</p>"}), &schema, &env());
+        assert!(markup.is_valid(), "{:?}", markup.errors);
     }
 
     /// A trimmed `set_sale_prices` input schema, as the manifest serves it.

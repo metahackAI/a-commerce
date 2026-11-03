@@ -69,10 +69,38 @@ fn values_in(output: &Value, slot: &SlotSpec, primary: bool) -> Vec<Value> {
                 }
             } else if let Some(v) = pick(output) {
                 out.push(v);
+            } else if let Some(list) = listed(output, &slot.name) {
+                // A record that lists its own (`addresses` on a profile for `address_id`).
+                for i in list {
+                    if let Some(v) = i
+                        .get(&slot.name)
+                        .or_else(|| i.get("id"))
+                        .filter(|v| v.is_string())
+                    {
+                        push_unique(&mut out, v.clone());
+                    }
+                }
             }
         }
     }
     out
+}
+
+/// The list a record keeps of what an id slot names: `addresses` for `address_id`.
+fn listed<'a>(output: &'a Value, slot: &str) -> Option<&'a Vec<Value>> {
+    let entity = slot.strip_suffix("_id")?;
+    let plurals = [
+        format!("{entity}s"),
+        format!("{entity}es"),
+        entity
+            .strip_suffix('y')
+            .map(|e| format!("{e}ies"))
+            .unwrap_or_default(),
+    ];
+    plurals
+        .iter()
+        .filter(|p| !p.is_empty())
+        .find_map(|p| output.get(p).and_then(Value::as_array))
 }
 
 /// Slots a read produced.
@@ -172,6 +200,23 @@ fn is_stand_in(v: &Value, field: &str, slot: &str, schema: Option<&Value>) -> bo
     }
 }
 
+/// An object that lacks one of its own required parts (`{"value": null, "currency": "USD"}` for a
+/// total): written as a shape, not a value, so it is filled like a missing field.
+fn is_hollow(v: Option<&Value>, schema: Option<&Value>) -> bool {
+    let (Some(Value::Object(o)), Some(required)) = (
+        v,
+        schema
+            .and_then(|s| s.get("required"))
+            .and_then(Value::as_array),
+    ) else {
+        return false;
+    };
+    required
+        .iter()
+        .filter_map(Value::as_str)
+        .any(|k| is_empty(o.get(k)))
+}
+
 fn is_empty(v: Option<&Value>) -> bool {
     match v {
         None | Some(Value::Null) => true,
@@ -213,6 +258,184 @@ fn referenced(v: &Value, field: &str, used: &[&StepRecord]) -> Option<(String, V
     Some((r.step.clone(), at.clone()))
 }
 
+/// Whether an id is opaque: its part after the prefix has a digit (`ord_01m6…`, `ord_12345`).
+/// Such an id cannot come from words the way `tier_vip` or `cus_jamie` can.
+fn is_opaque(id: &str, prefix: &str) -> bool {
+    id.strip_prefix(prefix)
+        .and_then(|rest| rest.strip_prefix('_'))
+        .is_some_and(|rest| rest.bytes().any(|b| b.is_ascii_digit()))
+}
+
+/// Opaque ids a model wrote that nothing it was shown holds (`seen`: what the models read this
+/// turn, the results, the request and the screen): made up, so they are taken out (a field, or
+/// an item of a list) and each is returned with where it was. Binding then fills the field from
+/// the steps it uses, or it is missing and asked for, instead of calling with an id that names
+/// nothing.
+pub fn unseen_ids(v: &mut Value, schema: &Value, seen: &str, path: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    let made_up = |s: &str, schema: &Value| {
+        schema
+            .get("pattern")
+            .and_then(Value::as_str)
+            .and_then(acom_core::handle::id_prefix)
+            .is_some_and(|p| is_opaque(s, p) && !seen.contains(s))
+    };
+    match v {
+        Value::Object(o) => {
+            let Some(props) = schema.get("properties").and_then(Value::as_object) else {
+                return out;
+            };
+            let keys: Vec<String> = o.keys().cloned().collect();
+            for k in keys {
+                let Some(ps) = props.get(&k) else { continue };
+                let at = if path.is_empty() {
+                    k.clone()
+                } else {
+                    format!("{path}.{k}")
+                };
+                if let Some(s) = o[&k].as_str()
+                    && made_up(s, ps)
+                {
+                    out.push((at, s.to_owned()));
+                    o.remove(&k);
+                    continue;
+                }
+                if let Some(inner) = o.get_mut(&k) {
+                    out.extend(unseen_ids(inner, ps, seen, &at));
+                }
+            }
+        }
+        Value::Array(items) => {
+            let Some(is) = schema.get("items") else {
+                return out;
+            };
+            items.retain(|x| match x.as_str() {
+                Some(s) if made_up(s, is) => {
+                    out.push((format!("{path}[]"), s.to_owned()));
+                    false
+                }
+                _ => true,
+            });
+            for (n, x) in items.iter_mut().enumerate() {
+                out.extend(unseen_ids(x, is, seen, &format!("{path}[{n}]")));
+            }
+        }
+        _ => {}
+    }
+    out
+}
+
+/// The one row of a search by words whose name is those words, whole (`query: "Packable
+/// windbreaker"` and the product of that name): its value for the slot.
+fn named_by_query(r: &StepRecord, slot: &str, values: &[Value]) -> Option<Value> {
+    let words = |t: &str| -> Vec<String> {
+        t.split(|c: char| !c.is_alphanumeric())
+            .filter(|w| !w.is_empty())
+            .map(str::to_lowercase)
+            .collect()
+    };
+    let query = words(r.input.get("query")?.as_str()?);
+    if query.is_empty() {
+        return None;
+    }
+    let mut found: Vec<Value> = Vec::new();
+    for row in r.output.as_ref().map(rows).unwrap_or_default() {
+        let Some(id) = row
+            .get(slot)
+            .or_else(|| row.get("id"))
+            .filter(|v| values.contains(v))
+        else {
+            continue;
+        };
+        if row
+            .get("name")
+            .and_then(Value::as_str)
+            .is_some_and(|n| words(n) == query)
+            && !found.contains(id)
+        {
+            found.push(id.clone());
+        }
+    }
+    (found.len() == 1).then(|| found.remove(0))
+}
+
+/// Whether a read came back with no rows (a search that found no one).
+fn found_nothing(r: &StepRecord) -> bool {
+    r.kind == ToolKind::Read
+        && r.output
+            .as_ref()
+            .is_some_and(|o| o.get("items").is_some() && rows(o).is_empty())
+}
+
+/// Id fields the plan filled with the name of a step it uses (`"customer_id": "find_jamie"`
+/// with `uses: ["find_jamie"]`): that step's ids of the field's kind, also where no slot of the
+/// tool names the field. Left alone, the name would be read as an id and given the id's prefix
+/// (`cus_find_jamie`). A step that found nothing leaves nothing to build on: [`Bound::empty`],
+/// so the read is not run unfiltered and no model is asked to make an id up.
+fn step_named(
+    input: &mut Map<String, Value>,
+    tool: &ToolSpec,
+    used: &[&StepRecord],
+    notes: &mut Vec<String>,
+    empty: &mut Option<String>,
+    undecided: &mut Vec<String>,
+) {
+    let fields: Vec<String> = input.keys().cloned().collect();
+    for field in fields {
+        let Some(name) = input[&field].as_str().map(str::trim) else {
+            continue;
+        };
+        let name = name
+            .strip_prefix("uses.")
+            .or_else(|| name.strip_prefix("uses:"))
+            .unwrap_or(name);
+        let Some(r) = used.iter().find(|r| r.step == name) else {
+            continue;
+        };
+        let schema = tool.properties().and_then(|p| p.get(&field));
+        let Some(prefix) = schema.and_then(id_prefix) else {
+            continue;
+        };
+        let source = r.step.clone();
+        input.remove(&field);
+        if found_nothing(r) {
+            notes.push(format!("{field}: {source} found nothing"));
+            empty.get_or_insert_with(|| format!("{source} found nothing for {field}"));
+            continue;
+        }
+        let kind = format!("{prefix}_");
+        let values = r.slots.get(&field).cloned().or_else(|| {
+            r.slots
+                .values()
+                .find(|vs| {
+                    !vs.is_empty()
+                        && vs
+                            .iter()
+                            .all(|v| v.as_str().is_some_and(|s| s.starts_with(&kind)))
+                })
+                .cloned()
+        });
+        let Some(values) = values.filter(|v| !v.is_empty()) else {
+            notes.push(format!("{field}: {source} has no {kind} id"));
+            continue;
+        };
+        let is_list = schema.and_then(|s| s.get("type")).and_then(Value::as_str) == Some("array");
+        if is_list {
+            notes.push(format!("{field}: {} value(s) from {source}", values.len()));
+            input.insert(field, Value::Array(values));
+        } else if values.len() == 1 {
+            notes.push(format!("{field}: from {source}'s result"));
+            input.insert(field, values[0].clone());
+        } else {
+            notes.push(format!(
+                "{field}: {source} has {} candidates; which one is not said",
+                values.len()
+            ));
+            undecided.push(field);
+        }
+    }
+}
+
 /// Fills a step's consumed slots and missing required fields from earlier steps.
 ///
 /// Sources, in order: the steps it `uses`, the ids the person pointed at, then (only for a step
@@ -236,9 +459,18 @@ pub fn bind(
         _ => Map::new(),
     };
     let mut notes = Vec::new();
-    let mut undecided = Vec::new();
     let used: Vec<&StepRecord> = step.uses.iter().filter_map(|u| done.get(u)).collect();
     let mut empty = None;
+    let mut undecided_refs = Vec::new();
+    step_named(
+        &mut input,
+        tool,
+        &used,
+        &mut notes,
+        &mut empty,
+        &mut undecided_refs,
+    );
+    let mut undecided = undecided_refs;
     let required = tool.required();
     let mut taken = |field: &str, source: &str, v: &Value, notes: &mut Vec<String>| {
         notes.push(format!("{field}: from {source}'s result"));
@@ -323,6 +555,17 @@ pub fn bind(
         let by_words = done
             .get(&source)
             .is_none_or(|r| !is_empty(r.input.get("query")));
+        // The search's words are one row's whole name ("Packable windbreaker"): that row.
+        if !is_list
+            && values.len() > 1
+            && let Some(v) = done
+                .get(&source)
+                .and_then(|r| named_by_query(r, &slot.name, &values))
+        {
+            notes.push(format!("{field}: the one {source} found by its name"));
+            input.insert(field, v);
+            continue;
+        }
         if !is_list && values.len() > 1 && (stand_in || !by_words) {
             notes.push(format!(
                 "{field}: {source} has {} candidates; which one is not said",
@@ -397,7 +640,8 @@ pub fn bind(
     }
 
     for field in tool.required() {
-        if !is_empty(input.get(field)) {
+        let schema = tool.properties().and_then(|p| p.get(field));
+        if !is_empty(input.get(field)) && !is_hollow(input.get(field), schema) {
             continue;
         }
         // `client_total` may take a result's `total`; an id never takes another entity's `id`.
@@ -416,6 +660,23 @@ pub fn bind(
             taken(field, &source, &v, &mut notes);
             input.insert(field.to_owned(), v);
         }
+    }
+    // A required id still missing where every step it builds on found nothing: there is nothing
+    // to act on, and a model asked for the id could only make one up (`ord_12345`).
+    if empty.is_none()
+        && !used.is_empty()
+        && used.iter().all(|r| found_nothing(r))
+        && let Some(field) = required.iter().find(|f| {
+            is_empty(input.get(**f))
+                && tool
+                    .properties()
+                    .and_then(|p| p.get(**f))
+                    .and_then(id_prefix)
+                    .is_some()
+        })
+    {
+        let sources: Vec<&str> = used.iter().map(|r| r.step.as_str()).collect();
+        empty = Some(format!("{} found nothing for {field}", sources.join(", ")));
     }
     // An empty text for a field the tool can do without filters by nothing: every member
     // with the tier "" is no member. Left out, the tool does what it does without it.
@@ -744,6 +1005,180 @@ mod tests {
         assert_eq!(coupon.input["promotion_id"], "$item[1].promotion_id");
     }
 
+    fn member_order_tools() -> (ToolSpec, ToolSpec, ToolSpec) {
+        let tool = |name, kind, consumes: Value, produces: Value, props: Value, required: Value| {
+            serde_json::from_value::<ToolSpec>(crate::tools::fixtures::tool(
+                name,
+                "sales.order.x",
+                kind,
+                "A tool.",
+                consumes,
+                produces,
+                props,
+                required,
+            ))
+            .unwrap_or_else(|e| panic!("{e}"))
+        };
+        let members = tool(
+            "search_members",
+            "read",
+            json!([]),
+            json!([{"name": "customer_id", "many": true}]),
+            json!({"query": {"type": "string", "description": "Words."}}),
+            json!([]),
+        );
+        // A filter no slot names: the plan says where its id comes from by the step's name.
+        let orders = tool(
+            "search_orders",
+            "read",
+            json!([]),
+            json!([{"name": "order_id", "many": true}]),
+            json!({"customer_id": {"type": "string", "pattern": "^cus_[a-z0-9_]+$", "description": "Whose."},
+                   "limit": {"type": "integer", "description": "Max."}}),
+            json!([]),
+        );
+        let order = tool(
+            "get_order",
+            "read",
+            json!([{"name": "order_id", "many": false}]),
+            json!([]),
+            json!({"order_id": {"type": "string", "pattern": "^ord_[a-z0-9_]+$", "description": "Which."}}),
+            json!(["order_id"]),
+        );
+        (members, orders, order)
+    }
+
+    #[test]
+    fn a_step_named_where_an_id_goes_gives_its_id_and_one_that_found_nothing_stops_the_chain() {
+        let (members, orders, order) = member_order_tools();
+        let mut found = record(
+            "find_jamie",
+            &members,
+            json!({"items": [{"id": "cus_jamie", "name": "Jamie"}], "total": 1}),
+        );
+        found.input = json!({"query": "Jamie"});
+        let done = BTreeMap::from([("find_jamie".to_owned(), found)]);
+        let latest = step(
+            "latest_order",
+            "search_orders",
+            json!({"customer_id": "find_jamie", "limit": 1}),
+            &["find_jamie"],
+        );
+        let b = bind(
+            &latest,
+            &orders,
+            &done,
+            &["find_jamie".into()],
+            &BTreeMap::new(),
+        );
+        assert_eq!(b.input["customer_id"], "cus_jamie", "{:?}", b.notes);
+        assert!(b.empty.is_none());
+
+        // Nobody found: the orders are not read unfiltered, and the order after them is not
+        // left for a model to make up.
+        let none = record("find_jamie", &members, json!({"items": [], "total": 0}));
+        let done = BTreeMap::from([("find_jamie".to_owned(), none)]);
+        let b = bind(
+            &latest,
+            &orders,
+            &done,
+            &["find_jamie".into()],
+            &BTreeMap::new(),
+        );
+        assert!(b.input.get("customer_id").is_none(), "{}", b.input);
+        assert!(
+            b.empty.as_deref().is_some_and(|e| e.contains("find_jamie")),
+            "{:?}",
+            b.empty
+        );
+
+        let no_orders = record("latest_order", &orders, json!({"items": [], "total": 0}));
+        let done = BTreeMap::from([("latest_order".to_owned(), no_orders)]);
+        for written in ["latest_order", "order_id"] {
+            let detail = step(
+                "detail",
+                "get_order",
+                json!({"order_id": written}),
+                &["latest_order"],
+            );
+            let b = bind(
+                &detail,
+                &order,
+                &done,
+                &["latest_order".into()],
+                &BTreeMap::new(),
+            );
+            assert!(b.input.get("order_id").is_none(), "{written}: {}", b.input);
+            assert!(b.empty.is_some(), "{written}: {:?}", b.notes);
+        }
+    }
+
+    #[test]
+    fn a_search_whose_words_are_one_products_name_gives_that_product() {
+        let m = manifest();
+        let search_tool = get(&m, "search_products");
+        let mut search = record(
+            "s2",
+            search_tool,
+            json!({"items": [{"id": "prd_windbreaker", "name": "Packable windbreaker"},
+                             {"id": "prd_rain_shell", "name": "Packable rain shell"},
+                             {"id": "prd_windbreaker_kids", "name": "Packable windbreaker for kids"}], "total": 3}),
+        );
+        search.input = json!({"query": "packable  Windbreaker"});
+        let done = BTreeMap::from([("s2".to_owned(), search)]);
+        let cart: ToolSpec = serde_json::from_value(crate::tools::fixtures::tool(
+            "add_to_cart", "sales.cart.add", "write", "Add to the cart.",
+            json!([{"name": "product_id", "many": false}]), json!([]),
+            json!({"product_id": {"type": "string", "pattern": "^prd_[a-z0-9_]+$", "description": "Which."}}),
+            json!([]),
+        ))
+        .unwrap_or_else(|e| panic!("{e}"));
+        let b = bind(
+            &step(
+                "s3",
+                "add_to_cart",
+                json!({"product_id": "prd_..."}),
+                &["s2"],
+            ),
+            &cart,
+            &done,
+            &["s2".into()],
+            &BTreeMap::new(),
+        );
+        assert_eq!(b.input["product_id"], "prd_windbreaker", "{:?}", b.notes);
+        assert!(b.undecided.is_empty());
+    }
+
+    #[test]
+    fn a_record_that_lists_its_own_gives_their_ids() {
+        let slot: SlotSpec = serde_json::from_value(json!({"name": "address_id", "many": true}))
+            .unwrap_or_else(|e| panic!("{e}"));
+        let profile =
+            json!({"id": "cus_jamie", "addresses": [{"id": "adr_home"}, {"id": "adr_work"}]});
+        assert_eq!(
+            values_in(&profile, &slot, false),
+            vec![json!("adr_home"), json!("adr_work")]
+        );
+        assert!(values_in(&json!({"id": "cus_jamie"}), &slot, false).is_empty());
+    }
+
+    #[test]
+    fn opaque_ids_nothing_showed_are_taken_out_and_word_ids_are_kept() {
+        let (_, orders, order) = member_order_tools();
+        let seen = r#"{"items":[{"id":"ord_01m6gca7b028fw0nq7gdfg2kxq"}]}"#;
+        let mut made_up = json!({"order_id": "ord_12345"});
+        let out = unseen_ids(&mut made_up, &order.input_schema, seen, "");
+        assert_eq!(out, vec![("order_id".to_owned(), "ord_12345".to_owned())]);
+        assert_eq!(made_up, json!({}));
+
+        let mut real = json!({"order_id": "ord_01m6gca7b028fw0nq7gdfg2kxq"});
+        assert!(unseen_ids(&mut real, &order.input_schema, seen, "").is_empty());
+        // An id made of words may come from the words of the request.
+        let mut words = json!({"customer_id": "cus_jamie", "limit": 1});
+        assert!(unseen_ids(&mut words, &orders.input_schema, seen, "").is_empty());
+        assert_eq!(words["customer_id"], "cus_jamie");
+    }
+
     #[test]
     fn sections_left_empty_next_to_a_search_are_left_to_the_worker() {
         let m = manifest();
@@ -1021,6 +1456,25 @@ mod tests {
         );
         assert_eq!(b.input["client_total"]["currency"], "USD");
         assert!(b.notes.iter().any(|n| n.contains("client_total")));
+        // Written as a shape without its amount: the cart's total, the same as left out.
+        let b = bind(
+            &step(
+                "s2",
+                "prepare_order",
+                json!({"delivery_mode": "saved", "client_total": {"value": null, "currency": "USD"}}),
+                &["s1"],
+            ),
+            get(&m, "prepare_order"),
+            &done,
+            &["s1".into()],
+            &BTreeMap::new(),
+        );
+        assert_eq!(
+            b.input["client_total"]["value"],
+            json!(71.20),
+            "{:?}",
+            b.notes
+        );
     }
 
     fn with_nested_slot() -> ToolSpec {
