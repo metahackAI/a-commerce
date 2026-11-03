@@ -19,10 +19,16 @@ async function cookieHeader(): Promise<string> {
     .join('; ');
 }
 
+/**
+ * Which side of the store a server read is for. The gateway reads it as `x-acom-surface`: a
+ * signed-in operator on the storefront shops as their browser session.
+ */
+export type ServerSurface = 'fo' | 'bo';
+
 /** A read from a Server Component: `serverApi('/v1/catalog/product-groups/prd_x')`. */
-export async function serverApi<T>(path: string, query?: Query): Promise<T> {
+export async function serverApi<T>(path: string, query?: Query, surface: ServerSurface = 'bo'): Promise<T> {
   const res = await fetch(`${gateway()}/api${path}${toQuery(query)}`, {
-    headers: {accept: 'application/json', cookie: await cookieHeader()},
+    headers: {accept: 'application/json', cookie: await cookieHeader(), 'x-acom-surface': surface},
     cache: 'no-store',
   });
   const text = await res.text();
@@ -43,7 +49,7 @@ export async function serverApi<T>(path: string, query?: Query): Promise<T> {
  * A read whose input is a body (the analytics reads are `POST` without side effects), from a
  * Server Component. The gateway checks CSRF on every POST, so the session's token goes along.
  */
-export async function serverPost<T>(path: string, body: unknown): Promise<T> {
+export async function serverPost<T>(path: string, body: unknown, surface: ServerSurface = 'bo'): Promise<T> {
   const jar = await cookies();
   const csrf = jar.get('acom_csrf')?.value;
   const res = await fetch(`${gateway()}/api${path}`, {
@@ -52,6 +58,7 @@ export async function serverPost<T>(path: string, body: unknown): Promise<T> {
       accept: 'application/json',
       'content-type': 'application/json',
       cookie: await cookieHeader(),
+      'x-acom-surface': surface,
       ...(csrf ? {'x-csrf-token': decodeURIComponent(csrf)} : {}),
     },
     body: JSON.stringify(body),

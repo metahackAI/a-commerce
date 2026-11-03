@@ -30,7 +30,7 @@ tables:
         - {name: packing, value: folds_flat, unit_text: null}
         - {name: warmth, value: light, unit_text: null}
         - {name: rain, value: false, unit_text: null}
-      image: "/media/products/prd_field_jacket-35ef739a.webp"  # Muse Image (muse-image-1.0), run 20261031-234459-named, response resp_6ae5fefa00309aaf357a4c58
+      image: "/media/products/prd_field_jacket-35ef739a.webp"  # Muse Image (muse-image-1.0), run 20261031-234459-named, response resp_6ae5fefa00309aaf357a4c58; other colors: run 20261101-003315-colors
       has_merchant_return_policy_id: mrp_standard
       release_date: "2026-04-02"
     - tenant_id: store_northwind
@@ -48,7 +48,7 @@ tables:
         - {name: packing, value: own_pocket, unit_text: null}
         - {name: warmth, value: wind_layer, unit_text: null}
         - {name: rain, value: true, unit_text: null}
-      image: "/media/products/prd_windbreaker-7f4a8e8c.webp"  # Muse Image (muse-image-1.0), run 20261031-234459-named, response resp_6ae5fef677ff100885c34e86
+      image: "/media/products/prd_windbreaker-7f4a8e8c.webp"  # Muse Image (muse-image-1.0), run 20261031-234459-named, response resp_6ae5fef677ff100885c34e86; other colors: run 20261101-003315-colors
       has_merchant_return_policy_id: mrp_standard
       release_date: "2026-03-12"
     - tenant_id: store_northwind
@@ -66,7 +66,7 @@ tables:
         - {name: packing, value: folds_flat, unit_text: null}
         - {name: warmth, value: light, unit_text: null}
         - {name: rain, value: false, unit_text: null}
-      image: "/media/products/prd_seersucker_overshirt-cc4cafc0.webp"  # Muse Image (muse-image-1.0), run 20261031-234459-named, response resp_6ae5ff0a359b2cc045244fd8
+      image: "/media/products/prd_seersucker_overshirt-cc4cafc0.webp"  # Muse Image (muse-image-1.0), run 20261031-234459-named, response resp_6ae5ff0a359b2cc045244fd8; other colors: run 20261101-003315-colors
       has_merchant_return_policy_id: mrp_standard
       release_date: "2026-05-06"
     - tenant_id: store_northwind
@@ -177,7 +177,7 @@ tables:
       material: Cashmere
       keywords: []
       additional_property: []
-      image: "/media/products/prd_cashmere_sweater-d7ff3b03.webp"  # Muse Image (muse-image-1.0), run 20261031-234459-named, response resp_6ae5ff47423ae2ce79e84c5a
+      image: "/media/products/prd_cashmere_sweater-d7ff3b03.webp"  # Muse Image (muse-image-1.0), run 20261031-234459-named, response resp_6ae5ff47423ae2ce79e84c5a; other colors: run 20261101-003315-colors
       has_merchant_return_policy_id: mrp_standard
       release_date: "2025-09-20"
     - tenant_id: store_northwind
@@ -290,61 +290,61 @@ tables:
     - {tenant_id: store_northwind, id: var_field_jacket_m_sand, product_group_id: prd_field_jacket, sku: fj-sand-m, name: "Linen blend field jacket, Sand, M", color: Sand, image: "/media/products/prd_field_jacket-35ef739a.webp", size: M, weight_value: 340.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_field_jacket_l_sand, product_group_id: prd_field_jacket, sku: fj-sand-l, name: "Linen blend field jacket, Sand, L", color: Sand, image: "/media/products/prd_field_jacket-35ef739a.webp", size: L, weight_value: 340.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_field_jacket_xl_sand, product_group_id: prd_field_jacket, sku: fj-sand-xl, name: "Linen blend field jacket, Sand, XL", color: Sand, image: "/media/products/prd_field_jacket-35ef739a.webp", size: XL, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_xs_olive, product_group_id: prd_field_jacket, sku: fj-olive-xs, name: "Linen blend field jacket, Olive, XS", color: Olive, image: "/media/garment/field-olive.svg", size: XS, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_s_olive, product_group_id: prd_field_jacket, sku: fj-olive-s, name: "Linen blend field jacket, Olive, S", color: Olive, image: "/media/garment/field-olive.svg", size: S, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_m_olive, product_group_id: prd_field_jacket, sku: fj-olive-m, name: "Linen blend field jacket, Olive, M", color: Olive, image: "/media/garment/field-olive.svg", size: M, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_l_olive, product_group_id: prd_field_jacket, sku: fj-olive-l, name: "Linen blend field jacket, Olive, L", color: Olive, image: "/media/garment/field-olive.svg", size: L, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_xl_olive, product_group_id: prd_field_jacket, sku: fj-olive-xl, name: "Linen blend field jacket, Olive, XL", color: Olive, image: "/media/garment/field-olive.svg", size: XL, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_xs_navy, product_group_id: prd_field_jacket, sku: fj-navy-xs, name: "Linen blend field jacket, Navy, XS", color: Navy, image: "/media/garment/field-navy.svg", size: XS, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_s_navy, product_group_id: prd_field_jacket, sku: fj-navy-s, name: "Linen blend field jacket, Navy, S", color: Navy, image: "/media/garment/field-navy.svg", size: S, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_m_navy, product_group_id: prd_field_jacket, sku: fj-navy-m, name: "Linen blend field jacket, Navy, M", color: Navy, image: "/media/garment/field-navy.svg", size: M, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_l_navy, product_group_id: prd_field_jacket, sku: fj-navy-l, name: "Linen blend field jacket, Navy, L", color: Navy, image: "/media/garment/field-navy.svg", size: L, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_xl_navy, product_group_id: prd_field_jacket, sku: fj-navy-xl, name: "Linen blend field jacket, Navy, XL", color: Navy, image: "/media/garment/field-navy.svg", size: XL, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_xs_stone, product_group_id: prd_field_jacket, sku: fj-stone-xs, name: "Linen blend field jacket, Stone, XS", color: Stone, image: "/media/garment/field-stone.svg", size: XS, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_s_stone, product_group_id: prd_field_jacket, sku: fj-stone-s, name: "Linen blend field jacket, Stone, S", color: Stone, image: "/media/garment/field-stone.svg", size: S, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_m_stone, product_group_id: prd_field_jacket, sku: fj-stone-m, name: "Linen blend field jacket, Stone, M", color: Stone, image: "/media/garment/field-stone.svg", size: M, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_l_stone, product_group_id: prd_field_jacket, sku: fj-stone-l, name: "Linen blend field jacket, Stone, L", color: Stone, image: "/media/garment/field-stone.svg", size: L, weight_value: 340.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_field_jacket_xl_stone, product_group_id: prd_field_jacket, sku: fj-stone-xl, name: "Linen blend field jacket, Stone, XL", color: Stone, image: "/media/garment/field-stone.svg", size: XL, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_xs_olive, product_group_id: prd_field_jacket, sku: fj-olive-xs, name: "Linen blend field jacket, Olive, XS", color: Olive, image: "/media/products/prd_field_jacket--olive-9fb2dcdc.webp", size: XS, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_s_olive, product_group_id: prd_field_jacket, sku: fj-olive-s, name: "Linen blend field jacket, Olive, S", color: Olive, image: "/media/products/prd_field_jacket--olive-9fb2dcdc.webp", size: S, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_m_olive, product_group_id: prd_field_jacket, sku: fj-olive-m, name: "Linen blend field jacket, Olive, M", color: Olive, image: "/media/products/prd_field_jacket--olive-9fb2dcdc.webp", size: M, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_l_olive, product_group_id: prd_field_jacket, sku: fj-olive-l, name: "Linen blend field jacket, Olive, L", color: Olive, image: "/media/products/prd_field_jacket--olive-9fb2dcdc.webp", size: L, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_xl_olive, product_group_id: prd_field_jacket, sku: fj-olive-xl, name: "Linen blend field jacket, Olive, XL", color: Olive, image: "/media/products/prd_field_jacket--olive-9fb2dcdc.webp", size: XL, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_xs_navy, product_group_id: prd_field_jacket, sku: fj-navy-xs, name: "Linen blend field jacket, Navy, XS", color: Navy, image: "/media/products/prd_field_jacket--navy-562a4498.webp", size: XS, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_s_navy, product_group_id: prd_field_jacket, sku: fj-navy-s, name: "Linen blend field jacket, Navy, S", color: Navy, image: "/media/products/prd_field_jacket--navy-562a4498.webp", size: S, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_m_navy, product_group_id: prd_field_jacket, sku: fj-navy-m, name: "Linen blend field jacket, Navy, M", color: Navy, image: "/media/products/prd_field_jacket--navy-562a4498.webp", size: M, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_l_navy, product_group_id: prd_field_jacket, sku: fj-navy-l, name: "Linen blend field jacket, Navy, L", color: Navy, image: "/media/products/prd_field_jacket--navy-562a4498.webp", size: L, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_xl_navy, product_group_id: prd_field_jacket, sku: fj-navy-xl, name: "Linen blend field jacket, Navy, XL", color: Navy, image: "/media/products/prd_field_jacket--navy-562a4498.webp", size: XL, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_xs_stone, product_group_id: prd_field_jacket, sku: fj-stone-xs, name: "Linen blend field jacket, Stone, XS", color: Stone, image: "/media/products/prd_field_jacket--stone-b2f8f4a6.webp", size: XS, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_s_stone, product_group_id: prd_field_jacket, sku: fj-stone-s, name: "Linen blend field jacket, Stone, S", color: Stone, image: "/media/products/prd_field_jacket--stone-b2f8f4a6.webp", size: S, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_m_stone, product_group_id: prd_field_jacket, sku: fj-stone-m, name: "Linen blend field jacket, Stone, M", color: Stone, image: "/media/products/prd_field_jacket--stone-b2f8f4a6.webp", size: M, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_l_stone, product_group_id: prd_field_jacket, sku: fj-stone-l, name: "Linen blend field jacket, Stone, L", color: Stone, image: "/media/products/prd_field_jacket--stone-b2f8f4a6.webp", size: L, weight_value: 340.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_field_jacket_xl_stone, product_group_id: prd_field_jacket, sku: fj-stone-xl, name: "Linen blend field jacket, Stone, XL", color: Stone, image: "/media/products/prd_field_jacket--stone-b2f8f4a6.webp", size: XL, weight_value: 340.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_windbreaker_xs_slate, product_group_id: prd_windbreaker, sku: wb-slate-xs, name: "Packable windbreaker, Slate, XS", color: Slate, image: "/media/products/prd_windbreaker-7f4a8e8c.webp", size: XS, weight_value: 190.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_windbreaker_s_slate, product_group_id: prd_windbreaker, sku: wb-slate-s, name: "Packable windbreaker, Slate, S", color: Slate, image: "/media/products/prd_windbreaker-7f4a8e8c.webp", size: S, weight_value: 190.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_windbreaker_m_slate, product_group_id: prd_windbreaker, sku: wb-slate-m, name: "Packable windbreaker, Slate, M", color: Slate, image: "/media/products/prd_windbreaker-7f4a8e8c.webp", size: M, weight_value: 190.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_windbreaker_l_slate, product_group_id: prd_windbreaker, sku: wb-slate-l, name: "Packable windbreaker, Slate, L", color: Slate, image: "/media/products/prd_windbreaker-7f4a8e8c.webp", size: L, weight_value: 190.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_windbreaker_xl_slate, product_group_id: prd_windbreaker, sku: wb-slate-xl, name: "Packable windbreaker, Slate, XL", color: Slate, image: "/media/products/prd_windbreaker-7f4a8e8c.webp", size: XL, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_xs_black, product_group_id: prd_windbreaker, sku: wb-black-xs, name: "Packable windbreaker, Black, XS", color: Black, image: "/media/garment/wind-black.svg", size: XS, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_s_black, product_group_id: prd_windbreaker, sku: wb-black-s, name: "Packable windbreaker, Black, S", color: Black, image: "/media/garment/wind-black.svg", size: S, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_m_black, product_group_id: prd_windbreaker, sku: wb-black-m, name: "Packable windbreaker, Black, M", color: Black, image: "/media/garment/wind-black.svg", size: M, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_l_black, product_group_id: prd_windbreaker, sku: wb-black-l, name: "Packable windbreaker, Black, L", color: Black, image: "/media/garment/wind-black.svg", size: L, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_xl_black, product_group_id: prd_windbreaker, sku: wb-black-xl, name: "Packable windbreaker, Black, XL", color: Black, image: "/media/garment/wind-black.svg", size: XL, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_xs_navy, product_group_id: prd_windbreaker, sku: wb-navy-xs, name: "Packable windbreaker, Navy, XS", color: Navy, image: "/media/garment/wind-navy.svg", size: XS, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_s_navy, product_group_id: prd_windbreaker, sku: wb-navy-s, name: "Packable windbreaker, Navy, S", color: Navy, image: "/media/garment/wind-navy.svg", size: S, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_m_navy, product_group_id: prd_windbreaker, sku: wb-navy-m, name: "Packable windbreaker, Navy, M", color: Navy, image: "/media/garment/wind-navy.svg", size: M, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_l_navy, product_group_id: prd_windbreaker, sku: wb-navy-l, name: "Packable windbreaker, Navy, L", color: Navy, image: "/media/garment/wind-navy.svg", size: L, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_xl_navy, product_group_id: prd_windbreaker, sku: wb-navy-xl, name: "Packable windbreaker, Navy, XL", color: Navy, image: "/media/garment/wind-navy.svg", size: XL, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_xs_olive, product_group_id: prd_windbreaker, sku: wb-olive-xs, name: "Packable windbreaker, Olive, XS", color: Olive, image: "/media/garment/wind-olive.svg", size: XS, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_s_olive, product_group_id: prd_windbreaker, sku: wb-olive-s, name: "Packable windbreaker, Olive, S", color: Olive, image: "/media/garment/wind-olive.svg", size: S, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_m_olive, product_group_id: prd_windbreaker, sku: wb-olive-m, name: "Packable windbreaker, Olive, M", color: Olive, image: "/media/garment/wind-olive.svg", size: M, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_l_olive, product_group_id: prd_windbreaker, sku: wb-olive-l, name: "Packable windbreaker, Olive, L", color: Olive, image: "/media/garment/wind-olive.svg", size: L, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_xl_olive, product_group_id: prd_windbreaker, sku: wb-olive-xl, name: "Packable windbreaker, Olive, XL", color: Olive, image: "/media/garment/wind-olive.svg", size: XL, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_xs_sand, product_group_id: prd_windbreaker, sku: wb-sand-xs, name: "Packable windbreaker, Sand, XS", color: Sand, image: "/media/garment/wind-sand.svg", size: XS, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_s_sand, product_group_id: prd_windbreaker, sku: wb-sand-s, name: "Packable windbreaker, Sand, S", color: Sand, image: "/media/garment/wind-sand.svg", size: S, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_m_sand, product_group_id: prd_windbreaker, sku: wb-sand-m, name: "Packable windbreaker, Sand, M", color: Sand, image: "/media/garment/wind-sand.svg", size: M, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_l_sand, product_group_id: prd_windbreaker, sku: wb-sand-l, name: "Packable windbreaker, Sand, L", color: Sand, image: "/media/garment/wind-sand.svg", size: L, weight_value: 190.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_windbreaker_xl_sand, product_group_id: prd_windbreaker, sku: wb-sand-xl, name: "Packable windbreaker, Sand, XL", color: Sand, image: "/media/garment/wind-sand.svg", size: XL, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_xs_black, product_group_id: prd_windbreaker, sku: wb-black-xs, name: "Packable windbreaker, Black, XS", color: Black, image: "/media/products/prd_windbreaker--black-cd4797ba.webp", size: XS, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_s_black, product_group_id: prd_windbreaker, sku: wb-black-s, name: "Packable windbreaker, Black, S", color: Black, image: "/media/products/prd_windbreaker--black-cd4797ba.webp", size: S, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_m_black, product_group_id: prd_windbreaker, sku: wb-black-m, name: "Packable windbreaker, Black, M", color: Black, image: "/media/products/prd_windbreaker--black-cd4797ba.webp", size: M, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_l_black, product_group_id: prd_windbreaker, sku: wb-black-l, name: "Packable windbreaker, Black, L", color: Black, image: "/media/products/prd_windbreaker--black-cd4797ba.webp", size: L, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_xl_black, product_group_id: prd_windbreaker, sku: wb-black-xl, name: "Packable windbreaker, Black, XL", color: Black, image: "/media/products/prd_windbreaker--black-cd4797ba.webp", size: XL, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_xs_navy, product_group_id: prd_windbreaker, sku: wb-navy-xs, name: "Packable windbreaker, Navy, XS", color: Navy, image: "/media/products/prd_windbreaker--navy-b446a2e9.webp", size: XS, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_s_navy, product_group_id: prd_windbreaker, sku: wb-navy-s, name: "Packable windbreaker, Navy, S", color: Navy, image: "/media/products/prd_windbreaker--navy-b446a2e9.webp", size: S, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_m_navy, product_group_id: prd_windbreaker, sku: wb-navy-m, name: "Packable windbreaker, Navy, M", color: Navy, image: "/media/products/prd_windbreaker--navy-b446a2e9.webp", size: M, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_l_navy, product_group_id: prd_windbreaker, sku: wb-navy-l, name: "Packable windbreaker, Navy, L", color: Navy, image: "/media/products/prd_windbreaker--navy-b446a2e9.webp", size: L, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_xl_navy, product_group_id: prd_windbreaker, sku: wb-navy-xl, name: "Packable windbreaker, Navy, XL", color: Navy, image: "/media/products/prd_windbreaker--navy-b446a2e9.webp", size: XL, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_xs_olive, product_group_id: prd_windbreaker, sku: wb-olive-xs, name: "Packable windbreaker, Olive, XS", color: Olive, image: "/media/products/prd_windbreaker--olive-da24e7f8.webp", size: XS, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_s_olive, product_group_id: prd_windbreaker, sku: wb-olive-s, name: "Packable windbreaker, Olive, S", color: Olive, image: "/media/products/prd_windbreaker--olive-da24e7f8.webp", size: S, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_m_olive, product_group_id: prd_windbreaker, sku: wb-olive-m, name: "Packable windbreaker, Olive, M", color: Olive, image: "/media/products/prd_windbreaker--olive-da24e7f8.webp", size: M, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_l_olive, product_group_id: prd_windbreaker, sku: wb-olive-l, name: "Packable windbreaker, Olive, L", color: Olive, image: "/media/products/prd_windbreaker--olive-da24e7f8.webp", size: L, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_xl_olive, product_group_id: prd_windbreaker, sku: wb-olive-xl, name: "Packable windbreaker, Olive, XL", color: Olive, image: "/media/products/prd_windbreaker--olive-da24e7f8.webp", size: XL, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_xs_sand, product_group_id: prd_windbreaker, sku: wb-sand-xs, name: "Packable windbreaker, Sand, XS", color: Sand, image: "/media/products/prd_windbreaker--sand-f0bf86bc.webp", size: XS, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_s_sand, product_group_id: prd_windbreaker, sku: wb-sand-s, name: "Packable windbreaker, Sand, S", color: Sand, image: "/media/products/prd_windbreaker--sand-f0bf86bc.webp", size: S, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_m_sand, product_group_id: prd_windbreaker, sku: wb-sand-m, name: "Packable windbreaker, Sand, M", color: Sand, image: "/media/products/prd_windbreaker--sand-f0bf86bc.webp", size: M, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_l_sand, product_group_id: prd_windbreaker, sku: wb-sand-l, name: "Packable windbreaker, Sand, L", color: Sand, image: "/media/products/prd_windbreaker--sand-f0bf86bc.webp", size: L, weight_value: 190.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_windbreaker_xl_sand, product_group_id: prd_windbreaker, sku: wb-sand-xl, name: "Packable windbreaker, Sand, XL", color: Sand, image: "/media/products/prd_windbreaker--sand-f0bf86bc.webp", size: XL, weight_value: 190.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_seersucker_overshirt_xs_clay, product_group_id: prd_seersucker_overshirt, sku: so-clay-xs, name: "Seersucker overshirt, Clay, XS", color: Clay, image: "/media/products/prd_seersucker_overshirt-cc4cafc0.webp", size: XS, weight_value: 360.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_seersucker_overshirt_s_clay, product_group_id: prd_seersucker_overshirt, sku: so-clay-s, name: "Seersucker overshirt, Clay, S", color: Clay, image: "/media/products/prd_seersucker_overshirt-cc4cafc0.webp", size: S, weight_value: 360.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_seersucker_overshirt_m_clay, product_group_id: prd_seersucker_overshirt, sku: so-clay-m, name: "Seersucker overshirt, Clay, M", color: Clay, image: "/media/products/prd_seersucker_overshirt-cc4cafc0.webp", size: M, weight_value: 360.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_seersucker_overshirt_l_clay, product_group_id: prd_seersucker_overshirt, sku: so-clay-l, name: "Seersucker overshirt, Clay, L", color: Clay, image: "/media/products/prd_seersucker_overshirt-cc4cafc0.webp", size: L, weight_value: 360.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_seersucker_overshirt_xl_clay, product_group_id: prd_seersucker_overshirt, sku: so-clay-xl, name: "Seersucker overshirt, Clay, XL", color: Clay, image: "/media/products/prd_seersucker_overshirt-cc4cafc0.webp", size: XL, weight_value: 360.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_seersucker_overshirt_xs_sky, product_group_id: prd_seersucker_overshirt, sku: so-sky-xs, name: "Seersucker overshirt, Sky, XS", color: Sky, image: "/media/garment/shirt-sky.svg", size: XS, weight_value: 360.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_seersucker_overshirt_s_sky, product_group_id: prd_seersucker_overshirt, sku: so-sky-s, name: "Seersucker overshirt, Sky, S", color: Sky, image: "/media/garment/shirt-sky.svg", size: S, weight_value: 360.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_seersucker_overshirt_m_sky, product_group_id: prd_seersucker_overshirt, sku: so-sky-m, name: "Seersucker overshirt, Sky, M", color: Sky, image: "/media/garment/shirt-sky.svg", size: M, weight_value: 360.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_seersucker_overshirt_l_sky, product_group_id: prd_seersucker_overshirt, sku: so-sky-l, name: "Seersucker overshirt, Sky, L", color: Sky, image: "/media/garment/shirt-sky.svg", size: L, weight_value: 360.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_seersucker_overshirt_xl_sky, product_group_id: prd_seersucker_overshirt, sku: so-sky-xl, name: "Seersucker overshirt, Sky, XL", color: Sky, image: "/media/garment/shirt-sky.svg", size: XL, weight_value: 360.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_seersucker_overshirt_xs_white, product_group_id: prd_seersucker_overshirt, sku: so-white-xs, name: "Seersucker overshirt, White, XS", color: White, image: "/media/garment/shirt-white.svg", size: XS, weight_value: 360.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_seersucker_overshirt_s_white, product_group_id: prd_seersucker_overshirt, sku: so-white-s, name: "Seersucker overshirt, White, S", color: White, image: "/media/garment/shirt-white.svg", size: S, weight_value: 360.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_seersucker_overshirt_m_white, product_group_id: prd_seersucker_overshirt, sku: so-white-m, name: "Seersucker overshirt, White, M", color: White, image: "/media/garment/shirt-white.svg", size: M, weight_value: 360.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_seersucker_overshirt_l_white, product_group_id: prd_seersucker_overshirt, sku: so-white-l, name: "Seersucker overshirt, White, L", color: White, image: "/media/garment/shirt-white.svg", size: L, weight_value: 360.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_seersucker_overshirt_xl_white, product_group_id: prd_seersucker_overshirt, sku: so-white-xl, name: "Seersucker overshirt, White, XL", color: White, image: "/media/garment/shirt-white.svg", size: XL, weight_value: 360.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_seersucker_overshirt_xs_sky, product_group_id: prd_seersucker_overshirt, sku: so-sky-xs, name: "Seersucker overshirt, Sky, XS", color: Sky, image: "/media/products/prd_seersucker_overshirt--sky-712904e9.webp", size: XS, weight_value: 360.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_seersucker_overshirt_s_sky, product_group_id: prd_seersucker_overshirt, sku: so-sky-s, name: "Seersucker overshirt, Sky, S", color: Sky, image: "/media/products/prd_seersucker_overshirt--sky-712904e9.webp", size: S, weight_value: 360.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_seersucker_overshirt_m_sky, product_group_id: prd_seersucker_overshirt, sku: so-sky-m, name: "Seersucker overshirt, Sky, M", color: Sky, image: "/media/products/prd_seersucker_overshirt--sky-712904e9.webp", size: M, weight_value: 360.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_seersucker_overshirt_l_sky, product_group_id: prd_seersucker_overshirt, sku: so-sky-l, name: "Seersucker overshirt, Sky, L", color: Sky, image: "/media/products/prd_seersucker_overshirt--sky-712904e9.webp", size: L, weight_value: 360.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_seersucker_overshirt_xl_sky, product_group_id: prd_seersucker_overshirt, sku: so-sky-xl, name: "Seersucker overshirt, Sky, XL", color: Sky, image: "/media/products/prd_seersucker_overshirt--sky-712904e9.webp", size: XL, weight_value: 360.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_seersucker_overshirt_xs_white, product_group_id: prd_seersucker_overshirt, sku: so-white-xs, name: "Seersucker overshirt, White, XS", color: White, image: "/media/products/prd_seersucker_overshirt--white-abdbe662.webp", size: XS, weight_value: 360.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_seersucker_overshirt_s_white, product_group_id: prd_seersucker_overshirt, sku: so-white-s, name: "Seersucker overshirt, White, S", color: White, image: "/media/products/prd_seersucker_overshirt--white-abdbe662.webp", size: S, weight_value: 360.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_seersucker_overshirt_m_white, product_group_id: prd_seersucker_overshirt, sku: so-white-m, name: "Seersucker overshirt, White, M", color: White, image: "/media/products/prd_seersucker_overshirt--white-abdbe662.webp", size: M, weight_value: 360.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_seersucker_overshirt_l_white, product_group_id: prd_seersucker_overshirt, sku: so-white-l, name: "Seersucker overshirt, White, L", color: White, image: "/media/products/prd_seersucker_overshirt--white-abdbe662.webp", size: L, weight_value: 360.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_seersucker_overshirt_xl_white, product_group_id: prd_seersucker_overshirt, sku: so-white-xl, name: "Seersucker overshirt, White, XL", color: White, image: "/media/products/prd_seersucker_overshirt--white-abdbe662.webp", size: XL, weight_value: 360.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_utility_jacket_xs_navy, product_group_id: prd_utility_jacket, sku: uj-navy-xs, name: "Cotton utility jacket, Navy, XS", color: Navy, image: "/media/products/prd_utility_jacket-ac56c095.webp", size: XS, weight_value: 480.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_utility_jacket_s_navy, product_group_id: prd_utility_jacket, sku: uj-navy-s, name: "Cotton utility jacket, Navy, S", color: Navy, image: "/media/products/prd_utility_jacket-ac56c095.webp", size: S, weight_value: 480.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_utility_jacket_m_navy, product_group_id: prd_utility_jacket, sku: uj-navy-m, name: "Cotton utility jacket, Navy, M", color: Navy, image: "/media/products/prd_utility_jacket-ac56c095.webp", size: M, weight_value: 480.0, weight_unit_text: g}
@@ -378,18 +378,18 @@ tables:
     - {tenant_id: store_northwind, id: var_cashmere_sweater_m_oatmeal, product_group_id: prd_cashmere_sweater, sku: cs-oatmeal-m, name: "Cashmere sweater, Oatmeal, M", color: Oatmeal, image: "/media/products/prd_cashmere_sweater-d7ff3b03.webp", size: M, weight_value: 280.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_cashmere_sweater_l_oatmeal, product_group_id: prd_cashmere_sweater, sku: cs-oatmeal-l, name: "Cashmere sweater, Oatmeal, L", color: Oatmeal, image: "/media/products/prd_cashmere_sweater-d7ff3b03.webp", size: L, weight_value: 280.0, weight_unit_text: g}
     - {tenant_id: store_northwind, id: var_cashmere_sweater_xl_oatmeal, product_group_id: prd_cashmere_sweater, sku: cs-oatmeal-xl, name: "Cashmere sweater, Oatmeal, XL", color: Oatmeal, image: "/media/products/prd_cashmere_sweater-d7ff3b03.webp", size: XL, weight_value: 280.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_cashmere_sweater_xs_navy, product_group_id: prd_cashmere_sweater, sku: cs-navy-xs, name: "Cashmere sweater, Navy, XS", color: Navy, image: "/media/garment/knit-navy.svg", size: XS, weight_value: 280.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_cashmere_sweater_s_navy, product_group_id: prd_cashmere_sweater, sku: cs-navy-s, name: "Cashmere sweater, Navy, S", color: Navy, image: "/media/garment/knit-navy.svg", size: S, weight_value: 280.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_cashmere_sweater_m_navy, product_group_id: prd_cashmere_sweater, sku: cs-navy-m, name: "Cashmere sweater, Navy, M", color: Navy, image: "/media/garment/knit-navy.svg", size: M, weight_value: 280.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_cashmere_sweater_l_navy, product_group_id: prd_cashmere_sweater, sku: cs-navy-l, name: "Cashmere sweater, Navy, L", color: Navy, image: "/media/garment/knit-navy.svg", size: L, weight_value: 280.0, weight_unit_text: g}
-    - {tenant_id: store_northwind, id: var_cashmere_sweater_xl_navy, product_group_id: prd_cashmere_sweater, sku: cs-navy-xl, name: "Cashmere sweater, Navy, XL", color: Navy, image: "/media/garment/knit-navy.svg", size: XL, weight_value: 280.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_cashmere_sweater_xs_navy, product_group_id: prd_cashmere_sweater, sku: cs-navy-xs, name: "Cashmere sweater, Navy, XS", color: Navy, image: "/media/products/prd_cashmere_sweater--navy-94069f74.webp", size: XS, weight_value: 280.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_cashmere_sweater_s_navy, product_group_id: prd_cashmere_sweater, sku: cs-navy-s, name: "Cashmere sweater, Navy, S", color: Navy, image: "/media/products/prd_cashmere_sweater--navy-94069f74.webp", size: S, weight_value: 280.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_cashmere_sweater_m_navy, product_group_id: prd_cashmere_sweater, sku: cs-navy-m, name: "Cashmere sweater, Navy, M", color: Navy, image: "/media/products/prd_cashmere_sweater--navy-94069f74.webp", size: M, weight_value: 280.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_cashmere_sweater_l_navy, product_group_id: prd_cashmere_sweater, sku: cs-navy-l, name: "Cashmere sweater, Navy, L", color: Navy, image: "/media/products/prd_cashmere_sweater--navy-94069f74.webp", size: L, weight_value: 280.0, weight_unit_text: g}
+    - {tenant_id: store_northwind, id: var_cashmere_sweater_xl_navy, product_group_id: prd_cashmere_sweater, sku: cs-navy-xl, name: "Cashmere sweater, Navy, XL", color: Navy, image: "/media/products/prd_cashmere_sweater--navy-94069f74.webp", size: XL, weight_value: 280.0, weight_unit_text: g}
     - tenant_id: store_northwind
       id: var_fleece_half_zip_xs_heather_grey
       product_group_id: prd_fleece_half_zip
       sku: fh-heather-grey-xs
       name: "Fleece half-zip, Heather grey, XS"
       color: Heather grey
-      image: "/media/garment/knit-heather-grey.svg"
+      image: "/media/products/prd_fleece_half_zip-92f83db9.webp"
       size: XS
       weight_value: 390.0
       weight_unit_text: g
@@ -399,7 +399,7 @@ tables:
       sku: fh-heather-grey-s
       name: "Fleece half-zip, Heather grey, S"
       color: Heather grey
-      image: "/media/garment/knit-heather-grey.svg"
+      image: "/media/products/prd_fleece_half_zip-92f83db9.webp"
       size: S
       weight_value: 390.0
       weight_unit_text: g
@@ -409,7 +409,7 @@ tables:
       sku: fh-heather-grey-m
       name: "Fleece half-zip, Heather grey, M"
       color: Heather grey
-      image: "/media/garment/knit-heather-grey.svg"
+      image: "/media/products/prd_fleece_half_zip-92f83db9.webp"
       size: M
       weight_value: 390.0
       weight_unit_text: g
@@ -419,7 +419,7 @@ tables:
       sku: fh-heather-grey-l
       name: "Fleece half-zip, Heather grey, L"
       color: Heather grey
-      image: "/media/garment/knit-heather-grey.svg"
+      image: "/media/products/prd_fleece_half_zip-92f83db9.webp"
       size: L
       weight_value: 390.0
       weight_unit_text: g
@@ -429,7 +429,7 @@ tables:
       sku: fh-heather-grey-xl
       name: "Fleece half-zip, Heather grey, XL"
       color: Heather grey
-      image: "/media/garment/knit-heather-grey.svg"
+      image: "/media/products/prd_fleece_half_zip-92f83db9.webp"
       size: XL
       weight_value: 390.0
       weight_unit_text: g
@@ -1394,6 +1394,35 @@ tables:
       keywords: [size up for a hoodie]
       creative_work_status: visible
       date_published: "2026-10-12"
+    # Jamie's own reviews of what she bought and kept, each tied to its order (create_review):
+    # they show on the product page and beside the line in her orders. She has not shared her
+    # height, so none is stored.
+    - tenant_id: store_northwind
+      id: rev_8813
+      product_group_id: prd_windbreaker
+      product_id: var_windbreaker_m_black
+      author_id: cus_jamie
+      author_name: Jamie R.
+      order_id: ord_20268
+      rating_value: 5
+      review_body: "Packs into its own pocket and lives in my carry-on. Kept the wind off on a cold ferry ride."
+      fit_vote: true_to_size
+      keywords: [packable, travel]
+      creative_work_status: visible
+      date_published: "2026-09-20"
+    - tenant_id: store_northwind
+      id: rev_8814
+      product_group_id: prd_merino_tee
+      product_id: var_merino_tee_m_charcoal
+      author_id: cus_jamie
+      author_name: Jamie R.
+      order_id: ord_20381
+      rating_value: 4
+      review_body: "Soft, and still fresh after two days on the road. A touch long in the body."
+      fit_vote: true_to_size
+      keywords: [travel]
+      creative_work_status: visible
+      date_published: "2026-11-01"
   # Product questions (ask_question, answer_question). Askers' names are stored masked as
   # catalog.yml author_masking says (two letters, then *). qst_312 is private: only Theo and the
   # store read it. qst_313 waits for the store's answer.
@@ -1415,3 +1444,13 @@ tables:
     - {tenant_id: store_northwind, id: rsa_205, customer_id: cus_grace, product_id: var_chore_coat_m_olive, message_channel: push, start_time: "2026-11-05T10:31:00-05:00", expires: "2027-02-03T10:31:00-05:00"}
     - {tenant_id: store_northwind, id: rsa_206, customer_id: cus_marcus, product_id: var_denim_jacket_l_indigo, message_channel: email, start_time: "2026-11-04T18:20:00-05:00", expires: "2027-02-02T18:20:00-05:00"}
     - {tenant_id: store_northwind, id: rsa_207, customer_id: cus_elena, product_id: var_denim_jacket_m_indigo, message_channel: sms, start_time: "2026-11-05T07:45:00-05:00", expires: "2027-02-03T07:45:00-05:00"}
+  # Wishlists (add_to_wishlist) of the scenario's shoppers, on products that are in the catalog:
+  # Jamie saves warm layers for the trip after next (the overcoat she asked about in F3, the
+  # cashmere on sale, the field jacket); Alex saves the fleece and the rain parka (sold out to
+  # S and XL).
+  customer.wishlist_item:
+    - {tenant_id: store_northwind, customer_id: cus_jamie, product_group_id: prd_wool_overcoat, created_at: "2026-11-03T21:14:00-05:00"}
+    - {tenant_id: store_northwind, customer_id: cus_jamie, product_group_id: prd_cashmere_sweater, created_at: "2026-11-01T18:40:00-04:00"}
+    - {tenant_id: store_northwind, customer_id: cus_jamie, product_group_id: prd_field_jacket, created_at: "2026-10-12T09:05:00-04:00"}
+    - {tenant_id: store_northwind, customer_id: cus_alex, product_group_id: prd_fleece_half_zip, created_at: "2026-10-29T20:02:00-04:00"}
+    - {tenant_id: store_northwind, customer_id: cus_alex, product_group_id: prd_rain_parka, created_at: "2026-10-24T13:30:00-04:00"}

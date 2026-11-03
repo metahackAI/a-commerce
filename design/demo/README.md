@@ -39,7 +39,7 @@ From the notes under each frame. **General** is useful beyond the video; **case-
 | A line under each reply with the tool calls, the model and where it ran | 05, 06, 11 | general | |
 | “Changed from v1” at the top of the change set block (today: Compare with v1 on the page) | 06 | general | |
 | Push to the owner's phone (Web Push from the installed back office; fallback: open on frame 02) | 01 | general | |
-| Run the held-out set for both tool sets under the current scorer and fill the `__` on frame 14. `docs/design.md` allows only held-out numbers in a public claim; the facade has never run on it, and the README's 21/36 is the design set before the #86 scorer fix | 14 | general | |
+| ~~Run the held-out set for both tool sets and fill the `__` on frame 14~~: done Nov 3, 0 of 90 against 40 of 90 runs, each reply read ([eval/results/2026-11-03-glimmer-judged.md](../../eval/results/2026-11-03-glimmer-judged.md)) | 14 | general | |
 | Frame 13 builds in the voiceover's order; drop the dashed models that are not running by the recording | 13 | case-specific | |
 | Simulator demand for the sale weekend, store clock jumps, the slip printed from the reorder with one XL line short | 08–10 | case-specific | |
 
@@ -47,7 +47,7 @@ From the notes under each frame. **General** is useful beyond the video; **case-
 
 - **From the repo:** the B1 prices, checks, coupon and undo date ([docs/scenarios.md](../../docs/scenarios.md) B1); the tool calls on frames 05 and 14, from a Nov 1 eval run of PR #99 (11 up to v1; across 10 runs, 10–14 over both turns and 44–62 s); the facade trail on frame 14 (`getMbrGrdList` ✗, `getPrdGridList` ✗, 5 model calls, 22.6–23.8 s, 0 of 3 runs; [eval/results/2026-10-31-glimmer-design-facade-1.md](../../eval/results/2026-10-31-glimmer-design-facade-1.md)); the reorder formula, its 2 checks, the $1,000 approval threshold, and receive → `set_variant_stock` → restock alerts ([docs/api/catalog.md](../../docs/api/catalog.md)).
 - **Illustrative**, worked out with the store's formulas, until the recording replaces them: the jacket's sales and stock (sold XS 2 · S 5 · M 13 · L 8 · XL 2, on hand 2 · 4 · 0 · 3 · 3, so the order is 6 · 13 · 41 · 23 · 5 = 88 at $50.00), the slip, PO 1044, #1046, the 11 waiting shoppers, order numbers and times.
-- **Placeholders:** the `__` on frame 14 until the Nov 3 run.
+- **Frame 14:** held-out, Nov 3, 9 tasks × 10 runs per tool set, every reply read against the expected facts: the screen-shaped facade 0 of 90, A-Commerce 40 of 90 ([eval/results/2026-11-03-glimmer-judged.md](../../eval/results/2026-11-03-glimmer-judged.md)).
 - **Frame 04:** 89% of Etsy sellers are one-person businesses ([Etsy 2024 Global Seller Census](https://storage.googleapis.com/etsy-extfiles-prod/2025_Q1_GLOBAL_Seller%20Census%202024.pdf), Ipsos, n=2,402); 44 tools in a small business, not e-commerce only ([Sage and Strand Partners, Sep 2026](https://www.sage.com/en-gb/-/media/files/company/documents/pdf/digital-newsroom/sage-the-hidden-cost-of-app-switching.pdf)); $1.16T lost to out-of-stocks a year, a model estimate mostly for stores ([IHL Group Inventory Distortion 2025, via Board](https://www.board.com/wp-content/uploads/2025/11/Board-Infographic_IHL-Distortion-Study_chapter-1.pdf)).
 
 All people and companies in the frames are made up (Jamie, Alex, Harbor & Pine Garment Co.).

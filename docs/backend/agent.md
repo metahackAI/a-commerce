@@ -62,11 +62,12 @@ route_when_said: [weekend sale, coupon, banner, needs me]   # 모델 없이 이 
 |---|---|---|---|
 | `promotion` | bo (기본) | promotion, merchandising | promotion, merchandising, catalog, search, customer, platform |
 | `orders` | bo | fulfillment, sales, messaging | fulfillment, sales, messaging, customer, catalog, platform |
-| `catalog` | bo | catalog, merchandising | catalog, merchandising, search, platform (B4: 공급사 시트 → 초안, `product_drafts` 블록) |
-| `insights` | bo | analytics | analytics (읽기만) |
+| `catalog` | bo | catalog, merchandising | catalog, merchandising, search, platform, community (B4: 공급사 시트 → 초안, `product_drafts` 블록. 리뷰·문의·커뮤니티 글 관리) |
+| `insights` | bo | analytics | analytics, customer (읽기만. 등급별 회원 목록은 `search_members`) |
+| `marketplace` | bo | partner, integration | partner, integration, catalog, sales, platform (판매자·계약·등급, 판매 채널과 그 주문·클레임·상품 가져오기) |
 | `shopper` | fo (기본) | search, catalog, sales | search, catalog, merchandising, promotion, sales, fulfillment, customer, messaging (`kinds: [read, write]`, W$ 툴은 범위 밖) |
 
-라우터는 에이전트 파일이 아니라 런타임의 한 단계(`router.rs`)입니다. 다섯 에이전트 모두 `models: {worker: glimmer, planner: spark}`입니다. 어느 에이전트의 범위에도 `community`, `partner`, `integration`이 없어서 이 도메인의 툴은 대화가 아니라 REST로만 부릅니다.
+라우터는 에이전트 파일이 아니라 런타임의 한 단계(`router.rs`)입니다. 여섯 에이전트 모두 `models: {worker: glimmer, planner: spark}`입니다. `community`는 catalog, `partner`·`integration`은 marketplace의 범위입니다(외부에서 들어오는 이벤트 툴은 `audience: internal`이라 어느 에이전트에도 보이지 않음).
 
 - **라우터**는 작업 모델(Glimmer)에 에이전트 설명 목록과 요청을 주고 가이드 디코딩으로 `{agent, confidence}` 하나를 고르게 합니다. 확신이 `runtime.yml` `router.min_confidence`(0.5)보다 낮으면 대화의 이전 에이전트, 없으면 면(bo/fo)의 기본 에이전트로 갑니다. 그 전에 아래 라우팅 힌트를 보고, 다음으로 요청에 든 에이전트별 `route_when_said` 문구(소문자: insights의 `why did sales`, orders의 `return request`, catalog의 `low on stock`, promotion의 `weekend sale`·`needs me`) 중 가장 긴 것의 에이전트로 모델 없이 보냅니다(두 에이전트가 같은 길이로 맞으면 모델이 고름). 열린 변경셋이 있는 대화는 그 에이전트가 이어 받고(다음 말은 대개 고침), 문장을 말하지 않는 버튼(`ui_event`)도 대화의 에이전트가 이어 받습니다.
 - **라우팅 힌트**(`agents/runtime.yml` `router.hints`): 요청에 든 말(대소문자 무시, 예 "supplier sheet")이나 첨부 종류(`sheet`)가 그 면의 에이전트 하나만 가리키면 모델을 부르지 않고 그 에이전트로 갑니다. 버튼 의도(`ui_event`)는 힌트를 쓰지 않습니다.
@@ -83,6 +84,7 @@ route_when_said: [weekend sale, coupon, banner, needs me]   # 모델 없이 이 
 1. **범위:** 에이전트의 `tool_scope`와 호출자 스코프·툴 `audience`로 이미 걸러진 매니페스트의 교집합. `tool_scope.always`의 툴은 말과 상관없이 늘 후보입니다(에이전트마다 대부분의 요청이 시작하는 읽기: 쇼퍼의 `search_products`·`get_my_profile`·`get_cart`·`get_my_orders`, 운영 에이전트의 `list_tasks` 등). 사람의 말("light jacket")은 툴 설명에 없는 말이라 BM25만으로는 상품 검색을 놓치기 때문입니다.
 2. **점수:** 이름·설명·필드 이름과 설명의 BM25(k1 1.2, b 0.75) + 홈 도메인 가중치(`runtime.yml` `tool_search.home_domain_boost`). 임베딩 유사도는 아직 없습니다. 사람이 쓰는 말과 툴이 쓰는 말이 다른 경우는 `runtime.yml`의 `tool_search.related_words`(데이터)가 검색어를 넓힙니다("fit" → measurements, reviews, orders; 이어서 따라감). 맞는 말이 하나도 없으면 홈 도메인의 읽기부터 채웁니다.
 3. **앵커:** 가장 점수가 높은 툴을 먼저 잡고, 그다음부터는 앞의 앵커가 답하지 못한 말에 가장 잘 답하는 툴을 잡습니다(3개, coverage 기반 다양화, xQuAD). 툴은 어떤 말에 대해 그 말의 최고 점수 대비 자기 점수만큼 그 말을 덮고, `always` 툴은 늘 후보이므로 처음부터 자기 몫을 덮습니다. "20% 세일을 메인 페이지에 걸어 줘"처럼 두 가지를 묻는 요청에서 상위권이 전부 "메인 페이지" 툴이어도 세일 툴이 앵커가 됩니다.
+   쓰기 앵커나 id가 필요한 `get_` 앵커에는, 같은 레코드(도메인·리소스)의 다른 읽기 중 점수가 앵커의 60% 이상인 가장 좋은 것이 바로 뒤에 붙습니다(`SIBLING_SHARE`, 후보 한도 밖으로 하나씩 더함). 툴 이름의 말은 그 레코드의 말이라 "Show my wishlist"는 `add_to_wishlist`에도 `list_wishlist`에도 맞고, "What changed"는 `get_action_log`에도 `search_action_log`에도 맞기 때문입니다. 이것이 없으면 쓰기 앵커의 이웃(다른 쓰기)이 자리를 채워 읽기가 빠졌습니다. 후보는 `cargo run -p acom-agent --example candidates -- <manifest.json> <agent> <request>…`로 모델 없이 볼 수 있습니다.
 4. **그래프 확장:** 앵커의 `consumes`를 생산하는 툴(앞 단계)과 `produces`를 소비하는 툴(뒤 단계)을 1홉 추가. 예: `set_sale_prices` → 앞에 `list_categories`, 뒤에 `create_coupon`, `schedule_banner`. 앵커가 돌아가며 하나씩 채워 한 앵커가 자리를 다 쓰지 못하게 하고, 쓰기 앵커부터 돕니다(계획은 쓰기의 연쇄입니다). 뒤 단계는 앵커 여럿에 이어진 툴 → 쓰기 → 점수 순이고, 앞 단계는 그 슬롯을 만드는 툴이 이미 후보에 있으면 건너뜁니다.
 5. **자르기:** 5~8개(`min_candidates`·`max_candidates`). 열린 변경셋에 이미 든 툴은 고칠 수 있게 늘 후보에 둡니다. 결과는 결정적(같은 입력 → 같은 후보)이고 턴 로그에 남깁니다.
 
@@ -112,6 +114,8 @@ route_when_said: [weekend sale, coupon, banner, needs me]   # 모델 없이 이 
 ```
 
 - **id는 모델이 옮기지 않습니다.** `uses`로 앞 단계를 가리키면 실행기가 툴 메타데이터의 `produces`/`consumes` 슬롯 이름(`product_id[]`, `tier_id`, `promotion_id`)으로 값을 채웁니다. 42개 상품 id를 모델이 베껴 쓰다 틀리는 일이 구조적으로 없습니다. `uses`를 적은 단계는 그 단계들(과 사람이 가리킨 것)에서만 id를 받고, 없으면 추측하지 않고 인자를 되묻습니다(F3: 주문을 읽은 뒤에 가진 windbreaker의 id를 채움). 값 하나를 받는 필드에 후보가 여럿이면 말로 검색한 결과(`query`, 잘 맞는 것부터 옴)에서만 첫 번째를 받습니다. 목록을 읽은 결과의 첫 번째는 요청과 상관없는 값이라(카테고리 24개 중 첫 번째) 채우지 않고 작업 모델에게 되묻습니다. 되물어도 이미 묶인 인자는 그대로 둡니다. 이번 계획의 쓰기를 `uses`로 가리킨 단계는 그 쓰기가 만들 값을 받고, 옆에 적힌 id보다 앞섭니다(이 세일의 쿠폰). 입력 객체 안의 필드도 슬롯 이름이나 `x-slot`으로 찾아 채웁니다(배너의 `content.image_product_id`).
+- **요청이 이름을 댄 하나는 목록에서 고릅니다.** 비어 있는 인자가 `uses`한 단계의 목록이 내는 슬롯(그 이름이 같은 슬롯 포함, 예컨대 `list_tiers`의 `tier_id`)이고, 그 행들 중 요청이 id나 이름을 말한 것이 하나뿐이면 모델에게 묻지 않고 그것을 씁니다("Show me the VIP members" → `tier_id: vip`). 툴 이름의 말(`search_members`의 members)은 값을 가리키지 않으므로 셈에서 뺍니다. 이 경우를 README의 "Look up what the person named" 항목이 일부 다룹니다.
+- **말하지 않은 좁히기는 빼고 부릅니다.** 필수가 아닌 인자에 쓴 빈 문자열(`tier_id: ""`)은 "아무것도 아닌 것으로 거르기"라서 빼고, 스토어프론트의 읽기에서 쇼퍼가 그 말을 하지 않은 예/아니오 필터("windbreaker에 어떤 질문이 있어?"의 `answered: true`)도 뺍니다(필드 이름의 말, 예컨대 answer가 요청에 있으면 둠). 둘 다 그 단계의 `repairs`에 남습니다.
 - **행마다 실행(`each`, `when`):** `"each": "s1"`은 그 단계 결과의 행마다 한 번씩 실행하고, 실행마다 그 행의 같은 이름 필드(`claim_id`, `customer_id`, `order_id`)로 슬롯을 채웁니다. `"when": {"suggested": "refund"}`는 값이 같은 행만 고릅니다. B2: 요청 12건 평가는 `evaluate_return_request` 한 단계, 환불 9건·메시지 3건은 세 단계.
 - **앞서 보인 블록을 단계처럼:** 대화 기록은 블록을 id와 함께 보여 줍니다(`[showed refund_review blk_31]`). `uses`·`each`에 `blk_…`를 쓰면 그 블록의 행(`requests`, `items`, `picks`)이 결과처럼 쓰여 다시 읽지 않습니다(B2의 변경셋, F4의 선물 고르기).
 - **블록 문구(`notes`)와 출처(`source`):** 모델은 블록 요소에 붙일 짧은 말(`{"element": "size:L", "text": "Over a hoodie"}`, 첫째가 추천)과 이해한 줄의 출처(`said`·`profile`·`his`·`hers`, 칩)를 냅니다. 둘 다 툴 결과나 사람의 말에 없는 숫자가 들면 쓰지 않습니다.
@@ -166,6 +170,7 @@ route_when_said: [weekend sale, coupon, banner, needs me]   # 모델 없이 이 
 - **요소 문맥:** 턴 요청의 `context[]`(사람이 고른 화면 요소의 `element_ref`·`ids`)는 계획의 첫 입력입니다. "이것", "이 상품"은 `context`의 id로 풀고, 슬롯 값으로 바로 씁니다.
 - **추천 말:** 블록을 만들 때 요소마다 다음에 할 만한 말(`suggested_intents`)을 붙입니다. 실패한 체크에는 에이전트 정의의 `check_intents` 문장, 변경 행에는 "빼 줘"·"20%로" 같은 문장입니다.
 - **화면 가리키기:** 설명이 특정 요소에 관한 것이면 `ui.command`(`highlight`, `scroll_to`)를 함께 보냅니다. `person` 버튼은 가리킬 수 없습니다.
+- **스트리밍:** 블록은 턴 끝에 한꺼번에 가지 않습니다. 툴 결과가 생길 때마다(같은 단계를 행마다 부르면 행마다) 그때까지의 결과로 만들 수 있는 블록을 보냅니다(`progress_blocks`). 변경셋에 쓰기를 넣으면 변경셋을 다시 읽어 그 블록을 갱신하므로 항목이 하나씩 늘어납니다. 블록은 캔버스의 자리(`products#0`, `change_set#0`; 상품 목록·갤러리·비교표는 한 자리)마다 처음 보낸 `block_id`를 지키고, 내용이 바뀐 때만 다시 보냅니다. 일하는 동안의 블록에는 "마지막으로 읽은 목록" 대체를 쓰지 않고, 턴 끝에 최종 답에 남지 않는 블록은 `ui.block.removed`로 지웁니다. 답은 모델이 쓰는 대로 `message.delta`로 흘립니다(JSON의 `text` 값을 오는 만큼 읽음, `reply_stream`). 위 검사가 답을 돌려보내면 `message.reset` 뒤 다음 답이 다시 흐르고, `message.done`이 남는 답을 가져갑니다([../api/chat.md](../api/chat.md) §2). 답 스트리밍이 되는지는 턴이 아니라 **백그라운드**에서 정합니다. 구조화된 답을 스트리밍하는 방법은 제공자마다 다르므로(`StreamVariant`: 설정대로, 일반 텍스트, vLLM `structured_outputs`, 생각 끄기, `guided_json`, 사용량 옵션 없이), 에이전트는 시작할 때와 그 뒤 일정 간격으로(꺼진 모델 10분, 되는 모델 60분) 모델마다 그 방법들을 답 모양의 짧은 요청으로 차례로 시험하고, 답이 실제로 조각으로 온 첫 방법을 기억합니다(`Runtime::keep_streaming_probed`, `agents/models.yml`의 `stream_reply`로 시험할 방법을 좁힐 수 있음). 턴은 되는 방법이 있을 때만 스트리밍하고, 없으면 답을 한 번에 받아 문장 단위로 보냅니다(웹이 고르게 써 내려감). 시험 요청은 실제 답 요청과 같은 모양(답 지시문과 한 턴의 결과)입니다. 되던 방법이 턴 중에 글 없이 돌아오면 그 턴은 같은 답을 스트리밍 없이 다시 물어 사람의 답을 지키고, 턴 로그에 "streamed as …"로 남기며, 백그라운드 시험을 바로 깨웁니다. 실제 턴에서 실패한 방법은 시험이 6시간 동안 다시 믿지 않습니다(시험이 통과해도 실제 턴이 우선). 그래서 스트리밍을 지원하는 모델은 재시작 없이 스트리밍되고, 지원하지 않는 모델은 사람의 턴에서 비용 없이 지금 구조로 돕니다. 지금 상태는 `GET /api/chat/{surface}/streaming`(`{"models": [{"model", "state": "unknown"|"works"|"off", "way"?}]}`)으로 봅니다.
 
 ---
 

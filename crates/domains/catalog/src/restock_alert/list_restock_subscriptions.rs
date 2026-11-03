@@ -52,7 +52,7 @@ fn alert_json(a: &AlertRow, time: &acom_core::StoreTime) -> Value {
     json!({
         "id": a.id, "product_id": a.product_group_id, "product_name": a.product_name,
         "variant_id": a.product_id, "size": a.size, "color": a.color,
-        "channel": a.message_channel, "availability": a.availability,
+        "image": a.image, "channel": a.message_channel, "availability": a.availability,
         "start_time": time.format(a.start_time), "expires": time.format(a.expires),
         "notified_at": a.notified_at.map(|t| time.format(t)),
     })

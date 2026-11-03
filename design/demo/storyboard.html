@@ -738,10 +738,10 @@
       <div class="block" style="gap:6px"><div style="display:flex;gap:8px;align-items:center"><svg class="ic" style="width:20px;height:20px"><use href="#i-clipboard-document-list"/></svg><b style="font-size:16px">Change set #1042 · v1</b><span class="tok bad" style="margin-left:auto">2 checks failed</span></div>
         <div class="small">40 of 42 products, coupon, VIP hero · waiting for you</div></div>
     </div></div></div></div>
-    <div style="position:absolute;left:32px;top:568px;width:680px;text-align:center"><b class="num" style="font-size:34px">__ / __</b><div class="small" style="font-size:14px">held-out tasks finished</div></div>
-    <div style="position:absolute;left:728px;top:568px;width:680px;text-align:center"><b class="num" style="font-size:34px">__ / __</b><div class="small" style="font-size:14px">held-out tasks finished</div></div>
-    <div style="position:absolute;left:0;right:0;top:648px;text-align:center;font-size:19px;font-weight:600">It isn't perfect: <span class="num">__</span> of <span class="num">__</span> still fail. So every write waits in a change set you approve and can undo.</div>
-    <div class="small" style="position:absolute;left:0;right:0;top:684px;text-align:center;font-size:13px">Held-out set: tasks we did not build against · ready tasks × 3 runs per tool set · measured Nov 3 under the current scorer</div>
+    <div style="position:absolute;left:32px;top:568px;width:680px;text-align:center"><b class="num" style="font-size:34px">0 / 90</b><div class="small" style="font-size:14px">held-out runs done</div></div>
+    <div style="position:absolute;left:728px;top:568px;width:680px;text-align:center"><b class="num" style="font-size:34px">40 / 90</b><div class="small" style="font-size:14px">held-out runs done</div></div>
+    <div style="position:absolute;left:0;right:0;top:648px;text-align:center;font-size:19px;font-weight:600">It isn't perfect: <span class="num">50</span> of <span class="num">90</span> still fail. So every write waits in a change set you approve and can undo.</div>
+    <div class="small" style="position:absolute;left:0;right:0;top:684px;text-align:center;font-size:13px">Held-out set: 9 tasks × 10 runs per tool set · Nov 3 · every reply read against the expected facts</div>
     <div class="cap">“Same model. Same GPU. Only the tools changed.”</div>
   </div>
   <div class="notes">
@@ -749,7 +749,7 @@
       <p>Both panes are recordings of real runs. The left trail is the Oct 31 eval (getMbrGrdList ✗, getPrdGridList ✗; 5 model calls, 22.6–23.8 s; 0 of 3 done). The right trail is a Nov 1 eval run of PR #99: 11 tool calls up to v1, with the banner retried once after <code>search_products</code> found its picture. This frame also opens the 45 s cut for X.</p></div>
     <div><h4>Build</h4><ul>
       <li><span class="tag have">exists</span>facade tool set in demo mode (<code>tool_set: facade</code>), <code>cargo xtask eval</code>, and the right pane's scene (frame 05)</li>
-      <li><span class="tag new">new</span>numbers from the held-out set, as <code>docs/design.md</code> asks of any public claim; the facade has never run on it. The README's 21/36 is the design set and predates the #86 scorer fix</li>
+      <li><span class="tag have">exists</span>numbers from the held-out set, as <code>docs/design.md</code> asks of any public claim: Nov 3, 9 tasks × 10 runs, each reply read (<code>eval/results/2026-11-03-glimmer-judged.md</code>; the runner alone gives 0 and 20 of 90)</li>
       <li>if our own count is low, say the gap, not a rate: “the same model, and only the tools changed”</li></ul></div>
     <div><h4>Reference</h4><p>Side-by-side runs on one prompt: model comparison views (LMArena, Vercel AI playground compare). Steps listed as they ran: Codex and Claude Code tool logs. The fail count sits in the same frame as the claim, so the claim and its denominator are seen together.</p></div>
   </div>

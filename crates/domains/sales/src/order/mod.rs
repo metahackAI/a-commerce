@@ -210,6 +210,10 @@ pub(crate) struct ItemFacts {
     product_id: Option<String>,
     size: Option<String>,
     color: Option<String>,
+    /// The ordered color's picture (the product's when the color has none).
+    image: Option<String>,
+    /// Whether the same variant can be bought now (`in_stock`, `out_of_stock`, …), for "buy again".
+    availability: String,
 }
 
 pub(crate) async fn item_facts(
@@ -226,9 +230,17 @@ pub(crate) async fn item_facts(
             (
                 v.variant_id.clone(),
                 ItemFacts {
+                    availability: if v.sellable() {
+                        v.availability.clone()
+                    } else if v.approval_status == "active" {
+                        "out_of_stock".to_owned()
+                    } else {
+                        "discontinued".to_owned()
+                    },
                     product_id: Some(v.product_id),
                     size: v.size,
                     color: v.color,
+                    image: v.image,
                 },
             )
         })
@@ -248,8 +260,12 @@ pub(crate) fn item_json(
         "name": i.name,
         "size": f.and_then(|f| f.size.clone()),
         "color": f.and_then(|f| f.color.clone()),
+        "image": f.and_then(|f| f.image.clone()),
         "order_quantity": i.order_quantity,
     });
+    if let Some(f) = f {
+        v["availability_now"] = json!(f.availability);
+    }
     if full {
         v["price"] = json!(repo::money(i.price, &i.price_currency)?);
         v["discount"] = json!(repo::money(i.discount_value, &i.discount_currency)?);

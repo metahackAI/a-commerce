@@ -432,6 +432,49 @@ products:
         }
     }
 
+    /// Once the seed is loaded, a variant shows a photo of its own color: one photo is never used
+    /// for two colors of a product, and a photo made for another color (`prd_x--olive-….webp`)
+    /// sits only on the variants of that color.
+    #[test]
+    fn every_variant_photo_shows_its_own_color() {
+        let Ok(text) = std::fs::read_to_string(repo().join("seed/demo/catalog_content.yml")) else {
+            return;
+        };
+        let mut rows = demo();
+        overlay(&mut rows, &text).unwrap();
+        let mut colors: BTreeMap<(String, String), BTreeSet<String>> = BTreeMap::new();
+        for (t, r) in &rows {
+            let Some(url) = r["image"]
+                .as_str()
+                .filter(|u| u.starts_with("/media/products/"))
+            else {
+                continue;
+            };
+            if t != "catalog.product" {
+                continue;
+            }
+            let group = r["product_group_id"].as_str().unwrap_or_default();
+            let color = r["color"].as_str().unwrap_or_default();
+            colors
+                .entry((group.to_owned(), url.to_owned()))
+                .or_default()
+                .insert(color.to_owned());
+            if let Some((pid, rest)) = url.trim_start_matches("/media/products/").split_once("--") {
+                let slug = color.to_lowercase().replace(' ', "-");
+                assert_eq!(pid, group, "{}: {url} is another product's photo", r["id"]);
+                assert!(
+                    rest.starts_with(&format!("{slug}-")),
+                    "{}: {url} is not a {color} photo",
+                    r["id"]
+                );
+            }
+        }
+        assert!(!colors.is_empty());
+        for ((group, url), shown) in &colors {
+            assert_eq!(shown.len(), 1, "{group}: {url} is used for {shown:?}");
+        }
+    }
+
     /// Every photo the seed names (the content file, and the named products of `03_catalog.yml`)
     /// is in `web/public` (the web serves it), a product's photo is one of its color photos, and
     /// no photo file is left that nothing names.

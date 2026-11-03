@@ -13,6 +13,7 @@ import {Button} from '@astryxdesign/core/Button';
 import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
 import {Blockquote} from '@astryxdesign/core/Blockquote';
 import {Token} from '@astryxdesign/core/Token';
+import {useMediaQuery} from '@astryxdesign/core/hooks';
 
 import type {ApiErrorBody} from '@/lib/api';
 import {actor, count, date, dateTime, price, value, words} from '@/app/bo/_lib/format';
@@ -87,6 +88,9 @@ export function ProductView(p: ProductViewProps) {
   const session = useBoSession();
   const canWrite = session?.scopes.includes('tools:write:catalog') ?? false;
   const [editing, setEditing] = useState<{variant: InvVariant; mode: EditMode} | null>(null);
+  // A phone keeps the variant, its stock and the edit buttons; safety stock and availability need
+  // the width of a desk.
+  const isNarrow = useMediaQuery('(max-width: 640px)');
   const [editor, setEditor] = useState<EditorTab | null>(p.initialEdit ?? null);
   const draft = p.group?.['acom:draft'];
   const product = p.product;
@@ -247,26 +251,20 @@ export function ProductView(p: ProductViewProps) {
           columns={[
             {
               header: 'Variant',
-              cell: v => (
-                <VStack gap={0}>
-                  <Text weight="medium">{[v.size, v.color].filter(Boolean).join(' · ') || v.variant_id}</Text>
-                  <Text type="supporting" color="secondary">
-                    {`${v.variant_id}${v.sku ? ` · ${v.sku}` : ''}`}
-                  </Text>
-                </VStack>
-              ),
+              // The variant id stays in the row's AI target; people read size and color.
+              cell: v => <Text weight="medium">{[v.size, v.color].filter(Boolean).join(' · ') || v.variant_id}</Text>,
             },
             {header: 'Stock', cell: v => <Figure>{count(v.inventory_level)}</Figure>},
-            {header: 'Safety stock', cell: v => <Figure muted>{count(v['acom:safety_stock'])}</Figure>},
+            ...(isNarrow ? [] : [{header: 'Safety stock', cell: (v: InvVariant) => <Figure muted>{count(v['acom:safety_stock'])}</Figure>}]),
             ...(reorders.length > 0 ? [{header: 'On order', cell: (v: InvVariant) => <Figure muted={!v.on_order}>{count(v.on_order ?? 0)}</Figure>}] : []),
-            {header: 'Availability', cell: v => <StateToken state={v.availability} />},
+            ...(isNarrow ? [] : [{header: 'Availability', cell: (v: InvVariant) => <StateToken state={v.availability} />}]),
             {
               header: 'Edit',
               cell: v => (
-                <VStack gap={1} hAlign="start">
+                <HStack gap={1} wrap="wrap">
                   <Button label="Price" size="sm" onClick={() => setEditing({variant: v, mode: 'price'})} />
                   <Button label="Stock" size="sm" onClick={() => setEditing({variant: v, mode: 'stock'})} />
-                </VStack>
+                </HStack>
               ),
             },
           ]}

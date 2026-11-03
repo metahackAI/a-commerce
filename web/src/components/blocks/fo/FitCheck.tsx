@@ -57,7 +57,7 @@ function OptionCard({block, option, isFirst}: {block: UiBlock; option: Option; i
             {priceText}
           </Text>
         ) : null}
-        <Intents says={intentsFor(block, 'fit_option', option.size)} />
+        <Intents says={intentsFor(block, 'fit_option', option.size)} about={target.context} />
       </VStack>
     </Card>
   );
@@ -113,7 +113,7 @@ function Measurements({block, m}: {block: UiBlock; m: FitCheckData['measurements
           ))}
         </TableBody>
       </Table>
-      <Intents says={intentsFor(block, 'measurement_table', block.block_id)} />
+      <Intents says={intentsFor(block, 'measurement_table', block.block_id)} about={target.context} />
     </VStack>
   );
 }

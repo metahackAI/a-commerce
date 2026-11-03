@@ -128,6 +128,8 @@ services:
       META_API_BASE_URL: ${META_API_BASE_URL:-}
       META_API_KEY: ${META_API_KEY:-}
       SPARK_MODEL: ${SPARK_MODEL:-}
+      VOICE_MODEL: ${VOICE_MODEL:-}
+      VOICE_LANGUAGES: ${VOICE_LANGUAGES:-}
     secrets: [gateway_public_key]
     depends_on:
       migrate: {condition: service_completed_successfully}
@@ -177,14 +179,37 @@ services:
     networks: [edge, app, data]
 
   # --- profile: models (needs an NVIDIA GPU and the NVIDIA container toolkit) ---------------
+  # Muse Glimmer on vLLM 0.28.0 + cuDNN 9.27 (infra/models/Dockerfile), the flags the demo runs.
+  # Why each flag, the speed and the crash fix: docs/serving.md. Set GLIMMER_BASE_URL to
+  # http://models:8000/v1 and GLIMMER_MODEL to the same id as VLLM_MODEL.
   models:
     profiles: [models]
-    image: ${VLLM_IMAGE:-vllm/vllm-openai:v0.11.0}
-    command: ["--model", "${VLLM_MODEL:-set-me}", "--host", "0.0.0.0", "--port", "8000"]
+    # When the engine dies the process exits; come back on its own (about a minute with the caches).
+    restart: unless-stopped
+    build:
+      context: ../models
+    image: ${VLLM_IMAGE:-acom/acom-models:local}
+    command:
+      - ${VLLM_MODEL:-nvidia/Muse-Glimmer-30B-NVFP4}
+      - --host=0.0.0.0
+      - --port=8000
+      - --max-model-len=65536
+      - --max-num-seqs=16
+      - --gpu-memory-utilization=0.85
+      - --enable-prefix-caching
+      - --mamba-cache-mode=align
+      - --enable-chunked-prefill
+      - --enable-auto-tool-choice
+      - --tool-call-parser=muse_glimmer
+      - --reasoning-parser=muse_glimmer
+      - '--structured-outputs-config={"enable_in_reasoning": true}'
     environment:
       HF_TOKEN: ${HF_TOKEN:-}
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+    ipc: host
     volumes:
-      - model-cache:/root/.cache/huggingface
+      # Weights plus the vLLM and FlashInfer compile caches, so a restart takes about a minute.
+      - model-cache:/root/.cache
     deploy:
       resources:
         reservations:

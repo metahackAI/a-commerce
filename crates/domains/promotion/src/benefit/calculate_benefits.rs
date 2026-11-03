@@ -5,6 +5,7 @@ use acom_contract::{
     ToolError,
 };
 use acom_core::Money;
+use acom_core::enums::ActorKind;
 use acom_store::Cx;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -64,7 +65,13 @@ impl Operation for CalculateBenefits {
 impl ReadOp<Cx> for CalculateBenefits {
     async fn read(&self, cx: &Cx, input: CalculateBenefitsInput) -> Result<Value, ToolError> {
         let shopper = cx.principal.customer_id().map(str::to_owned);
-        let staff = shopper.is_none() && !cx.principal.subject.starts_with("ses_");
+        // Staff by what the caller is: a visitor with no session prices no one's cart.
+        let staff = shopper.is_none()
+            && match cx.principal.kind {
+                ActorKind::Operator | ActorKind::System => true,
+                ActorKind::AgentOnBehalf => cx.principal.subject.starts_with("adm_"),
+                ActorKind::Shopper | ActorKind::ExternalAgent => false,
+            };
         if !staff && shopper.as_deref() != Some(input.customer_id.as_str()) {
             return Err(
                 ToolError::new(ErrorCode::FORBIDDEN, "You can only price your own cart.")

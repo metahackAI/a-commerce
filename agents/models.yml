@@ -11,6 +11,11 @@ models:
     model_env: GLIMMER_MODEL
     structured_output: json_schema
     timeout_seconds: 30
+    # Whether replies stream is found out in the background (docs/backend/agent.md §7): each way
+    # of crates/llm StreamVariant is tried with a short request at start and every 10 minutes
+    # until one answers in pieces; turns stream only then, and otherwise get the reply whole.
+    # `stream_reply: [...]` would narrow the ways tried. (Nov 2: the demo endpoint streamed no
+    # answer under any way while the same request unstreamed answered, so it shows as off.)
   spark:
     display_name: Muse Spark
     base_url_env: META_API_BASE_URL

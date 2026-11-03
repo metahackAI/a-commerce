@@ -91,11 +91,13 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
       {!isLatest ? (
         <Banner status="info" title={`This is version ${cs.version}.`} description={`Decisions are made on the latest version (${latestVersion}).`} />
       ) : null}
-      {cs.state === 'live' && cs.undo_until ? (
-        <Banner status="success" title="Live" description={`Every change ran and was checked again. A person can undo it until ${dateTime(cs.undo_until)}.`} />
-      ) : null}
-      {cs.state === 'live' && !cs.undo_until ? (
-        <Banner status="success" title="Live" description="It ran and was checked again. It holds a change that can't be undone (a refund or a customer message)." />
+      {/* The header already says Live; this line only adds what it means. */}
+      {cs.state === 'live' ? (
+        <Text color="secondary">
+          {cs.undo_until
+            ? `Every change ran and was checked again. A person can undo it until ${dateTime(cs.undo_until)}.`
+            : "It ran and was checked again. It holds a change that can't be undone (a refund or a customer message)."}
+        </Text>
       ) : null}
       {cs.state === 'failed' ? (
         <Banner status="error" title="It failed" description="An item failed or did not match when checked again. What ran was undone in reverse order; see the verification and history below." />
@@ -148,7 +150,7 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
                   term: 'acom:ChangeSetItem',
                 }}>
                 <HStack gap={2} vAlign="center" wrap="wrap">
-                  <Heading level={3}>{`${item.position} · ${item.tool}`}</Heading>
+                  <Heading level={3}>{`${item.position} · ${words(item.tool)}`}</Heading>
                   {item.needs_approval ? (
                     cs.approved_at ? <Token label="Approved" size="sm" /> : <Token label="Needs approval" size="sm" color="orange" />
                   ) : (
@@ -157,11 +159,16 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
                   {item.action_status ? <StateToken state={item.action_status} label={ITEM_STATUS[item.action_status]} /> : null}
                 </HStack>
                 {item.approval_reason ? <Text>{item.approval_reason}</Text> : null}
-                <Text type="supporting" color="secondary">
-                  {`Preview ${item.preview_id}${item.address ? ` · ${item.address}` : ''}${
-                    item.depends_on && item.depends_on.length > 0 ? ` · uses the result of ${item.depends_on.join(', ')}` : ''
-                  }`}
-                </Text>
+                {item.depends_on && item.depends_on.length > 0 ? (
+                  <Text type="supporting" color="secondary">
+                    {`Uses the result of ${item.depends_on
+                      .map(d => {
+                        const before = items.find(i => i.preview_id === d);
+                        return before ? `item ${before.position}` : d;
+                      })
+                      .join(', ')}`}
+                  </Text>
+                ) : null}
               </TargetBlock>
               <ChangesTable
                 changes={item.changes}
@@ -254,12 +261,7 @@ function VerificationTable({verification}: {verification: Verification}) {
               ids: {preview_id: v.preview_id, change_set_id: verification.change_set_id},
             }}>
             <TableCell>
-              <VStack gap={0}>
-                <Text>{v.tool}</Text>
-                <Text type="supporting" color="secondary">
-                  {v.preview_id}
-                </Text>
-              </VStack>
+              <Text>{words(v.tool)}</Text>
             </TableCell>
             <TableCell>
               {v.result_id && entityHref(v.result_id) ? <Link href={entityHref(v.result_id) ?? '#'}>{v.result_id}</Link> : <Text>{v.result_id ?? '—'}</Text>}
@@ -305,7 +307,12 @@ function ChangeSetFacts({cs, latestVersion}: {cs: ChangeSet; latestVersion: numb
         <MetadataListItem label="Created">{dateTime(cs.created_at)}</MetadataListItem>
         <MetadataListItem label="Submitted">{dateTime(cs.submitted_at)}</MetadataListItem>
         <MetadataListItem label="Approved">{cs.approved_at ? `${dateTime(cs.approved_at)} by ${cs.approved_by ? nameOf(cs, cs.approved_by) : 'standing approval'}` : '—'}</MetadataListItem>
-        {cs.request?.conversation_id ? <MetadataListItem label="Conversation">{cs.request.conversation_id}</MetadataListItem> : null}
+        {cs.request?.conversation_id ? (
+          <MetadataListItem label="Conversation">
+            {/* The request that made this change set, as it was said: opens the conversation. */}
+            <Link href={`/bo?view=agent&conversation=${encodeURIComponent(cs.request.conversation_id)}`}>Open the conversation</Link>
+          </MetadataListItem>
+        ) : null}
       </MetadataList>
       {versions.length > 1 ? (
         <VStack gap={1}>

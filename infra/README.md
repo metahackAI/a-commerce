@@ -36,7 +36,7 @@ A-Commerce의 모든 구성 요소는 컨테이너이고, **어디서 띄우든 
 | **agent** | `acom-agent` | (기본) | 7002 | 대화 턴, 툴 검색·계획·실행, 모델 호출 | 수평 |
 | **migrate** | `acom-commerce` | `migrate` | — | 마이그레이션 적용 후 종료(Compose 서비스 / Kubernetes Job) | 한 번 |
 | **postgres** | `pgvector/pgvector:pg17` | — | 5432 | 유일한 상태 저장소. 운영은 관리형 Postgres | — |
-| models (선택) | `vllm/vllm-openai` | `--model …` | 8000 | 작업 모델(Glimmer)을 OpenAI 호환 API로. GPU 필요. 데모 서버는 이 서비스 대신 따로 띄운 Glimmer 엔드포인트를 씀 | GPU 수 |
+| models (선택) | `acom-models` (`infra/models/Dockerfile`: vLLM 0.28.0 + cuDNN 9.27) | Glimmer 모델 id와 플래그 | 8000 | 작업 모델(Glimmer)을 OpenAI 호환 API로. GPU 필요. 데모 서버는 같은 이미지·플래그로 따로 띄운 엔드포인트를 씀. 플래그 이유·속도·RTX 5090 크래시: [../docs/serving.md](../docs/serving.md) | GPU 수 |
 | prometheus·grafana (선택) | 공식 이미지 | — | 9090·3000 | 지표 수집과 화면 | — |
 
 ## 3. 요청 흐름과 네트워크
@@ -85,7 +85,7 @@ A-Commerce의 모든 구성 요소는 컨테이너이고, **어디서 띄우든 
 | `ACOM_POLICY_DIR` | commerce | 이미지 안 `/app/policies` | 같음 |
 | `ACOM_AGENTS_DIR` | agent | 이미지 안 `/app/agents`(모델·한도·프롬프트·특화 에이전트) | 같음 |
 | `ACOM_GATEWAY_SIGNING_KEY_FILE` / `_PUBLIC_KEY_FILE` | gateway / 나머지 | `infra/secrets/*.pem`(`make keys`) | 비밀 저장소 |
-| `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL`, `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | agent | `.env` | 비밀 저장소 |
+| `META_API_KEY`, `META_API_BASE_URL`, `SPARK_MODEL`, `VOICE_MODEL`, `VOICE_LANGUAGES`, `GLIMMER_BASE_URL`, `GLIMMER_MODEL` | agent | `.env` | 비밀 저장소 |
 | `ACOM_ENV`, `ACOM_DEMO_MODE`, `RUST_LOG`, `ACOM_LOG_FORMAT` | 전부 | `local`, `true`, `info`, `json` | `production`, `false`, `info`, `json` |
 | `ACOM_STORE_ID` | gateway(서명하는 스토어), worker(예약 작업을 돌릴 스토어. 쉼표로 여러 개) | `store_northwind` | 같은 스토어. `acom_app`은 RLS 때문에 스토어 목록을 못 읽으므로 worker도 이 값으로 스토어를 받음 |
 | `ACOM_COOKIE_SECURE`, `ACOM_SESSION_HOURS`, `ACOM_DEMO_PERSONAS` | gateway | `false`, `12`, 데모 운영자·쇼퍼 id | `true`(HTTPS), `12`, 데모 모드가 아니면 쓰지 않음 |
@@ -109,7 +109,7 @@ make up            # .env와 키가 없으면 만들고, 이미지를 빌드하�
 make ps            # 상태와 헬스
 make logs SERVICE=commerce
 make up-debug      # Postgres :5432와 각 서비스 포트(7001·7002·7003·3000)도 열고, 읽기 쉬운 로그
-make up-models     # GPU로 작업 모델(vLLM)도 실행 (.env의 VLLM_MODEL)
+make up-models     # GPU로 작업 모델(vLLM)도 실행 (기본 nvidia/Muse-Glimmer-30B-NVFP4, .env의 VLLM_MODEL)
 make up-observability   # Prometheus :9090, Grafana :3001
 make reseed        # 스토어를 비우고 데모 스토어를 다시 적재 (admin / admin123)
 make down          # 멈춤(DB 볼륨 유지) / make clean: 볼륨까지 삭제

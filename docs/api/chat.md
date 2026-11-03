@@ -47,22 +47,60 @@ Accept: text/event-stream
 
 `GET /api/chat/{surface}/conversations/{id}`는 지난 턴과 블록을 돌려줍니다(새로고침·다른 기기). `?log=true`를 붙이면 턴마다 `log{steps[], model_calls[]}`(단계의 입력·출력·에러, 모델 호출의 목적·모델·토큰·지연·성공 여부·실패 이유)가 더해집니다. 대화의 주인만 볼 수 있습니다.
 
+`GET /api/chat/{surface}/conversations`는 부른 사람이 그 면에서 나눈 대화 목록입니다(대화 기록). 마지막 턴이 최근인 순서이고, `limit`은 다른 목록과 같습니다(기본 20, 최대 100). 주인 판단은 대화 하나를 읽을 때와 같습니다: 회원은 고객 id, 운영자는 운영자 id, 게스트는 브라우저 세션(회원·운영자의 대화는 빠짐). 시각은 스토어 시간입니다.
+
+```jsonc
+{"items": [{"conversation_id": "conv_01jc8…", "name": "Run a 20% weekend sale on summer outerwear for VIP members",
+            "turns": 3, "started_at": "2026-11-06T10:41:00-05:00", "last_turn_at": "2026-11-06T10:52:00-05:00"}],
+ "total": 7}
+```
+
+`name`은 대화의 첫 요청(80자까지)입니다. 웹은 이 목록을 대화 화면의 빈 상태("Recent conversations")와 대화 머리줄의 기록 버튼, 스토어프론트 계정 메뉴의 Conversations에서 보여 주고, 하나를 고르면 위의 `GET …/conversations/{id}`로 메시지와 블록을 되살려 이어서 대화합니다([../frontend/README.md](../frontend/README.md) §3).
+
 ## 2. 이벤트 스트림
 
-SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(JSON 한 줄)를 가집니다. 연결이 끊기면 `Last-Event-ID`로 이어 받습니다.
+이벤트는 생기는 즉시 갑니다. 웹은 WebSocket(§2.6)으로 받고, 소켓을 열 수 없는 곳에서는 같은 이벤트를 HTTP 이벤트 스트림(SSE, `POST /api/chat/{surface}/turns`)으로 받습니다. SSE에서 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(JSON 한 줄)를 가집니다.
 
 | event | data | 뜻 |
 |---|---|---|
 | `turn.started` | `{turn_id, conversation_id, agent}` | 턴 시작. `agent`는 라우터가 고른 특화 에이전트 |
 | `agent.step` | `{step_id, kind, summary, tool?, status}` | 진행 표시. `kind`: `route` · `search_tools` · `plan` · `call_tool` · `check`. `status`: `running` · `done` · `failed` |
-| `message.delta` | `{text}` | 답 텍스트 조각 |
-| `message.done` | `{message_id, text}` | 답 텍스트 끝 |
-| `ui.block` | 블록(§3) | 블록 추가. 같은 `block_id`가 다시 오면 교체 |
+| `message.delta` | `{text}` | 모델이 쓰는 대로 오는 답 텍스트 조각. 이어 붙여 보여 줌 |
+| `message.reset` | `{reason}` | 지금까지 흘린 답을 지움. 답 확인(숫자·툴 이름·길이)이 그 답을 돌려보냈고, 다음 답이 다시 흘러옴 |
+| `message.done` | `{message_id, text}` | 답 끝. `text`가 남는 답이므로 흘러온 글과 다르면 이것으로 바꿈(확인이 고친 답, 쉬운 답으로 대체) |
+| `ui.block` | 블록(§3) | 블록 추가. 턴은 툴 결과가 생길 때마다 그때까지 만들 수 있는 블록을 보냄. 같은 `block_id`가 다시 오면 그 자리에서 교체(변경셋 항목이 하나씩 늘어남, 반품 검토가 채워짐) |
+| `ui.block.removed` | `{block_id}` | 턴이 일하는 동안 보였지만 최종 답에 남지 않는 블록을 지움 |
 | `memory.saved` | `{memory_id, text}` | 기억이 생김. 웹은 한 줄과 되돌리기 버튼을 보여 줌 |
 | `ui.command` | `{command, target, note?}` | 에이전트가 화면을 가리킴. `command`: `highlight` · `scroll_to` · `open` · `focus_input`. `target`은 `element_ref`, 블록 id, 또는 경로. `person` 버튼은 대상이 될 수 없음 |
 | `change_set.updated` | `{change_set_id, version, state}` | 이 턴이 변경셋을 만들거나 고치거나 제출했을 때(`drafting`, `waiting_for_approval`) |
 | `error` | `{code, message}` | 턴을 끝내는 오류. 코드는 [errors.md](errors.md) |
 | `turn.done` | `{turn_id, usage: {model_calls, tool_calls, input_tokens, output_tokens, ms, cost_usd}, models: [...]}` | 턴 끝. 화면의 "9 tool calls · Muse Glimmer 30B · 3.8s" |
+
+**스트리밍 순서.** 답은 모델이 쓰는 대로 `message.delta`로 갑니다. 답 확인은 다 쓴 답에 대해 돌고, 돌려보내면 `message.reset` 뒤 다시 씁니다. 블록은 답보다 먼저, 툴 결과마다 갑니다. 그래서 캔버스는 마지막에 한꺼번에 채워지지 않고 일하는 동안 조립됩니다.
+
+### 2.6 WebSocket (`GET /api/chat/ws`)
+
+브라우저는 한 페이지에 연결 하나를 열어 두고 모든 턴을 그 위로 보냅니다. 게이트웨이는 턴마다 그 턴만을 위한 토큰을 새로 서명해 에이전트의 이벤트 스트림을 부르고, 이벤트를 받는 대로 소켓으로 넘깁니다(연결이 한 시간 열려 있어도 토큰은 턴보다 오래되지 않고, 세션이 끝나면 다음 턴이 거절됨).
+
+**핸드셰이크**
+
+1. 업그레이드 요청은 가게 자신의 페이지에서 와야 하고(`Origin`이 `Host`/`X-Forwarded-Host`와 같음, 다르면 403) 살아 있는 세션 쿠키가 있어야 합니다(없으면 401; 웹은 `POST /api/auth/guest`로 비회원 세션을 연 뒤 다시 엶).
+2. 첫 프레임은 `{"type": "hello", "surface": "fo" | "bo", "csrf_token": "…", "protocol": 1}`. 10초 안에 오지 않거나 CSRF가 세션과 다르면 닫습니다.
+3. 게이트웨이가 `{"type": "ready", "protocol": 1, "surface", "user", "acts_as", "heartbeat_seconds": 20}`로 답합니다. `acts_as`는 그 surface에서의 주체 종류(스토어프론트의 운영자는 `shopper`, [gateway.md](../backend/gateway.md) §1).
+
+**프레임** (모두 JSON 텍스트)
+
+| 방향 | type | 필드 | 뜻 |
+|---|---|---|---|
+| → | `turn` | `request_id`(1–64자, 연결 안에서 유일), `turn`(§1의 턴 요청) | 턴 하나 시작. 연결당 동시에 4개까지 |
+| → | `cancel` | `request_id` | 그 턴을 멈춤. 에이전트 스트림을 끊으므로 에이전트도 멈춤 |
+| → | `ping` | | `pong`으로 답함(브라우저 쪽 생존 확인, 25초마다) |
+| ← | `event` | `request_id`, `id`, `event`, `data` | §2 표의 이벤트 하나, 생기는 즉시 |
+| ← | `end` | `request_id`, `reason`: `done` · `cancelled` · `error` | 그 턴의 끝 |
+| ← | `error` | `request_id?`, `code`, `message` | 그 턴의 오류(뒤에 `end`). `request_id`가 없으면 프레임 자체의 오류 |
+| ← | `pong` | | |
+
+게이트웨이는 20초마다 WebSocket ping을 보내고, 75초 동안 아무것도 오지 않으면 닫습니다. 닫는 코드: 4001 세션 없음, 4003 CSRF·출처, 4008 `hello` 시간 초과, 4400 잘못된 프레임. 연결이 턴 도중 끊기면 웹은 그 턴을 오류로 끝내고(다시 보내기는 사람이 함, 쓰기가 두 번 되지 않음) 다음 턴에서 다시 엽니다. 소켓을 열 수 없으면 60초 동안 SSE로 보냅니다.
 
 턴 밖의 변화(승인 뒤 실행·검증, 할 일, 예약 작업)는 채팅 스트림으로 오지 않습니다. 백오피스 화면은 스토어 이벤트 `GET /api/v1/platform/events`(SSE: `change_set.updated`, `task.updated`, `job.updated`, [platform.md](platform.md#내부-엔드포인트))를 구독해 읽기를 다시 합니다.
 
@@ -129,10 +167,11 @@ SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(
 | `order_detail` | 주문 조회 | `order_number`, `status`, `lines[]`, `delivery`, `payment`, `totals` | `say` 반품·교환 문의 | `order_detail` |
 | `memory_note` | 기억 한 줄 | `memory_id`, `text` | **`person` 되돌리기** | — |
 | `profile_card` | "What we know about you"(블록 제목) | `facts[]{key, value, source, memory_id}` (`get_my_profile`의 기억과 사이즈) | `say` 수정, `person` 삭제(기억마다 `POST /v1/customer/me/memories/{memory_id}/undo`) | — |
+| `record_list` | 상품 목록이 아닌 읽기(주문, 정기 배송, 반품·교환, 쿠폰, 적립금, 리뷰, 상품 문의, 공지, FAQ, 진행 중인 세일, 컬렉션, 재입고 알림, 배송지, 알림 메시지, 배송 추적, 반품 정책, 등급, 기억) | `kind`(`orders`·`subscriptions`·`returns`·`coupons`·`points`·`reviews`·`questions`·`notices`·`faqs`·`promotions`·`collections`·`alerts`·`addresses`·`messages`·`delivery`·`policy`·`tier`·`memories`, 그 밖의 읽기는 `records`), `tool`, `summary?{label, value?, amount?, rating?, detail[]?, href?}`, `rows[]{id, title, subtitle?, image?, href?, status?, amount?, rating?, dates[]{label, at}, meta[], body?}`, `total`. 값은 툴 출력 그대로(돈은 `{value, currency}`), 행의 `href`는 스토어프론트 페이지(`/orders/{id}`, `/p/{product_id}`, `/collections/{id}`, `/help/notices/{id}`) | `say` 더 보기(남은 행이 있을 때), 행마다 추천 말(주문 "Where is this order?", 정기 배송 "Skip the next one", 반품 "What happens next with this?", 세일·컬렉션 "Show me what is in it", 알림 "Is it back yet?") | — |
 
-블록은 `acom-agent`의 `blocks` 모듈(`crates/agent/src/blocks/`)이 툴 출력에서 만듭니다. `data`는 JSON이고, 에이전트 정의(`agents/*.yml`의 `blocks`)가 쓸 수 있는 이름은 위 19개(`KNOWN_BLOCKS`)뿐입니다. 웹은 이름마다 컴포넌트 하나로 그립니다(`web/src/components/blocks/bo`에 7개, `fo`에 12개, 모르는 이름은 제목과 `why`만 있는 카드). 블록 데이터의 JSON Schema나 생성된 TS 타입은 없고, 웹의 데이터 타입은 위 표를 보고 손으로 쓴 것입니다(`web/src/components/blocks/fo/data.ts`, `web/src/app/bo/_lib/blocks.ts`).
+블록은 `acom-agent`의 `blocks` 모듈(`crates/agent/src/blocks/`)이 툴 출력에서 만듭니다. `data`는 JSON이고, 에이전트 정의(`agents/*.yml`의 `blocks`)가 쓸 수 있는 이름은 위 20개(`KNOWN_BLOCKS`)뿐입니다. 웹은 이름마다 컴포넌트 하나로 그립니다(`web/src/components/blocks/bo`에 7개, `fo`에 13개, 모르는 이름은 제목과 `why`만 있는 카드). 블록 데이터의 JSON Schema나 생성된 TS 타입은 없고, 웹의 데이터 타입은 위 표를 보고 손으로 쓴 것입니다(`web/src/components/blocks/fo/data.ts`, `web/src/app/bo/_lib/blocks.ts`).
 
-툴마다 전용 블록이 있지는 않습니다. 운영 쓰기는 어느 툴이든 변경셋에 들어가 `change_set` 블록(반품 검토·초안 가져오기에서는 그 변경셋을 담은 `refund_review`·`product_drafts`)으로 보이고, 계획한 블록을 만들 수 없을 때 마지막으로 읽은 목록은 스토어프론트에서 `product_list`(상품일 때), 그 밖에는 `product_table`(열은 결과의 필드)로 보이며, 나머지는 답 텍스트입니다. 10월 31일에 더한 툴 대부분이 이 경우입니다.
+툴마다 전용 블록이 있지는 않습니다. 운영 쓰기는 어느 툴이든 변경셋에 들어가 `change_set` 블록(반품 검토·초안 가져오기에서는 그 변경셋을 담은 `refund_review`·`product_drafts`)으로 보입니다. 계획한 블록을 만들 수 없거나 계획이 텍스트를 골랐을 때, 그 턴이 무언가 읽었으면 그것을 보입니다. 백오피스는 마지막으로 읽은 목록을 `product_table`(열은 결과의 필드)로 보입니다(목록을 읽었는데 아무것도 없으면 제목이 "Nothing found"인 빈 표). 스토어프론트는 차례로 상품 목록이면 `product_list`, 주문(`get_order`)이면 `order_detail`(여러 건을 읽었으면 그 턴이 추적한 배송의 주문, 다음은 요청이 이름을 댄 상품이 든 주문, 없으면 마지막), 쇼퍼 자신만 읽었으면(`get_my_profile`) `profile_card`, 나머지는 `record_list`입니다. `record_list`는 전용 모양이 있는 읽기 중 가장 최근 것(에이전트가 늘 쥔 `tool_scope.always` 툴, 예컨대 답을 준비하려고 읽은 `get_my_orders`는 다른 것이 없을 때만), 없으면 가장 최근 읽기를 보이고(`get_my_profile`·`get_payment_methods`처럼 묻는 사람만 알려 주는 읽기는 다른 읽기가 없을 때만), 목록이 비어도 0건으로 보입니다. 계획이 상품 형태를 골랐어도 그 턴이 상품은 읽지 않고 기록만 읽었으면 `record_list`입니다(예전 상품을 다시 보이지 않음). 상품 블록 옆에는 그 턴이 읽은 리뷰(`list_reviews`·`get_review_summary`는 한 블록)와 문의(`list_questions`)가 각각 `record_list`로 따라옵니다.
 
 ### 3.4 형태 고르기
 
@@ -145,3 +184,23 @@ SSE입니다. 각 이벤트는 `id:`(턴 안 순번), `event:`(이름), `data:`(
 | 프로필 `layout_preference=list`, "as a list", 그 밖 | `product_list` |
 
 순서는 지금 한 말 → 이 대화에서 전에 한 말 → 프로필 → 첫 방문입니다. 프로필 항목은 기억의 키(`compares_specs`) 또는 `키=말`(`layout_preference=photos`는 기억 `photos over details`와 맞음)입니다. 형태를 바꾼 이유는 `why`에 한 줄로 쓰고, 사람이 말로 언제든 바꿀 수 있습니다. 새로 읽지 않고 형태만 바꾸면 마지막에 보여 준 결과를 그대로(같은 가격으로) 다시 놓습니다(F6). 로그인한 쇼퍼의 형태 요청은 `layout_preference`로 기억되어 되돌리기 줄이 붙고, 게스트는 기억이 없어 이 대화 안에서만 유지됩니다.
+
+## 4. 음성 입력
+
+입력창의 마이크는 말을 글로 바꿔 입력창에 넣기만 합니다. 사람이 읽고 보내기를 눌러야 보통 턴(§1)이 되므로, 말로는 타이핑으로 못 하는 일을 할 수 없습니다.
+
+```
+POST /api/chat/{surface}/transcriptions        surface = bo | fo
+Content-Type: multipart/form-data
+  audio     16 kHz 모노 16비트 PCM WAV (브라우저가 녹음을 이 형식으로 바꿔서 보냄)
+  keywords  JSON 문자열 배열(선택): 화면에 보이는 이름. AI 타깃의 label(`data-acom-label`)을
+            구분자(` · `, `: `, `, `, ` → `)로 잘라 숫자·id(`_`)가 없는 30자 이하 부분만
+
+200 {"transcript": "Make XL ten and approve.", "audio_ms": 2400}
+```
+
+- 게이트웨이를 지나는 길은 턴과 같습니다(대신 행동 토큰, 같은 surface만). 에이전트 서비스가 Meta Model API의 Muse Voice Transcribe(`POST {META_API_BASE_URL}/asr/transcribe`, `mode: PUSH_TO_TALK`)에 넘기고 글만 돌려줍니다. 녹음은 저장하지 않습니다.
+- `keywords`는 상품·사이즈 이름의 철자 힌트입니다. 다듬어(앞뒤 공백, 빈 값·중복 제거) 100개까지, 하나에 30자까지(인식기가 더 긴 힌트가 하나라도 있으면 요청 전체를 거절함) 넘깁니다. 힌트일 뿐 철자를 보장하지 않습니다.
+- 설정: `META_API_BASE_URL`, `META_API_KEY`, `VOICE_MODEL`(예: `muse-voice-transcribe-1.0`), 선택으로 `VOICE_LANGUAGES`(쉼표로 적는 언어 이름, 예: `English`). 하나라도 비면 `503 upstream_unavailable`로 무엇을 설정할지 말합니다.
+- 에러: WAV가 아니면 `422 invalid_input`(`detail.field: audio`), 인식기가 답하지 않거나 거절하면 `503 upstream_unavailable`(`detail.retryable`, 429·5xx면 `true`). 웹은 그 문장을 입력창 아래에 보여 주고 타이핑을 권합니다.
+- 녹음 본문은 10 MB까지 받습니다(16 kHz 모노로 5분 남짓).

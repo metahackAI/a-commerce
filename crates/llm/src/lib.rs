@@ -14,7 +14,7 @@ pub mod usage;
 
 pub use chat::{
     ChatModel, ChatRequest, ChatResponse, DeltaSink, LlmError, Message, ModelInfo, OutputSchema,
-    Role, ToolCall, ToolDef, Usage,
+    Role, StreamVariant, ToolCall, ToolDef, Usage,
 };
 pub use config::{ModelConfig, ModelSet, ModelsFile};
 pub use openai::{OpenAiCompatible, StructuredOutput};

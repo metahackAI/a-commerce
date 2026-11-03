@@ -1,18 +1,18 @@
 import type {Metadata} from 'next';
 import {BreadcrumbItem, Breadcrumbs} from '@astryxdesign/core/Breadcrumbs';
 import {Collapsible, CollapsibleGroup} from '@astryxdesign/core/Collapsible';
-import {Grid} from '@astryxdesign/core/Grid';
 import {Layout, LayoutContent, VStack} from '@astryxdesign/core/Layout';
 import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
 import {Heading, Text} from '@astryxdesign/core/Text';
 
 import {ErrorNotice} from '@/components/fo/ErrorNotice';
 import {MeasurementsTable, ProductFacts, ReviewList, ReviewSummaryView} from '@/components/fo/ProductDetails';
-import {ProductImage} from '@/components/fo/ProductImage';
-import {ProductPurchase} from '@/components/fo/ProductPurchase';
+import {ProductShowcase} from '@/components/fo/ProductShowcase';
+import {QuestionList} from '@/components/fo/StoreContent';
+import {StorePopup} from '@/components/fo/StorePopup';
 import type {Page} from '@/lib/api';
 
-import {imageUrl, words} from '../../_lib/format';
+import {words} from '../../_lib/format';
 import {jsonLdScript, productJsonLd} from '../../_lib/jsonld';
 import {load, shopper} from '../../_lib/server';
 import type {
@@ -20,8 +20,10 @@ import type {
   CategoryDetail,
   DeliveryDate,
   Measurements,
+  Popup,
   Product,
   ProductGroup,
+  ProductQuestion,
   Profile,
   ReturnPolicy,
   Review,
@@ -36,12 +38,15 @@ export async function generateMetadata({params}: {params: Params}): Promise<Meta
   return {title: product.ok ? product.data.name : 'Product'};
 }
 
-export default async function ProductPage({params}: {params: Params}) {
+export default async function ProductPage({params, searchParams}: {params: Params; searchParams: Promise<{color?: string | string[]}>}) {
   const id = decodeURIComponent((await params).product_id);
+  // `?color=Black` (links from the shopper's orders, subscriptions and alerts) opens on that color.
+  const asked = (await searchParams).color;
+  const initialColor = (Array.isArray(asked) ? asked[0] : asked) ?? null;
   const path = `/p/${encodeURIComponent(id)}`;
   const enc = encodeURIComponent(id);
   const who = await shopper();
-  const [product, group, measurements, summary, reviews, policy, profile] = await Promise.all([
+  const [product, group, measurements, summary, reviews, policy, profile, questions, popups] = await Promise.all([
     load<Product>(`/v1/catalog/products/${enc}`),
     load<ProductGroup>(`/v1/catalog/product-groups/${enc}`, {fields: ['id', 'name', 'description', 'image', 'varies_by']}),
     load<Measurements>(`/v1/catalog/products/${enc}/measurements`),
@@ -49,6 +54,8 @@ export default async function ProductPage({params}: {params: Params}) {
     load<Page<Review>>('/v1/catalog/reviews', {product_id: id, sort: 'newest', limit: 5}),
     load<ReturnPolicy>(`/v1/catalog/products/${enc}/return-policy`),
     who.isShopper ? load<Profile>('/v1/customer/people/me', {fields: ['addresses']}) : null,
+    load<Page<ProductQuestion>>('/v1/catalog/questions', {product_id: id, limit: 10}),
+    load<Page<Popup>>('/v1/merchandising/popups', {page: 'product'}),
   ]);
 
   if (!product.ok) {
@@ -92,25 +99,22 @@ export default async function ProductPage({params}: {params: Params}) {
         <LayoutContent padding={6}>
           <script type="application/ld+json" dangerouslySetInnerHTML={{__html: jsonLdScript(ld)}} />
           <VStack gap={6}>
+            <StorePopup popups={popups.ok ? popups.data.items : []} />
             <Breadcrumbs variant="supporting">
               <BreadcrumbItem href="/">Home</BreadcrumbItem>
               {category?.ok ? <BreadcrumbItem href={`/c/${encodeURIComponent(category.data.id)}`}>{category.data.name}</BreadcrumbItem> : null}
               <BreadcrumbItem isCurrent>{p.name}</BreadcrumbItem>
             </Breadcrumbs>
-            <Grid columns={{minWidth: 320, repeat: 'fit'}} gap={6} align="start">
-              <ProductImage src={imageUrl(g?.image ?? p.image)} alt={p.name} />
-              <VStack gap={4}>
-                <Heading level={1}>{p.name}</Heading>
-                {description ? <Text color="secondary">{description}</Text> : null}
-                <ProductPurchase
-                  product={p}
-                  addressId={address?.id ?? null}
-                  addressLabel={address ? (address.label ?? address.street_address) : null}
-                  initialDelivery={delivery?.ok ? (delivery.data.items[0] ?? null) : null}
-                />
-              </VStack>
-            </Grid>
-            <CollapsibleGroup type="multiple" defaultValue={['details', 'fit', 'reviews', 'returns']} hasDividers>
+            <ProductShowcase
+              product={p}
+              image={g?.image ?? p.image}
+              description={description}
+              addressId={address?.id ?? null}
+              addressLabel={address ? (address.label ?? address.street_address) : null}
+              initialDelivery={delivery?.ok ? (delivery.data.items[0] ?? null) : null}
+              initialColor={initialColor}
+            />
+            <CollapsibleGroup type="multiple" defaultValue={['details', 'fit', 'reviews', 'questions', 'returns']} hasDividers>
               {p.additional_property && p.additional_property.length > 0 ? (
                 <Collapsible value="details" trigger={<Heading level={2}>Details</Heading>}>
                   <ProductFacts productId={p.id} facts={p.additional_property} />
@@ -132,6 +136,15 @@ export default async function ProductPage({params}: {params: Params}) {
                   )}
                   {reviews.ok && reviews.data.items.length > 0 ? <ReviewList reviews={reviews.data.items} /> : null}
                 </VStack>
+              </Collapsible>
+              <Collapsible value="questions" trigger={<Heading level={2}>{questions.ok && questions.data.total > 0 ? `Questions (${questions.data.total})` : 'Questions'}</Heading>}>
+                {!questions.ok ? (
+                  <Text color="secondary">{questions.error.message}</Text>
+                ) : questions.data.items.length === 0 ? (
+                  <Text color="secondary">No questions yet.</Text>
+                ) : (
+                  <QuestionList questions={questions.data.items} />
+                )}
               </Collapsible>
               <Collapsible value="returns" trigger={<Heading level={2}>Delivery and returns</Heading>}>
                 {rp ? (

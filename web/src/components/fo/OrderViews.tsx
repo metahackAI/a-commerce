@@ -27,6 +27,7 @@ import type {
 } from '@/app/(storefront)/_lib/types';
 
 import {AskButton} from './Ask';
+import {BuyAgainButton, ProductThumb, productHref} from './ProductThumb';
 import {ReturnPanel} from './ReturnPanel';
 import {StatusTag} from './StatusTag';
 
@@ -64,12 +65,18 @@ export function OrderRow({order}: {order: OrderSummary}) {
         </HStack>
       }
       description={
-        <VStack gap={0.5}>
+        <VStack gap={1.5}>
           <Text type="supporting" color="secondary">
             {longDate(order.order_date)}
             {order.delivered_at ? ` · delivered ${longDate(order.delivered_at)}` : ''}
           </Text>
           <Text maxLines={2}>{items}</Text>
+          {/* What was ordered, as the products it was: each picture opens that product. */}
+          <HStack gap={2} wrap="wrap">
+            {order.ordered_item.slice(0, 4).map(i => (
+              <ProductThumb key={i.id} productId={i.product_id} name={i.name} image={i.image} color={i.color} size={56} />
+            ))}
+          </HStack>
         </VStack>
       }
       endContent={
@@ -110,9 +117,10 @@ function OrderLineRow({orderId, item, canReturn, claim}: {orderId: string; item:
       ref={target.ref}
       {...target.props}
       align="start"
+      startContent={<ProductThumb productId={item.product_id} name={item.name} image={item.image} color={item.color} size={72} />}
       label={
         <HStack gap={2} vAlign="center" wrap="wrap">
-          <Link href={`/p/${encodeURIComponent(item.product_id)}`}>
+          <Link href={productHref(item.product_id, item.color)}>
             <Text weight="semibold">{item.name}</Text>
           </Link>
           <StatusBadge status={item.order_item_status} />
@@ -137,7 +145,12 @@ function OrderLineRow({orderId, item, canReturn, claim}: {orderId: string; item:
           ) : null}
         </VStack>
       }
-      endContent={<AskButton target={target} label={item.name} />}
+      endContent={
+        <HStack gap={1} vAlign="start">
+          <BuyAgainButton variantId={item.variant_id} name={item.name} availability={item.availability_now} />
+          <AskButton target={target} label={item.name} />
+        </HStack>
+      }
     />
   );
 }
@@ -262,9 +275,12 @@ function ReturnRow({item}: {item: ReturnHistoryItem}) {
     <ListItem
       ref={target.ref}
       {...target.props}
+      startContent={item.product_id ? <ProductThumb productId={item.product_id} name={item.item} image={item.image} color={item.color} size={56} /> : undefined}
       label={
         <HStack gap={2} vAlign="center" wrap="wrap">
-          <Text weight="semibold">{item.item}</Text>
+          <Link href={`/orders/${encodeURIComponent(item.order_id)}`}>
+            <Text weight="semibold">{item.item}</Text>
+          </Link>
           <StatusBadge status={item.status} />
         </HStack>
       }

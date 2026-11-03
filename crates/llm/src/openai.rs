@@ -13,8 +13,8 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::chat::{
-    ChatModel, ChatRequest, ChatResponse, DeltaSink, LlmError, Message, ModelInfo, Role, ToolCall,
-    Usage,
+    ChatModel, ChatRequest, ChatResponse, DeltaSink, LlmError, Message, ModelInfo, Role,
+    StreamVariant, ToolCall, Usage,
 };
 
 /// How a provider is asked for JSON that follows a schema.
@@ -250,6 +250,11 @@ pub fn request_body(
     stream: bool,
 ) -> Value {
     let mut messages: Vec<Value> = req.messages.iter().map(message_json).collect();
+    let structured = if stream && req.stream_variant == StreamVariant::GuidedJson {
+        StructuredOutput::GuidedJson
+    } else {
+        structured
+    };
     let mut body = json!({"model": model, "temperature": req.temperature});
     if let Some(n) = req.max_tokens {
         body["max_tokens"] = json!(n);
@@ -265,7 +270,31 @@ pub fn request_body(
             .collect();
         body["tool_choice"] = json!("auto");
     }
-    if let Some(out) = &req.output {
+    // The streamed ways a provider may need (`StreamVariant`), for streamed calls only.
+    let variant = if stream {
+        req.stream_variant
+    } else {
+        StreamVariant::Configured
+    };
+    if matches!(
+        variant,
+        StreamVariant::WithoutThinking | StreamVariant::PlainText
+    ) {
+        body["chat_template_kwargs"] = json!({"enable_thinking": false});
+    }
+    if let (StreamVariant::PlainText, Some(out)) = (variant, &req.output) {
+        // The schema's one text field is the answer: ask for that text alone.
+        let field = out
+            .schema
+            .pointer("/properties")
+            .and_then(Value::as_object)
+            .and_then(|p| p.keys().next().cloned())
+            .unwrap_or_else(|| "text".into());
+        messages.push(json!({"role": "system", "content": format!(
+            "Write only the {field} itself as plain sentences: no JSON, no quotes around it, no heading.")}));
+    } else if let (StreamVariant::StructuredOutputs, Some(out)) = (variant, &req.output) {
+        body["structured_outputs"] = json!({"json": out.schema});
+    } else if let Some(out) = &req.output {
         match structured {
             StructuredOutput::JsonSchema => {
                 body["response_format"] = json!({"type": "json_schema",
@@ -289,7 +318,9 @@ pub fn request_body(
     body["messages"] = Value::Array(messages);
     if stream {
         body["stream"] = json!(true);
-        body["stream_options"] = json!({"include_usage": true});
+        if req.stream_variant != StreamVariant::WithoutUsage {
+            body["stream_options"] = json!({"include_usage": true});
+        }
     }
     body
 }
@@ -371,10 +402,28 @@ struct PartialCall {
     arguments: String,
 }
 
+/// How much of a streamed body is kept in case it turns out not to be a stream.
+const HEAD_BYTES: usize = 1 << 20;
+
 /// Reads a streamed chat completion (server-sent events) chunk by chunk.
 #[derive(Debug, Default)]
 pub struct StreamReader {
     pending: Vec<u8>,
+    /// The start of the body, for a provider that answered `stream: true` with one JSON object.
+    head: Vec<u8>,
+    /// `data:` lines read: none means the body was not an event stream.
+    data_lines: usize,
+    /// Text some providers send apart from the answer (`reasoning_content`, `reasoning`).
+    reasoning: usize,
+    /// The start of that text, to say what it was when no answer came.
+    reasoning_head: String,
+    /// Whether that text is the answer itself: a provider whose reasoning parser never sees the
+    /// end of reasoning sends a schema-held answer (it starts with `{`) in the reasoning field.
+    reasoning_is_answer: Option<bool>,
+    /// An error the provider sent inside the stream (`data: {"error": …}`).
+    error: Option<String>,
+    /// The first `data:` line, to say what a stream without an answer carried.
+    first: Option<String>,
     model: String,
     text: String,
     calls: BTreeMap<u64, PartialCall>,
@@ -385,6 +434,10 @@ pub struct StreamReader {
 impl StreamReader {
     /// Takes the next bytes; returns the answer text that arrived in them.
     pub fn feed(&mut self, bytes: &[u8]) -> Vec<String> {
+        if self.head.len() < HEAD_BYTES {
+            let room = HEAD_BYTES - self.head.len();
+            self.head.extend_from_slice(&bytes[..bytes.len().min(room)]);
+        }
         self.pending.extend_from_slice(bytes);
         let mut deltas = Vec::new();
         while let Some(end) = self.pending.iter().position(|b| *b == b'\n') {
@@ -399,10 +452,25 @@ impl StreamReader {
 
     fn line(&mut self, line: &str) -> Option<String> {
         let data = line.strip_prefix("data:")?.trim_start();
+        self.data_lines += 1;
         if data == "[DONE]" {
             return None;
         }
+        if self.first.is_none() {
+            self.first = Some(data.chars().take(200).collect());
+        }
         let v: Value = serde_json::from_str(data).ok()?;
+        if self.error.is_none()
+            && (v.get("error").is_some()
+                || v.get("object").and_then(Value::as_str) == Some("error"))
+        {
+            let e = v.get("error").unwrap_or(&v);
+            self.error = Some(
+                e.get("message")
+                    .and_then(Value::as_str)
+                    .map_or_else(|| e.to_string(), str::to_owned),
+            );
+        }
         if let Some(m) = v.get("model").and_then(Value::as_str) {
             m.clone_into(&mut self.model);
         }
@@ -434,6 +502,30 @@ impl StreamReader {
                 }
             }
         }
+        let mut carried = None;
+        for key in ["reasoning_content", "reasoning"] {
+            if let Some(r) = delta.get(key).and_then(Value::as_str) {
+                self.reasoning += r.chars().count();
+                if self.reasoning_head.chars().count() < 160 {
+                    self.reasoning_head.push_str(r);
+                }
+                // Decided by its first visible character, and only while no answer came the
+                // usual way: JSON is the answer, anything else is thinking and stays out.
+                if self.reasoning_is_answer.is_none()
+                    && self.text.is_empty()
+                    && let Some(c) = r.trim_start().chars().next()
+                {
+                    self.reasoning_is_answer = Some(c == '{');
+                }
+                if self.reasoning_is_answer == Some(true) && !r.is_empty() {
+                    self.text.push_str(r);
+                    carried = Some(r.to_owned());
+                }
+            }
+        }
+        if carried.is_some() {
+            return carried;
+        }
         let text = delta.get("content").and_then(Value::as_str)?;
         if text.is_empty() {
             return None;
@@ -442,11 +534,38 @@ impl StreamReader {
         Some(text.to_owned())
     }
 
-    /// The whole answer once the stream ended.
+    /// The whole answer once the stream ended. A body that was one JSON object (a provider
+    /// that does not stream) is read as a plain completion; a stream that carried no answer, only
+    /// reasoning, is an error that says so.
     pub fn finish(mut self) -> Result<ChatResponse, LlmError> {
         if !self.pending.is_empty() {
             let rest = String::from_utf8_lossy(&std::mem::take(&mut self.pending)).into_owned();
             self.line(rest.trim());
+        }
+        if self.data_lines == 0 {
+            let v: Value = serde_json::from_slice(&self.head).map_err(|e| {
+                LlmError::BadResponse(format!("neither an event stream nor JSON: {e}"))
+            })?;
+            return parse_completion(&v);
+        }
+        if let Some(e) = self.error.take() {
+            return Err(LlmError::BadResponse(format!(
+                "the stream ended with an error: {e}"
+            )));
+        }
+        if self.text.trim().is_empty() && self.calls.is_empty() {
+            if self.reasoning > 0 {
+                let head: String = self.reasoning_head.chars().take(160).collect();
+                return Err(LlmError::BadResponse(format!(
+                    "the stream carried no answer text, only {} characters of reasoning: {head}",
+                    self.reasoning
+                )));
+            }
+            return Err(LlmError::BadResponse(format!(
+                "the stream carried no answer ({} data lines; the first: {})",
+                self.data_lines,
+                self.first.as_deref().unwrap_or("none")
+            )));
         }
         let tool_calls = self
             .calls
@@ -547,6 +666,45 @@ mod tests {
         assert_eq!(b["stream"], true);
         assert_eq!(b["stream_options"]["include_usage"], true);
 
+        // The streamed variants: vLLM's own field, or no usage option.
+        let guided = plan_request().stream_variant(StreamVariant::GuidedJson);
+        let b = request_body("m", StructuredOutput::JsonSchema, &guided, true);
+        assert!(b.get("response_format").is_none());
+        assert_eq!(b["guided_json"]["type"], "object");
+        let b = request_body("m", StructuredOutput::JsonSchema, &guided, false);
+        assert_eq!(
+            b["response_format"]["type"], "json_schema",
+            "only a stream changes the field"
+        );
+        let current = plan_request().stream_variant(StreamVariant::StructuredOutputs);
+        let b = request_body("m", StructuredOutput::JsonSchema, &current, true);
+        assert!(b.get("response_format").is_none());
+        assert_eq!(b["structured_outputs"]["json"]["type"], "object");
+        let plain = plan_request().stream_variant(StreamVariant::PlainText);
+        let b = request_body("m", StructuredOutput::JsonSchema, &plain, true);
+        assert!(b.get("response_format").is_none() && b.get("structured_outputs").is_none());
+        assert_eq!(b["chat_template_kwargs"]["enable_thinking"], false);
+        let last = b["messages"].as_array().unwrap().last().unwrap();
+        assert!(
+            last["content"]
+                .as_str()
+                .unwrap()
+                .contains("plain sentences")
+        );
+        let calm = plan_request().stream_variant(StreamVariant::WithoutThinking);
+        let b = request_body("m", StructuredOutput::JsonSchema, &calm, true);
+        assert_eq!(b["chat_template_kwargs"]["enable_thinking"], false);
+        assert_eq!(b["response_format"]["type"], "json_schema");
+        let b = request_body("m", StructuredOutput::JsonSchema, &calm, false);
+        assert!(
+            b.get("chat_template_kwargs").is_none(),
+            "only a stream changes the body"
+        );
+        let bare = plan_request().stream_variant(StreamVariant::WithoutUsage);
+        let b = request_body("m", StructuredOutput::JsonSchema, &bare, true);
+        assert_eq!(b["stream"], true);
+        assert!(b.get("stream_options").is_none());
+
         let b = request_body("m", StructuredOutput::Prompt, &plan_request(), false);
         assert!(b.get("response_format").is_none());
         let last = b["messages"].as_array().unwrap().last().unwrap();
@@ -623,6 +781,56 @@ mod tests {
         assert_eq!(r.usage.output_tokens, 6);
         assert_eq!(r.finish_reason.as_deref(), Some("stop"));
         assert_eq!(r.model, "m");
+    }
+
+    #[test]
+    fn a_provider_that_does_not_stream_is_read_as_one_answer() {
+        let body = r#"{"model":"m","choices":[{"message":{"content":"{\"text\": \"Hi.\"}"},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":4}}"#;
+        let mut reader = StreamReader::default();
+        for chunk in body.as_bytes().chunks(5) {
+            assert!(reader.feed(chunk).is_empty());
+        }
+        let r = reader.finish().unwrap();
+        assert_eq!(r.text, "{\"text\": \"Hi.\"}");
+        assert_eq!(r.usage.output_tokens, 4);
+    }
+
+    #[test]
+    fn a_schema_held_answer_in_the_reasoning_field_is_the_answer() {
+        let events = concat!(
+            "data: {\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"\"}}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"{\\\"text\\\": \\\"Two \"}}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"jackets.\\\"}\"}}]}\n\n",
+            "data: [DONE]\n\n"
+        );
+        let mut reader = StreamReader::default();
+        let deltas = reader.feed(events.as_bytes());
+        assert_eq!(deltas.concat(), "{\"text\": \"Two jackets.\"}");
+        assert_eq!(
+            reader.finish().unwrap().text,
+            "{\"text\": \"Two jackets.\"}"
+        );
+        // Thinking in the reasoning field is not the answer.
+        let thinking = "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"Let me see.\"}}]}\n\ndata: [DONE]\n\n";
+        let mut reader = StreamReader::default();
+        assert!(reader.feed(thinking.as_bytes()).is_empty());
+        let e = reader.finish().unwrap_err().to_string();
+        assert!(e.contains("reasoning: Let me see."), "{e}");
+    }
+
+    #[test]
+    fn an_error_inside_the_stream_is_the_error() {
+        let events = "data: {\"object\":\"error\",\"message\":\"guided decoding failed\"}\n\ndata: [DONE]\n\n";
+        let mut reader = StreamReader::default();
+        reader.feed(events.as_bytes());
+        let e = reader.finish().unwrap_err().to_string();
+        assert!(e.contains("guided decoding failed"), "{e}");
+        let empty =
+            "data: {\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}\n\ndata: [DONE]\n\n";
+        let mut reader = StreamReader::default();
+        reader.feed(empty.as_bytes());
+        let e = reader.finish().unwrap_err().to_string();
+        assert!(e.contains("no answer (2 data lines"), "{e}");
     }
 
     #[test]

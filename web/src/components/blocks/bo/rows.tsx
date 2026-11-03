@@ -11,22 +11,45 @@ import {Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow} fro
 
 import {price, value, words} from '@/app/bo/_lib/format';
 import {entityHref} from '@/app/bo/_lib/links';
-import type {IntentsFor} from '@/components/bo/ChangeParts';
+import type {Change} from '@/app/bo/_lib/types';
+import {changeSubject, type IntentsFor} from '@/components/bo/ChangeParts';
 import {AskHeaderCell, TargetRow} from '@/components/bo/targets';
 
 const ID_KEYS = ['product_id', 'variant_id', 'claim_id', 'order_id', 'promotion_id', 'customer_id', 'id', 'draft_id'];
 const NAME_KEYS = ['name', 'title', 'label', 'item'];
-const HIDDEN = new Set(['price_currency', 'currency', 'image', 'image_url']);
+const HIDDEN = new Set(['price_currency', 'currency', 'image', 'image_url', '@type']);
 
-/** The id a row is about, if it carries one. */
-export function rowId(row: Record<string, unknown>): string | null {
-  for (const k of ID_KEYS) if (typeof row[k] === 'string') return row[k] as string;
+/** The first of `keys` the row has as non-empty text (a change row's `id` is "" before it runs). */
+function firstText(row: Record<string, unknown>, keys: string[]): string | null {
+  for (const k of keys) {
+    const v = row[k];
+    if (typeof v === 'string' && v.trim() !== '') return v;
+  }
   return null;
 }
 
+/** The id a row is about, if it carries one. */
+export function rowId(row: Record<string, unknown>): string | null {
+  return firstText(row, ID_KEYS);
+}
+
 function rowName(row: Record<string, unknown>): string | null {
-  for (const k of NAME_KEYS) if (typeof row[k] === 'string') return row[k] as string;
-  return null;
+  return firstText(row, NAME_KEYS);
+}
+
+/**
+ * A short name for a row picked as "this": its name, or for a row without one, what it is about
+ * rather than a bare id: a change as the changes table says it (`Update unit price specification ·
+ * prd_windbreaker`), anything else by its type (`Question · Packable windbreaker`).
+ */
+function rowTitle(row: Record<string, unknown>, name: string): string {
+  if (rowName(row)) return name;
+  if (typeof row.op === 'string' && typeof row.entity === 'string') {
+    return `${words(row.op)} ${words(row.entity).toLowerCase()} · ${changeSubject(row as unknown as Change)}`;
+  }
+  const type = typeof row['@type'] === 'string' ? (row['@type'] as string).replace(/^acom:/, '') : null;
+  const about = firstText(row, ['product_name']) ?? name;
+  return type ? `${type} · ${about}` : about;
 }
 
 /** One value of a row as text; money-like numbers use the row's currency. */
@@ -86,11 +109,12 @@ export function RowsTable({
           const id = rowId(r);
           const name = rowName(r) ?? id ?? `Row ${i + 1}`;
           const href = entityHref(id);
-          const label = [name, ...cols.map(c => `${c.label} ${cellText(r, c.key)}`)].join(' · ');
+          const title = rowTitle(r, name);
+          const label = [title, ...cols.map(c => `${c.label} ${cellText(r, c.key)}`)].join(' · ');
           return (
             <TargetRow
               key={id ?? i}
-              target={{kind, label, ids: {[id ? `${id.slice(0, id.indexOf('_'))}_id` : 'row']: id ?? String(i), ...ids}, blockId}}
+              target={{kind, label, title, ids: {[id ? `${id.slice(0, id.indexOf('_'))}_id` : 'row']: id ?? String(i), ...ids}, blockId}}
               intents={id ? intentsFor?.(kind, id) : undefined}>
               {hasName ? (
                 <TableCell>

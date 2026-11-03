@@ -73,6 +73,7 @@ pub fn product_cards<'a>(
                 name: p.name,
                 price: p.price,
                 availability: p.availability,
+                image: p.image,
             })
             .collect())
     })

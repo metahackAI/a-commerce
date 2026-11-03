@@ -14,6 +14,8 @@
 | `external_agent` | ChatGPT·Gemini 등 | 설계만 있음: `/mcp`와 외부 토큰을 내부 토큰으로 바꾸는 길이 아직 없음(§6) | 정해진 스코프 없음(설계는 읽기, 장바구니, 주문 준비) |
 | `system` | 변경셋 실행기(`sys_runner`), 예약 작업(`sys_scheduler`), 감시 작업의 고침(`sys_watcher`), 게이트웨이의 할 일 맡기기 읽기(`sys_task_pickup`) | `commerce` 내부, 게이트웨이 | 모든 `tools:*`, `human:*` 없음 |
 
+**스토어프론트의 운영자.** 운영자 세션도 스토어프론트에서는 쇼퍼처럼 씁니다. 스토어프론트의 채팅(`/api/chat/fo/*`)과, 웹이 `x-acom-surface: fo`를 붙인 API 호출(스토어프론트 페이지의 서버·브라우저 호출)에서는, 게이트웨이가 운영자 주체를 **그 브라우저 세션에 묶인 비회원 쇼퍼**로 바꿉니다. subject는 세션 id(`ses_…`), surface는 `fo`, 스코프는 비회원 스코프이고, 이름은 운영자 이름을 그대로 씁니다. 그래서 장바구니와 대화가 그 세션에 붙고 운영자 권한은 스토어프론트로 넘어가지 않습니다. 백오피스 호출(`x-acom-surface: bo` 또는 헤더 없음)은 운영자 그대로입니다. 쇼퍼와 비회원은 바뀌지 않습니다.
+
 핵심 규칙: **`human:*` 스코프는 사람이 직접 누른 요청에만 붙습니다.** 채팅 요청(`/api/chat/*`)으로 들어온 토큰에는 절대 붙지 않으므로, 어떤 프롬프트로도 에이전트가 승인·주문·반품 요청·되돌리기·탈퇴·비밀번호 변경을 할 수 없습니다. `commerce`도 사람 전용 엔드포인트에서 이 스코프를 다시 확인합니다(이중 방어).
 
 ## 2. 스코프
@@ -62,8 +64,9 @@
 | 경로 | 대상 | 인증 |
 |---|---|---|
 | `/api/auth/*` | 게이트웨이 자신 | 로그인·로그아웃·세션·데모 로그인 |
-| `/api/chat/{bo,fo}/*` | agent | 세션 → `agent_on_behalf` 토큰. SSE를 버퍼링 없이 중계 |
-| `/api/v1/*` | commerce | 세션 → 사람 토큰(웹이 툴 REST를 직접 부를 때: 목록 화면, 블록 새로고침) |
+| `/api/chat/ws` | 게이트웨이 자신 → agent | WebSocket. Origin·세션 쿠키 확인 후 업그레이드, `hello`의 CSRF 확인. 턴마다 새 `agent_on_behalf` 토큰으로 agent의 이벤트 스트림을 불러 프레임으로 중계([chat.md](../api/chat.md) §2.6) |
+| `/api/chat/{bo,fo}/*` | agent | 세션 → `agent_on_behalf` 토큰. SSE를 버퍼링 없이 중계. `fo`에서 운영자는 세션 쇼퍼로(§1) |
+| `/api/v1/*` | commerce | 세션 → 사람 토큰(웹이 툴 REST를 직접 부를 때: 목록 화면, 블록 새로고침). `x-acom-surface: fo`면 운영자는 세션 쇼퍼로(§1) |
 | `/api/v1/**/approve`, `/undo`, `/orders`, … (사람 전용) | commerce | 세션 + CSRF 토큰 + `human:*` |
 | `/mcp`, `/mcp/*` | commerce | 토큰 없이 그대로 넘김. `commerce`에 `/mcp` 경로가 아직 없어 답하지 않음 |
 | `/*` | web (Next.js) | 그대로 |

@@ -45,6 +45,7 @@ export function OrderDetailBlock({block}: BlockProps) {
     name: l.name,
     size: l.size,
     color: l.color,
+    image: l.image,
     quantity: l.quantity ?? l.order_quantity,
     price: l.price,
     status: l.status,

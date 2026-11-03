@@ -76,7 +76,7 @@ function Row({block, item}: {block: UiBlock; item: Item}) {
               {facts}
             </Text>
           ) : null}
-          <Intents says={intentsFor(block, 'product_card', item.product_id)} />
+          <Intents says={intentsFor(block, 'product_card', item.product_id)} about={target.context} />
         </VStack>
       }
       endContent={<AskButton target={target} label={item.name} />}

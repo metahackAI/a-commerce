@@ -95,6 +95,55 @@ pub struct ChatRequest {
     /// Sampling temperature. Planning and routing run at 0 so the same input gives the same plan.
     pub temperature: f32,
     pub max_tokens: Option<u32>,
+    /// How a streamed structured answer is asked for. Providers differ: some stream a schema-held
+    /// answer only through their own field, some only without the usage option.
+    pub stream_variant: StreamVariant,
+}
+
+/// Ways to ask for a streamed answer that follows a schema, tried in this order until one
+/// gives text (`Runtime` remembers which).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StreamVariant {
+    /// As the model is configured (`structured_output`), with `stream_options.include_usage`.
+    #[default]
+    Configured,
+    /// No schema: the answer as plain text, with the chat template's thinking off. For a server
+    /// that streams nothing once output is held to a schema; the schema's one field (`text`)
+    /// is then the whole answer, and the checks after it read the text the same way.
+    PlainText,
+    /// vLLM's current `structured_outputs: {json}` field (vLLM 0.10 and later).
+    StructuredOutputs,
+    /// As configured, with the chat template's thinking turned off
+    /// (`chat_template_kwargs.enable_thinking: false`): a reasoning model whose parser keeps a
+    /// streamed answer back while it waits for reasoning to end.
+    WithoutThinking,
+    /// vLLM's older `guided_json` field, whatever the model is configured with.
+    GuidedJson,
+    /// As configured, without `stream_options` (the usage is then not counted).
+    WithoutUsage,
+}
+
+impl StreamVariant {
+    pub const ALL: [StreamVariant; 6] = [
+        Self::Configured,
+        Self::PlainText,
+        Self::StructuredOutputs,
+        Self::WithoutThinking,
+        Self::GuidedJson,
+        Self::WithoutUsage,
+    ];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Configured => "configured",
+            Self::PlainText => "plain_text",
+            Self::StructuredOutputs => "structured_outputs",
+            Self::WithoutThinking => "without_thinking",
+            Self::GuidedJson => "guided_json",
+            Self::WithoutUsage => "without_usage",
+        }
+    }
 }
 
 impl ChatRequest {
@@ -106,6 +155,7 @@ impl ChatRequest {
             output: None,
             temperature: 0.0,
             max_tokens: None,
+            stream_variant: StreamVariant::Configured,
         }
     }
 
@@ -115,6 +165,11 @@ impl ChatRequest {
             name: name.to_owned(),
             schema,
         });
+        self
+    }
+
+    pub fn stream_variant(mut self, v: StreamVariant) -> Self {
+        self.stream_variant = v;
         self
     }
 
@@ -235,6 +290,10 @@ pub struct ModelInfo {
     /// What people see in the turn footer ("Muse Glimmer 30B").
     pub display_name: String,
     pub price: Option<Price>,
+    /// The ways to stream this model's reply, in the order to try them (`stream_reply` in
+    /// `agents/models.yml`; all of [`StreamVariant::ALL`] unless the file says otherwise, none
+    /// for a server whose streaming is known not to work).
+    pub stream_variants: Vec<StreamVariant>,
 }
 
 /// One chat model behind any provider. The runtime only talks to this trait, so tests use a

@@ -28,7 +28,7 @@ import {signOut} from '@/lib/session';
 
 import {AilismFooter, AilismMark} from '@/components/brand/Ailism';
 
-import {AssistantDrawer} from './AssistantDrawer';
+import {AssistantDrawer, isConversationPage} from './AssistantDrawer';
 import {StorefrontProvider, useStorefront, type ShopperInfo} from './StorefrontContext';
 
 export interface NavCategory {
@@ -52,11 +52,40 @@ function CartItem() {
   );
 }
 
+function signOutAndGoHome(router: ReturnType<typeof useRouter>) {
+  void signOut()
+    .catch(() => undefined)
+    .finally(() => {
+      router.push('/');
+      router.refresh();
+    });
+}
+
 function AccountItem() {
-  const {isShopper, isGuest, name, tierId} = useStorefront();
+  const {isShopper, isGuest, isOperator, name, tierId} = useStorefront();
   const {isMobile} = useAppShellMobile();
   const router = useRouter();
 
+  if (isOperator) {
+    // An operator shops here as their browser session; their own work is in the back office.
+    return (
+      <DropdownMenu
+        button={{
+          label: `${name ?? 'Operator'} · Operator`,
+          variant: 'ghost',
+          size: 'sm',
+          icon: <Icon icon={UserCircleIcon} />,
+          isIconOnly: isMobile,
+        }}
+        hasChevron={!isMobile}
+        alignment="end"
+        items={[
+          {label: 'Back office', href: '/bo'},
+          {label: 'Sign out', onClick: () => signOutAndGoHome(router)},
+        ]}
+      />
+    );
+  }
   if (!isShopper) {
     return (
       <TopNavItem
@@ -82,16 +111,10 @@ function AccountItem() {
       items={[
         {label: 'Account', href: '/account'},
         {label: 'Orders', href: '/orders'},
+        {label: 'Conversations', href: '/account#conversations'},
         {
           label: 'Sign out',
-          onClick: () => {
-            void signOut()
-              .catch(() => undefined)
-              .finally(() => {
-                router.push('/');
-                router.refresh();
-              });
-          },
+          onClick: () => signOutAndGoHome(router),
         },
       ]}
     />
@@ -116,7 +139,7 @@ function EndContent() {
           )}
         </TopNavItem>
       ) : null}
-      {pathname === '/ask' ? null : (
+      {isConversationPage(pathname) ? null : (
         // A button, not a TopNavItem: TopNavItem always renders the router link (next/link), which
         // throws during server rendering when there is no href.
         <Button
@@ -135,7 +158,10 @@ function EndContent() {
   );
 }
 
-/** The store's display categories; on a phone (the menu drawer) also the shopper's own pages. */
+/**
+ * The store's display categories, then what operators publish besides products (collections,
+ * community boards, help and notices); on a phone (the menu drawer) also the shopper's own pages.
+ */
 function NavLinks({categories}: {categories: NavCategory[]}) {
   const pathname = usePathname();
   const {isMobile} = useAppShellMobile();
@@ -144,10 +170,14 @@ function NavLinks({categories}: {categories: NavCategory[]}) {
       {categories.map(c => (
         <TopNavItem key={c.id} label={c.name} href={`/c/${encodeURIComponent(c.id)}`} isSelected={pathname === `/c/${c.id}`} />
       ))}
+      <TopNavItem label="Featured" href="/shop" isSelected={pathname === '/shop'} />
       <TopNavItem label="Shop all" href="/search" isSelected={pathname === '/search'} />
+      <TopNavItem label="Collections" href="/collections" isSelected={pathname.startsWith('/collections')} />
+      <TopNavItem label="Community" href="/community" isSelected={pathname.startsWith('/community')} />
+      <TopNavItem label="Help" href="/help" isSelected={pathname.startsWith('/help')} />
       {isMobile ? (
         <>
-          <TopNavItem label="Ask Ailism" href="/ask" isSelected={pathname === '/ask'} />
+          <TopNavItem label="Ask Ailism" href="/" isSelected={isConversationPage(pathname)} />
           <TopNavItem label="Orders" href="/orders" isSelected={pathname.startsWith('/orders')} />
           <TopNavItem label="Account" href="/account" isSelected={pathname === '/account'} />
         </>
@@ -157,6 +187,9 @@ function NavLinks({categories}: {categories: NavCategory[]}) {
 }
 
 function Shell({categories, children}: {categories: NavCategory[]; children: ReactNode}) {
+  const pathname = usePathname();
+  // The conversation pages fill the window; the footer belongs to the pages that scroll.
+  const isConversation = isConversationPage(pathname);
   return (
     <AppShell
       height="fill"
@@ -174,7 +207,7 @@ function Shell({categories, children}: {categories: NavCategory[]; children: Rea
         />
       }>
       {children}
-      <AilismFooter />
+      {isConversation ? null : <AilismFooter />}
       <AssistantDrawer />
     </AppShell>
   );

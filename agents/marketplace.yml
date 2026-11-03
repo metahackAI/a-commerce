@@ -1,0 +1,28 @@
+# The marketplace agent: the sellers who sell through the store, their contracts and grades,
+# and the sales channels the store is connected to (orders, claims and product imports).
+id: marketplace
+surface: bo
+title: Marketplace agent
+description: Sellers on the marketplace - who they are, their status, contracts, commission and grades, how each is selling - and the sales channels the store is connected to, with their orders, claims and product imports.
+home_domains: [partner, integration]
+tool_scope:
+  domains: [partner, integration, catalog, sales, platform]
+  kinds: [read, write, write_approval]
+  # Always among the candidates: who sells here and where the store sells.
+  always: [search_sellers, get_seller_overview, list_channels, list_tasks]
+blocks: [change_set, product_table, action_log, task_list]
+models: {worker: glimmer, planner: spark}
+instructions: marketplace.md
+# Phrases that name this agent's work: a request containing one (and no longer phrase of another
+# agent) comes here without asking the router model.
+route_when_said:
+  - seller
+  - sellers
+  - marketplace
+  - commission
+  - contract
+  - seller grade
+  - channel
+  - channels
+  - external order
+  - product import

@@ -2,13 +2,13 @@
 id: orders
 surface: bo
 title: Orders agent
-description: Orders, returns and refunds, deliveries, and messages to customers about them.
+description: Orders, returns and refunds, deliveries, customers and their history, and messages to customers - one at a time or as scheduled campaigns.
 home_domains: [fulfillment, sales, messaging]
 tool_scope:
   domains: [fulfillment, sales, messaging, customer, catalog, platform]
   kinds: [read, write, write_approval]
   # Always among the candidates: the work waiting and the reads most requests start from.
-  always: [list_tasks, search_return_requests, search_orders, get_order, get_return_history, track_shipment]
+  always: [list_tasks, search_return_requests, search_orders, get_order, get_return_history, track_shipment, search_members]
 blocks: [change_set, refund_review, order_detail, action_log, product_table, task_list]
 models: {worker: glimmer, planner: spark}
 instructions: orders.md
@@ -29,3 +29,6 @@ route_when_said:
   - shipment
   - tracking
   - message the customer
+  - customer
+  - campaign
+  - campaigns

@@ -30,6 +30,14 @@ fn capitalized(s: &str) -> String {
         .unwrap_or_default()
 }
 
+/// A product's name from its id, for when the turn read no row that names it
+/// (`prd_wool_overcoat` → "Wool overcoat"): never the id itself in front of a shopper.
+fn name_from_id(product_id: &str) -> String {
+    capitalized(&words(
+        product_id.strip_prefix("prd_").unwrap_or(product_id),
+    ))
+}
+
 fn id_of(item: &Value) -> Option<&str> {
     item.get("product_id")
         .or_else(|| item.get("id"))
@@ -237,7 +245,7 @@ pub fn fit_check(
     });
 
     let product = product_facts(reads, &asked_id).unwrap_or(Value::Null);
-    let name = text(product.get("name")).unwrap_or_else(|| words(&asked_id));
+    let name = text(product.get("name")).unwrap_or_else(|| name_from_id(&asked_id));
     let (price, list_price, _) = prices(&product);
     let unit = text(asked.get("unit")).unwrap_or_default();
     let names: Vec<String> = asked
@@ -593,6 +601,12 @@ mod tests {
 
     fn read<'a>(tool: &'a str, output: &'a Value) -> Read<'a> {
         Read { tool, output }
+    }
+
+    #[test]
+    fn a_product_without_a_read_name_is_named_from_its_id() {
+        assert_eq!(name_from_id("prd_wool_overcoat"), "Wool overcoat");
+        assert_eq!(name_from_id("wool_overcoat"), "Wool overcoat");
     }
 
     #[test]

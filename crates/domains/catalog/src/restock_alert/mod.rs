@@ -30,6 +30,8 @@ pub(crate) struct AlertRow {
     pub color: Option<String>,
     pub message_channel: String,
     pub availability: Option<String>,
+    /// The awaited color's picture (the product's when the color has none).
+    pub image: Option<String>,
     pub start_time: DateTime<Utc>,
     pub expires: DateTime<Utc>,
     pub notified_at: Option<DateTime<Utc>>,
@@ -52,7 +54,8 @@ pub(crate) async fn alerts_of(
     .map_err(db)?;
     let rows = sqlx::query_as::<_, AlertRow>(
         "SELECT a.id, p.product_group_id, g.name AS product_name, a.product_id, p.size, p.color,
-                a.message_channel, o.availability, a.start_time, a.expires, a.notified_at
+                a.message_channel, o.availability, coalesce(p.image, g.image) AS image,
+                a.start_time, a.expires, a.notified_at
          FROM catalog.restock_alert a
          JOIN catalog.product p ON p.tenant_id = a.tenant_id AND p.id = a.product_id
          JOIN catalog.product_group g ON g.tenant_id = p.tenant_id AND g.id = p.product_group_id

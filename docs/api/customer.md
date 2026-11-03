@@ -604,7 +604,7 @@ schema.org 대응: `member_price` → `TierBenefitLoyaltyPrice`, `points_multipl
 - 요약: 관심 상품(지금 가격·재고 반영).
 - consumes → produces: `customer_id` → `product_id[]`
 - 입력: `customer_id`(✓, 쇼퍼는 `me`), `category_id?`, `limit`(기본 20, 최대 100), `cursor?`
-- 출력: `{"items": [{"product_id": "prd_field_jacket", "name": "Linen blend field jacket", "price": 128.00, "price_currency": "USD", "availability": "in_stock", "added_at": "2026-10-20T19:02:00-04:00"}], "total": 4}`
+- 출력: `{"items": [{"product_id": "prd_field_jacket", "name": "Linen blend field jacket", "price": 128.00, "price_currency": "USD", "availability": "in_stock", "image": "/media/products/prd_field_jacket-….webp", "added_at": "2026-10-20T19:02:00-04:00"}], "total": 4}`
 - 정책: 없음(읽기).
 - 에러: `customer_not_found` → `search_members`
 - 멱등성: 읽기.
@@ -772,7 +772,7 @@ schema.org 대응: `member_price` → `TierBenefitLoyaltyPrice`, `points_multipl
 - 논리주소/REST: `customer.faq_notice.list_faqs` · `GET /v1/customer/faqs`
 - 요약: FAQ 목록(schema.org `FAQPage`). 비회원도 가능.
 - consumes → produces: → `faq_id[]`
-- 입력: `category?`, `query?`, `limit`(기본 20, 최대 100), `cursor?`
+- 입력: `category?`, `query?`(질문이나 답에 든 단어들. 문구가 아니라 세 글자 이상의 단어 하나하나로 찾고 "how"·"the" 같은 흔한 말은 빼며, 맞는 단어가 많은 것부터), `limit`(기본 20, 최대 100), `cursor?`
 - 출력: `{"items": [{"id": "faq_returns", "name": "How long do I have to return?", "category": "returns"}], "total": 24}`
 - 정책: 없음(읽기).
 - 에러: 없음.

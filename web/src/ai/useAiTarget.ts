@@ -11,7 +11,10 @@ import type {ElementContext} from './types';
 
 export interface AiTarget {
   kind: string;
+  /** Everything the person sees on the element; the agent reads it as "this". */
   label: string;
+  /** A short name for the composer's chip, when `label` is long (a whole row). */
+  title?: string;
   ids: Record<string, string>;
   blockId?: string;
   /** schema.org or acom term the element shows, e.g. `schema:Offer`. */
@@ -35,17 +38,21 @@ export function useAiTarget(target: AiTarget) {
     [ref, targets],
   );
 
-  const context: ElementContext = {element_ref: ref, kind: target.kind, label: target.label, ids: target.ids};
+  const context: ElementContext = {element_ref: ref, kind: target.kind, label: target.label, ids: target.ids, title: target.title};
 
   return {
     ref: register,
     /** Picks this element as "this" for the next message. */
     ask: () => pick(context),
+    /** The element as a message's context, for a sentence sent about it right away. */
+    context,
     props: {
       'data-acom-kind': target.kind,
       'data-acom-id': Object.values(target.ids)[0],
       'data-acom-term': target.term,
       'data-acom-ref': ref,
+      /** The name people see; the composer's microphone passes these on as spelling hints. */
+      'data-acom-label': target.label,
     },
   };
 }

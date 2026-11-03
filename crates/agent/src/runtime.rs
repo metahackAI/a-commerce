@@ -20,7 +20,8 @@ use acom_contract::{Change, Check, ErrorCode, Preview, ToolError};
 use acom_core::Clock;
 use acom_core::ids::{ConversationId, TurnId};
 use acom_llm::{
-    ChatModel, ChatRequest, LlmError, Message, ModelSet, RepairEnv, Repaired, UsageRecord,
+    ChatModel, ChatRequest, LlmError, Message, ModelInfo, ModelSet, RepairEnv, Repaired,
+    StreamVariant, UsageRecord,
 };
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
@@ -28,13 +29,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::blocks::change_set::{ChangeSetView, ItemView};
-use crate::blocks::{Block, insights, review, shop, shopper, table};
+use crate::blocks::{Action, Block, insights, records, review, shop, shopper, table};
 use crate::checker;
 use crate::client::{ItemRef, NewChangeSet, ToolClient};
 use crate::executor::{self, StepRecord};
 use crate::memory::{ConversationContext, OpenChangeSet, Owner};
 use crate::planner::{self, About, Plan, PlanInput, PlanStep};
 use crate::profile::{AgentProfile, ChatSurface, LayoutRule, Limits, Profiles};
+use crate::reply_stream::ReplyStream;
 use crate::router;
 use crate::store::{StepRow, StoreInfo, StoreSettings, SystemStore, TurnEnd, TurnLog, TurnStart};
 use crate::stream::{Command, Emitter, Event, StepKind, StepStatus, TurnUsage};
@@ -61,6 +63,38 @@ fn reply_schema() -> Value {
     json!({"type": "object", "additionalProperties": false, "required": ["text"],
            "properties": {"text": {"type": "string", "maxLength": REPLY_MAX_CHARS,
                                    "description": "Two or three plain sentences for the person."}}})
+}
+
+/// Whether `variant` streams an answer from `model`: a request shaped like a real reply (the
+/// reply prompt and a turn's results), which must come back in pieces that already read as
+/// text, and whole at the end.
+async fn probe_once(model: &dyn acom_llm::ChatModel, variant: StreamVariant, prompt: &str) -> bool {
+    let raw = std::sync::Mutex::new(String::new());
+    let sink = |d: &str| {
+        if let Ok(mut r) = raw.lock() {
+            r.push_str(d);
+        }
+    };
+    let results = json!({"reads": [{"tool": "search_products", "result": {"items": [
+        {"id": "prd_windbreaker", "name": "Packable windbreaker", "price": 89.0, "price_currency": "USD", "availability": "in_stock"},
+        {"id": "prd_field_jacket", "name": "Linen blend field jacket", "price": 128.0, "price_currency": "USD", "availability": "in_stock"}],
+        "total": 2}}], "request": "I need a light jacket for spring trips."});
+    let req = ChatRequest::new(
+        "stream_check",
+        vec![
+            Message::system(prompt.trim().to_owned()),
+            Message::user(format!("Results of this turn: {results}")),
+        ],
+    )
+    .json("reply", reply_schema())
+    .max_tokens(500)
+    .stream_variant(variant);
+    let res = tokio::time::timeout(Duration::from_secs(45), model.chat(&req, Some(&sink))).await;
+    let streamed = raw
+        .lock()
+        .map(|r| crate::reply_stream::visible_text(&r))
+        .unwrap_or_default();
+    matches!(res, Ok(Ok(r)) if !r.text.trim().is_empty()) && !streamed.trim().is_empty()
 }
 
 /// A reply the model wrote, and whether a length limit stopped it before it finished.
@@ -276,7 +310,35 @@ pub struct Runtime {
     models: ModelSet,
     log: Arc<dyn TurnLog>,
     store: Arc<dyn StoreInfo>,
+    /// For each model (alias), whether its replies stream and how ([`StreamState`]). Found out
+    /// in the background ([`Runtime::keep_streaming_probed`]), never in a person's turn.
+    streaming: std::sync::Mutex<BTreeMap<String, StreamState>>,
+    /// Wakes the background check when a way that worked stops working in a turn.
+    reprobe: tokio::sync::Notify,
+    /// Ways that came back empty in a person's turn, per model, and when: a real reply outweighs
+    /// the check, so the check does not trust them again for [`TURN_FAILURE_HOLDS`].
+    failed_in_turn: std::sync::Mutex<BTreeMap<String, Vec<(StreamVariant, Instant)>>>,
 }
+
+/// What the runtime knows about streaming one model's reply.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize)]
+#[serde(tag = "state", content = "way", rename_all = "snake_case")]
+pub enum StreamState {
+    /// Not checked yet (or a way stopped working): replies come whole until it is.
+    #[default]
+    Unknown,
+    /// Replies stream this way: the background check saw an answer arrive in pieces.
+    Works(StreamVariant),
+    /// No way gave a streamed answer: replies come whole, and it is checked again later.
+    Off,
+}
+
+/// How often the background check looks again at a model whose replies do not stream (a server
+/// that gets fixed starts streaming without a restart), and at one whose do.
+const PROBE_AGAIN_OFF: Duration = Duration::from_secs(10 * 60);
+const PROBE_AGAIN_WORKS: Duration = Duration::from_secs(60 * 60);
+/// How long a way that failed in a person's turn is left out of the check.
+const TURN_FAILURE_HOLDS: Duration = Duration::from_secs(6 * 60 * 60);
 
 impl std::fmt::Debug for Runtime {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -307,6 +369,107 @@ impl Runtime {
             models,
             log,
             store,
+            streaming: std::sync::Mutex::new(BTreeMap::new()),
+            reprobe: tokio::sync::Notify::new(),
+            failed_in_turn: std::sync::Mutex::new(BTreeMap::new()),
+        }
+    }
+
+    /// The way to stream a reply from this model now: only one the background check saw work.
+    fn stream_variant(&self, model: &ModelInfo) -> Option<StreamVariant> {
+        match self.stream_state(&model.alias) {
+            StreamState::Works(v) => Some(v),
+            StreamState::Unknown | StreamState::Off => None,
+        }
+    }
+
+    /// A way that worked came back without text in a turn: replies come whole again until the
+    /// background check, woken now, has looked again.
+    fn stream_failed(&self, model: &ModelInfo, variant: StreamVariant) {
+        if let Ok(mut f) = self.failed_in_turn.lock() {
+            f.entry(model.alias.clone())
+                .or_default()
+                .push((variant, Instant::now()));
+        }
+        if let Ok(mut s) = self.streaming.lock()
+            && s.get(&model.alias) == Some(&StreamState::Works(variant))
+        {
+            s.insert(model.alias.clone(), StreamState::Unknown);
+            self.reprobe.notify_one();
+        }
+    }
+
+    /// Whether `variant` failed in a person's turn lately (the check leaves it out).
+    fn failed_lately(&self, alias: &str, variant: StreamVariant) -> bool {
+        self.failed_in_turn.lock().is_ok_and(|f| {
+            f.get(alias).is_some_and(|ways| {
+                ways.iter()
+                    .any(|(v, at)| *v == variant && at.elapsed() < TURN_FAILURE_HOLDS)
+            })
+        })
+    }
+
+    pub fn stream_state(&self, alias: &str) -> StreamState {
+        self.streaming.lock().map_or(StreamState::Unknown, |s| {
+            s.get(alias).copied().unwrap_or_default()
+        })
+    }
+
+    /// Every configured model and whether its replies stream (`GET /chat/{surface}/streaming`).
+    pub fn stream_states(&self) -> Vec<(String, StreamState)> {
+        self.models
+            .models
+            .keys()
+            .map(|alias| (alias.clone(), self.stream_state(alias)))
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn assume_streaming(&self, alias: &str, state: StreamState) {
+        if let Ok(mut s) = self.streaming.lock() {
+            s.insert(alias.to_owned(), state);
+        }
+    }
+
+    /// One look at every model whose replies do not stream yet: each of its ways
+    /// (`stream_variants`) in turn, with a short request shaped like a reply, until one answers
+    /// in pieces. Returns how long to wait before the next look.
+    pub async fn probe_streaming(&self) -> Duration {
+        let mut wait = PROBE_AGAIN_WORKS;
+        for (alias, model) in &self.models.models {
+            if matches!(self.stream_state(alias), StreamState::Works(_)) {
+                continue;
+            }
+            let mut found = StreamState::Off;
+            let prompt = self.profiles.prompts.reply.clone();
+            for &v in &model.info().stream_variants {
+                if self.failed_lately(alias, v) {
+                    continue;
+                }
+                if probe_once(model.as_ref(), v, &prompt).await {
+                    found = StreamState::Works(v);
+                    break;
+                }
+            }
+            tracing::info!(model = %alias, state = ?found, "reply streaming checked");
+            if found == StreamState::Off {
+                wait = PROBE_AGAIN_OFF;
+            }
+            if let Ok(mut s) = self.streaming.lock() {
+                s.insert(alias.clone(), found);
+            }
+        }
+        wait
+    }
+
+    /// Checks streaming at start, again on a schedule, and at once when a way stops working.
+    pub async fn keep_streaming_probed(self: Arc<Self>) {
+        loop {
+            let wait = self.probe_streaming().await;
+            tokio::select! {
+                () = tokio::time::sleep(wait) => {}
+                () = self.reprobe.notified() => {}
+            }
         }
     }
 
@@ -390,6 +553,54 @@ impl Runtime {
                 ))
             }
         }
+    }
+
+    /// The caller's conversations on one surface, the most recent first, at most `limit`
+    /// (`GET /chat/{surface}/conversations`): `{items: [{conversation_id, name, turns,
+    /// started_at, last_turn_at}], total}`, times in store time. Only the caller's own, as for
+    /// one conversation.
+    pub async fn conversations(
+        &self,
+        principal: &Principal,
+        surface: ChatSurface,
+        limit: usize,
+        tools: &dyn ToolClient,
+    ) -> Result<Value, ToolError> {
+        let tenant = principal.tenant.as_str();
+        let owner = Owner::of(principal);
+        let (items, total) = self
+            .log
+            .conversations(tenant, surface.as_str(), &owner, limit)
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "conversation list");
+                ToolError::new(
+                    ErrorCode::UPSTREAM_UNAVAILABLE,
+                    "The conversation store did not answer; try again in a moment.",
+                )
+            })?;
+        // The store's time zone as a turn reads it: from commerce, else this store's fallback.
+        let zone = if items.is_empty() {
+            None
+        } else {
+            match tools.store().await {
+                Ok(s) => Some(s.time),
+                Err(_) => self.store.settings(tenant).await.ok().map(|s| s.time),
+            }
+        };
+        let stamp = |t: Option<DateTime<Utc>>| match (t, &zone) {
+            (Some(t), Some(zone)) => json!(zone.format(t)),
+            (Some(t), None) => json!(t.to_rfc3339()),
+            (None, _) => Value::Null,
+        };
+        let items: Vec<Value> = items
+            .into_iter()
+            .map(|c| {
+                json!({"conversation_id": c.conversation_id, "name": c.name, "turns": c.turns,
+                       "started_at": stamp(c.started_at), "last_turn_at": stamp(c.last_turn_at)})
+            })
+            .collect();
+        Ok(json!({"items": items, "total": total}))
     }
 
     /// Runs one turn, sending its events. Always ends with `turn.done`.
@@ -570,6 +781,137 @@ struct Turn<'r> {
     problems: Vec<String>,
     /// Steps not called because what they build on came back empty: the tool and why.
     skipped: Vec<(String, String)>,
+    /// The reply as the model writes it (`message.delta` while it is written).
+    reply_stream: Arc<ReplyStream>,
+    /// Whether the person saw a reply stream in this turn (then `message.done` alone ends it).
+    streamed: bool,
+    /// Blocks on screen this turn, by place (`products#0`, `change_set#0`): the id they were
+    /// sent with and what they showed, so a block that changes keeps its id and replaces itself.
+    shown: Vec<ShownBlock>,
+}
+
+/// A block sent this turn: where it sits, its id, and what it showed (to skip sending it again).
+#[derive(Debug, Clone)]
+struct ShownBlock {
+    place: String,
+    block_id: String,
+    sent: Value,
+}
+
+/// Where a block sits on the canvas: the product views are one place (the same results laid
+/// out as a list, a gallery or a comparison), anything else by its kind; then its order.
+/// The value for `field` among the rows a used step returned, when exactly one of those rows is
+/// named in the request: its id or its name, word for word ("VIP" is the tier `vip` named VIP).
+fn named_in_request(
+    field: &str,
+    step: &PlanStep,
+    tool: &ToolSpec,
+    view: &BTreeMap<String, StepRecord>,
+    said: &str,
+) -> Option<Value> {
+    // The slot the field takes, else a slot of the same name (`tier_id`).
+    let slot = tool
+        .consumes
+        .iter()
+        .find(|s| {
+            tool.field_for_slot(&s.name)
+                .is_some_and(|(f, _)| f == field)
+        })
+        .map_or(field, |s| s.name.as_str());
+    // The words that only name what the tool returns ("members" in "the VIP members") name no
+    // one value.
+    let own = toolsearch::tokens(&tool.tool.replace('_', " "));
+    let said: Vec<String> = toolsearch::tokens(said)
+        .into_iter()
+        .filter(|w| !own.contains(w))
+        .collect();
+    let named = |text: &str| {
+        let words = toolsearch::tokens(&text.replace('_', " "));
+        !words.is_empty() && words.iter().all(|w| said.contains(w))
+    };
+    let mut found: Vec<Value> = Vec::new();
+    for r in step.uses.iter().filter_map(|u| view.get(u)) {
+        let Some(values) = r.slots.get(slot) else {
+            continue;
+        };
+        for row in r.output.as_ref().map(executor::rows).unwrap_or_default() {
+            let Some(id) = row
+                .get(slot)
+                .or_else(|| row.get("id"))
+                .filter(|v| values.contains(v))
+            else {
+                continue;
+            };
+            let by_name = row.get("name").and_then(Value::as_str).is_some_and(named);
+            let by_id = id.as_str().is_some_and(named);
+            if (by_name || by_id) && !found.contains(id) {
+                found.push(id.clone());
+            }
+        }
+    }
+    (found.len() == 1).then(|| found.remove(0))
+}
+
+/// A shopper's read narrowed by a yes/no they never mentioned ("questions" read as
+/// `answered: true` hides the one still waiting): such a filter is left out, so the read shows
+/// everything it would without it. A yes/no whose words the shopper said stays.
+fn unasked_yes_no(input: &mut Value, tool: &ToolSpec, said: &str) -> Vec<String> {
+    let said = toolsearch::tokens(said);
+    let Some(args) = input.as_object_mut() else {
+        return Vec::new();
+    };
+    let required = tool.required();
+    let unasked: Vec<String> = args
+        .iter()
+        .filter(|(k, v)| v.is_boolean() && !required.contains(&k.as_str()))
+        .filter(|(k, _)| {
+            !toolsearch::tokens(&k.replace('_', " ")).iter().any(|w| {
+                let stem = w.trim_end_matches("ed");
+                stem.len() > 2 && said.iter().any(|s| s.contains(stem))
+            })
+        })
+        .map(|(k, _)| k.clone())
+        .collect();
+    unasked
+        .into_iter()
+        .map(|k| {
+            let v = args.remove(&k).unwrap_or(Value::Null);
+            format!("{k}: {v} was not asked for, left out")
+        })
+        .collect()
+}
+
+/// Whether a listed item is a product (`prd_…` as its `product_id` or `id`).
+fn is_product_item(item: &Value) -> bool {
+    item.get("product_id")
+        .or_else(|| item.get("id"))
+        .and_then(Value::as_str)
+        .is_some_and(|id| id.starts_with("prd_"))
+}
+
+fn place_of(ui: &str, nth: usize) -> String {
+    let family = match ui {
+        "compare_table" | "look_gallery" | "product_list" => "products",
+        other => other,
+    };
+    format!("{family}#{nth}")
+}
+
+/// Points block references (`block:blk_…` in a block's data or an Open action's target) at the
+/// ids blocks keep.
+fn rename_block_ids(v: &mut Value, renamed: &[(String, String)]) {
+    match v {
+        Value::String(text) => {
+            for (from, to) in renamed {
+                if text.contains(from.as_str()) {
+                    *text = text.replace(from.as_str(), to);
+                }
+            }
+        }
+        Value::Array(items) => items.iter_mut().for_each(|i| rename_block_ids(i, renamed)),
+        Value::Object(map) => map.values_mut().for_each(|i| rename_block_ids(i, renamed)),
+        _ => {}
+    }
 }
 
 impl<'r> Turn<'r> {
@@ -596,6 +938,9 @@ impl<'r> Turn<'r> {
             ctx: p.context,
             turn_id: TurnId::generate().as_str().to_owned(),
             profile,
+            reply_stream: Arc::new(ReplyStream::new(emit.clone())),
+            streamed: false,
+            shown: Vec::new(),
             emit,
             tools,
             clock: TurnClock {
@@ -652,7 +997,7 @@ impl<'r> Turn<'r> {
         if self.search().await {
             match self.plan_first().await {
                 Ok(plan) => self.execute_with_revisions(plan).await,
-                Err(Stop(why)) => self.problems.push(why),
+                Err(Stop(why)) => self.note_problem(why),
             }
         }
         self.finish_change_set().await;
@@ -922,20 +1267,81 @@ impl<'r> Turn<'r> {
             if self.usage.len() as u32 >= self.limits.model_calls || self.time_left().is_zero() {
                 return None;
             }
+            // Each attempt (another model, or a check asking again) starts a fresh reply.
+            self.reply_stream.reset("The reply is being written again.");
+            let variant = self.rt.stream_variant(model.info());
             let left = self.time_left();
             let started_at = self.clock.now();
             let t = Instant::now();
-            let res = tokio::time::timeout(left, model.chat(&req, None))
-                .await
-                .unwrap_or(Err(LlmError::Timeout(left.as_secs())));
-            let record = UsageRecord::new(
+            // The reply streams to the person as it is written, the way this model was last
+            // seen to stream; a model that never gave a streamed answer is asked without one.
+            let res = match variant {
+                Some(v) => {
+                    let stream = self.reply_stream.clone();
+                    let sink = move |d: &str| stream.push(d);
+                    let req = req.clone().stream_variant(v);
+                    tokio::time::timeout(left, model.chat(&req, Some(&sink)))
+                        .await
+                        .unwrap_or(Err(LlmError::Timeout(left.as_secs())))
+                }
+                None => tokio::time::timeout(left, model.chat(&req, None))
+                    .await
+                    .unwrap_or(Err(LlmError::Timeout(left.as_secs()))),
+            };
+            if !self.reply_stream.shown().is_empty() {
+                self.streamed = true;
+            }
+            let mut record = UsageRecord::new(
                 model.info(),
                 purpose,
                 started_at,
                 t.elapsed().as_millis() as u64,
                 &res,
             );
+            // A stream that came back without the answer (a provider that streams structured
+            // output apart, or not at all) is asked once more without streaming, so the person
+            // still gets the model's reply; that way of streaming is not tried again. Not when
+            // the endpoint is down: that would only wait twice.
+            let unstreamed = variant.is_some()
+                && match &res {
+                    Ok(r) => r.text.trim().is_empty(),
+                    Err(e) => {
+                        !e.is_down() && !matches!(e, LlmError::Timeout(_) | LlmError::Resting(_))
+                    }
+                };
+            if let (true, Some(v)) = (unstreamed, variant) {
+                self.rt.stream_failed(model.info(), v);
+                record.succeeded = false;
+                record.error = Some(format!(
+                    "streamed as {}: {}",
+                    v.as_str(),
+                    record.error.as_deref().unwrap_or("no text")
+                ));
+            }
             self.record_call(record, None).await;
+            let res = if unstreamed
+                && (self.usage.len() as u32) < self.limits.model_calls
+                && !self.time_left().is_zero()
+            {
+                self.reply_stream.reset("The reply is being written again.");
+                let left = self.time_left();
+                let started_at = self.clock.now();
+                let t = Instant::now();
+                let again = tokio::time::timeout(left, model.chat(&req, None))
+                    .await
+                    .unwrap_or(Err(LlmError::Timeout(left.as_secs())));
+                let record = UsageRecord::new(
+                    model.info(),
+                    purpose,
+                    started_at,
+                    t.elapsed().as_millis() as u64,
+                    &again,
+                );
+                self.record_call(record, None).await;
+                again
+            } else {
+                res
+            };
             if let Ok(r) = res
                 && !r.text.trim().is_empty()
             {
@@ -1160,8 +1566,7 @@ impl<'r> Turn<'r> {
         )
         .await;
         if !ok {
-            self.problems
-                .push("None of the store's tools that I may use fits this request.".into());
+            self.note_problem("None of the store's tools that I may use fits this request.".into());
         }
         ok
     }
@@ -1426,7 +1831,7 @@ impl<'r> Turn<'r> {
             match self.execute(&plan).await {
                 Flow::Done => return,
                 Flow::Stop(why) => {
-                    self.problems.push(why);
+                    self.note_problem(why);
                     return;
                 }
                 Flow::Revise(why) if self.revisions < self.limits.plan_revisions => {
@@ -1440,13 +1845,13 @@ impl<'r> Turn<'r> {
                     match self.revise(why).await {
                         Ok(p) => plan = p,
                         Err(Stop(why)) => {
-                            self.problems.push(why);
+                            self.note_problem(why);
                             return;
                         }
                     }
                 }
                 Flow::Revise(why) => {
-                    self.problems.push(why);
+                    self.note_problem(why);
                     return;
                 }
             }
@@ -1478,8 +1883,9 @@ impl<'r> Turn<'r> {
                 ));
             }
             if plan.about == About::Other && tool.remembers() {
-                self.problems
-                    .push("I did not remember anything about the person this is for.".into());
+                self.note_problem(
+                    "I did not remember anything about the person this is for.".into(),
+                );
                 continue;
             }
             // Blocks shown earlier in the conversation stand in for steps (`blk_…`).
@@ -1510,14 +1916,48 @@ impl<'r> Turn<'r> {
                         continue;
                     }
                     let mut input = bound.input;
+                    let mut notes = bound.notes;
+                    let mut undecided = bound.undecided;
+                    // A field still open that a used step lists values for (undecided among
+                    // several, or never filled: the tiers for `tier_id`): the one the request
+                    // names ("the VIP members"), without asking a model.
+                    let open: Vec<String> = tool
+                        .properties()
+                        .map(|p| {
+                            p.keys()
+                                .filter(|f| {
+                                    undecided.contains(f)
+                                        || (input.get(f.as_str()).is_none()
+                                            && step.uses.iter().any(|u| {
+                                                view.get(u).is_some_and(|r| {
+                                                    r.slots.contains_key(f.as_str())
+                                                })
+                                            }))
+                                })
+                                .cloned()
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    for field in open {
+                        if let Some(v) = named_in_request(&field, step, &tool, &view, &self.text) {
+                            notes.push(format!("{field}: {v}, named in the request"));
+                            if let Some(args) = input.as_object_mut() {
+                                args.insert(field.clone(), v);
+                            }
+                            undecided.retain(|f| *f != field);
+                        }
+                    }
                     if tool.is_write()
                         && self.surface == ChatSurface::Bo
                         && let Some(base) = self.replaceable_input(&tool.tool)
                     {
                         input = executor::merge(&base, &input);
                     }
-                    self.undecided = bound.undecided;
-                    self.call(plan, &step.id, &tool, input, bound.notes)
+                    if !tool.is_write() && self.surface == ChatSurface::Fo {
+                        notes.extend(unasked_yes_no(&mut input, &tool, &self.text));
+                    }
+                    self.undecided = undecided;
+                    self.call(plan, &step.id, &tool, input, notes)
                         .await
                         .map(Some)
                 }
@@ -1532,8 +1972,7 @@ impl<'r> Turn<'r> {
                 // goes on without them, and keeping one says it could not.
                 Err(Flow::Stop(_)) if tool.remembers() && !tool.is_write() => {}
                 Err(Flow::Stop(why)) if tool.remembers() => {
-                    self.problems
-                        .push(format!("I could not remember that: {why}"));
+                    self.note_problem(format!("I could not remember that: {why}"));
                 }
                 Err(flow) => {
                     self.unrun = plan
@@ -1585,10 +2024,16 @@ impl<'r> Turn<'r> {
     ) -> Result<StepRecord, Flow> {
         let mut repaired = acom_llm::repair(&input, &tool.input_schema, &self.repair_env());
         repaired.missing.append(&mut self.undecided);
+        let mut asked = Vec::new();
         if !repaired.is_valid()
             && let Some(fixed) = self.ask_arguments(tool, &repaired).await
         {
             repaired = fixed;
+            // The arguments model answers with the whole schema and fills what nobody asked
+            // for, a yes/no filter included: left out again on the storefront.
+            if !tool.is_write() && self.surface == ChatSurface::Fo {
+                asked = unasked_yes_no(&mut repaired.value, tool, &self.text);
+            }
         }
         if !repaired.is_valid() {
             let mut why: Vec<String> = repaired.errors.clone();
@@ -1621,6 +2066,7 @@ impl<'r> Turn<'r> {
         }
         let mut notes = notes;
         notes.extend(repaired.notes.iter().cloned());
+        notes.extend(asked);
         let input = repaired.value;
         // Same read with the same arguments earlier this turn: reuse its result.
         if !tool.is_write()
@@ -1647,6 +2093,11 @@ impl<'r> Turn<'r> {
             (_, ChatSurface::Fo) => self.run_shopper_write(step, tool, input, &notes).await,
         }?;
         self.history.push(record.clone());
+        // What this result already shows goes on screen now, not when the turn ends.
+        let wrote_change_set = tool.kind != ToolKind::Read
+            && self.tool_set != ToolSet::Facade
+            && self.surface == ChatSurface::Bo;
+        self.progress_blocks(wrote_change_set).await;
         Ok(record)
     }
 
@@ -2455,7 +2906,7 @@ impl<'r> Turn<'r> {
                         state: head.state,
                     });
                 }
-                Err(e) => self.problems.push(format!(
+                Err(e) => self.note_problem(format!(
                     "The change set could not be handed over for approval: {}",
                     e.message
                 )),
@@ -2668,9 +3119,10 @@ impl<'r> Turn<'r> {
     fn product_rows(&self, uis: &[&str]) -> Vec<Value> {
         if let Some(r) = self.last_output(|r| {
             r.kind == ToolKind::Read
+                && !records::shaped(&r.tool)
                 && shop::items_of(r.output.as_ref().unwrap_or(&Value::Null))
                     .first()
-                    .is_some_and(|i| i.get("name").is_some())
+                    .is_some_and(|i| i.get("name").is_some() && is_product_item(i))
         }) {
             return shop::items_of(r.output.as_ref().unwrap_or(&Value::Null));
         }
@@ -2741,6 +3193,30 @@ impl<'r> Turn<'r> {
     }
 
     fn build_blocks(&mut self) {
+        let out = self.compose_blocks(false);
+        self.publish_blocks(out, true);
+    }
+
+    /// After a step: the blocks its results already make, on screen while the turn goes on. A
+    /// write into the change set reads the change set again, so its items appear one by one.
+    async fn progress_blocks(&mut self, wrote_change_set: bool) {
+        if self.emit.is_closed() {
+            return;
+        }
+        if wrote_change_set
+            && self.draft.as_ref().is_some_and(|d| d.touched)
+            && let Some(view) = self.change_set_view().await
+        {
+            self.view = Some(view);
+        }
+        let out = self.compose_blocks(true);
+        self.publish_blocks(out, false);
+    }
+
+    /// The blocks the turn's results make, in the order they are shown. While the turn still
+    /// works (`progress`), only blocks built from what it has read so far: no stand-in table
+    /// of the last list read, which the final answer may not keep.
+    fn compose_blocks(&self, progress: bool) -> Vec<Block> {
         let reply_plan = self
             .plan
             .as_ref()
@@ -2788,18 +3264,25 @@ impl<'r> Turn<'r> {
         let allowed = |ui: &str| self.profile.blocks.iter().any(|b| b == ui);
         let block = match reply_plan.as_str() {
             "product_drafts" => drafts,
+            // Return requests have their own review (scene B2), even when only listed.
+            "product_table"
+                if allowed("refund_review")
+                    && self
+                        .last_output(|r| r.kind == ToolKind::Read)
+                        .is_some_and(|r| r.tool == "search_return_requests") =>
+            {
+                self.refund_review_block()
+            }
             "product_table" => self
                 .last_output(|r| r.kind == ToolKind::Read)
                 .and_then(|r| table::product_table(r.output.as_ref()?)),
             "action_log" => self
-                .last_output(|r| r.kind == ToolKind::Read)
+                .last_output(|r| r.tool == "search_action_log" || r.tool == "get_action_log")
                 .and_then(|r| table::action_log(r.output.as_ref()?)),
             "task_list" => self
                 .last_output(|r| r.tool == "list_tasks")
                 .and_then(|r| crate::blocks::tasks::task_list(r.output.as_ref()?)),
-            "order_detail" => self
-                .last_output(|_| true)
-                .and_then(|r| table::order_detail(r.output.as_ref()?)),
+            "order_detail" => self.order_detail_block(),
             "cart" => self
                 .last_output(|r| r.output.as_ref().is_some_and(|o| o.get("lines").is_some()))
                 .and_then(|r| shop::cart(r.output.as_ref()?)),
@@ -2812,8 +3295,25 @@ impl<'r> Turn<'r> {
                     insights::sales_explainer(r.output.as_ref()?, trend, &self.profile.next_actions)
                 }),
             "return_options" => self
-                .last_output(|r| r.kind == ToolKind::Read)
+                .last_output(|r| {
+                    matches!(
+                        r.tool.as_str(),
+                        "get_return_options" | "get_exchange_options" | "get_cancel_options"
+                    )
+                })
                 .and_then(|r| shop::return_options(r.output.as_ref()?, &r.input)),
+            "record_list" => self.record_block(),
+            // The plan named a product layout but this turn read only records (orders, coupons):
+            // those are the answer, not the products shown earlier.
+            "compare_table" | "look_gallery" | "product_list"
+                if allowed("record_list")
+                    && self.product_read().is_none()
+                    && self
+                        .primary_read()
+                        .is_some_and(|r| records::shaped(&r.tool)) =>
+            {
+                self.record_block()
+            }
             "compare_table" | "look_gallery" | "product_list" => {
                 let (ui, rule) = self.product_layout(&reply_plan);
                 let ui = ui.as_str();
@@ -2845,10 +3345,22 @@ impl<'r> Turn<'r> {
         // The plan's block could not be made from what was read, or the plan chose text: when
         // nothing else is shown, show the last list read as it is, so the person sees what the
         // turn found (products as a list on the storefront, anything else as a table).
-        let block = if block.is_none() && out.is_empty() && cards.is_empty() {
+        let block = if block.is_none() && out.is_empty() && cards.is_empty() && !progress {
             self.found_block(&allowed)
         } else {
             block
+        };
+        // Products come with what this turn read about them: their reviews and questions.
+        let about_products = if allowed("record_list")
+            && block.as_ref().is_some_and(|b| {
+                matches!(
+                    b.ui.as_str(),
+                    "compare_table" | "look_gallery" | "product_list"
+                )
+            }) {
+            self.product_content_blocks()
+        } else {
+            Vec::new()
         };
         // A gift is reviewed in its picker first; the card with the Place order button follows.
         if reply_plan == "gift_picker" {
@@ -2858,8 +3370,72 @@ impl<'r> Turn<'r> {
             out.extend(cards);
             out.extend(block);
         }
-        for b in out {
-            self.emit.send(Event::Block(Box::new(b.clone())));
+        out.extend(about_products);
+        out
+    }
+
+    /// Sends the turn's blocks: each keeps the id of the block in its place shown earlier this
+    /// turn (so it replaces it, in place), and one that did not change is not sent again. At the
+    /// end of the turn (`last`) blocks the answer does not keep are taken off the screen, failed
+    /// checks are pointed at, and the blocks are kept for the reply and the turn log.
+    fn publish_blocks(&mut self, out: Vec<Block>, last: bool) {
+        // First where each block sits and the id it keeps there; then blocks that point at
+        // another (a gift picker at its checkout card) point at that one's kept id.
+        let mut counts: BTreeMap<String, usize> = BTreeMap::new();
+        let mut places: Vec<String> = Vec::with_capacity(out.len());
+        let mut renamed: Vec<(String, String)> = Vec::new();
+        for b in &out {
+            let nth = counts.entry(place_of(&b.ui, 0)).or_default();
+            let place = place_of(&b.ui, *nth);
+            *nth += 1;
+            if let Some(s) = self.shown.iter().find(|s| s.place == place) {
+                renamed.push((b.block_id.clone(), s.block_id.clone()));
+            }
+            places.push(place);
+        }
+        let mut kept: Vec<String> = Vec::new();
+        let mut placed: Vec<Block> = Vec::with_capacity(out.len());
+        for (mut b, place) in out.into_iter().zip(places) {
+            if let Some((_, id)) = renamed.iter().find(|(from, _)| *from == b.block_id) {
+                b.block_id.clone_from(id);
+            }
+            rename_block_ids(&mut b.data, &renamed);
+            for a in &mut b.actions {
+                if let Action::Open { target, .. } = a {
+                    let mut t = Value::String(std::mem::take(target));
+                    rename_block_ids(&mut t, &renamed);
+                    *target = t.as_str().unwrap_or_default().to_owned();
+                }
+            }
+            let sent = serde_json::to_value(&b).unwrap_or(Value::Null);
+            match self.shown.iter_mut().find(|s| s.place == place) {
+                Some(s) if s.sent == sent => {}
+                Some(s) => {
+                    s.sent = sent;
+                    self.emit.send(Event::Block(Box::new(b.clone())));
+                }
+                None => {
+                    self.shown.push(ShownBlock {
+                        place: place.clone(),
+                        block_id: b.block_id.clone(),
+                        sent,
+                    });
+                    self.emit.send(Event::Block(Box::new(b.clone())));
+                }
+            }
+            kept.push(place);
+            placed.push(b);
+        }
+        if !last {
+            return;
+        }
+        for gone in self.shown.iter().filter(|s| !kept.contains(&s.place)) {
+            self.emit.send(Event::BlockRemoved {
+                block_id: gone.block_id.clone(),
+            });
+        }
+        self.shown.retain(|s| kept.contains(&s.place));
+        for b in placed {
             if matches!(b.ui.as_str(), "change_set" | "product_drafts")
                 && let Some(failed) = b.data["checks"].as_array().and_then(|c| {
                     c.iter()
@@ -2922,25 +3498,170 @@ impl<'r> Turn<'r> {
 
     /// The last list a read returned, as a block this agent may show.
     fn found_block(&self, allowed: &dyn Fn(&str) -> bool) -> Option<Block> {
-        let read = self.last_output(|r| {
-            r.kind == ToolKind::Read
-                && r.output
-                    .as_ref()
-                    .is_some_and(|o| !shop::items_of(o).is_empty())
-        })?;
-        let output = read.output.as_ref()?;
-        let products = shop::items_of(output).iter().all(|i| {
-            i.get("product_id")
-                .or_else(|| i.get("id"))
-                .and_then(Value::as_str)
-                .is_some_and(|id| id.starts_with("prd_"))
-        });
-        if products && allowed("product_list") {
-            shop::products("product_list", output, None)
-        } else if allowed("product_table") {
-            table::product_table(output)
+        if let Some(read) = self.product_read()
+            && allowed("product_list")
+        {
+            return shop::products("product_list", read.output.as_ref()?, None);
+        }
+        if allowed("order_detail")
+            && let Some(b) = self.order_detail_block()
+        {
+            return Some(b);
+        }
+        // Only who the shopper is was read ("what do you remember about me?"): their profile.
+        if allowed("profile_card")
+            && let Some(r) = self.primary_read().filter(|r| r.tool == "get_my_profile")
+            && let Some(b) = shopper::profile_card(r.output.as_ref()?)
+        {
+            return Some(b);
+        }
+        if allowed("record_list") {
+            return self.record_block();
+        }
+        // The last list read that found something, else the last that found nothing.
+        let read = self
+            .last_output(|r| {
+                r.kind == ToolKind::Read
+                    && r.output
+                        .as_ref()
+                        .is_some_and(|o| !shop::items_of(o).is_empty())
+            })
+            .or_else(|| {
+                self.last_output(|r| {
+                    r.kind == ToolKind::Read
+                        && r.output
+                            .as_ref()
+                            .is_some_and(|o| o.get("items").is_some_and(Value::is_array))
+                })
+            })?;
+        if allowed("product_table") {
+            table::product_table(read.output.as_ref()?)
         } else {
             None
+        }
+    }
+
+    /// The newest read this turn whose items are products (search results, a wishlist), not
+    /// records that only point at products (reviews, alerts).
+    fn product_read(&self) -> Option<&StepRecord> {
+        self.history.iter().rev().find(|r| {
+            r.kind == ToolKind::Read
+                && !records::shaped(&r.tool)
+                && r.output.as_ref().is_some_and(|o| {
+                    let items = shop::items_of(o);
+                    !items.is_empty() && items.iter().all(is_product_item)
+                })
+        })
+    }
+
+    /// The order this turn read, with its lines (`get_order`; not its payment or delivery). Of
+    /// several (each of the shopper's orders read to find one), the one whose parcel the turn
+    /// tracked, else the one holding what the request names, else the last read.
+    fn order_detail_block(&self) -> Option<Block> {
+        let orders: Vec<&Value> = self
+            .history
+            .iter()
+            .rev()
+            .filter_map(|r| r.output.as_ref())
+            .filter(|o| o.get("order_number").is_some() && o.get("ordered_item").is_some())
+            .collect();
+        // `track_shipment` names its parcel `delivery_id`, `get_delivery` as its `id`.
+        let tracked = self
+            .last_output(|r| matches!(r.tool.as_str(), "track_shipment" | "get_delivery"))
+            .and_then(|r| {
+                let o = r.output.as_ref()?;
+                o.get("delivery_id").or_else(|| o.get("id"))?.as_str()
+            });
+        let order = tracked
+            .and_then(|t| {
+                orders
+                    .iter()
+                    .find(|o| o.pointer("/delivery/id").and_then(Value::as_str) == Some(t))
+            })
+            // Else the one with what the request names ("my windbreaker order").
+            .or_else(|| {
+                let said: Vec<String> = self
+                    .text
+                    .to_lowercase()
+                    .split(|c: char| !c.is_alphanumeric())
+                    .filter(|w| {
+                        w.len() >= 4 && !["order", "orders", "track", "where", "show"].contains(w)
+                    })
+                    .map(str::to_owned)
+                    .collect();
+                orders.iter().find(|o| {
+                    o.get("ordered_item")
+                        .and_then(Value::as_array)
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|l| l.get("name").and_then(Value::as_str))
+                        .any(|name| {
+                            let name = name.to_lowercase();
+                            said.iter().any(|w| name.contains(w.as_str()))
+                        })
+                })
+            })
+            .or_else(|| orders.first())?;
+        table::order_detail(order)
+    }
+
+    /// The read a records answer shows: the newest one with a shape of its own, else the newest
+    /// that is not only about who is asking.
+    fn primary_read(&self) -> Option<&StepRecord> {
+        let reads: Vec<&StepRecord> = self
+            .history
+            .iter()
+            .rev()
+            .filter(|r| r.kind == ToolKind::Read && r.output.as_ref().is_some_and(|o| !o.is_null()))
+            .collect();
+        // What the agent always has at hand (the shopper's orders and profile) is often read only
+        // to set up the answer, so another read with a shape of its own comes first.
+        let at_hand = |r: &&&StepRecord| self.profile.tool_scope.always.contains(&r.tool);
+        reads
+            .iter()
+            .find(|r| records::shaped(&r.tool) && !at_hand(r))
+            .or_else(|| reads.iter().find(|r| records::shaped(&r.tool)))
+            .or_else(|| {
+                reads
+                    .iter()
+                    .find(|r| !records::SUPPORTING.contains(&r.tool.as_str()))
+            })
+            .or_else(|| reads.first())
+            .copied()
+    }
+
+    /// `record_list` from the primary read; reviews come with their summary when both were read.
+    fn record_block(&self) -> Option<Block> {
+        let read = self.primary_read()?;
+        if matches!(read.tool.as_str(), "list_reviews" | "get_review_summary") {
+            return self.reviews_block();
+        }
+        records::record_list(&read.tool, read.output.as_ref()?)
+    }
+
+    fn reviews_block(&self) -> Option<Block> {
+        let of = |tool: &str| {
+            self.last_output(|r| r.tool == tool)
+                .and_then(|r| r.output.as_ref())
+        };
+        records::reviews_with_summary(of("list_reviews"), of("get_review_summary"))
+    }
+
+    /// Reviews and questions this turn read, each as its own `record_list`.
+    fn product_content_blocks(&self) -> Vec<Block> {
+        let mut out: Vec<Block> = self.reviews_block().into_iter().collect();
+        out.extend(
+            self.last_output(|r| r.tool == "list_questions")
+                .and_then(|r| records::record_list(&r.tool, r.output.as_ref()?)),
+        );
+        out
+    }
+
+    /// A problem the reply names, once however often the turn ran into it (a plan revised
+    /// runs its steps again).
+    fn note_problem(&mut self, why: String) {
+        if !self.problems.contains(&why) {
+            self.problems.push(why);
         }
     }
 
@@ -3026,6 +3747,18 @@ impl<'r> Turn<'r> {
         req: ChatRequest,
         prompt: &str,
     ) -> Option<ReplyDraft> {
+        // What it must not copy: its instructions, and what a check told it when asking again
+        // ("That repeats the request…" came back once as the answer).
+        let guide = std::iter::once(prompt)
+            .chain(
+                req.messages
+                    .iter()
+                    .skip(2)
+                    .filter(|m| m.role == acom_llm::Role::User)
+                    .map(|m| m.content.as_str()),
+            )
+            .collect::<Vec<_>>()
+            .join("\n");
         let (raw, stopped) = self.model_text("reply", &[worker], req).await?;
         let parsed = acom_llm::parse::extract_json(&raw)
             .and_then(|v| v.get("text").and_then(Value::as_str).map(str::to_owned));
@@ -3039,7 +3772,7 @@ impl<'r> Turn<'r> {
                 None => (raw, stopped),
             },
         };
-        let text = without_echo(text.trim().to_owned(), prompt)?;
+        let text = without_echo(text.trim().to_owned(), &guide)?;
         Some(ReplyDraft { text, cut })
     }
 
@@ -3271,8 +4004,12 @@ impl<'r> Turn<'r> {
 
     async fn finish(self, reply: Option<String>, error: Option<Value>) {
         if let Some(text) = &reply {
-            for piece in sentences(text) {
-                self.emit.send(Event::MessageDelta { text: piece });
+            // A streamed reply is on screen already; `message.done` carries the one that stands
+            // (a check may have changed it). A reply nobody saw written comes in sentences.
+            if !self.streamed {
+                for piece in sentences(text) {
+                    self.emit.send(Event::MessageDelta { text: piece });
+                }
             }
             self.emit.send(Event::MessageDone {
                 message_id: format!("msg_{}", acom_core::id::new_suffix()),

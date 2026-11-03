@@ -39,6 +39,7 @@ impl Recorded {
                 model: "glimmer-test".into(),
                 display_name: "Muse Glimmer 30B".into(),
                 price: None,
+                stream_variants: acom_llm::StreamVariant::ALL.to_vec(),
             },
             answers: Mutex::new(Vec::new()),
             asked: Mutex::new(Vec::new()),
@@ -595,14 +596,21 @@ fn conversation(events: &[Event]) -> String {
         .to_owned()
 }
 
+/// The blocks on screen when the turn ended: a block sent again with its id replaces itself in
+/// place, and a removed one is gone (the turn sends blocks while it works).
 fn blocks(events: &[Event]) -> Vec<&Block> {
-    events
-        .iter()
-        .filter_map(|e| match e {
-            Event::Block(b) => Some(b.as_ref()),
-            _ => None,
-        })
-        .collect()
+    let mut shown: Vec<&Block> = Vec::new();
+    for e in events {
+        match e {
+            Event::Block(b) => match shown.iter_mut().find(|s| s.block_id == b.block_id) {
+                Some(s) => *s = b.as_ref(),
+                None => shown.push(b.as_ref()),
+            },
+            Event::BlockRemoved { block_id } => shown.retain(|s| &s.block_id != block_id),
+            _ => {}
+        }
+    }
+    shown
 }
 
 fn block<'a>(events: &'a [Event], ui: &str) -> &'a Block {
@@ -671,6 +679,32 @@ fn b2_reads(tool: &str, input: &Value) -> Result<Value, ToolError> {
 
 const B2_ASK: &str = "Review the return requests over $200 that are waiting.";
 const B2_KEEP: &str = "Keep the decline, but be kind in the message. Go ahead with the refunds and the photo requests.";
+
+#[tokio::test]
+async fn return_requests_only_listed_are_shown_in_their_review() {
+    let glimmer = Recorded::new(vec![
+        ("route", json!({"agent": "orders", "confidence": 0.92})),
+        (
+            "plan",
+            json!({"interpretation": [], "about": "self", "reply_plan": "product_table", "steps": [
+                {"id": "s1", "tool": "search_return_requests",
+                 "args": {"min_amount": {"value": 200, "currency": "USD"}}, "uses": []}]}),
+        ),
+    ]);
+    let rt = runtime(&glimmer, "2026-11-06T10:40");
+    let commerce = Scene::new(false, b2_reads);
+    let sj = person("adm_sj", Surface::Bo);
+    let events = turn(
+        &rt,
+        &sj,
+        ChatSurface::Bo,
+        say("Show me the return requests over $200", None),
+        &commerce,
+    )
+    .await;
+    let review = block(&events, "refund_review");
+    assert_eq!(review.data["summary"]["waiting"], 12);
+}
 
 #[tokio::test]
 async fn b2_twelve_requests_become_one_change_set_of_nine_refunds_and_three_messages() {

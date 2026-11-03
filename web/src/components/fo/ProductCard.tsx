@@ -115,7 +115,7 @@ export function ProductCard({
             />
           </HStack>
         ) : null}
-        <Intents says={intents} />
+        <Intents says={intents} about={target.context} />
       </VStack>
     </VStack>
   );

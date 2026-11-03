@@ -25,6 +25,7 @@ pub mod executor;
 pub mod memory;
 pub mod planner;
 pub mod profile;
+pub mod reply_stream;
 pub mod router;
 pub mod runtime;
 pub mod store;

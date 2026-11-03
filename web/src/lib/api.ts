@@ -80,9 +80,18 @@ export function csrfToken(): string | undefined {
   return match ? decodeURIComponent(match.slice('acom_csrf='.length)) : undefined;
 }
 
+/**
+ * Which side of the store the page belongs to (`bo` under /bo, else `fo`). The gateway reads it
+ * as `x-acom-surface`: a signed-in operator on the storefront shops as their browser session.
+ */
+export function pageSurface(): 'fo' | 'bo' {
+  if (typeof window === 'undefined') return 'fo';
+  return window.location.pathname === '/bo' || window.location.pathname.startsWith('/bo/') ? 'bo' : 'fo';
+}
+
 /** Headers for a state-changing request from the browser. */
 export function writeHeaders(extra?: Record<string, string>): Record<string, string> {
-  const headers: Record<string, string> = {'content-type': 'application/json', ...extra};
+  const headers: Record<string, string> = {'content-type': 'application/json', 'x-acom-surface': pageSurface(), ...extra};
   const csrf = csrfToken();
   if (csrf) headers['x-csrf-token'] = csrf;
   return headers;
@@ -118,7 +127,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   const method = options.method ?? 'GET';
   const res = await fetch(`/api${path}${toQuery(options.query)}`, {
     method,
-    headers: method === 'GET' ? {accept: 'application/json', ...options.headers} : writeHeaders(options.headers),
+    headers: method === 'GET' ? {accept: 'application/json', 'x-acom-surface': pageSurface(), ...options.headers} : writeHeaders(options.headers),
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     credentials: 'same-origin',
     signal: options.signal,

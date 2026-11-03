@@ -30,7 +30,7 @@ export function AskEntry({name}: {name?: string | null}) {
     if (!m) return;
     setText('');
     void ai.send(m);
-    router.push('/ask');
+    router.push('/');
   }
 
   return (

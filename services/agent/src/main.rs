@@ -7,6 +7,7 @@
 //! scopes (the gateway removes them), and one that does is refused here as well.
 
 mod chat;
+mod voice;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -26,7 +27,9 @@ use clap::{Parser, Subcommand};
     version,
     after_help = "Models come from agents/models.yml, which names their variables: \
                   GLIMMER_BASE_URL and GLIMMER_MODEL (self-hosted vLLM), \
-                  META_API_BASE_URL, META_API_KEY and SPARK_MODEL (Meta Model API)."
+                  META_API_BASE_URL, META_API_KEY and SPARK_MODEL (Meta Model API). \
+                  Voice input uses META_API_BASE_URL, META_API_KEY and VOICE_MODEL, with \
+                  VOICE_LANGUAGES as an optional hint."
 )]
 struct Cli {
     /// Address to listen on.
@@ -132,12 +135,11 @@ async fn main() -> ExitCode {
                 models = ?models.models.keys().collect::<Vec<_>>(),
                 "agent definitions loaded"
             );
-            Some(Arc::new(Runtime::new(
-                Arc::new(profiles),
-                models,
-                log,
-                store,
-            )))
+            let runtime = Arc::new(Runtime::new(Arc::new(profiles), models, log, store));
+            // Whether each model's replies can stream is found out in the background, at start
+            // and on a schedule; turns stream only where it was seen to work.
+            tokio::spawn(runtime.clone().keep_streaming_probed());
+            Some(runtime)
         }
         Err(e) => {
             problems.push(format!(
@@ -150,6 +152,10 @@ async fn main() -> ExitCode {
     for p in &problems {
         tracing::error!(problem = %p, "agent is not ready");
     }
+    let voice = voice::Voice::from_env(&env);
+    if let Err(why) = &voice {
+        tracing::info!(missing = %why, "voice input is off");
+    }
     tracing::info!(commerce = %cli.commerce_url, demo_mode = cli.demo_mode, "agent configured");
 
     let state = Arc::new(chat::App {
@@ -158,6 +164,7 @@ async fn main() -> ExitCode {
         commerce_url: cli.commerce_url.clone(),
         http: reqwest::Client::new(),
         demo_mode: cli.demo_mode,
+        voice,
     });
     let app = acom_server::ops_router("agent", Arc::new(AgentReady { db, problems }))
         .merge(chat::routes(state));

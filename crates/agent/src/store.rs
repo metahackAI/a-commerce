@@ -72,6 +72,21 @@ pub struct TurnEnd {
 /// A conversation's owner and its turns (`{turn_id, text, reply_text, blocks, …}`), oldest first.
 pub type History = (Owner, Vec<Value>);
 
+/// One line of a person's conversation list.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ConversationSummary {
+    pub conversation_id: String,
+    /// The first request, short (`TurnStart::name`).
+    pub name: Option<String>,
+    pub turns: usize,
+    pub started_at: Option<DateTime<Utc>>,
+    pub last_turn_at: Option<DateTime<Utc>>,
+}
+
+/// One page of a person's conversations, the most recent first, and how many they have on that
+/// surface in all.
+pub type ConversationList = (Vec<ConversationSummary>, usize);
+
 /// Where turns are recorded.
 pub trait TurnLog: Send + Sync {
     /// The conversation so far, when it exists.
@@ -107,6 +122,18 @@ pub trait TurnLog: Send + Sync {
         _conversation_id: &'a str,
     ) -> BoxFuture<'a, Result<Vec<(String, Value)>, String>> {
         Box::pin(async { Ok(Vec::new()) })
+    }
+    /// The conversations one person had on one surface, the most recent first, at most `limit`
+    /// (`GET …/conversations`). "One person" is [`Owner::same_person`]. Stores without a list
+    /// have none.
+    fn conversations<'a>(
+        &'a self,
+        _tenant: &'a str,
+        _surface: &'a str,
+        _owner: &'a Owner,
+        _limit: usize,
+    ) -> BoxFuture<'a, Result<ConversationList, String>> {
+        Box::pin(async { Ok((Vec::new(), 0)) })
     }
 }
 
@@ -455,6 +482,61 @@ impl TurnLog for PgStore {
     ) -> BoxFuture<'a, Result<Vec<(String, Value)>, String>> {
         Box::pin(self.logs(tenant, conversation_id))
     }
+
+    fn conversations<'a>(
+        &'a self,
+        tenant: &'a str,
+        surface: &'a str,
+        owner: &'a Owner,
+        limit: usize,
+    ) -> BoxFuture<'a, Result<ConversationList, String>> {
+        Box::pin(async move {
+            let mut tx = self.begin(tenant).await?;
+            // The same person as `Owner::same_person`: a member by customer id, an operator by
+            // admin id, a guest by browser session (and then only what no member or operator owns).
+            let rows = sqlx::query(
+                "SELECT c.id, c.name, c.started_at, c.last_turn_at,
+                   (SELECT count(*) FROM agent.turn t
+                     WHERE t.tenant_id = c.tenant_id AND t.conversation_id = c.id) AS turns,
+                   count(*) OVER () AS total
+                 FROM agent.conversation c
+                 WHERE c.tenant_id = $1 AND c.surface = $2
+                   AND CASE WHEN $3::text IS NOT NULL THEN c.customer_id = $3
+                            WHEN $4::text IS NOT NULL THEN c.admin_id = $4
+                            ELSE c.customer_id IS NULL AND c.admin_id IS NULL
+                                 AND c.session_id = $5::text END
+                 ORDER BY coalesce(c.last_turn_at, c.started_at) DESC, c.id DESC
+                 LIMIT $6",
+            )
+            .bind(tenant)
+            .bind(surface)
+            .bind(&owner.customer_id)
+            .bind(&owner.admin_id)
+            .bind(&owner.session_id)
+            .bind(i64::try_from(limit).unwrap_or(i64::MAX))
+            .fetch_all(&mut *tx)
+            .await
+            .map_err(db)?;
+            tx.commit().await.map_err(db)?;
+            let total = rows
+                .first()
+                .and_then(|r| r.try_get::<i64, _>("total").ok())
+                .map_or(0, |n| usize::try_from(n).unwrap_or(0));
+            let items = rows
+                .iter()
+                .map(|r| ConversationSummary {
+                    conversation_id: r.try_get("id").unwrap_or_default(),
+                    name: r.try_get("name").ok().flatten(),
+                    turns: r
+                        .try_get::<i64, _>("turns")
+                        .map_or(0, |n| usize::try_from(n).unwrap_or(0)),
+                    started_at: r.try_get("started_at").ok(),
+                    last_turn_at: r.try_get("last_turn_at").ok().flatten(),
+                })
+                .collect();
+            Ok((items, total))
+        })
+    }
 }
 
 impl PgStore {
@@ -742,6 +824,43 @@ impl TurnLog for MemoryLog {
             Ok(Some((owner, turns)))
         })
     }
+
+    fn conversations<'a>(
+        &'a self,
+        _tenant: &'a str,
+        surface: &'a str,
+        owner: &'a Owner,
+        limit: usize,
+    ) -> BoxFuture<'a, Result<ConversationList, String>> {
+        Box::pin(async move {
+            let inner = self.inner.lock().map_err(|e| e.to_string())?;
+            let mut list: Vec<ConversationSummary> = inner
+                .conversations
+                .iter()
+                .filter(|(_, (o, _))| o.same_person(owner))
+                .filter_map(|(id, _)| {
+                    let turns: Vec<&TurnStart> = inner
+                        .turns
+                        .iter()
+                        .map(|(s, _)| s)
+                        .filter(|s| &s.conversation_id == id)
+                        .collect();
+                    let (first, last) = (turns.first()?, turns.last()?);
+                    (first.surface == surface).then(|| ConversationSummary {
+                        conversation_id: id.clone(),
+                        name: Some(first.name.clone()),
+                        turns: turns.len(),
+                        started_at: Some(first.started_at),
+                        last_turn_at: Some(last.started_at),
+                    })
+                })
+                .collect();
+            list.sort_by_key(|c| std::cmp::Reverse(c.last_turn_at));
+            let total = list.len();
+            list.truncate(limit);
+            Ok((list, total))
+        })
+    }
 }
 
 /// Fixed settings, for tests.
@@ -786,6 +905,151 @@ mod tests {
         assert_eq!(cs.items[0].tool, "set_sale_prices");
         assert_eq!(cs.items[0].preview_id, "pv_9");
         assert!(latest_change_set(&[]).is_none());
+    }
+
+    fn started(
+        conversation: &str,
+        surface: &str,
+        owner: &Owner,
+        text: &str,
+        at: &str,
+    ) -> TurnStart {
+        TurnStart {
+            tenant: "store_northwind".into(),
+            conversation_id: conversation.into(),
+            surface: surface.into(),
+            owner: owner.clone(),
+            name: text.into(),
+            turn_id: format!("turn_{}", acom_core::id::new_suffix()),
+            text: text.into(),
+            context: json!([]),
+            agent: "promotion".into(),
+            request_id: "req_test".into(),
+            started_at: DateTime::parse_from_rfc3339(at)
+                .unwrap()
+                .with_timezone(&Utc),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_person_lists_their_own_conversations_on_one_surface_the_latest_first() {
+        let log = MemoryLog::default();
+        let sj = Owner {
+            admin_id: Some("adm_sj".into()),
+            ..Owner::default()
+        };
+        let mina = Owner {
+            admin_id: Some("adm_mina".into()),
+            ..Owner::default()
+        };
+        for t in [
+            started(
+                "conv_sale",
+                "bo",
+                &sj,
+                "Run a VIP weekend sale",
+                "2026-11-06T15:00:00Z",
+            ),
+            started(
+                "conv_drop",
+                "bo",
+                &sj,
+                "Why did sales drop?",
+                "2026-11-06T16:00:00Z",
+            ),
+            started(
+                "conv_sale",
+                "bo",
+                &sj,
+                "Leave the overshirt out",
+                "2026-11-06T17:00:00Z",
+            ),
+            started(
+                "conv_shop",
+                "fo",
+                &sj,
+                "A gift for my dad",
+                "2026-11-06T18:00:00Z",
+            ),
+            started(
+                "conv_mina",
+                "bo",
+                &mina,
+                "Returns over $200",
+                "2026-11-06T19:00:00Z",
+            ),
+        ] {
+            log.start_turn(&t).await.unwrap();
+        }
+
+        let (items, total) = log
+            .conversations("store_northwind", "bo", &sj, 20)
+            .await
+            .unwrap();
+        assert_eq!(total, 2, "{items:#?}");
+        // The sale had a turn after the drop question, so it comes first; it keeps its first request
+        // as its name.
+        assert_eq!(items[0].conversation_id, "conv_sale");
+        assert_eq!(items[0].name.as_deref(), Some("Run a VIP weekend sale"));
+        assert_eq!(items[0].turns, 2);
+        assert_eq!(items[1].conversation_id, "conv_drop");
+
+        let (items, total) = log
+            .conversations("store_northwind", "bo", &sj, 1)
+            .await
+            .unwrap();
+        assert_eq!((items.len(), total), (1, 2));
+
+        let (items, _) = log
+            .conversations("store_northwind", "bo", &mina, 20)
+            .await
+            .unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].conversation_id, "conv_mina");
+    }
+
+    #[tokio::test]
+    async fn a_guest_lists_only_what_their_browser_session_started() {
+        let log = MemoryLog::default();
+        let guest = |s: &str| Owner {
+            session_id: Some(s.into()),
+            ..Owner::default()
+        };
+        log.start_turn(&started(
+            "conv_g",
+            "fo",
+            &guest("ses_1"),
+            "Light jackets",
+            "2026-11-07T15:00:00Z",
+        ))
+        .await
+        .unwrap();
+        let count = |o: Owner| {
+            let log = &log;
+            async move {
+                log.conversations("store_northwind", "fo", &o, 20)
+                    .await
+                    .unwrap()
+                    .1
+            }
+        };
+        assert_eq!(count(guest("ses_1")).await, 1);
+        assert_eq!(count(guest("ses_2")).await, 0);
+        let member = Owner {
+            customer_id: Some("cus_jamie".into()),
+            session_id: Some("ses_1".into()),
+            ..Owner::default()
+        };
+        assert_eq!(
+            count(member).await,
+            0,
+            "a member does not see a guest's conversations"
+        );
+        assert_eq!(
+            count(Owner::default()).await,
+            0,
+            "no session, no conversations"
+        );
     }
 
     /// Integration test: needs a migrated database (`DATABASE_URL`, role acom_app) with the store
@@ -865,5 +1129,20 @@ mod tests {
         let (_, log) = &logs[0];
         assert!(!log["steps"].as_array().unwrap().is_empty(), "{log:#}");
         assert!(log["model_calls"].is_array(), "{log:#}");
+        // The newest conversation of the operator on the back office is this one, by its first
+        // request; the storefront list does not have it.
+        let (items, total) = store
+            .conversations(tenant, "bo", &owner, 5)
+            .await
+            .expect("conversations");
+        assert!(total >= 1);
+        assert_eq!(items[0].conversation_id, conv, "{items:#?}");
+        assert_eq!(items[0].name.as_deref(), Some("VIP weekend"));
+        assert_eq!(items[0].turns, 1);
+        let (fo, _) = store
+            .conversations(tenant, "fo", &owner, 5)
+            .await
+            .expect("conversations");
+        assert!(fo.iter().all(|c| c.conversation_id != conv));
     }
 }

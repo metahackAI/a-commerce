@@ -142,6 +142,28 @@ codes!(PayMthdCd {
     P50 = "50" => "store_credit",
 });
 
+codes!(OrdStatCd {
+    O10 = "10" => "payment_due",
+    O20 = "20" => "processing",
+    O30 = "30" => "in_transit",
+    O40 = "40" => "delivered",
+    O50 = "50" => "returned",
+    O80 = "80" => "problem",
+    O90 = "90" => "cancelled",
+});
+
+codes!(DlvStatCd {
+    D10 = "10" => "awaiting_stock",
+    D20 = "20" => "ship_instructed",
+    D30 = "30" => "packed",
+    D40 = "40" => "label_created",
+    D50 = "50" => "picked_up",
+    D60 = "60" => "in_transit",
+    D70 = "70" => "delivered",
+    D80 = "80" => "delivery_failed",
+    D90 = "90" => "cancelled",
+});
+
 codes!(CmprBaseCd {
     B1 = "1" => "same_weekday_last_4_weeks",
     B2 = "2" => "previous_period",

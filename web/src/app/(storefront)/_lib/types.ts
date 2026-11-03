@@ -447,6 +447,10 @@ export interface OrderItem {
   name: string;
   size?: string | null;
   color?: string | null;
+  /** The ordered color's picture. */
+  image?: string | null;
+  /** Whether the same variant can be bought now (`in_stock`, `out_of_stock`, `discontinued`, …). */
+  availability_now?: Availability | string;
   order_quantity: number;
   price?: Money;
   discount?: Money;
@@ -632,6 +636,10 @@ export interface ReturnHistoryItem {
   order_id: string;
   order_number: string;
   item: string;
+  /** The order's first line, for its picture and link. */
+  product_id?: string;
+  image?: string | null;
+  color?: string | null;
   amount: Money;
   reason: string;
   status: string;
@@ -684,6 +692,35 @@ export interface WishlistItem {
   price_currency: string;
   availability?: Availability;
   added_at?: string;
+  image?: string | null;
+}
+
+/** `list_subscriptions` (sales.md subscription): a shopper's own. */
+export interface Subscription {
+  id: string;
+  status: 'active' | 'paused' | 'cancelled' | string;
+  billing_cycle: string;
+  next_charge_date: string;
+  amount: Money;
+  lines: {variant_id: string; product_id: string; name: string; size?: string | null; color?: string | null; quantity: number; image?: string | null}[];
+  delivery?: {address_label?: string | null};
+  payment?: {label?: string | null};
+}
+
+/** `list_restock_subscriptions` (catalog.md restock_alert). */
+export interface RestockAlert {
+  id: string;
+  product_id: string;
+  product_name: string;
+  variant_id: string;
+  size?: string | null;
+  color?: string | null;
+  image?: string | null;
+  channel: string;
+  availability?: string | null;
+  start_time: string;
+  expires: string;
+  notified_at?: string | null;
 }
 
 /** One `list_member_coupons` item. */
@@ -714,4 +751,118 @@ export interface StoreMessage {
   about: string | null;
   date_sent: string;
   read?: boolean;
+}
+
+/** `list_popups` (merchandising.md popup): a shopper gets only the popups open now. */
+export interface Popup {
+  id: string;
+  name: string;
+  popup_type: 'image' | 'notice' | 'event' | 'consent';
+  pages: string[];
+  priority?: number | null;
+  /** Days a dismissed popup stays away ("don't show again for N days"). */
+  suppress_days?: number | null;
+  valid_from?: string | null;
+  valid_through?: string | null;
+  status?: string;
+  content: {text?: string | null; image_url?: string | null; url?: string | null};
+}
+
+/** `list_curations` (merchandising.md collection_page): a shopper sees only the ones open to them. */
+export interface CollectionPageSummary {
+  id: string;
+  name: string;
+  status?: string;
+  audience?: string;
+  valid_from?: string | null;
+  valid_through?: string | null;
+  section_count?: number;
+  product_count?: number;
+  banner_ids?: string[];
+  keywords?: string[];
+}
+
+/** `get_curation`: the sections, each an ItemList of product ids. */
+export interface CollectionPage extends CollectionPageSummary {
+  has_part: {name: string; item_list_element: SlotItem[]}[];
+  hidden_items?: {product_id: string; reason?: string}[];
+}
+
+/** `list_notices` (customer.md faq_notice). */
+export interface NoticeSummary {
+  id: string;
+  headline: string;
+  category?: string | null;
+  date_published?: string | null;
+  status?: string;
+  pinned?: boolean;
+}
+
+/** `get_notice`. */
+export interface Notice extends NoticeSummary {
+  article_body?: string | null;
+}
+
+/** `list_faqs`. */
+export interface FaqSummary {
+  id: string;
+  name: string;
+  category?: string | null;
+}
+
+/** `get_faq`: the question with its accepted answer. */
+export interface Faq extends FaqSummary {
+  accepted_answer?: string | null;
+}
+
+/** `list_boards` (community.md board). */
+export interface Board {
+  id: string;
+  name: string;
+  'acom:board_type'?: string;
+  'acom:write_permission'?: string;
+  'acom:allow_secret'?: boolean;
+  'acom:moderation_mode'?: string;
+}
+
+/** `list_posts`: authors come masked (`ho****`). */
+export interface PostSummary {
+  id: string;
+  headline: string;
+  author?: string | null;
+  date_published?: string | null;
+  comment_count?: number;
+  'acom:like_count'?: number;
+  'acom:is_secret'?: boolean;
+  'acom:moderation_status'?: string;
+}
+
+/** `get_post`. */
+export interface Post extends PostSummary {
+  board_id: string;
+  article_body?: string | null;
+  associated_media?: string[];
+}
+
+/** `list_replies`. */
+export interface Reply {
+  id: string;
+  text?: string | null;
+  author?: string | null;
+  date_published?: string | null;
+  date_created?: string | null;
+  'acom:moderation_status'?: string;
+}
+
+/** `list_questions` (catalog.md question): a shopper sees visible questions with the store's answer. */
+export interface ProductQuestion {
+  id: string;
+  product_id: string;
+  text: string;
+  author?: string | {name?: string} | null;
+  'acom:private'?: boolean;
+  status?: string;
+  date_created?: string | null;
+  answer_count?: number;
+  accepted_answer?: {id: string; text: string; author?: string | {name?: string} | null; date_created?: string | null} | null;
 }

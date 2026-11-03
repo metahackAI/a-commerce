@@ -22,6 +22,9 @@ struct Scripted {
     info: ModelInfo,
     answers: Mutex<Vec<(String, String)>>,
     asked: Mutex<Vec<String>>,
+    streams_nothing: std::sync::atomic::AtomicBool,
+    /// Streams the background check's request but nothing in a turn (the demo's endpoint did).
+    streams_check_only: std::sync::atomic::AtomicBool,
 }
 
 impl Scripted {
@@ -32,6 +35,7 @@ impl Scripted {
                 model: format!("{alias}-test"),
                 display_name: display.into(),
                 price: None,
+                stream_variants: acom_llm::StreamVariant::ALL.to_vec(),
             },
             answers: Mutex::new(
                 answers
@@ -40,7 +44,23 @@ impl Scripted {
                     .collect(),
             ),
             asked: Mutex::new(Vec::new()),
+            streams_nothing: std::sync::atomic::AtomicBool::new(false),
+            streams_check_only: std::sync::atomic::AtomicBool::new(false),
         })
+    }
+
+    fn streaming_the_check_only(self: Arc<Self>) -> Arc<Self> {
+        self.streams_check_only
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self
+    }
+
+    /// Answers a streamed call with no text, as a provider that streams structured output
+    /// apart does; a call without streaming gets the scripted answer.
+    fn streaming_nothing(self: Arc<Self>) -> Arc<Self> {
+        self.streams_nothing
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self
     }
 
     fn asked(&self) -> Vec<String> {
@@ -56,15 +76,61 @@ impl ChatModel for Scripted {
     fn chat<'a>(
         &'a self,
         req: &'a ChatRequest,
-        _: Option<DeltaSink<'a>>,
+        on_delta: Option<DeltaSink<'a>>,
     ) -> BoxFuture<'a, Result<ChatResponse, LlmError>> {
         Box::pin(async move {
             self.asked.lock().unwrap().push(req.purpose.clone());
+            // The background streaming check: any model can answer it.
+            if req.purpose == "stream_check" {
+                let streams = !self
+                    .streams_nothing
+                    .load(std::sync::atomic::Ordering::SeqCst);
+                let text = if streams && on_delta.is_some() {
+                    "{\"text\": \"Ready.\"}".to_owned()
+                } else {
+                    String::new()
+                };
+                if let Some(sink) = on_delta {
+                    for piece in [&text[..text.len().min(10)], &text[text.len().min(10)..]] {
+                        if !piece.is_empty() {
+                            sink(piece);
+                        }
+                    }
+                }
+                return Ok(ChatResponse {
+                    model: self.info.model.clone(),
+                    text,
+                    ..Default::default()
+                });
+            }
+            if on_delta.is_some()
+                && (self
+                    .streams_nothing
+                    .load(std::sync::atomic::Ordering::SeqCst)
+                    || self
+                        .streams_check_only
+                        .load(std::sync::atomic::Ordering::SeqCst))
+            {
+                return Ok(ChatResponse {
+                    model: self.info.model.clone(),
+                    ..Default::default()
+                });
+            }
             let mut answers = self.answers.lock().unwrap();
             match answers.iter().position(|(p, _)| *p == req.purpose) {
                 Some(i) => Ok(ChatResponse {
                     model: self.info.model.clone(),
-                    text: answers.remove(i).1,
+                    text: {
+                        let text = answers.remove(i).1;
+                        // Streamed as a provider would: in small pieces, cut anywhere.
+                        if let Some(sink) = on_delta {
+                            let chars: Vec<char> = text.chars().collect();
+                            for piece in chars.chunks(7) {
+                                sink(&piece.iter().collect::<String>());
+                            }
+                        }
+                        text
+                    },
                     usage: Usage {
                         input_tokens: 100,
                         output_tokens: 20,
@@ -222,6 +288,40 @@ impl ToolClient for Commerce {
                     json!({"id": "cart_1", "lines": [{"cart_line_id": "cln_1", "name": "Packable windbreaker", "size": "M", "quantity": 1}],
                     "subtotal": {"value": 89.00, "currency": "USD"}, "total": {"value": 71.20, "currency": "USD"}})
                 }
+                "get_my_orders" => json!({"items": [
+                    {"id": "ord_20268", "order_number": "20268", "order_status": "delivered",
+                     "order_date": "2026-09-08T09:14:00-04:00",
+                     "ordered_item": [{"id": "oit_1", "product_id": "prd_windbreaker", "name": "Packable windbreaker",
+                                       "size": "M", "color": "Black", "order_quantity": 1}],
+                     "total": {"value": 89.00, "currency": "USD"}}], "total": 1}),
+                "get_order" if input["order_id"] == "ord_20105" => {
+                    json!({"id": "ord_20105", "order_number": "20105",
+                    "order_status": "delivered", "delivery": {"id": "dlv_20105"},
+                    "ordered_item": [{"id": "oit_9", "product_id": "prd_chore_coat", "name": "Cotton chore coat", "order_quantity": 1}]})
+                }
+                "get_order" => {
+                    json!({"id": "ord_20268", "order_number": "20268", "order_status": "delivered",
+                    "delivery": {"id": "dlv_20268"},
+                    "ordered_item": [{"id": "oit_1", "product_id": "prd_windbreaker", "name": "Packable windbreaker",
+                                      "size": "M", "color": "Black", "order_quantity": 1}],
+                    "totals": {"total": {"value": 89.00, "currency": "USD"}}})
+                }
+                "track_shipment" => {
+                    json!({"items": [{"at": "2026-09-11T15:05:00-04:00", "delivery_state": "delivered"}],
+                    "total": 1, "delivery_id": "dlv_20268", "carrier": "UPS", "tracking_number": "1Z1"})
+                }
+                "get_payment" => {
+                    json!({"payment_status": "payment_complete", "label": "Card ending 4821",
+                    "amount": {"value": 89.00, "currency": "USD"}})
+                }
+                "list_faqs" => json!({"items": [
+                    {"id": "faq_return_days", "name": "How long do I have to return something?", "category": "returns"}], "total": 1}),
+                "list_reviews" => json!({"items": [
+                    {"id": "rev_1", "product_id": "prd_windbreaker", "review_rating": 5,
+                     "author": {"name": "Jordan P."}, "review_body": "Packs into its pocket."}], "total": 1}),
+                "list_questions" => json!({"items": [
+                    {"id": "qst_1", "product_id": "prd_windbreaker", "text": "Does the hood roll in?",
+                     "accepted_answer": {"text": "Yes, into the collar."}}], "total": 1}),
                 _ => json!({"items": [], "total": 0}),
             })
         })
@@ -497,7 +597,48 @@ fn runtime(models: &[Arc<Scripted>], log: Arc<MemoryLog>) -> Runtime {
             .collect(),
         missing: vec!["glimmer: set GLIMMER_BASE_URL, GLIMMER_MODEL".into()],
     };
-    Runtime::new(Arc::new(repo()), set, log, Arc::new(FixedStore(settings())))
+    let rt = Runtime::new(Arc::new(repo()), set, log, Arc::new(FixedStore(settings())));
+    // The scripted models stream, as the background check would have found.
+    for m in models {
+        rt.assume_streaming(&m.info.alias, StreamState::Works(StreamVariant::Configured));
+    }
+    rt
+}
+
+#[tokio::test]
+async fn the_conversation_list_is_the_callers_own_with_times_in_store_time() {
+    let log = Arc::new(MemoryLog::default());
+    let rt = runtime(&[], log.clone());
+    let sj = principal("adm_sj", Surface::Bo);
+    let started = |conversation: &str, owner: &Principal| TurnStart {
+        tenant: "store_northwind".into(),
+        conversation_id: conversation.into(),
+        surface: "bo".into(),
+        owner: Owner::of(owner),
+        name: "Run a VIP weekend sale".into(),
+        turn_id: format!("turn_{}", acom_core::id::new_suffix()),
+        text: "Run a VIP weekend sale".into(),
+        context: json!([]),
+        agent: "promotion".into(),
+        request_id: "req_test".into(),
+        started_at: settings().now,
+    };
+    log.start_turn(&started("conv_sj", &sj)).await.unwrap();
+    log.start_turn(&started("conv_mina", &principal("adm_mina", Surface::Bo)))
+        .await
+        .unwrap();
+
+    // The test commerce gives no store settings, so the store's own fallback (New York) applies.
+    let list = rt
+        .conversations(&sj, ChatSurface::Bo, 20, Commerce::new().as_ref())
+        .await
+        .unwrap();
+    assert_eq!(list["total"], 1, "{list:#}");
+    let item = &list["items"][0];
+    assert_eq!(item["conversation_id"], "conv_sj");
+    assert_eq!(item["name"], "Run a VIP weekend sale");
+    assert_eq!(item["started_at"], "2026-11-06T11:02:00-05:00");
+    assert_eq!(item["last_turn_at"], "2026-11-06T11:02:00-05:00");
 }
 
 async fn turn(
@@ -531,14 +672,21 @@ fn names(events: &[Event]) -> Vec<&'static str> {
     events.iter().map(Event::name).collect()
 }
 
+/// The blocks on screen when the turn ended: a block sent again with its id replaces itself in
+/// place, and a removed one is gone (the turn sends blocks while it works).
 fn blocks(events: &[Event]) -> Vec<&Block> {
-    events
-        .iter()
-        .filter_map(|e| match e {
-            Event::Block(b) => Some(b.as_ref()),
-            _ => None,
-        })
-        .collect()
+    let mut shown: Vec<&Block> = Vec::new();
+    for e in events {
+        match e {
+            Event::Block(b) => match shown.iter_mut().find(|s| s.block_id == b.block_id) {
+                Some(s) => *s = b.as_ref(),
+                None => shown.push(b.as_ref()),
+            },
+            Event::BlockRemoved { block_id } => shown.retain(|s| &s.block_id != block_id),
+            _ => {}
+        }
+    }
+    shown
 }
 
 fn done(events: &[Event]) -> (TurnUsage, Vec<String>) {
@@ -717,6 +865,51 @@ async fn b1_drafts_a_change_set_through_tools_and_never_approves() {
     let b = blocks(&events);
     assert_eq!(b.len(), 1);
     assert_eq!(b[0].ui, "change_set");
+
+    // The change set is on screen while it is drafted: each write sends it again, with the same
+    // id, and the first one comes before the turn checks the finished set and replies.
+    let sent: Vec<usize> = events
+        .iter()
+        .enumerate()
+        .filter(|(_, e)| matches!(e, Event::Block(x) if x.ui == "change_set"))
+        .map(|(i, _)| i)
+        .collect();
+    assert!(sent.len() >= 2, "sent {} times", sent.len());
+    assert!(events.iter().all(|e| match e {
+        Event::Block(x) if x.ui == "change_set" => x.block_id == b[0].block_id,
+        _ => true,
+    }));
+    let checking = events
+        .iter()
+        .position(|e| {
+            e.data()["summary"]
+                .as_str()
+                .is_some_and(|s| s.starts_with("Checking the change set"))
+        })
+        .expect("the finished set is checked");
+    assert!(
+        sent[0] < checking,
+        "the first change set block came at {} after the check at {checking}",
+        sent[0]
+    );
+
+    // The reply streams in pieces as it is written, and `message.done` carries the same text.
+    let deltas: Vec<String> = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::MessageDelta { text } => Some(text.clone()),
+            _ => None,
+        })
+        .collect();
+    assert!(deltas.len() > 5, "{} pieces", deltas.len());
+    let final_text = events
+        .iter()
+        .find_map(|e| match e {
+            Event::MessageDone { text, .. } => Some(text.clone()),
+            _ => None,
+        })
+        .unwrap();
+    assert_eq!(deltas.concat(), final_text);
     assert_eq!(b[0].data["change_set_id"], "cs_1042");
     assert_eq!(b[0].data["state"], "drafting");
     assert_eq!(b[0].data["understood"]["who"], "VIP members");
@@ -1303,6 +1496,150 @@ fn manifest_with_analytics() -> Vec<ToolSpec> {
     m
 }
 
+/// The shopper's records: orders, a payment, reviews and questions.
+fn manifest_with_records() -> Vec<ToolSpec> {
+    let read = |tool: &str, address: &str, summary: &str| {
+        json!({"tool": tool, "address": address, "kind": "read", "summary": summary,
+               "consumes": [], "produces": [], "checks": [],
+               "input_schema": {"type": "object", "additionalProperties": false, "properties": {
+                   "order_id": {"type": "string", "description": "Order."},
+                   "product_id": {"type": "string", "description": "Product."},
+                   "answered": {"type": "boolean", "description": "Only answered (true) or waiting (false)."},
+                   "limit": {"type": "integer", "description": "Page size."}}, "required": []}})
+    };
+    let records: crate::tools::Manifest = serde_json::from_value(json!({"items": [
+        read("get_my_orders", "sales.order.get_my_orders", "The shopper's own orders, newest first."),
+        read("get_order", "sales.order.get_order", "One order with its lines, delivery and payment."),
+        read("get_payment", "sales.payment.get_payment", "How an order was paid."),
+        read("track_shipment", "fulfillment.parcel_delivery.track_shipment", "Where an order's parcel is."),
+        read("list_reviews", "catalog.review.list_reviews", "Reviews of a product."),
+        read("list_faqs", "customer.faq_notice.list_faqs", "Questions shoppers often ask, with the store's answers."),
+        read("list_questions", "catalog.question.list_questions", "Questions about a product and their answers."),
+    ]}))
+    .unwrap();
+    let mut m = fixtures::manifest();
+    m.extend(records.items);
+    m
+}
+
+async fn shopper_turn(plan: Value, said: &str) -> Vec<Event> {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![("plan", plan.to_string())],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    turn(
+        &rt,
+        principal("cus_jamie", Surface::Fo),
+        ChatSurface::Fo,
+        say(said),
+        Commerce::with_manifest(manifest_with_records()),
+    )
+    .await
+}
+
+#[tokio::test]
+async fn a_shoppers_orders_are_shown_as_records_whatever_block_the_plan_named() {
+    for reply_plan in ["text", "product_list", "record_list"] {
+        let events = shopper_turn(
+            json!({"interpretation": [], "about": "self", "reply_plan": reply_plan, "steps": [
+                {"id": "s1", "tool": "get_my_orders", "args": {}, "uses": []}]}),
+            "Show me my orders",
+        )
+        .await;
+        let b = blocks(&events);
+        assert_eq!(b.len(), 1, "{reply_plan}: {b:?}");
+        assert_eq!(b[0].ui, "record_list", "{reply_plan}");
+        assert_eq!(b[0].data["kind"], "orders");
+        assert_eq!(b[0].data["rows"][0]["title"], "Order #20268");
+    }
+}
+
+#[tokio::test]
+async fn an_order_is_shown_from_the_order_read_not_its_payment() {
+    for reply_plan in ["order_detail", "text"] {
+        let events = shopper_turn(
+            json!({"interpretation": [], "about": "self", "reply_plan": reply_plan, "steps": [
+                {"id": "s1", "tool": "get_order", "args": {"order_id": "ord_20268"}, "uses": []},
+                {"id": "s2", "tool": "get_payment", "args": {"order_id": "ord_20268"}, "uses": []}]}),
+            "Show me order 20268",
+        )
+        .await;
+        let b = blocks(&events);
+        assert_eq!(b.len(), 1, "{reply_plan}: {b:?}");
+        assert_eq!(b[0].ui, "order_detail", "{reply_plan}");
+        assert_eq!(b[0].data["order_number"], "20268");
+        assert_eq!(b[0].data["lines"][0]["name"], "Packable windbreaker");
+    }
+}
+
+#[tokio::test]
+async fn of_several_orders_read_the_one_whose_parcel_was_tracked_is_shown() {
+    let events = shopper_turn(
+        json!({"interpretation": [], "about": "self", "reply_plan": "order_detail", "steps": [
+            {"id": "s1", "tool": "get_order", "args": {"order_id": "ord_20268"}, "uses": []},
+            {"id": "s2", "tool": "track_shipment", "args": {"order_id": "ord_20268"}, "uses": ["s1"]},
+            {"id": "s3", "tool": "get_order", "args": {"order_id": "ord_20105"}, "uses": []}]}),
+        "Track my windbreaker order",
+    )
+    .await;
+    let b = blocks(&events);
+    assert_eq!(b.len(), 1, "{b:?}");
+    assert_eq!(b[0].data["order_number"], "20268");
+}
+
+#[tokio::test]
+async fn what_the_agent_always_has_at_hand_does_not_crowd_out_the_answer() {
+    let events = shopper_turn(
+        json!({"interpretation": [], "about": "self", "reply_plan": "text", "steps": [
+            {"id": "s1", "tool": "list_faqs", "args": {}, "uses": []},
+            {"id": "s2", "tool": "get_my_orders", "args": {}, "uses": []}]}),
+        "How long do I have to return something?",
+    )
+    .await;
+    let b = blocks(&events);
+    assert_eq!(b.len(), 1, "{b:?}");
+    assert_eq!(b[0].data["kind"], "faqs");
+}
+
+#[tokio::test]
+async fn of_several_orders_read_the_one_with_what_was_named_is_shown() {
+    let events = shopper_turn(
+        json!({"interpretation": [], "about": "self", "reply_plan": "order_detail", "steps": [
+            {"id": "s1", "tool": "get_order", "args": {"order_id": "ord_20268"}, "uses": []},
+            {"id": "s2", "tool": "get_order", "args": {"order_id": "ord_20105"}, "uses": []}]}),
+        "Track my windbreaker order",
+    )
+    .await;
+    let b = blocks(&events);
+    assert_eq!(b[0].data["order_number"], "20268", "{b:?}");
+}
+
+#[tokio::test]
+async fn products_come_with_the_reviews_and_questions_read_about_them() {
+    let events = shopper_turn(
+        json!({"interpretation": [], "about": "self", "reply_plan": "product_list", "steps": [
+            {"id": "s1", "tool": "search_products", "args": {"query": "windbreaker"}, "uses": []},
+            {"id": "s2", "tool": "list_reviews", "args": {"product_id": "prd_windbreaker"}, "uses": ["s1"]},
+            {"id": "s3", "tool": "list_questions", "args": {"product_id": "prd_windbreaker"}, "uses": ["s1"]}]}),
+        "What do people say about the windbreaker?",
+    )
+    .await;
+    let b = blocks(&events);
+    let uis: Vec<&str> = b.iter().map(|b| b.ui.as_str()).collect();
+    assert_eq!(uis, ["product_list", "record_list", "record_list"]);
+    assert_eq!(b[1].data["kind"], "reviews");
+    assert_eq!(b[2].data["kind"], "questions");
+    assert_eq!(
+        b[2].data["rows"][0]["body"],
+        "The store: Yes, into the collar."
+    );
+}
+
 /// What Muse Glimmer answered for scene B3 (recorded): two reads and the explainer block.
 fn b3_plan() -> String {
     json!({
@@ -1613,10 +1950,356 @@ async fn a_reply_with_made_up_numbers_is_written_again_and_what_was_read_is_show
     )
     .await;
     assert_eq!(message(&events), "You have 1,284 VIP members.");
+    // The person saw the first reply being written; `message.reset` took it off the screen
+    // before the second one streamed.
+    let mut screen = String::new();
+    let mut resets = 0;
+    for e in &events {
+        match e {
+            Event::MessageDelta { text } => screen.push_str(text),
+            Event::MessageReset { .. } => {
+                assert_eq!(screen, "You have 9,999 VIP members.");
+                screen.clear();
+                resets += 1;
+            }
+            _ => {}
+        }
+    }
+    assert_eq!(resets, 1);
+    assert_eq!(screen, "You have 1,284 VIP members.");
     let b = blocks(&events);
     assert_eq!(b.len(), 1, "the tiers read, shown as a table");
     assert_eq!(b[0].ui, "product_table");
     assert_eq!(glimmer.asked().iter().filter(|p| *p == "reply").count(), 2);
+}
+
+#[tokio::test]
+async fn a_planned_yes_no_the_shopper_never_said_is_not_sent() {
+    // The plan does not say which product; the arguments model is asked and answers with every
+    // field, the yes/no included.
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            (
+                "plan",
+                json!({"interpretation": [], "about": "self", "reply_plan": "record_list", "steps": [
+                    {"id": "q", "tool": "list_questions", "uses": [], "args": {"answered": true, "limit": 20}}]})
+                .to_string(),
+            ),
+            (
+                "arguments",
+                json!({"product_id": "prd_windbreaker", "answered": true, "limit": 20}).to_string(),
+            ),
+        ],
+    );
+    let mut manifest = manifest_with_records();
+    for t in &mut manifest {
+        if t.tool == "list_questions" {
+            t.input_schema["required"] = json!(["product_id"]);
+        }
+    }
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let commerce = Commerce::with_manifest(manifest);
+    turn(
+        &rt,
+        principal("cus_jamie", Surface::Fo),
+        ChatSurface::Fo,
+        say("What questions have people asked about the windbreaker?"),
+        commerce.clone(),
+    )
+    .await;
+    let asked: Vec<Value> = commerce
+        .reads()
+        .into_iter()
+        .filter(|(t, _)| t == "list_questions")
+        .map(|(_, input)| input)
+        .collect();
+    assert!(!asked.is_empty());
+    for input in &asked {
+        assert!(input.get("answered").is_none(), "{input}");
+    }
+}
+
+#[test]
+fn a_shoppers_read_drops_a_yes_no_they_never_mentioned() {
+    let tool: ToolSpec = serde_json::from_value(fixtures::tool(
+        "list_questions",
+        "catalog.question.list_questions",
+        "read",
+        "Questions about a product.",
+        json!([]),
+        json!([]),
+        json!({"product_id": {"type": "string", "description": "Product."},
+               "answered": {"type": "boolean", "description": "Answered or not."}}),
+        json!([]),
+    ))
+    .unwrap();
+    let mut input = json!({"product_id": "prd_windbreaker", "answered": true, "limit": 20});
+    let notes = unasked_yes_no(
+        &mut input,
+        &tool,
+        "What questions have people asked about the windbreaker?",
+    );
+    assert_eq!(input, json!({"product_id": "prd_windbreaker", "limit": 20}));
+    assert_eq!(notes, ["answered: true was not asked for, left out"]);
+    for said in [
+        "Show me the answered questions",
+        "Which ones are still unanswered?",
+    ] {
+        let mut input = json!({"answered": false});
+        assert!(unasked_yes_no(&mut input, &tool, said).is_empty(), "{said}");
+        assert_eq!(input["answered"], false);
+    }
+}
+
+#[tokio::test]
+async fn the_one_the_request_names_is_taken_from_a_list_read_before() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![(
+            "plan",
+            json!({"interpretation": [], "about": "self", "reply_plan": "product_table", "steps": [
+                {"id": "tiers", "tool": "list_tiers", "args": {}, "uses": []},
+                {"id": "who", "tool": "search_members", "args": {"tier_id": "", "limit": 100}, "uses": ["tiers"]}]})
+            .to_string(),
+        )],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let mut manifest = fixtures::manifest();
+    manifest.push(
+        serde_json::from_value(fixtures::tool(
+            "search_members",
+            "customer.person.search_members",
+            "read",
+            "Find members by words, tier or state.",
+            json!([]),
+            json!([{"name": "customer_id", "many": true}]),
+            json!({"tier_id": {"type": "string", "description": "Tier."},
+                   "limit": {"type": "integer", "description": "Page size."}}),
+            json!([]),
+        ))
+        .unwrap(),
+    );
+    let commerce = Commerce::with_manifest(manifest);
+    turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say("Show me the VIP members"),
+        commerce.clone(),
+    )
+    .await;
+    let searched: Vec<Value> = commerce
+        .reads()
+        .into_iter()
+        .filter(|(t, _)| t == "search_members")
+        .map(|(_, input)| input)
+        .collect();
+    assert_eq!(searched, [json!({"tier_id": "vip", "limit": 100})]);
+}
+
+#[tokio::test]
+async fn a_list_that_found_nothing_is_shown_as_an_empty_table() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![(
+            "plan",
+            json!({"interpretation": [], "about": "self", "reply_plan": "text", "steps": [
+                {"id": "s1", "tool": "get_policy", "args": {"key": "campaign_hours"}, "uses": []}]})
+            .to_string(),
+        )],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say("What campaigns are scheduled?"),
+        Commerce::new(),
+    )
+    .await;
+    let b = blocks(&events);
+    assert_eq!(b.len(), 1, "{b:?}");
+    assert_eq!(
+        (b[0].ui.as_str(), b[0].title.as_str()),
+        ("product_table", "Nothing found")
+    );
+    assert_eq!(b[0].data["total"], 0);
+}
+
+#[tokio::test]
+async fn a_reply_that_copies_what_a_check_told_it_is_not_the_answer() {
+    let asked = "Show me the change sets waiting for approval";
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            (
+                "plan",
+                json!({"interpretation": [], "about": "self", "reply_plan": "text", "steps": [
+                {"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
+                .to_string(),
+            ),
+            ("reply", format!("{asked}. The results show the tiers.")),
+            ("reply", format!("{REPEATED_REQUEST} Here it is.")),
+        ],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let events = turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say(asked),
+        Commerce::new(),
+    )
+    .await;
+    let reply = message(&events);
+    assert!(!reply.contains("repeats the request"), "{reply}");
+    assert!(!reply.is_empty());
+}
+
+#[tokio::test]
+async fn replies_stream_only_where_the_background_check_saw_streaming_work() {
+    let plan = || {
+        json!({"interpretation": [{"aspect": "who", "text": "VIP members"}], "about": "self",
+            "reply_plan": "text", "steps": [
+            {"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
+        .to_string()
+    };
+    let script = || {
+        let mut a: Vec<(&str, String)> = Vec::new();
+        for _ in 0..3 {
+            a.push(("plan", plan()));
+            a.push(("reply", "You have 1,284 VIP members.".into()));
+        }
+        a
+    };
+    async fn ask(rt: &Runtime) -> Vec<Event> {
+        turn(
+            rt,
+            principal("adm_sj", Surface::Bo),
+            ChatSurface::Bo,
+            say("Show me our member tiers."),
+            Commerce::new(),
+        )
+        .await
+    }
+    let deltas = |events: &[Event]| {
+        events
+            .iter()
+            .filter(|e| matches!(e, Event::MessageDelta { .. }))
+            .count()
+    };
+    let replies = |g: &Scripted| g.asked().iter().filter(|p| *p == "reply").count();
+
+    // Not checked yet: the reply is asked for once, whole, and comes in sentences.
+    let glimmer = Scripted::new("glimmer", "Muse Glimmer 30B", script());
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    rt.assume_streaming("glimmer", StreamState::Unknown);
+    let events = ask(&rt).await;
+    assert_eq!(message(&events), "You have 1,284 VIP members.");
+    assert_eq!((replies(&glimmer), deltas(&events)), (1, 1));
+
+    // The check sees the model stream: the next reply streams in pieces.
+    rt.probe_streaming().await;
+    assert_eq!(
+        rt.stream_state("glimmer"),
+        StreamState::Works(StreamVariant::Configured)
+    );
+    let events = ask(&rt).await;
+    assert_eq!(message(&events), "You have 1,284 VIP members.");
+    assert_eq!(replies(&glimmer), 2);
+    assert!(deltas(&events) > 1);
+
+    // A model whose streams are empty is off after the check, and replies come whole.
+    let dumb = Scripted::new("glimmer", "Muse Glimmer 30B", script()).streaming_nothing();
+    let rt = runtime(std::slice::from_ref(&dumb), Arc::new(MemoryLog::default()));
+    rt.assume_streaming("glimmer", StreamState::Unknown);
+    rt.probe_streaming().await;
+    assert_eq!(rt.stream_state("glimmer"), StreamState::Off);
+    let events = ask(&rt).await;
+    assert_eq!(message(&events), "You have 1,284 VIP members.");
+    assert_eq!(replies(&dumb), 1);
+
+    // A way that worked stops working mid-turn: the turn asks again unstreamed, so the person
+    // still gets the model's reply, and streaming waits for the next check.
+    rt.assume_streaming("glimmer", StreamState::Works(StreamVariant::Configured));
+    let events = ask(&rt).await;
+    assert_eq!(
+        message(&events),
+        "You have 1,284 VIP members.",
+        "the model's reply, not the plain one"
+    );
+    assert_eq!(replies(&dumb), 3);
+    assert_eq!(rt.stream_state("glimmer"), StreamState::Unknown);
+}
+
+#[tokio::test]
+async fn a_way_that_fails_in_turns_is_not_trusted_again_by_the_check() {
+    let plan = json!({"interpretation": [{"aspect": "who", "text": "VIP members"}], "about": "self",
+        "reply_plan": "text", "steps": [{"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
+    .to_string();
+    let mut answers: Vec<(&str, String)> = Vec::new();
+    for _ in 0..=StreamVariant::ALL.len() {
+        answers.push(("plan", plan.clone()));
+        answers.push(("reply", "You have 1,284 VIP members.".into()));
+    }
+    let model = Scripted::new("glimmer", "Muse Glimmer 30B", answers).streaming_the_check_only();
+    let rt = runtime(std::slice::from_ref(&model), Arc::new(MemoryLog::default()));
+    rt.assume_streaming("glimmer", StreamState::Unknown);
+    // The check passes every way; each turn proves one wrong, and the check moves past it.
+    for (n, way) in StreamVariant::ALL.iter().enumerate() {
+        rt.probe_streaming().await;
+        assert_eq!(
+            rt.stream_state("glimmer"),
+            StreamState::Works(*way),
+            "check {n}"
+        );
+        let events = turn(
+            &rt,
+            principal("adm_sj", Surface::Bo),
+            ChatSurface::Bo,
+            say("Show me our member tiers."),
+            Commerce::new(),
+        )
+        .await;
+        assert_eq!(message(&events), "You have 1,284 VIP members.", "turn {n}");
+        assert_eq!(rt.stream_state("glimmer"), StreamState::Unknown);
+    }
+    // Every way failed in a turn: the check turns streaming off, and replies come whole.
+    rt.probe_streaming().await;
+    assert_eq!(rt.stream_state("glimmer"), StreamState::Off);
+    let before = model.asked().iter().filter(|p| *p == "reply").count();
+    turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        say("Show me our member tiers."),
+        Commerce::new(),
+    )
+    .await;
+    assert_eq!(
+        model.asked().iter().filter(|p| *p == "reply").count(),
+        before + 1
+    );
 }
 
 fn on_facade(text: &str) -> TurnRequest {

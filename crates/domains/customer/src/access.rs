@@ -3,6 +3,7 @@
 
 use acom_auth::Principal;
 use acom_contract::{ApprovalNeed, ErrorCode, ToolError};
+use acom_core::enums::ActorKind;
 use acom_store::{Cx, StoreError};
 use serde_json::{Value, json};
 
@@ -20,10 +21,15 @@ pub(crate) enum Caller {
 }
 
 pub(crate) fn caller(p: &Principal) -> Caller {
-    match p.customer_id() {
-        Some(id) => Caller::Shopper(id.to_owned()),
-        None if p.subject.starts_with("ses_") => Caller::Guest,
-        None => Caller::Staff,
+    if let Some(id) = p.customer_id() {
+        return Caller::Shopper(id.to_owned());
+    }
+    // Staff by what the caller is, never by what it lacks: a visitor with no session at all is
+    // a shopper without a customer id, and sees what a guest sees.
+    match p.kind {
+        ActorKind::Operator | ActorKind::System => Caller::Staff,
+        ActorKind::AgentOnBehalf if p.subject.starts_with("adm_") => Caller::Staff,
+        _ => Caller::Guest,
     }
 }
 
@@ -177,7 +183,6 @@ mod tests {
 
     use acom_auth::{Principal, Surface};
     use acom_core::TenantId;
-    use acom_core::enums::ActorKind;
 
     use super::*;
 
@@ -210,6 +215,15 @@ mod tests {
         assert_eq!(
             caller(&principal("adm_sj", ActorKind::Operator)),
             Caller::Staff
+        );
+        assert_eq!(
+            caller(&principal("adm_sj", ActorKind::AgentOnBehalf)),
+            Caller::Staff
+        );
+        // The gateway's caller with no session: never staff.
+        assert_eq!(
+            caller(&principal("anonymous", ActorKind::Shopper)),
+            Caller::Guest
         );
     }
 }
