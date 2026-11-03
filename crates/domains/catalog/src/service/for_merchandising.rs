@@ -59,3 +59,25 @@ pub async fn brand_names(
     .await
     .map_err(|e| ToolError::from(StoreError::from(e)))
 }
+
+/// The page images among `image_ids` that exist in this store, and whether each is approved:
+/// `(id, approved)`, in no fixed order.
+pub async fn page_images(
+    tx: &mut TxCx,
+    image_ids: &[String],
+) -> Result<Vec<(String, bool)>, ToolError> {
+    sqlx::query_as::<_, (String, bool)>(
+        "SELECT id, approved_at IS NOT NULL FROM catalog.page_image
+         WHERE tenant_id = $1 AND id = ANY($2)",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(image_ids)
+    .fetch_all(&mut *tx.tx)
+    .await
+    .map_err(|e| ToolError::from(StoreError::from(e)))
+}
+
+/// Where a browser loads a page image.
+pub fn page_image_url(image_id: &str) -> String {
+    crate::page_image::content_url(image_id)
+}

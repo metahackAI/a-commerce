@@ -56,9 +56,10 @@ A-Commerce의 모든 구성 요소는 컨테이너이고, **어디서 띄우든 
   │                 postgres :5432   ◀── migrate (배포 전 한 번)                   │
   └──────────────────────────────────────────────────────────────────────────────┘
                                                     agent ──▶ egress: 모델 엔드포인트
+                                                 commerce ──▶ egress: 이미지 모델(IMAGE_MODEL)
 ```
 
-- Compose는 이 영역을 네트워크로(`edge`, `app`·`data`는 인터넷 없는 내부 망, agent만 `egress`), Kubernetes는 NetworkPolicy로 같은 규칙을 만듭니다.
+- Compose는 이 영역을 네트워크로(`edge`, `app`·`data`는 인터넷 없는 내부 망, `egress`는 agent와 commerce: commerce는 페이지 그림(`generate_page_image`)을 그리는 이미지 모델만 부름), Kubernetes는 NetworkPolicy로 같은 규칙을 만듭니다.
 - 웹의 서버 컴포넌트는 `ACOM_GATEWAY_INTERNAL_URL`(게이트웨이)로 API를 부르고, 브라우저는 같은 출처의 `/api/...`를 부릅니다. 쿠키·CSRF가 CORS 없이 동작합니다.
 
 ## 4. 이미지

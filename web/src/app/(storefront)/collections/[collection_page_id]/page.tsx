@@ -6,6 +6,7 @@ import {Token} from '@astryxdesign/core/Token';
 
 import {ErrorNotice} from '@/components/fo/ErrorNotice';
 import {ProductGrid} from '@/components/fo/ProductGrid';
+import {ProductImage} from '@/components/fo/ProductImage';
 
 import {slotItemId} from '../../_lib/collections';
 import {longDate} from '../../_lib/format';
@@ -20,7 +21,7 @@ export async function generateMetadata({params}: {params: Params}): Promise<Meta
   return {title: page.ok ? page.data.name : 'Collection'};
 }
 
-// A collection page: its sections in the operator's order, each with its products at this
+// A collection page: its picture across the top when it has one, then its sections in the operator's order, each with its products at this
 // shopper's own prices (get_product). Products the store's rules hide (`hidden_items`) are left
 // out, as get_curation reports them.
 export default async function CollectionPageView({params}: {params: Params}) {
@@ -60,6 +61,7 @@ export default async function CollectionPageView({params}: {params: Params}) {
               <BreadcrumbItem href="/collections">Collections</BreadcrumbItem>
               <BreadcrumbItem isCurrent>{c.name}</BreadcrumbItem>
             </Breadcrumbs>
+            {c.image_url ? <ProductImage src={c.image_url} alt={c.name} ratio={3} /> : null}
             <VStack gap={2}>
               <Heading level={1}>{c.name}</Heading>
               {c.valid_through ? <Text color="secondary">{`On until ${longDate(c.valid_through)}`}</Text> : null}

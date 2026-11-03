@@ -59,6 +59,7 @@ acom-integration = { path = "crates/domains/integration" }
 
 # external
 axum = "0.8"
+base64 = "0.22"
 clap = { version = "4.6", features = ["derive", "env"] }
 http-body-util = "0.1"
 hyper = "1"

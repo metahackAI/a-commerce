@@ -1907,7 +1907,14 @@ impl<'r> Turn<'r> {
             let result = match &each {
                 Some(source) => self.run_each(plan, step, &tool, source, &view).await,
                 None => {
-                    let bound = executor::bind(step, &tool, &view, &order, &self.pointed);
+                    let mut bound = executor::bind(step, &tool, &view, &order, &self.pointed);
+                    let sources: Vec<&StepRecord> = step
+                        .uses
+                        .iter()
+                        .filter_map(|u| view.get(u))
+                        .chain(self.history.iter().rev())
+                        .collect();
+                    executor::open_inner_lists(&tool, &mut bound, &sources);
                     // The result it builds on says there is nothing to do: not called, not
                     // made up by a model either. The reply says so.
                     if let Some(why) = bound.empty {
@@ -3457,6 +3464,8 @@ impl<'r> Turn<'r> {
         let cs = self.view.as_ref().map(|v| {
             json!({"change_set": v.number.map_or_else(|| v.id.clone(), |n| format!("#{n}")),
                    "version": v.version, "state": v.state, "items": v.items.len(),
+                   // What each item drafts, so the reply does not guess (a picture already made).
+                   "drafted": v.items.iter().map(|i| json!({"tool": i.tool, "changes": i.changes_total})).collect::<Vec<_>>(),
                    "checks": v.check_count(),
                    "failed_checks": v.failed_checks().iter().map(|c| json!({"rule": c.rule, "detail": c.detail})).collect::<Vec<_>>(),
                    "left_out": v.left_out.len()})

@@ -78,6 +78,10 @@ services:
       # Demo stacks only: lets an operator with admin:demo load the demo store again
       # (POST /v1/platform/demo/reset). Production configuration does not set it.
       MIGRATION_DATABASE_URL: postgres://acom_owner:${ACOM_OWNER_PASSWORD:-acom_owner}@postgres:5432/acom
+      # Page pictures (generate_page_image) through the Meta Model API; placeholders without them.
+      META_API_BASE_URL: ${META_API_BASE_URL:-}
+      META_API_KEY: ${META_API_KEY:-}
+      IMAGE_MODEL: ${IMAGE_MODEL:-}
     secrets: [gateway_public_key]
     healthcheck:
       test: ["CMD", "/usr/local/bin/acom-commerce", "healthcheck"]
@@ -87,7 +91,8 @@ services:
       start_period: 5s
     depends_on:
       migrate: {condition: service_completed_successfully}
-    networks: [app, data]
+    # egress: the image model for page pictures (IMAGE_MODEL); nothing else leaves from here.
+    networks: [app, data, egress]
 
   commerce-worker:
     <<: *rust-service

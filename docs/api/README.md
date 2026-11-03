@@ -197,6 +197,7 @@ a-commerce API
 |---|---|
 | product_group | `search_product_groups` R · `get_product_group` R · `create_product_group` W · `update_product_group` W |
 | product | **`get_product`** R · **`get_product_measurements`** R · `create_product` W · `update_product` W · `set_variants` W · `discontinue_product` W · `get_return_policy` R · `get_delivery_policy` R · `batch_import` W$ · `generate_image` W$ · `generate_copy` W |
+| page_image | `generate_page_image` W$ |
 | offer | `get_price_breakdown` R · `set_price` W · `schedule_price_change` W |
 | inventory | `get_inventory` R · `set_variant_stock` W · `set_safety_stock` W |
 | reorder | `suggest_reorder` R · `create_reorder` W · `receive_reorder` W |

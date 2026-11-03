@@ -13,9 +13,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
 use super::{
-    BANNER_NOT_FOUND, DUPLICATE_COLLECTION_PAGE, PRODUCT_DISCONTINUED, PageRow, Section,
-    clean_banners, clean_keywords, clean_sections, content_checks, delete_draft, insert,
-    known_content, page, still_on_sale, taken_ids,
+    BANNER_NOT_FOUND, DUPLICATE_COLLECTION_PAGE, IMAGE_NOT_APPROVED, IMAGE_NOT_FOUND,
+    PRODUCT_DISCONTINUED, PageRow, Section, clean_banners, clean_image, clean_keywords,
+    clean_sections, content_checks, delete_draft, image_ready, image_url, insert, known_content,
+    page, still_on_sale, taken_ids,
 };
 use crate::model::{DisplayRules, id_candidates};
 use crate::{INVALID_PERIOD, TIER_NOT_FOUND, known_tier, parse_time, policy_approval};
@@ -44,6 +45,9 @@ pub struct CreateCurationInput {
     /// Search words that lead to the page.
     #[schemars(example = ["winter coat"])]
     pub keywords: Option<Vec<String>>,
+    /// The picture across the top of the page (`generate_page_image`).
+    #[schemars(regex(pattern = r"^img_[a-z0-9_]+$"), example = &"img_page_3f9a1c2e7b40")]
+    pub image_id: Option<String>,
 }
 
 /// What `create_curation` writes.
@@ -64,8 +68,8 @@ impl Operation for CreateCuration {
         kind: Kind::Write,
         method: Method::Post,
         path: "/v1/merchandising/collection-pages",
-        summary: "Make a curated page (a collection of products in named sections, with linked banners and search keywords) as a draft. Shoppers see it only after publish_curation.",
-        consumes: &[Slot::many("product_id")],
+        summary: "Make a curated page (a collection of products in named sections, with a picture across the top, linked banners and search keywords) as a draft. Shoppers see it only after publish_curation.",
+        consumes: &[Slot::many("product_id"), Slot::one("image_id")],
         produces: &[Slot::one("collection_page_id")],
         checks: &["display.exclude_discontinued", "curation.no_empty_section"],
         errors: &[
@@ -74,6 +78,8 @@ impl Operation for CreateCuration {
             TIER_NOT_FOUND,
             INVALID_PERIOD,
             DUPLICATE_COLLECTION_PAGE,
+            IMAGE_NOT_FOUND,
+            IMAGE_NOT_APPROVED,
             ErrorCode::NOT_FOUND,
         ],
         audience: Audience::Operator,
@@ -95,6 +101,8 @@ pub(crate) fn content_json(cx: &Cx, p: &PageRow) -> Value {
         "product_count": p.products().len(),
         "banner_ids": p.banner_id,
         "keywords": p.keywords,
+        "image_id": p.image_id,
+        "image_url": image_url(p.image_id.as_deref()),
     })
 }
 
@@ -116,6 +124,7 @@ impl WriteOp<Cx> for CreateCuration {
         let sections = clean_sections(input.has_part)?;
         let banners = clean_banners(input.banner_ids.unwrap_or_default())?;
         let keywords = clean_keywords(input.keywords.unwrap_or_default());
+        let image = clean_image(input.image_id)?;
         let from = input
             .valid_from
             .as_deref()
@@ -140,7 +149,7 @@ impl WriteOp<Cx> for CreateCuration {
 
         let mut tx = cx.read().await.map_err(ToolError::from)?;
         let tier = known_tier(&mut tx, audience).await?;
-        let cards = known_content(&mut tx, &sections, &banners).await?;
+        let cards = known_content(&mut tx, &sections, &banners, image.as_deref()).await?;
         let candidates = id_candidates("col", &name);
         let taken = taken_ids(&mut tx, &candidates).await?;
         tx.commit().await.map_err(ToolError::from)?;
@@ -160,6 +169,7 @@ impl WriteOp<Cx> for CreateCuration {
             sales_channel: None,
             banner_id: banners,
             keywords,
+            image_id: image,
             version: 0,
         };
         let mut to = content_json(cx, &row);
@@ -203,6 +213,7 @@ impl WriteOp<Cx> for CreateCuration {
         let rules = DisplayRules::from_policy(&tx.policy)?;
         let p = &plan.page;
         still_on_sale(tx, &rules, &p.products(), "search_products").await?;
+        image_ready(tx, p.image_id.as_deref()).await?;
         if !insert(tx, p).await? {
             // Taken since the preview, unless this very plan ran already.
             let same = page(tx, &p.id)

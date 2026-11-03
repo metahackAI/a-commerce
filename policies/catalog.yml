@@ -124,6 +124,8 @@ content:                                 # 생성 이미지·문구 (generate_im
   brand_guideline: enforced              # check: content.brand_guideline. 로고·색·금지 연출 검사
   prompt_blocked_words: []               # [default] content.brand_guideline이 막는 프롬프트 단어(소문자, 단어 단위). 다른 브랜드 이름·로고 등 스토어가 정함
   max_images_per_request: 4
+  page_image:                            # 상품이 아닌 페이지 그림 (generate_page_image: 기획전 상단, 배너)
+    prompt: "Wide 3:1 banner for the top of a store page. No text, no logos, no brand names."
 
 review:                                  # 상품 리뷰 (create_review, report_review, moderate_review)
   verified_purchase_only: true           # check: review.verified_purchase_only. 배송 완료된 주문 품목만

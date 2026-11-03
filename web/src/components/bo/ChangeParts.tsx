@@ -201,11 +201,31 @@ function withoutSubject(side: unknown, subject: string): unknown {
   return Object.fromEntries(Object.entries(side as Record<string, unknown>).filter(([k, v]) => !(k.endsWith('_id') && v === subject)));
 }
 
+/** Fields that hold a picture's address; a change row shows the picture instead of the text. */
+const PICTURE_FIELDS = ['content_url', 'image_url'];
+
+/** The picture a side of a change carries (a generated image), if the browser can load it. */
+export function pictureOf(side: unknown): string | null {
+  if (!side || typeof side !== 'object' || Array.isArray(side)) return null;
+  const o = side as Record<string, unknown>;
+  for (const k of PICTURE_FIELDS) {
+    const v = o[k];
+    if (typeof v === 'string' && (v.startsWith('/api/') || v.startsWith('data:image/'))) return v;
+  }
+  return null;
+}
+
+/** A side without the picture address a row shows as a picture. */
+function withoutPicture(side: unknown): unknown {
+  if (!pictureOf(side)) return side;
+  return Object.fromEntries(Object.entries(side as Record<string, unknown>).filter(([k]) => !PICTURE_FIELDS.includes(k)));
+}
+
 /** Before and after as text, without the fields both sides share. */
 export function beforeAfter(c: Change, currency?: string): {from: string; to: string} {
   const subject = changeSubject(c);
-  const from = withoutSubject(withCurrency(c.from, currency), subject);
-  const to = withoutSubject(withCurrency(c.to, currency), subject);
+  const from = withoutSubject(withCurrency(withoutPicture(c.from), currency), subject);
+  const to = withoutSubject(withCurrency(withoutPicture(c.to), currency), subject);
   if (from && to && typeof from === 'object' && typeof to === 'object' && !Array.isArray(from) && !Array.isArray(to)) {
     const f = {...(from as Record<string, unknown>)};
     const t = {...(to as Record<string, unknown>)};
@@ -261,6 +281,7 @@ export function ChangesTable({
             const subject = changeSubject(c);
             const shown = subjectName(c) ?? subject;
             const {from, to} = beforeAfter(c, currency);
+            const picture = pictureOf(c.to);
             const href = entityHref(subject);
             return (
               <TargetRow
@@ -301,9 +322,14 @@ export function ChangesTable({
                   </Text>
                 </TableCell>
                 <TableCell>
-                  <Text hasTabularNumbers weight="medium">
-                    {to}
-                  </Text>
+                  <VStack gap={1}>
+                    {picture ? (
+                      <img src={picture} alt={`${shown} (generated)`} loading="lazy" style={{display: 'block', maxWidth: 360, maxHeight: 160, width: '100%', objectFit: 'cover', borderRadius: 6}} />
+                    ) : null}
+                    <Text hasTabularNumbers weight="medium">
+                      {to}
+                    </Text>
+                  </VStack>
                 </TableCell>
               </TargetRow>
             );

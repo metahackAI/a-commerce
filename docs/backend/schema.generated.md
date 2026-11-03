@@ -380,6 +380,26 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `catalog.page_image`
+
+`schema:ImageObject` — a generated picture for a store page (generate_page_image), not of one product; shoppers see it once approved and used. id prefix img_. · id `img_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix img_page_, made from the request so the same request finds the same picture (API image_id). |
+| `prompt` | text |  | `acom:prompt` | what the operator asked the picture to show. |
+| `caption` | text |  | `schema:caption` | the alternative text shown with the picture. |
+| `encoding_format` | text |  | `schema:encodingFormat` | media type of the picture, for example image/webp. |
+| `content` | bytea |  | `-` | the picture file itself, served at /v1/catalog/page-images/{image_id}/content. |
+| `generator` | text |  | `acom:generator` | the model that made it, or placeholder when no image model is connected. |
+| `is_ai_generated` | boolean |  | `acom:aiGenerated` | true for generated content (catalog.yml content.ai_content_disclosure). |
+| `date_created` | timestamptz |  | `schema:dateCreated` | when the picture was made (store clock). |
+| `approved_at` | timestamptz | ✓ | `acom:approvedAt` | when a person approved it (store clock); NULL while it waits, and shoppers cannot load it. |
+| `created_at` | timestamptz |  | `-` | when the row was created. |
+| `updated_at` | timestamptz |  | `-` | when the row was last changed. |
+| `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+
 ### `catalog.product`
 
 `schema:Product` — one sellable variant (a size and color of a product); cart lines, stock and order items use it. id prefix var_. API: variant_id. · id `var_…`
@@ -1535,6 +1555,7 @@
 | `created_at` | timestamptz |  | `-` | when the row was created. |
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
+| `image_id` | text | ✓ | `schema:image` | the picture across the top of the page (img_ id of a page image); NULL for none. |
 
 ### `merchandising.defined_term`
 

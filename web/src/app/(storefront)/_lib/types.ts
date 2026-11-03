@@ -780,6 +780,9 @@ export interface CollectionPageSummary {
   product_count?: number;
   banner_ids?: string[];
   keywords?: string[];
+  /** The picture across the top (`generate_page_image`) and where the browser loads it. */
+  image_id?: string | null;
+  image_url?: string | null;
 }
 
 /** `get_curation`: the sections, each an ItemList of product ids. */

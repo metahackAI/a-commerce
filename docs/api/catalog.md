@@ -290,6 +290,25 @@
 
 ---
 
+## page_image
+
+상품 하나가 아닌 스토어 페이지용 그림(기획전 상단, 배너). 상품 이미지(`generate_image`)와 달리 특정 상품의 모습을 지어내지 않습니다.
+
+### `generate_page_image` — Kind: W$
+- 논리주소/REST: `catalog.page_image.generate` · `POST /v1/catalog/page-images`
+- 요약: 페이지 상단에 쓸 넓은 그림을 생성합니다. 승인하는 사람이 그림을 보도록 프리뷰 때 만들고, 기획전에는 `create_curation`·`update_curation`의 `image_id`로 씁니다.
+- consumes → produces: — → `image_id`
+- 입력: `acom:prompt`(무엇을 보여 줄지: 소재·배경·빛·분위기), `caption?`(대체 텍스트, 기본은 프롬프트)
+- 출력: 프리뷰 형식(`changes[0]`=`create` `page_image` `{image_id, content_url, caption, acom:ai_generated: true, generator}`) → 실행 `{ok: true, id: "img_page_3f9a1c2e7b40", image_id: "img_page_3f9a1c2e7b40", undo}`. `content_url`은 `/api/v1/catalog/page-images/{image_id}/content`
+- **생성기**: `IMAGE_MODEL`(예 `muse-image-1.0`)과 `META_API_BASE_URL`·`META_API_KEY`가 commerce에 있으면 Meta Model API의 Responses API(`image_generation` 도구)로 그립니다. 모델에 보내는 프롬프트는 운영자의 프롬프트 뒤에 스토어가 정한 문장(`content.page_image.prompt`: 3:1 모양, 글자·로고 없음)을 붙인 것입니다. 없으면 프롬프트를 적고 "Placeholder · no image generator is connected"라고 말하는 자리표시 SVG입니다.
+- 저장과 노출: 그림 파일은 프리뷰 때 `catalog.page_image`에 승인 전 상태로 저장합니다. id는 스토어·생성기·프롬프트에서 만들어(`img_page_` + 해시 12자) 같은 요청을 다시 프리뷰하면(승인 때 다시 프리뷰해도) 같은 그림을 찾고 다시 그리지 않습니다. 실행은 승인 시각을 기록합니다. `GET /v1/catalog/page-images/{image_id}/content`(도구 아님)는 운영자에게는 모든 그림을, 그 밖의 호출자에게는 승인된 그림만 돌려줍니다. 되돌리기는 승인을 지웁니다.
+- 프리뷰: checks `content.brand_guideline`(프롬프트에 `content.prompt_blocked_words`의 단어가 있으면 실패하고 그리지 않음), `content.ai_content_disclosure`. 고객에게 닿으므로 항상 `needs_approval: true`.
+- 정책: [catalog.yml](../../policies/catalog.yml) `content`
+- 에러: `generation_failed`(모델이 답하지 않거나 그림이 없는 답, 실행 때 그림이 사라짐) → `generate_page_image` · `brand_guideline_violation` → `generate_page_image`
+- 멱등성: 같은 스토어·생성기·프롬프트는 같은 `image_id`
+
+---
+
 ## offer
 
 ### `get_price_breakdown` — Kind: R

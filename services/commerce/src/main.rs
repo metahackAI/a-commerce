@@ -251,6 +251,63 @@ fn bot_report(api: Arc<acom_http::Api>) -> Router {
         .with_state(api)
 }
 
+/// `GET /v1/catalog/page-images/{image_id}/content`: the file of a generated page picture
+/// (docs/api/catalog.md#page_image). Operators load every picture, since they approve them;
+/// everyone else only approved ones. Runtime-only, never a tool.
+fn page_image(api: Arc<acom_http::Api>) -> Router {
+    use acom_contract::{ErrorCode, ToolError};
+    use axum::extract::{Path, State};
+    use axum::http::header;
+    use axum::response::IntoResponse;
+    use serde_json::json;
+    Router::new()
+        .route(
+            "/v1/catalog/page-images/{image_id}/content",
+            axum::routing::get(
+                |State(api): State<Arc<acom_http::Api>>,
+                 caller: acom_http::Caller,
+                 Path(id): Path<String>| async move {
+                    let refuse = |e: ToolError| acom_http::ApiError(e).into_response();
+                    let operator = caller.principal.kind == acom_core::enums::ActorKind::Operator;
+                    let cx = match api
+                        .runtime
+                        .context(caller.principal.clone(), caller.request_id.clone())
+                        .await
+                    {
+                        Ok(cx) => cx,
+                        Err(e) => return refuse(e),
+                    };
+                    let mut tx = match cx.read().await {
+                        Ok(tx) => tx,
+                        Err(e) => return refuse(ToolError::from(e)),
+                    };
+                    let found =
+                        acom_catalog::page_image::page_image_content(&mut tx, &id, operator).await;
+                    let _ = tx.commit().await;
+                    match found {
+                        Ok(Some((format, bytes))) => (
+                            [
+                                (header::CONTENT_TYPE, format),
+                                (header::CACHE_CONTROL, "private, max-age=86400".to_owned()),
+                            ],
+                            bytes,
+                        )
+                            .into_response(),
+                        Ok(None) => refuse(
+                            ToolError::new(
+                                ErrorCode::NOT_FOUND,
+                                format!("There is no page picture {id}."),
+                            )
+                            .detail(json!({"entity": "page_image", "id": id})),
+                        ),
+                        Err(e) => refuse(e),
+                    }
+                },
+            ),
+        )
+        .with_state(api)
+}
+
 /// The REST surface: every operation, the change-set endpoints, and the event stream.
 fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
     let key = cli
@@ -267,6 +324,10 @@ fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
         demo_mode = cli.demo_mode,
         "registry built"
     );
+    match acom_catalog::page_image::connect_image_model(&|n| std::env::var(n).ok()) {
+        Ok(model) => tracing::info!(model, "page images: image model connected"),
+        Err(why) => tracing::info!(why, "page images: placeholders"),
+    }
     let api = Arc::new(acom_http::Api {
         runtime: Arc::new(Runtime::new(db, policy, cli.demo_mode)),
         registry: Arc::new(registry),
@@ -281,6 +342,7 @@ fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
     };
     Ok(acom_http::router(api.clone())
         .merge(bot_report(api.clone()))
+        .merge(page_image(api.clone()))
         .merge(demo_reset(api, reset)))
 }
 

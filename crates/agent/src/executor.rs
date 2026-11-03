@@ -564,6 +564,62 @@ pub fn bind_row(step: &PlanStep, tool: &ToolSpec, row: &Value) -> Bound {
     }
 }
 
+/// A list slot whose ids sit in lists inside a list of objects (a curated page's sections, each
+/// with its products): which ids go in which object is a choice, not a copy. A write whose plan
+/// left those inner lists empty while a step of this turn produced that slot left the choice for
+/// later, so the field is taken out and the worker fills it from the results, as for a missing
+/// field. `sources` are the steps it `uses` first, then this turn's earlier steps, latest first
+/// (a plan revised after an error names only the step it added).
+pub fn open_inner_lists(tool: &ToolSpec, bound: &mut Bound, sources: &[&StepRecord]) {
+    if !tool.is_write() {
+        return;
+    }
+    let required = tool.required();
+    for slot in &tool.consumes {
+        if !slot.many
+            || tool.field_for_slot(&slot.name).is_some()
+            || tool.nested_field_for_slot(&slot.name).is_some()
+        {
+            continue;
+        }
+        let Some(source) = sources
+            .iter()
+            .find(|r| r.slots.get(&slot.name).is_some_and(|v| !v.is_empty()))
+            .map(|r| r.step.clone())
+        else {
+            continue;
+        };
+        let Some(input) = bound.input.as_object_mut() else {
+            return;
+        };
+        let open: Vec<String> = input
+            .iter()
+            .filter(|(_, v)| has_empty_inner_list(v))
+            .map(|(k, _)| k.clone())
+            .collect();
+        for field in open {
+            bound.notes.push(format!(
+                "{field}: its {} lists were left empty; to fill from {source}'s result",
+                slot.name
+            ));
+            input.remove(&field);
+            if !required.contains(&field.as_str()) {
+                bound.undecided.push(field);
+            }
+        }
+    }
+}
+
+/// A list of objects where some object holds an empty list (`[{name, item_list_element: []}]`).
+fn has_empty_inner_list(v: &Value) -> bool {
+    v.as_array().is_some_and(|items| {
+        items.iter().any(|i| {
+            i.as_object()
+                .is_some_and(|o| o.values().any(|x| x.as_array().is_some_and(Vec::is_empty)))
+        })
+    })
+}
+
 /// A correction keeps what the item had and changes what the model said.
 pub fn merge(base: &Value, changes: &Value) -> Value {
     match (base, changes) {
@@ -686,6 +742,51 @@ mod tests {
             &BTreeMap::new(),
         );
         assert_eq!(coupon.input["promotion_id"], "$item[1].promotion_id");
+    }
+
+    #[test]
+    fn sections_left_empty_next_to_a_search_are_left_to_the_worker() {
+        let m = manifest();
+        let search = record(
+            "s1",
+            get(&m, "search_products"),
+            json!({"items": [{"id": "prd_wool_overcoat"}, {"id": "prd_chore_coat"}], "total": 2}),
+        );
+        let page: ToolSpec = serde_json::from_value(crate::tools::fixtures::tool(
+            "create_curation",
+            "merchandising.collection_page.create",
+            "write",
+            "Make a curated page.",
+            json!([{"name": "product_id", "many": true}]),
+            json!([{"name": "collection_page_id", "many": false}]),
+            json!({"name": {"type": "string", "description": "Title."},
+                   "has_part": {"type": "array", "description": "Sections.", "items": {
+                       "type": "object", "additionalProperties": false,
+                       "properties": {"name": {"type": "string", "description": "Heading."},
+                                      "item_list_element": {"type": "array", "description": "Products.",
+                                          "items": {"type": "string", "pattern": "^prd_[a-z0-9_]+$"}}}}}}),
+            json!(["name", "has_part"]),
+        ))
+        .unwrap_or_else(|e| panic!("{e}"));
+        let args = |coats: Value| {
+            json!({"name": "Winter layers",
+                   "has_part": [{"name": "Coats", "item_list_element": coats}]})
+        };
+        let open = |input: Value, sources: &[&StepRecord]| {
+            let mut b = Bound {
+                input,
+                ..Bound::default()
+            };
+            open_inner_lists(&page, &mut b, sources);
+            b
+        };
+        let b = open(args(json!([])), &[&search]);
+        assert!(b.input.get("has_part").is_none(), "{}", b.input);
+        assert!(b.notes[0].starts_with("has_part:"), "{:?}", b.notes);
+        // Filled by the plan, or with nothing this turn to fill it from: kept as written.
+        let kept = args(json!(["prd_chore_coat"]));
+        assert_eq!(open(kept.clone(), &[&search]).input, kept);
+        assert_eq!(open(args(json!([])), &[]).input, args(json!([])));
     }
 
     #[test]

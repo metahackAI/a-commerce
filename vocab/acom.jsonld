@@ -986,6 +986,9 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:ChangeSet"
+        },
+        {
+          "@id": "schema:ImageObject"
         }
       ],
       "schema:rangeIncludes": [
@@ -3571,6 +3574,22 @@
         }
       ],
       "rdfs:comment": "The warehouse step of an order item or delivery."
+    },
+    {
+      "@id": "acom:generator",
+      "@type": "rdf:Property",
+      "rdfs:label": "generator",
+      "schema:domainIncludes": [
+        {
+          "@id": "schema:ImageObject"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "the model that made it, or placeholder when no image model is connected."
     },
     {
       "@id": "acom:giftOptions",

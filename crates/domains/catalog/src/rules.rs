@@ -526,6 +526,9 @@ pub struct ContentRules {
     pub brand_guideline_enforced: bool,
     pub prompt_blocked_words: Vec<String>,
     pub max_images_per_request: u32,
+    /// `page_image.prompt`: what every page image request adds to the operator's prompt (shape,
+    /// what to leave out), so pictures fit the store's pages.
+    pub page_image_prompt: String,
     pub title_max_chars: usize,
     pub seo_max_chars: usize,
 }
@@ -551,6 +554,7 @@ impl ContentRules {
                 .collect(),
             max_images_per_request: u32::try_from(count("catalog.content.max_images_per_request")?)
                 .map_err(|_| missing("catalog.content.max_images_per_request"))?,
+            page_image_prompt: word("catalog.content.page_image.prompt")?,
             title_max_chars: usize::try_from(count("catalog.content.copy.title_max_chars")?)
                 .map_err(|_| missing("catalog.content.copy.title_max_chars"))?,
             seo_max_chars: usize::try_from(count("catalog.content.copy.seo_max_chars")?)

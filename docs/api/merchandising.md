@@ -291,7 +291,7 @@
 - 요약: 기획전 하나(섹션·상품·연결 배너·검색 키워드·현재 상태).
 - consumes → produces: `collection_page_id` → collection_page
 - 입력: `collection_page_id`, `fields?[]`
-- 출력: `{id: "col_winter_edit", name: "Winter outerwear edit", has_part: [{name: "Coats", item_list_element: ["prd_wool_overcoat"]}], status: "draft", audience: "everyone", valid_from: null, valid_through: null, banner_ids: [], keywords: ["winter coat"], hidden_items: []}` (단건 읽기라 목록 봉투 없음)
+- 출력: `{id: "col_winter_edit", name: "Winter outerwear edit", has_part: [{name: "Coats", item_list_element: ["prd_wool_overcoat"]}], status: "draft", audience: "everyone", valid_from: null, valid_through: null, banner_ids: [], keywords: ["winter coat"], image_id: "img_page_3f9a1c2e7b40", image_url: "/api/v1/catalog/page-images/img_page_3f9a1c2e7b40/content", hidden_items: []}` (단건 읽기라 목록 봉투 없음)
 - 프리뷰: 해당 없음(읽기)
 - 정책: 없음
 - 에러: `collection_page_not_found` → `list_curations`
@@ -300,7 +300,7 @@
 ### `create_curation` — Kind: W
 - 논리주소/REST: `merchandising.collection_page.create` · `POST /v1/merchandising/collection-pages`
 - 요약: 상품을 섹션으로 묶어 기획전을 `draft`로 만듭니다. 공개는 `publish_curation`.
-- consumes → produces: `product_id[]` → `collection_page_id`
+- consumes → produces: `product_id[]`, `image_id?` → `collection_page_id`
 - 입력:
   | 필드 | 타입(schema.org/acom) | 필수 | 설명·예 |
   |------|----------------------|:--:|--------|
@@ -310,21 +310,22 @@
   | valid_from / valid_through | DateTime | | 공개 때 확정 |
   | banner_ids | Text[] | | 연결 배너(`bnr_`) |
   | keywords | Text[] | | 검색 키워드 |
+  | image_id | Text | | 페이지 상단 그림(`img_`, `generate_page_image`). 같은 변경셋 앞 항목이 만들면 `$item[n].image_id`. 프리뷰는 있는지만 보고, 실행은 승인된 그림인지 봄 |
 - 출력: 프리뷰 형식 → 실행 `{ok: true, id: "col_winter_edit", undo: {by: "person", target: "cs_1050", until: "2026-11-07T23:59:00-05:00"}}`. id는 `name`에서(`col_<이름>`, 이미 있으면 `_2`…).
 - 프리뷰: `changes`=`create` `collection_page`(`id: null`), 섹션별 `create` `item_list`. checks `display.exclude_discontinued`, `curation.no_empty_section`(빈 섹션이 있으면 실패, `fix_tool: create_curation`). `needs_approval: false`. 되돌리기는 초안을 지움(그 사이 공개됐으면 공개부터 되돌려야 함).
 - 정책: [merchandising.yml](../../policies/merchandising.yml) `curation`, `display.exclude_discontinued`
-- 에러: `product_discontinued`(실행 때 단종된 상품) → `search_products` · `banner_not_found` → `list_banners` · `not_found`(`detail.entity: product`) → `search_products` · `tier_not_found` → `list_tiers` · `invalid_period` → `create_curation`. 빈 섹션은 체크 `curation.no_empty_section` 실패로 나타나고 실행되지 않습니다.
+- 에러: `product_discontinued`(실행 때 단종된 상품) → `search_products` · `banner_not_found` → `list_banners` · `not_found`(`detail.entity: product`) → `search_products` · `tier_not_found` → `list_tiers` · `invalid_period` → `create_curation` · `image_not_found`·`image_not_approved` → `generate_page_image`. 빈 섹션은 체크 `curation.no_empty_section` 실패로 나타나고 실행되지 않습니다.
 - 멱등성: `Idempotency-Key`
 
 ### `update_curation` — Kind: W
 - 논리주소/REST: `merchandising.collection_page.update` · `PATCH /v1/merchandising/collection-pages/{collection_page_id}`
-- 요약: 초안·예정 기획전의 섹션·상품·배너·키워드·대상을 고칩니다. 상태 전환은 `publish_curation`으로만.
-- consumes → produces: `collection_page_id` → `collection_page_id`
-- 입력: `collection_page_id`, `name?`, `has_part?`, `audience?`, `banner_ids?`, `keywords?`
+- 요약: 초안·예정 기획전의 섹션·상품·상단 그림·배너·키워드·대상을 고칩니다. 상태 전환은 `publish_curation`으로만.
+- consumes → produces: `collection_page_id`, `image_id?` → `collection_page_id`
+- 입력: `collection_page_id`, `name?`, `has_part?`, `audience?`, `banner_ids?`, `keywords?`, `image_id?`(상단 그림 교체)
 - 출력: 프리뷰 형식 → 실행 `{ok, id, undo}`
 - 프리뷰: `changes`=`update` `collection_page`. checks `display.exclude_discontinued`, `curation.no_empty_section`. `needs_approval: false`(이미 공개된 기획전(`scheduled`·`active`)이면 `true`: [merchandising.yml](../../policies/merchandising.yml) `reaches_customers`에 `update_curation`이 있고 [approval.yml](../../policies/approval.yml) `thresholds.display_schedule`이 그때 승인을 요구).
 - 정책: [merchandising.yml](../../policies/merchandising.yml) `curation`, `display.exclude_discontinued`, `reaches_customers`
-- 에러: `product_discontinued` → `search_products` · `already_ended` → `create_curation` · `collection_page_not_found` → `list_curations` · `banner_not_found` → `list_banners` · `tier_not_found` → `list_tiers`
+- 에러: `product_discontinued` → `search_products` · `already_ended` → `create_curation` · `collection_page_not_found` → `list_curations` · `banner_not_found` → `list_banners` · `tier_not_found` → `list_tiers` · `image_not_found`·`image_not_approved` → `generate_page_image`
 - 멱등성: `Idempotency-Key`
 
 ### `publish_curation` — Kind: W$
