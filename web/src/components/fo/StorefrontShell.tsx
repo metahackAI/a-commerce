@@ -23,6 +23,7 @@ import {
 import {usePathname, useRouter} from 'next/navigation';
 import type {ReactNode} from 'react';
 
+import type {Device} from '@/lib/device';
 import {words} from '@/app/(storefront)/_lib/format';
 import {signOut} from '@/lib/session';
 
@@ -186,7 +187,7 @@ function NavLinks({categories}: {categories: NavCategory[]}) {
   );
 }
 
-function Shell({categories, children}: {categories: NavCategory[]; children: ReactNode}) {
+function Shell({categories, device, children}: {categories: NavCategory[]; device: Device; children: ReactNode}) {
   const pathname = usePathname();
   // The conversation pages fill the window; the footer belongs to the pages that scroll.
   const isConversation = isConversationPage(pathname);
@@ -196,8 +197,9 @@ function Shell({categories, children}: {categories: NavCategory[]; children: Rea
       variant="surface"
       // The top bar holds the categories, five links and the shopper's buttons; below 1280 px
       // (`xl`) they no longer fit on one line and ran into each other, so the compact bar and the
-      // menu drawer take over there instead of only on phones.
-      mobileNav={{breakpoint: 'xl'}}
+      // menu drawer take over there instead of only on phones. Phones and tablets get the compact
+      // bar from the server's first drawing, not after hydration.
+      mobileNav={{breakpoint: 'xl', defaultIsMobile: device !== 'desktop'}}
       topNav={
         <TopNav
           label="Store"
@@ -221,16 +223,20 @@ export function StorefrontShell({
   shopper,
   cartLines,
   categories,
+  device,
   children,
 }: {
   shopper: ShopperInfo;
   cartLines: number;
   categories: NavCategory[];
+  device: Device;
   children: ReactNode;
 }) {
   return (
-    <StorefrontProvider shopper={shopper} cartLines={cartLines}>
-      <Shell categories={categories}>{children}</Shell>
+    <StorefrontProvider shopper={shopper} cartLines={cartLines} device={device}>
+      <Shell categories={categories} device={device}>
+        {children}
+      </Shell>
     </StorefrontProvider>
   );
 }

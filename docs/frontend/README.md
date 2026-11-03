@@ -179,7 +179,8 @@ return <TableRow ref={t.ref} {...t.props}>…</TableRow>;
   - FO 상단 바는 1280px(`xl`) 미만에서 줄인 바와 메뉴 서랍이 됩니다(카테고리와 링크가 한 줄에 들어가지 않아 겹치던 폭). BO 사이드 메뉴는 1024px(`lg`) 미만에서 메뉴로 접힙니다(`AppShell` `mobileNav.breakpoint`).
   - 표는 칸을 짜부라뜨리지 않고 자기 상자 안에서 옆으로 스크롤됩니다: 열마다 최소 140px(`components/bo/tables.tsx` `tableMinWidth`), 비교표는 상품마다 160px. 금액은 줄바꿈하지 않습니다.
   - 휴대폰(767px 이하)의 검색·카테고리 필터는 접힌 채로 결과 위에 있습니다.
-  - 터치 기기(`pointer: coarse`)에서는 컨트롤 높이가 36/40/44px입니다(테마 `adaptations`, `src/theme/ailism.ts`). 수량은 −/+ 버튼으로 바꿉니다(`fo/QuantityInput.tsx`).
+  - 터치 기기(`pointer: coarse`)에서는 컨트롤 높이가 36/40/44px입니다(테마 `adaptations`, `src/theme/ailism.ts`). 수량은 −/+ 버튼으로 바꿉니다(`fo/QuantityInput.tsx`). 선택 상자의 지우기(×)는 Astryx가 터치에서 보이는 20px 둘레로 24px을 받아 주고(옆의 펼침 화살표와 겹치지 않는 크기), 휴대폰의 날짜 칸은 OS 날짜 입력이라 칸 전체가 누르는 곳입니다(16px 달력 아이콘은 보조).
+  - 첫 화면: 서버는 창 폭을 모르므로 요청의 User-Agent로 기기를 읽어(`lib/device.ts`) FO는 휴대폰·태블릿, BO는 휴대폰을 처음부터 줄인 바(메뉴 버튼)로 그리고, 휴대폰의 필터도 접힌 채로 그립니다(`AppShell` `mobileNav.defaultIsMobile`, `useMediaQuery`의 서버 기본값). 그전에는 넓은 배치가 먼저 그려지고 JavaScript가 돈 뒤 바뀌었습니다. 좁힌 데스크톱 창과 데스크톱 사이트를 요청한 iPad(iPadOS 기본)는 알 수 없어 그대로 바뀝니다.
   - BO 도크는 FO 서랍처럼 휴대폰에서 전체 폭으로 열립니다.
 - 같은 면 안에서 페이지를 옮겨도 대화가 남지만, 새로고침하면 처음부터입니다. 끊긴 SSE를 `Last-Event-ID`로 이어 받는 것과 `GET /api/chat/{surface}/conversations/{id}`로 복원하는 것은 아직 웹에 없습니다(API는 있음).
 - 서버 데이터는 페이지 첫 로드에 서버 컴포넌트가 가져오고, 사람의 버튼으로 쓴 뒤에는 `router.refresh()`로 다시 읽습니다.
