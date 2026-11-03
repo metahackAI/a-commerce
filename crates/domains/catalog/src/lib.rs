@@ -26,6 +26,7 @@ mod brand;
 mod bundle;
 mod inventory;
 mod offer;
+pub mod page_image;
 mod product;
 mod product_group;
 mod question;
@@ -141,6 +142,8 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .write(product::batch_import::BatchImport)
         .write(product::generate_image::GenerateImage)
         .write(product::generate_copy::GenerateCopy);
+    // page_image
+    b.write(page_image::generate_page_image::GeneratePageImage);
     // offer
     b.read(offer::get_price_breakdown::GetPriceBreakdown)
         .write(offer::set_price::SetPrice)

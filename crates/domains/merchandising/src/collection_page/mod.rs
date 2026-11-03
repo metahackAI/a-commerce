@@ -13,7 +13,9 @@ pub mod update_curation;
 
 use std::collections::BTreeSet;
 
-use acom_catalog::service::for_merchandising::{ProductCard, product_cards};
+use acom_catalog::service::for_merchandising::{
+    ProductCard, page_image_url, page_images, product_cards,
+};
 use acom_contract::{Check, ErrorClass, ErrorCode, ToolError};
 use acom_core::enums::DisplayStatus;
 use acom_store::{Cx, TxCx};
@@ -25,12 +27,17 @@ use serde_json::{Value, json};
 use crate::display_slot::{channel_words, discontinued, discontinued_check};
 use crate::model::{DisplayRules, page_status};
 use crate::repo::{self, db};
-use crate::{audience, check_id};
+use crate::{audience, check_id, check_id_or_placeholder};
 
 pub const COLLECTION_PAGE_NOT_FOUND: ErrorCode =
     ErrorCode::new("collection_page_not_found", ErrorClass::NotFound);
 /// A linked banner that does not exist.
 pub const BANNER_NOT_FOUND: ErrorCode = ErrorCode::new("banner_not_found", ErrorClass::NotFound);
+/// A page picture that does not exist (`generate_page_image`).
+pub const IMAGE_NOT_FOUND: ErrorCode = ErrorCode::new("image_not_found", ErrorClass::NotFound);
+/// A page picture no person has approved yet.
+pub const IMAGE_NOT_APPROVED: ErrorCode =
+    ErrorCode::new("image_not_approved", ErrorClass::InvalidState);
 /// A product on the page was discontinued (`display.exclude_discontinued`).
 pub const PRODUCT_DISCONTINUED: ErrorCode =
     ErrorCode::new("product_discontinued", ErrorClass::PolicyViolation);
@@ -72,6 +79,9 @@ pub struct PageRow {
     pub sales_channel: Option<Vec<String>>,
     pub banner_id: Vec<String>,
     pub keywords: Vec<String>,
+    /// The picture across the top (`img_page_…`), `None` for none.
+    #[serde(default)]
+    pub image_id: Option<String>,
     #[serde(skip)]
     pub version: i32,
 }
@@ -139,7 +149,17 @@ pub(crate) fn page_summary(cx: &Cx, p: &PageRow, at: DateTime<Utc>) -> Value {
         "product_count": p.products().len(),
         "banner_ids": p.banner_id,
         "keywords": p.keywords,
+        "image_id": p.image_id,
+        "image_url": image_url(p.image_id.as_deref()),
     })
+}
+
+/// Where a browser loads the page's picture; `None` without one, or while it is an id an
+/// earlier item of the same change set has yet to produce.
+pub(crate) fn image_url(image_id: Option<&str>) -> Option<String> {
+    image_id
+        .filter(|i| acom_changeset::bind::placeholder(i).is_none())
+        .map(page_image_url)
 }
 
 pub(crate) fn not_found(id: &str) -> ToolError {
@@ -196,6 +216,15 @@ pub(crate) fn clean_banners(ids: Vec<String>) -> Result<Vec<String>, ToolError> 
     Ok(out)
 }
 
+/// A page picture id, or a placeholder for one an earlier item of the change set generates.
+pub(crate) fn clean_image(id: Option<String>) -> Result<Option<String>, ToolError> {
+    let Some(id) = id.map(|i| i.trim().to_owned()) else {
+        return Ok(None);
+    };
+    check_id_or_placeholder("image_id", "img", &id)?;
+    Ok(Some(id))
+}
+
 /// Keywords trimmed, lowercase, each once.
 pub(crate) fn clean_keywords(words: Vec<String>) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
@@ -208,11 +237,13 @@ pub(crate) fn clean_keywords(words: Vec<String>) -> Vec<String> {
     out
 }
 
-/// Every product and banner exists; returns the products' cards.
+/// Every product, banner and the picture exist; returns the products' cards. A picture that
+/// waits for approval is fine here: it is checked again when the change runs.
 pub(crate) async fn known_content(
     tx: &mut TxCx,
     sections: &[Section],
     banners: &[String],
+    image: Option<&str>,
 ) -> Result<Vec<ProductCard>, ToolError> {
     let products = products_of(sections);
     let cards = product_cards(tx, &products).await?;
@@ -234,7 +265,33 @@ pub(crate) async fn known_content(
                 .next("list_banners"),
         );
     }
+    if let Some(i) = image.filter(|i| acom_changeset::bind::placeholder(i).is_none())
+        && page_images(tx, &[i.to_owned()]).await?.is_empty()
+    {
+        return Err(image_not_found(i));
+    }
     Ok(cards)
+}
+
+fn image_not_found(id: &str) -> ToolError {
+    ToolError::new(IMAGE_NOT_FOUND, format!("There is no page picture {id}."))
+        .detail(json!({"entity": "page_image", "id": id}))
+        .next("generate_page_image")
+}
+
+/// At a run: the page's picture exists and a person approved it.
+pub(crate) async fn image_ready(tx: &mut TxCx, image: Option<&str>) -> Result<(), ToolError> {
+    let Some(i) = image else { return Ok(()) };
+    match page_images(tx, &[i.to_owned()]).await?.first() {
+        None => Err(image_not_found(i)),
+        Some((_, false)) => Err(ToolError::new(
+            IMAGE_NOT_APPROVED,
+            format!("The picture {i} waits for a person's approval; approve it first."),
+        )
+        .detail(json!({"entity": "page_image", "id": i, "reason": "not_approved"}))
+        .next("generate_page_image")),
+        Some((_, true)) => Ok(()),
+    }
 }
 
 /// `curation.no_empty_section`: every section has a product.
@@ -299,7 +356,7 @@ pub(crate) async fn still_on_sale(
 }
 
 const COLUMNS: &str = "id, name, has_part, valid_for_member_tier, valid_from, valid_through,
-    display_status, sales_channel, banner_id, keywords, version";
+    display_status, sales_channel, banner_id, keywords, image_id, version";
 
 pub(crate) async fn page(tx: &mut TxCx, id: &str) -> Result<Option<PageRow>, ToolError> {
     sqlx::query_as::<_, PageRow>(sqlx::AssertSqlSafe(format!(
@@ -329,8 +386,8 @@ pub(crate) async fn insert(tx: &mut TxCx, p: &PageRow) -> Result<bool, ToolError
     Ok(sqlx::query(
         "INSERT INTO merchandising.collection_page (tenant_id, id, name, has_part,
            valid_for_member_tier, valid_from, valid_through, display_status, sales_channel,
-           banner_id, keywords)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+           banner_id, keywords, image_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          ON CONFLICT (tenant_id, id) DO NOTHING",
     )
     .bind(tx.tenant.as_str())
@@ -344,6 +401,7 @@ pub(crate) async fn insert(tx: &mut TxCx, p: &PageRow) -> Result<bool, ToolError
     .bind(&p.sales_channel)
     .bind(&p.banner_id)
     .bind(&p.keywords)
+    .bind(&p.image_id)
     .execute(&mut *tx.tx)
     .await
     .map_err(db)?
@@ -351,16 +409,16 @@ pub(crate) async fn insert(tx: &mut TxCx, p: &PageRow) -> Result<bool, ToolError
         > 0)
 }
 
-/// Writes what `update_curation` changes (name, sections, audience, banners, keywords); only
+/// Writes what `update_curation` changes (name, sections, audience, banners, keywords, picture); only
 /// touches the row when something differs.
 pub(crate) async fn write_content(tx: &mut TxCx, p: &PageRow) -> Result<(), ToolError> {
     sqlx::query(
         "UPDATE merchandising.collection_page SET name = $3, has_part = $4,
-           valid_for_member_tier = $5, banner_id = $6, keywords = $7, updated_at = now(),
-           version = version + 1
+           valid_for_member_tier = $5, banner_id = $6, keywords = $7, image_id = $8,
+           updated_at = now(), version = version + 1
          WHERE tenant_id = $1 AND id = $2
-           AND (name, has_part, valid_for_member_tier, banner_id, keywords)
-               IS DISTINCT FROM ($3, $4, $5, $6, $7)",
+           AND (name, has_part, valid_for_member_tier, banner_id, keywords, image_id)
+               IS DISTINCT FROM ($3, $4, $5, $6, $7, $8)",
     )
     .bind(tx.tenant.as_str())
     .bind(&p.id)
@@ -369,6 +427,7 @@ pub(crate) async fn write_content(tx: &mut TxCx, p: &PageRow) -> Result<(), Tool
     .bind(&p.valid_for_member_tier)
     .bind(&p.banner_id)
     .bind(&p.keywords)
+    .bind(&p.image_id)
     .execute(&mut *tx.tx)
     .await
     .map_err(db)?;

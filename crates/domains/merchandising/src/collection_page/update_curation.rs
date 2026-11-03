@@ -17,9 +17,10 @@ use serde_json::{Map, Value, json};
 
 use super::create_curation::content_json;
 use super::{
-    ALREADY_ENDED, BANNER_NOT_FOUND, COLLECTION_PAGE_NOT_FOUND, PRODUCT_DISCONTINUED, PageRow,
-    Section, clean_banners, clean_keywords, clean_sections, content_checks, known_content,
-    not_found, page, still_on_sale, write_content,
+    ALREADY_ENDED, BANNER_NOT_FOUND, COLLECTION_PAGE_NOT_FOUND, IMAGE_NOT_APPROVED,
+    IMAGE_NOT_FOUND, PRODUCT_DISCONTINUED, PageRow, Section, clean_banners, clean_image,
+    clean_keywords, clean_sections, content_checks, image_ready, known_content, not_found, page,
+    still_on_sale, write_content,
 };
 use crate::model::DisplayRules;
 use crate::{TIER_NOT_FOUND, audience, check_id, known_tier};
@@ -45,6 +46,9 @@ pub struct UpdateCurationInput {
     /// Search words, replacing the current ones.
     #[schemars(example = ["winter coat", "wool coat"])]
     pub keywords: Option<Vec<String>>,
+    /// The picture across the top of the page (`generate_page_image`), replacing the current one.
+    #[schemars(regex(pattern = r"^img_[a-z0-9_]+$"), example = &"img_page_3f9a1c2e7b40")]
+    pub image_id: Option<String>,
 }
 
 /// What `update_curation` writes, with the page as it was.
@@ -66,8 +70,8 @@ impl Operation for UpdateCuration {
         kind: Kind::Write,
         method: Method::Patch,
         path: "/v1/merchandising/collection-pages/{collection_page_id}",
-        summary: "Change a draft or scheduled curated page: sections and products, linked banners, keywords, name or audience. Publishing and the period are publish_curation's. Changing a page shoppers can see needs a person's approval.",
-        consumes: &[Slot::one("collection_page_id")],
+        summary: "Change a draft or scheduled curated page: sections and products, the picture across the top, linked banners, keywords, name or audience. Publishing and the period are publish_curation's. Changing a page shoppers can see needs a person's approval.",
+        consumes: &[Slot::one("collection_page_id"), Slot::one("image_id")],
         produces: &[Slot::one("collection_page_id")],
         checks: &["display.exclude_discontinued", "curation.no_empty_section"],
         errors: &[
@@ -76,6 +80,8 @@ impl Operation for UpdateCuration {
             ALREADY_ENDED,
             BANNER_NOT_FOUND,
             TIER_NOT_FOUND,
+            IMAGE_NOT_FOUND,
+            IMAGE_NOT_APPROVED,
             ErrorCode::NOT_FOUND,
         ],
         audience: Audience::Operator,
@@ -108,6 +114,7 @@ impl WriteOp<Cx> for UpdateCuration {
         let rules = DisplayRules::from_policy(&cx.policy)?;
         let sections = input.has_part.map(clean_sections).transpose()?;
         let banners = input.banner_ids.map(clean_banners).transpose()?;
+        let image = clean_image(input.image_id)?;
         let now = cx.clock.now();
 
         let mut tx = cx.read().await.map_err(ToolError::from)?;
@@ -136,11 +143,18 @@ impl WriteOp<Cx> for UpdateCuration {
             keywords: input
                 .keywords
                 .map_or_else(|| old.keywords.clone(), clean_keywords),
+            image_id: image.or_else(|| old.image_id.clone()),
             version: 0,
             ..old.clone()
         };
         let new_sections = new.sections();
-        let cards = known_content(&mut tx, &new_sections, &new.banner_id).await?;
+        let cards = known_content(
+            &mut tx,
+            &new_sections,
+            &new.banner_id,
+            new.image_id.as_deref(),
+        )
+        .await?;
         tx.commit().await.map_err(ToolError::from)?;
 
         if new.unversioned() == old.unversioned() {
@@ -217,6 +231,7 @@ impl WriteOp<Cx> for UpdateCuration {
             Some(_) => {}
         }
         still_on_sale(tx, &rules, &plan.page.products(), "update_curation").await?;
+        image_ready(tx, plan.page.image_id.as_deref()).await?;
         write_content(tx, &plan.page).await?;
         Ok(Committed {
             id: plan.page.id.clone(),
@@ -240,6 +255,7 @@ impl WriteOp<Cx> for UpdateCuration {
                 && s.valid_for_member_tier == p.valid_for_member_tier
                 && s.banner_id == p.banner_id
                 && s.keywords == p.keywords
+                && s.image_id == p.image_id
         });
         Ok(Verification {
             matched,

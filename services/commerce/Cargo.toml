@@ -9,6 +9,7 @@ publish.workspace = true
 
 [dependencies]
 acom-auth.workspace = true
+acom-catalog.workspace = true
 acom-changeset.workspace = true
 acom-contract.workspace = true
 acom-core.workspace = true

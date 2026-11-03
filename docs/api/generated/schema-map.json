@@ -1877,6 +1877,108 @@
   },
   {
     "schema": "catalog",
+    "table": "page_image",
+    "kind": "table",
+    "term": "schema:ImageObject",
+    "description": "a generated picture for a store page (generate_page_image), not of one product; shoppers see it once approved and used. id prefix img_.",
+    "id_prefix": "img",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix img_page_, made from the request so the same request finds the same picture (API image_id)."
+      },
+      {
+        "name": "prompt",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:prompt",
+        "description": "what the operator asked the picture to show."
+      },
+      {
+        "name": "caption",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:caption",
+        "description": "the alternative text shown with the picture."
+      },
+      {
+        "name": "encoding_format",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:encodingFormat",
+        "description": "media type of the picture, for example image/webp."
+      },
+      {
+        "name": "content",
+        "type": "bytea",
+        "nullable": false,
+        "term": "-",
+        "description": "the picture file itself, served at /v1/catalog/page-images/{image_id}/content."
+      },
+      {
+        "name": "generator",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:generator",
+        "description": "the model that made it, or placeholder when no image model is connected."
+      },
+      {
+        "name": "is_ai_generated",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:aiGenerated",
+        "description": "true for generated content (catalog.yml content.ai_content_disclosure)."
+      },
+      {
+        "name": "date_created",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:dateCreated",
+        "description": "when the picture was made (store clock)."
+      },
+      {
+        "name": "approved_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "acom:approvedAt",
+        "description": "when a person approved it (store clock); NULL while it waits, and shoppers cannot load it."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was created."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "when the row was last changed."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      }
+    ]
+  },
+  {
+    "schema": "catalog",
     "table": "product",
     "kind": "table",
     "term": "schema:Product",
@@ -8436,6 +8538,13 @@
         "nullable": false,
         "term": "-",
         "description": "row version, +1 on every change; previews record it in basis and execution compares it."
+      },
+      {
+        "name": "image_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:image",
+        "description": "the picture across the top of the page (img_ id of a page image); NULL for none."
       }
     ]
   },
