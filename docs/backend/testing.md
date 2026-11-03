@@ -50,7 +50,7 @@
 - **모델:** 지금까지의 결과는 모두 Glimmer입니다. 라이브 데모에 Spark가 설정돼 있지 않아 모든 모델 호출이 Glimmer로 갑니다([agent.md](agent.md) §8.1).
 - **돌리기와 판정:** `cargo xtask eval --base <url> --set design --tool-set acom|facade|both --repeat N`이 게이트웨이로 과업마다 로그인해 말하고, 대화의 턴 로그(`GET /api/chat/{surface}/conversations/{id}?log=true`)에서 툴 호출과 모델 호출을 읽습니다. 완료는 필수 툴이 에러 없이 불리고 부르면 안 되는 툴이 불리지 않았으며, 기대한 변경셋이 마지막 `change_set` 블록에 있고, 숫자가 든 사실의 숫자가 마지막 답이나 블록에 모두 보일 때입니다. DB 상태는 읽지 않습니다.
 - **지표:** 과업 완료율, pass^k(같은 과업 k회가 모두 완료), 툴 정밀도·재현율, 과업당 툴 호출·모델 호출·토큰·시간. 모델 가격이 비어 있어 비용은 세지 않습니다.
-- **결과:** `eval/results/{date}-{model}-{set}-{toolset}.md`(`--out`으로 쓴 보고서). 2026-10-31 설계 세트(과업 12개 × 3회, 모두 Glimmer): A-Commerce 툴 58% 완료(21/36), pass^3 50%, 화면형 파사드 0%(0/36). [../design.md](../design.md) §7에 그 줄이 있습니다. 보류 세트는 아직 돌리지 않았습니다.
+- **결과:** `eval/results/{date}-{model}-{set}-{toolset}.md`(`--out`으로 쓴 보고서). 2026-10-31 설계 세트(과업 12개 × 3회, 모두 Glimmer): A-Commerce 툴 58% 완료(21/36), pass^3 50%, 화면형 파사드 0%(0/36). [../design.md](../design.md) §7에 그 줄이 있습니다. 2026-11-03 최종 측정(모두 Glimmer, 답을 직접 읽어 판정): 보류 세트(과업 9개 × 10회) A-Commerce 44%, a2api로 바꾼 화면형 API 33%, 화면형 파사드 0%, 새로 쓴 fresh 세트(8개 × 5회) 50%·12%·0%. 판정 규칙과 과업별 이유는 [../../eval/results/2026-11-03-glimmer-judged.md](../../eval/results/2026-11-03-glimmer-judged.md).
 
 ## 4. CI
 

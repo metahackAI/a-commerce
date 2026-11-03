@@ -61,14 +61,24 @@ Each principle has a sign that it is broken; the full text is in [docs/design.md
 
 ## Results
 
-We measure on a fixed set of operator tasks collected from public material (what merchandisers, marketers, operators and owners actually ask), not on hand-picked demos. The same tasks run through two tool layers over the **same back end and the same model**: the A-Commerce tools, and a *screen-shaped facade* that exposes the back end the way admin screens do (one endpoint per screen, codes instead of words). Method: [eval/README.md](eval/README.md).
+We measure on a fixed set of operator tasks collected from public material (what merchandisers, marketers, operators and owners actually ask), not on hand-picked demos. The same tasks run through three tool layers over the **same back end and the same model**:
 
-| Design set (12 tasks × 3 runs), Muse Glimmer 30B | Screen-shaped facade | A-Commerce tools |
-|---|---|---|
-| Tasks done | **0%** (0 of 36 runs) | **58%** (21 of 36 runs) |
-| pass^3 (all three runs of a task done) | 0% | 50% |
+- the A-Commerce tools;
+- a *screen-shaped facade* that exposes the back end the way admin screens do: one endpoint per screen, codes instead of words, writes that run at once;
+- the same screen API converted into plain-named tools by our [a2api](https://github.com/metahackAI/a2api).
 
-Oct 31, every model call on Glimmer; reports in [eval/results/](eval/results). Single-task reruns on the same commit moved by one or two runs out of three, so read this as a gap, not a rate. The held-out set runs once, at the end; its numbers are not in yet.
+Method: [eval/README.md](eval/README.md).
+
+| Tasks done, Muse Glimmer 30B, Nov 3 | Screen-shaped facade | a2api over the facade | A-Commerce tools |
+|---|---|---|---|
+| Held-out set (9 tasks × 10 runs) | 0% (0 of 90) | 33% (30 of 90) | **44%** (40 of 90) |
+| Fresh set (8 tasks × 5 runs) | 0% (0 of 40) | 12% (5 of 40) | **50%** (20 of 40) |
+| Customer message sent without a person's approval (held-out) | 0 of 10 (never got that far) | 10 of 10 | **0 of 10** (drafted for approval) |
+
+- **Counted by reading every reply.** Done means the answer is right and the reply commits to it. "I can't confirm from this page", or a "none" with no data read behind it, is not done. A write must wait for approval. The runner's automatic score misses some right answers and passes some hedged ones; it gives 0% / 11% / 22% on held-out and 12% / 25% / 75% on fresh. The rules, every held-out task and both scores: [eval/results/2026-11-03-glimmer-judged.md](eval/results/2026-11-03-glimmer-judged.md).
+- **The fresh set is the cleaner number.** It was written on Nov 2 against the code we measured and shown to no one building the agent. The held-out tasks are in this repository and were run on Nov 1 to check whether design-set changes carry over.
+- **On held-out, a2api and A-Commerce answered the same three read tasks; the writes differ.** The screen API runs writes at once, so through it the photo request to a customer went out, and the knit sale was paused, with no approval in all 10 runs each. A-Commerce drafted it as a change set waiting for a person, all 10 times (principle 2).
+- **About half of the asks are still not done.** The agent answers from the first page of a long list, or describes a change wrongly ("paused until Monday", when a pause has no end).
 
 ## How we use Meta models
 
@@ -225,7 +235,8 @@ The back end is complete for the showcase: every specified operation is built. W
 - [ ] Look up what the person named instead of asking for its id: "markdown on tees" should find the tees category, not ask for `category_id` (`md-end-of-season-markdown`).
 - [ ] Re-run `b2-returns-over-200`: the agent guessed a customer id to message about an order; `send_customer_message` now takes the order alone (Oct 31), which should remove the guess.
 - [ ] Say the exact times and amounts the results hold (an undo deadline of Nov 7 23:59, a banner verified at 09:36) (`mgr-what-needs-me-today`, `mgr-what-changed-this-morning`).
-- [ ] Run the held-out set once and put its numbers in [Results](#results); compare Glimmer with Spark on the same tasks.
+- [ ] Read a long list to its end, or filter it, before saying "none" or "these ones". Seen on held-out and fresh (answers from the first 100 of 400 products or 412 orders), so a fix has to be checked on the design set and a new held-out set.
+- [x] Run the held-out set and put its numbers in [Results](#results) (Nov 3). Still to do: compare Glimmer with Spark on the same tasks, and fix the runner problems listed in [the Nov 3 judging](eval/results/2026-11-03-glimmer-judged.md#runner-problems-found-here).
 
 **The new domains in the agents and on screen**
 - [x] Give the agents the domains added on Oct 31: `community` is in the catalog agent, `partner` and `integration` in the new marketplace agent.

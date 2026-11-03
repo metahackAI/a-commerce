@@ -121,16 +121,18 @@ Storefront personalization: what the shopper says is stored as preferences (`upd
 
 ## 7. Proof: AI-friendly vs. screen-shaped
 
-To show that the tool design matters, we build a **screen-shaped facade** over the same back-end that reproduces the patterns in section 2 (generic examples, written by us). Then we run the same task set through both:
+To show that the tool design matters, we build a **screen-shaped facade** over the same back-end that reproduces the patterns in section 2 (generic examples, written by us). Then we run the same task set through it, through the same screen API converted into plain-named tools by [a2api](https://github.com/metahackAI/a2api), and through the A-Commerce tools. Tasks done, every model call on Glimmer, Nov 3, main at 28ed971:
 
-| | Screen-shaped facade | A-Commerce tools |
-|---|---|---|
-| Muse Glimmer | 0% (0 of 36 runs) | 58% (21 of 36 runs) |
-| Muse Spark | ? | ? |
+| | Screen-shaped facade | a2api over the facade | A-Commerce tools |
+|---|---|---|---|
+| Held-out (9 tasks × 10 runs), read | 0% (0 of 90) | 33% (30 of 90) | 44% (40 of 90) |
+| Fresh (8 tasks × 5 runs), read | 0% (0 of 40) | 12% (5 of 40) | 50% (20 of 40) |
+| Design (12 tasks × 3 runs), runner | 0% (0 of 36) | not run | 50% (18 of 36) |
+| Muse Spark | ? | ? | ? |
 
-The Glimmer row is the design set (12 tasks, 3 runs each) on Oct 31, commit 91970bc, every model call on Glimmer: pass^3 is 0% against 50%. Reports: [../eval/results](../eval/results) (`2026-10-31-glimmer-design-*`). Reruns of single tasks on the same commit moved by one or two runs out of three, so read the numbers as a gap, not a rate. Held-out numbers are not in yet.
+"Read" means every reply was judged against the expected facts by written rules, because the runner fails some right answers and passes some hedged ones; the runner's own held-out score is 0% / 11% / 22%. Rules, per-task reasons and both scores: [../eval/results/2026-11-03-glimmer-judged.md](../eval/results/2026-11-03-glimmer-judged.md). The fresh set was written on Nov 2 and shown to no one building the agent; the held-out set had been run on Nov 1 to check design-set changes, so fresh is the cleaner of the two. The design set scored 21 of 36 on Oct 31 (commit 91970bc); single-task reruns move by one or two runs out of three, so read every row as a gap, not a rate.
 
-Metrics: task completion, tool selection accuracy, calls per task, cost per task, consistency over repeated runs. Tasks are split into a design set (used while building) and a held-out set (scored only at the end). Only held-out numbers go into the README.
+Metrics: task completion, tool selection accuracy, calls per task, cost per task, consistency over repeated runs. Tasks are split into a design set (used while building) and a held-out set (scored at the end), plus a fresh set written after the last agent change. Only held-out and fresh numbers go into the README.
 
 ## 8. Stack
 

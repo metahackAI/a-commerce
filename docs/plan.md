@@ -83,7 +83,7 @@ Unit tests reproduce the B1, B2, F1, F2 and F5 numbers. The SQL paths have datab
 - **Operations:** all 291 tools of [api/](api/README.md) in 13 domains (132 reads, 119 writes, 40 writes that move money or reach customers) and all 18 person-only endpoints are built. Each lives in `crates/domains/{domain}/src/{resource}/{tool}.rs`; CI runs `check-layout` and `check-coverage`, so an operation that is missing or out of place fails the build.
 - **Background work:** 3 watchers (price under cost, stock-out forecast, returns over the refund limit) and 8 scheduled jobs (promotion start and end, points expiry, tier evaluation, subscription renewal, campaign sending, seller status changes, held outside events). The gateway hands a watcher's new task to the operations agent in the name of the store's operator (`task_pickup` in `platform.yml`), so a draft waits before anyone opens the task.
 - **Scenes:** B1–B5 and F1–F6 run on the demo server (`https://a-commerce.ailism.team`, back office at `/bo`), which deploys every merge to main and reloads the demo store when the seed changes.
-- **Evaluation:** design set, 12 tasks × 3 runs on Glimmer: A-Commerce tools 58% (21 of 36), the screen-shaped facade 0% (0 of 36); pass^3 50% against 0% ([design.md](design.md) §7, [eval/results](../eval/results)).
+- **Evaluation:** Nov 3, every call on Glimmer, each reply read against the expected facts: held-out (9 tasks × 10 runs) A-Commerce tools 44%, the same screen API through a2api 33%, the screen-shaped facade 0%; fresh (8 tasks × 5 runs) 50% / 12% / 0%. Through the screen API a customer message went out without approval in 10 of 10 runs; A-Commerce drafted it for approval ([design.md](design.md) §7, [eval/results](../eval/results/2026-11-03-glimmer-judged.md)).
 - **Look:** the web app is **Ailism Commerce**, with the Ailism theme, logo and voice ([frontend-ui.md](frontend-ui.md)).
 
 **Open work.** Everything left is inside the store; the list with the eval task behind each item is the TODO section of the [README](../README.md#todo).
@@ -91,7 +91,7 @@ Unit tests reproduce the B1, B2, F1, F2 and F5 numbers. The SQL paths have datab
 - The domains added on Oct 31 in the agents (no profile lists `community`, `partner` or `integration` yet) and on screen (UI blocks and back-office pages).
 - More watchers (reported posts, seller grades, failed campaigns) and the expiry of unaccepted gifts and unpaid orders (the policies exist; no job applies them).
 - Small spec gaps: publishing a post held for review, linking a product to a seller, issuing the codes for withdrawal and sign-in id recovery.
-- M6: the held-out run, its numbers in the README, the video.
+- M6: the video. (The held-out run and its README numbers are done, Nov 3.)
 
 ## 5. Work tracks
 
