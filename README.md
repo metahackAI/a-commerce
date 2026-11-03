@@ -49,6 +49,10 @@ Handing those APIs to an LLM as they are does not work well. There are hundreds 
 
 **People state the goal and approve the result; the system does the rest. Intelligence comes from the model; trust comes from the structure.** That is why a small open-weight model can do routine work here. Five principles, each with the mechanism that holds it in the code:
 
+![AI-added, agent-ready, AI-native: A-Commerce rebuilds the store under the agent. Web: the screen is the result of the work. Agent: find, plan, run, check, on Muse Glimmer 30B. Commerce: tools in the store's words, every change a proposal, rules as data, and the store brings the work.](docs/img/ai-native-architecture.png)
+
+Most AI commerce puts a chatbot on screens built for people (AI-added) or opens the old APIs to outside agents (agent-ready). A-Commerce rebuilds what is underneath, so the agent works the store through tools made for it ([docs/research.md](docs/research.md) §2). The picture is rendered from the demo video's frame 13 ([design/demo](design/demo/README.md)).
+
 | Principle | How the code holds it |
 |---|---|
 | **1. Tools work in the units people use.** Find by an order number, an email, a product name; get back what the decision needs. | Id fields also take the order number, change set number or email. Reads return the fields a decision needs and refuse a field name that does not exist instead of returning an empty object. |
@@ -105,6 +109,16 @@ Method: [eval/README.md](eval/README.md).
 This is a showcase of AI-native commerce, not a store that ships parcels. What runs for real is everything inside the store: the tools, change sets, approvals, policy checks, watchers, agents and UI. Everything **outside** the store is a deterministic stand-in that says so in its output: payment providers and bank deposits, tax receipts, carriers, outside sales channels, email/SMS/push delivery, business-registry checks, payouts, and image or copy generation. Those stand-ins still go through preview → change set → run, so the agent's side of the work is the same as it would be against real providers.
 
 ## Architecture
+
+![Figure 1. Context construction (agent profile, step prompts, conversation memory, tool search) feeds Muse Glimmer 30B. Harness guards (plan check and binder, reply check, route hints, limits) sit between the model and commerce. Commerce has a tool interface (291 tools, human handles, previews) and trust (change sets, policies, person-only actions). The store brings work: watchers, store events, task pickup, which starts the next turn.](docs/img/fig-harness-components.png)
+
+**Figure 1. The harness around one open-weights model.** Context construction (C1–C4) decides what Muse Glimmer sees. Harness guards (H1–H4) are code the model cannot skip. Commerce is a separate service rebuilt for the agent: tools in the store's words, a preview before every write, and change sets only a person approves (T1–R3). The store also brings work (S1–S3): a watcher's task becomes the agent's next turn. Each card names the file it lives in.
+
+![Figure 2. The turn loop: request, route, tool search, plan, execute, check, reply, with a revise arrow from check back to plan. Writes go to the store loop: change set, person approves, run and read back, watchers open a task, and task pickup brings the task back as the next request.](docs/img/fig-two-loops.png)
+
+**Figure 2. One request, two loops.** The turn loop runs route → tool search → plan → execute → check → reply, and plans again up to twice with the error and the steps not run yet. Tool search and check make no model call; route and execute call it only sometimes. The store loop runs what a person approved and reads it back, and its watchers open the next task. Both figures are drawn from `docs/figures/` (`python docs/figures/render.py`).
+
+The services:
 
 ```
         Shopper (storefront)                          Operator (back office)

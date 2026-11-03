@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Figure 1. The A-Commerce harness</title>
+<link rel="stylesheet" href="figures.css">
+<style>
+  .fig { width: 1720px; height: 940px; }
+  #ctx { left: 20px; top: 20px; width: 400px; }
+  #model { left: 470px; top: 40px; width: 250px; height: 250px; }
+  #out { left: 455px; top: 390px; width: 280px; }
+  #guard { left: 790px; top: 20px; width: 910px; }
+  #guard .cols { display: grid; grid-template-columns: 286px 1fr; column-gap: 44px; }
+  .sect { border-style: dashed !important; }
+  .sect > h2 { font-size: 14.5px !important; margin-bottom: 6px !important; }
+  #work { left: 790px; width: 910px; }
+  #work .cards { display: grid; grid-template-columns: 1fr 1fr 1fr; column-gap: 36px; }
+  #req { left: 20px; width: 400px; }
+</style>
+</head>
+<body>
+<div class="fig">
+
+  <div class="grp ctx" id="ctx">
+    <h2>Context construction</h2>
+    <div class="sub">what the model sees, and when</div>
+    <div class="cards">
+      <div class="card"><div class="top"><span class="id">C1</span><span class="name">Agent profile</span><span class="when">every turn</span></div>
+        <div class="d">One of six specialists: its goal, home domains, and the tools it always sees</div>
+        <div class="path">agents/&lt;agent&gt;.yml + .md</div></div>
+      <div class="card"><div class="top"><span class="id">C2</span><span class="name">Step prompts</span><span class="when">each step</span></div>
+        <div class="d">Router, planner, arguments, reply; each answers under a JSON schema</div>
+        <div class="path">agents/prompts/&lt;step&gt;.md</div></div>
+      <div class="card"><div class="top"><span class="id">C3</span><span class="name">Conversation memory</span><span class="when">every turn</span></div>
+        <div class="d">The last 4 turns, the ids that came up, and the open change set</div>
+        <div class="path">crates/agent/src/memory.rs</div></div>
+      <div class="card"><div class="top"><span class="id">C4</span><span class="name">Tool search</span><span class="when">every turn</span></div>
+        <div class="d">5–8 of 291 tools: word match, then the tools one hop before and after. No model call</div>
+        <div class="path">crates/agent/src/toolsearch.rs</div></div>
+    </div>
+  </div>
+
+  <div class="model" id="model">
+    <b>Muse Glimmer 30B</b>
+    <div class="s">open weights<br>one GPU, every call of the demo</div>
+    <div class="pill planned">Muse Spark takes long or failed plans, when configured</div>
+  </div>
+
+  <div class="box" id="out">
+    <b>UI blocks + change set draft</b>
+    <div class="d">19 blocks, not free text alone; a write waits in a change set for a person</div>
+    <div class="path">web/src/components/blocks/{bo,fo}</div>
+  </div>
+
+  <div class="grp guard" id="guard">
+    <h2>Harness guards</h2>
+    <div class="sub">rules in code around every model call, outside the model's discretion</div>
+    <div class="cols">
+      <div class="cards">
+        <div class="card" id="h1"><div class="top"><span class="id">H1</span><span class="name">Plan check + binder</span><span class="when">every step</span></div>
+          <div class="d">A plan names earlier steps, never ids; the executor fills each slot from what they produced</div>
+          <div class="path">crates/agent/src/planner.rs<br>crates/agent/src/executor.rs</div></div>
+        <div class="card"><div class="top"><span class="id">H2</span><span class="name">Reply check</span><span class="when">every reply</span></div>
+          <div class="d">What was asked against what the preview will do; the reply's numbers against the tool results</div>
+          <div class="path">crates/agent/src/checker.rs</div></div>
+        <div class="card"><div class="top"><span class="id">H3</span><span class="name">Route hints</span><span class="when">every turn</span></div>
+          <div class="d">A phrase or an attached sheet picks the agent with no model call</div>
+          <div class="path">route_when_said, router.hints</div></div>
+        <div class="card"><div class="top"><span class="id">H4</span><span class="name">Limits</span><span class="when">every turn</span></div>
+          <div class="d">12 model calls, 20 tool calls, 2 revisions, 60 s; the turn stops and says why</div>
+          <div class="path">agents/runtime.yml</div></div>
+      </div>
+
+      <div class="grp store inner" id="store">
+        <h2>Commerce, rebuilt for the agent</h2>
+        <div class="sub">a separate service; the agent calls it over HTTP like any client</div>
+        <div class="grp store inner sect" style="margin-bottom:10px" id="tools">
+          <h2>Tool interface: what the model can call</h2>
+          <div class="cards">
+            <div class="card"><div class="top"><span class="id">T1</span><span class="name">291 tools, one definition each</span><span class="when">13 domains</span></div>
+              <div class="d">The REST route and the manifest entry come from the same definition</div>
+              <div class="path">crates/contract → crates/registry</div></div>
+            <div class="cards two">
+              <div class="card"><div class="top"><span class="id">T2</span><span class="name">Human handles</span></div>
+                <div class="d">Order #27184, change set 1042, a customer's email: the server finds the record</div>
+                <div class="path">crates/core/src/handle.rs</div></div>
+              <div class="card"><div class="top"><span class="id">T3</span><span class="name">Previews</span><span class="when">every write</span></div>
+                <div class="d">What a write will change, and the store's rule checks on it</div>
+                <div class="path">crates/changeset/src/preview.rs</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="grp store inner sect" id="trust">
+          <h2>Trust: what may change, and who says so</h2>
+          <div class="cards">
+            <div class="card"><div class="top"><span class="id">R1</span><span class="name">Change sets</span><span class="when">every write</span></div>
+              <div class="d">Drafted, approved, run, read back, live; undo while its window is open, unless an item cannot be undone (a refund, a message)</div>
+              <div class="path">crates/changeset/src/change_set.rs</div></div>
+            <div class="cards two">
+              <div class="card"><div class="top"><span class="id">R2</span><span class="name">Policies</span></div>
+                <div class="d">The store's rules and approval thresholds, as data</div>
+                <div class="path">policies/*.yml</div></div>
+              <div class="card"><div class="top"><span class="id">R3</span><span class="name">Person only</span></div>
+                <div class="d">Approve, reject and undo need a <code>human:*</code> scope</div>
+                <div class="path">PersonButton.tsx</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grp work" id="work">
+    <h2>Work the store brings</h2>
+    <div class="sub">the agent also starts from what the store notices, not only from a person</div>
+    <div class="cards">
+      <div class="card" id="s1"><div class="top"><span class="id">S1</span><span class="name">Watchers</span><span class="when">every 30–60 min</span></div>
+        <div class="d">Open a task: a return over the refund threshold, a variant out within 5 days, a price below cost</div>
+        <div class="path">policies/platform.yml</div></div>
+      <div class="card" id="s2"><div class="top"><span class="id">S2</span><span class="name">Store events</span><span class="when">on commit</span></div>
+        <div class="d">Tasks, change sets and jobs as server-sent events; one <code>LISTEN</code> per process</div>
+        <div class="path">crates/http/src/events.rs</div></div>
+      <div class="card" id="s3"><div class="top"><span class="id">S3</span><span class="name">Task pickup</span><span class="when">store's choice</span></div>
+        <div class="d">A new task goes to the agent as a turn, without a <code>human:*</code> scope</div>
+        <div class="path">services/gateway/src/pickup.rs</div></div>
+    </div>
+  </div>
+
+  <div class="box" id="req">
+    <b>A request</b>
+    <div class="d">A person types it in the back office or the storefront, taps a button in an earlier reply, or a task brings it</div>
+  </div>
+
+</div>
+<script>
+  // Stack the bottom row under whatever the top row came to.
+  const bottom = id => { const e = document.getElementById(id); return e.offsetTop + e.offsetHeight; };
+  document.getElementById('work').style.top = (bottom('guard') + 32) + 'px';
+  document.getElementById('req').style.top = (bottom('ctx') + 64) + 'px';
+  document.querySelector('.fig').style.height = (bottom('work') + 44) + 'px';
+</script>
+<script src="wires.js"></script>
+<script>
+  const m = document.getElementById('model'), cy = m.offsetTop + m.offsetHeight / 2;
+  wire('req', 'top', 'ctx', 'bottom');
+  wire('ctx', 'right', 'model', 'left', { y: cy });
+  wire('model', 'right', 'h1', 'left', { y: cy - 22, label: 'plan', lpos: [0, -14], bare: true });
+  wire('h1', 'left', 'model', 'right', { y: cy + 22, label: 'results', lpos: [0, 14], bare: true });
+  wire('h1', 'right', 'tools', 'left', { y: cy - 22, label: 'call', lpos: [0, -12], bare: true });
+  wire('tools', 'left', 'h1', 'right', { y: cy + 22 });
+  wire('model', 'bottom', 'out', 'top');
+  wire('s1', 'right', 's2', 'left');
+  wire('s2', 'right', 's3', 'left');
+  wire('s3', 'bottom', 'req', 'bottom', { drop: 24, dashed: true, color: '#9a4a5c', label: 'task → turn', lpos: [-260, 0] });
+</script>
+</body>
+</html>
