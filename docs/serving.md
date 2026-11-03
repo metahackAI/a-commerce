@@ -80,9 +80,9 @@ The fix is NVIDIA's. Our part was finding which fix applies and measuring that i
 
 ### Limits
 
-- One run per row. Before the fix, the same load killed the server within 3–21 minutes, so a clean 40 minutes is strong evidence, not proof. The demo's uptime since the switch is the running check.
+- One run per row. Before the fix, the same load killed the server within 3–21 minutes, so a clean 40 minutes is strong evidence, not proof. The demo's uptime since the switch is the running check: no restart and no Xid as of Nov 3 10:10 KST, a span that includes the final eval (462 task runs, 1,543 model calls).
 - Only the RTX 5090 was tested. On other GPUs the stock image may be fine. The Kubernetes component keeps the stock image and says when to switch.
-- A request with a JSON schema sometimes fails on its own with HTTP 500 (`grammar rejected tokens [200008]`, the end-of-turn token): 14 of 10,654 requests in F, about the same rate as before the fix (5 of ~3,100 in A). Only that request fails; the server keeps running.
+- A request with a JSON schema sometimes fails on its own with HTTP 500 (`grammar rejected tokens [200008]`, the end-of-turn token): 14 of 10,654 requests in F, about the same rate as before the fix (5 of ~3,100 in A). Only that request fails; the server keeps running. It can repeat on the same prompt: in the final eval it failed 8 of 1,543 calls, and 5 of those were one task's reply call, once in each of its 5 runs ([eval/results/2026-11-03-glimmer-judged.md](../eval/results/2026-11-03-glimmer-judged.md)).
 
 ### Effect on our eval numbers
 

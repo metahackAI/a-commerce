@@ -216,7 +216,7 @@ Captures:
 | Operator review | n/a | Approve a step | Chat | Change set: interpretation, checks, preview, read-back, undo |
 | Shopper side | Through outside agents | n/a | Generated store | Same tools for our shopper agent and, once the MCP endpoint is built, outside agents |
 | Models | Any | Vendor | Vendor | Open weights in-house (Muse Glimmer) plus Muse Spark |
-| Evidence | — | — | — | Same tasks: wrapped API vs A2API (on Glimmer, design set, Oct 31: 0% vs 58%; Spark not measured yet) |
+| Evidence | — | — | — | Same tasks: wrapped API vs A2API (on Glimmer, held-out, Nov 3: 0% vs 44%; fresh 0% vs 50%; Spark not measured yet) |
 
 Closest competitors to watch: **Shopify Sidekick** (operator side), **Genstore** (pitch), **BigCommerce Store Management MCP + Smart Edits** (agent writes to the admin).
 
