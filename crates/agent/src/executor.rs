@@ -166,6 +166,21 @@ pub fn slots_from_commit(tool: &ToolSpec, result: &Value) -> BTreeMap<String, Ve
     out
 }
 
+/// The ids of one slot that a write's changes are about (`product_id` in each price change of a
+/// sale), in the preview's order.
+fn changed_ids(preview: &Preview, slot: &str) -> Vec<Value> {
+    let mut ids = Vec::new();
+    for c in &preview.changes {
+        if let Some(v) = [&c.to, &c.from]
+            .into_iter()
+            .find_map(|side| side.get(slot).filter(|v| v.is_string()))
+        {
+            push_unique(&mut ids, v.clone());
+        }
+    }
+    ids
+}
+
 /// Slots of a prepared order: its `preview_id`.
 pub fn slots_from_prepared(preview: &Preview) -> BTreeMap<String, Vec<Value>> {
     BTreeMap::from([("preview_id".to_owned(), vec![json!(preview.preview_id)])])
@@ -673,6 +688,19 @@ pub fn bind(
         if let Some((source, value, count)) = found {
             notes.push(format!(
                 "{object}.{field}: the first of {count} from {source}"
+            ));
+            fields.insert(field, value);
+            continue;
+        }
+        // Else a record a write it uses changes: a banner for a sale shows one of the sale's
+        // products.
+        let changed = used.iter().find_map(|r| {
+            let ids = changed_ids(r.preview.as_ref()?, &slot.name);
+            Some((r.step.clone(), ids.first()?.clone(), ids.len()))
+        });
+        if let Some((source, value, count)) = changed {
+            notes.push(format!(
+                "{object}.{field}: the first of the {count} {source} changes"
             ));
             fields.insert(field, value);
         }
@@ -1651,6 +1679,75 @@ mod tests {
             &BTreeMap::new(),
         );
         assert_eq!(b.input["content"]["image_product_id"], "prd_b");
+    }
+
+    #[test]
+    fn a_slot_inside_an_object_takes_a_record_a_used_write_changes() {
+        let m = manifest();
+        let banner = with_nested_slot();
+        let sale = get(&m, "set_sale_prices");
+        let price = |p: &str| {
+            json!({"op": "update", "entity": "unit_price_specification", "id": null,
+                   "from": {"product_id": p, "price": 88.0}, "to": {"product_id": p, "price": 70.4}})
+        };
+        let preview: Preview = serde_json::from_value(json!({
+            "preview_id": "pv_1", "expires_at": null, "needs_approval": true, "checks": [],
+            "changes": [{"op": "create", "entity": "promotion", "id": null, "to": {"products": 2}},
+                        price("prd_overshirt"), price("prd_field_jacket"), price("prd_overshirt")]}))
+        .unwrap();
+        let written = StepRecord {
+            step: "s1".into(),
+            tool: sale.tool.clone(),
+            kind: sale.kind,
+            input: json!({}),
+            output: None,
+            preview: Some(preview),
+            item: Some(1),
+            slots: slots_from_item(sale, 1),
+        };
+        let done = BTreeMap::from([("s1".to_owned(), written)]);
+        let b = bind(
+            &step(
+                "s2",
+                "schedule_banner",
+                json!({"content": {"headline": "Sale", "image_product_id": "prd_..."}}),
+                &["s1"],
+            ),
+            &banner,
+            &done,
+            &["s1".into()],
+            &BTreeMap::new(),
+        );
+        assert_eq!(
+            b.input["content"]["image_product_id"], "prd_overshirt",
+            "{:?}",
+            b.notes
+        );
+        assert!(
+            b.notes
+                .iter()
+                .any(|n| n.contains("the first of the 2 s1 changes")),
+            "{:?}",
+            b.notes
+        );
+        // A step that does not use the write gets nothing from it.
+        let b = bind(
+            &step(
+                "s2",
+                "schedule_banner",
+                json!({"content": {"headline": "Sale"}}),
+                &[],
+            ),
+            &banner,
+            &done,
+            &["s1".into()],
+            &BTreeMap::new(),
+        );
+        assert!(
+            b.input["content"].get("image_product_id").is_none(),
+            "{:?}",
+            b.notes
+        );
     }
 
     #[test]
