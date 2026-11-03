@@ -24,7 +24,7 @@ import {PageFrame, PageSection} from '../PageFrame';
 import {Pager} from '../Pager';
 import {StateToken} from '../StateToken';
 import {DataTable} from '../tables';
-import {TargetCard, TargetRow} from '../targets';
+import {TargetBlock, TargetCard} from '../targets';
 import {AREA_LABEL, BotTabs, RiskToken, RunNowButton, effectText, useBotEvents} from './parts';
 
 export function BotHistory({
@@ -115,13 +115,13 @@ export function BotCycleView({cycle}: {cycle: BotCycle}) {
         ) : (
           <VStack gap={2}>
             {cycle.anomalies.map(a => (
-              <TargetRow key={`${a.code}${a.text}`} target={{kind: 'bot_anomaly', label: a.text, ids: {bot_cycle_id: cycle.id, code: a.code}, term: 'acom:anomalies'}}>
+              <TargetBlock key={`${a.code}${a.text}`} target={{kind: 'bot_anomaly', label: a.text, ids: {bot_cycle_id: cycle.id, code: a.code}, term: 'acom:anomalies'}}>
                 <HStack gap={2} vAlign="center" wrap="wrap">
                   <Token label={words(a.severity)} size="sm" color={SEVERITY_COLOR[a.severity] ?? 'gray'} />
                   <Token label={AREA_LABEL[a.area] ?? words(a.area)} size="sm" />
                   <Text>{a.text}</Text>
                 </HStack>
-              </TargetRow>
+              </TargetBlock>
             ))}
           </VStack>
         )}

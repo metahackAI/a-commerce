@@ -8,6 +8,7 @@ import {Text} from '@astryxdesign/core/Text';
 import {VStack} from '@astryxdesign/core/Layout';
 
 import type {ApiErrorBody} from '@/lib/api';
+import {DECISION_VIEWS} from '@/app/bo/_lib/bot';
 import type {BotDecision} from '@/app/bo/_lib/types';
 
 import {ErrorState} from '../ErrorState';
@@ -16,12 +17,6 @@ import {PageFrame} from '../PageFrame';
 import {Pager} from '../Pager';
 import {BotTabs, DecisionCard, RunNowButton, useBotEvents} from './parts';
 
-export const DECISION_VIEWS: {value: string; label: string; states: string[]}[] = [
-  {value: 'open', label: 'Needs a decision', states: ['waiting', 'needs_you', 'drafting']},
-  {value: 'done', label: 'Live', states: ['live', 'running']},
-  {value: 'turned_down', label: 'Turned down', states: ['rejected', 'dismissed', 'undone', 'failed']},
-  {value: 'all', label: 'All', states: []},
-];
 
 export function BotDecisions({
   view,
