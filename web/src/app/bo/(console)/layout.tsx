@@ -23,7 +23,8 @@ export default async function ConsoleLayout({children}: {children: ReactNode}) {
     <BoSessionProvider session={session}>
       <AiProvider surface="bo">
         <AgentDockProvider>
-          <AppShell height="fill" variant="section" sideNav={<BoNav userName={user?.name ?? user?.id ?? 'Operator'} role={role} needsYou={needsYou.ok ? needsYou.data.total : null} />}>
+          {/* Below 1024 px (`lg`) the side navigation folds into the menu, so a tablet's tables get the width. */}
+          <AppShell height="fill" variant="section" mobileNav={{breakpoint: 'lg'}} sideNav={<BoNav userName={user?.name ?? user?.id ?? 'Operator'} role={role} needsYou={needsYou.ok ? needsYou.data.total : null} />}>
             {children}
           </AppShell>
         </AgentDockProvider>

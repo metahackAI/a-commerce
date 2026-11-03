@@ -18,6 +18,7 @@ import {AskHeaderCell, TargetBlock, TargetFact, TargetRow} from '@/components/bo
 
 import type {BlockProps} from '../types';
 import {BlockFrame, intentsLookup} from './parts';
+import {tableMinWidth} from '@/components/bo/tables';
 
 export function RefundReviewBlock({block}: BlockProps) {
   const d = block.data as RefundReviewBlockData;
@@ -55,7 +56,7 @@ export function RefundReviewBlock({block}: BlockProps) {
       ) : null}
 
       {d.requests && d.requests.length > 0 ? (
-        <Table density="compact" verticalAlign="top">
+        <Table density="compact" verticalAlign="top" style={{minWidth: tableMinWidth(5, true)}}>
           <TableHeader>
             <TableRow isHeaderRow>
               <TableHeaderCell>Order</TableHeaderCell>

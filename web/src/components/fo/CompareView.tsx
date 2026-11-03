@@ -111,7 +111,7 @@ export function CompareView({ids: fromUrl}: {ids: string[]}) {
         <Button label="Ask which one fits me" variant="secondary" onClick={() => say(`Which of these fits me best: ${items.map(i => i.name).join(', ')}?`)} />
         <Button label="Clear comparison" variant="ghost" onClick={clearCompare} />
       </HStack>
-      <Table density="balanced" verticalAlign="top">
+      <Table density="balanced" verticalAlign="top" style={{minWidth: 120 + items.length * 160}}>
         <TableHeader>
           <TableRow>
             <TableHeaderCell>

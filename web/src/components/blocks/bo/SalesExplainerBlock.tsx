@@ -23,6 +23,7 @@ import {TargetFact, TargetRow} from '@/components/bo/targets';
 
 import type {BlockProps} from '../types';
 import {BlockFrame, intentsLookup} from './parts';
+import {tableMinWidth} from '@/components/bo/tables';
 
 type Say = Extract<BlockAction, {kind: 'say'}>;
 
@@ -118,7 +119,7 @@ export function SalesExplainerBlock({block}: BlockProps) {
               </Text>
             ) : null}
           </HStack>
-          <Table density="compact" verticalAlign="top">
+          <Table density="compact" verticalAlign="top" style={{minWidth: tableMinWidth(4)}}>
             <TableHeader>
               <TableRow isHeaderRow>
                 <TableHeaderCell>Cause</TableHeaderCell>

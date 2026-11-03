@@ -8,7 +8,6 @@
 import {Banner} from '@astryxdesign/core/Banner';
 import {Button} from '@astryxdesign/core/Button';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
-import {NumberInput} from '@astryxdesign/core/NumberInput';
 import {Spinner} from '@astryxdesign/core/Spinner';
 import {Text} from '@astryxdesign/core/Text';
 import {ToggleButton} from '@astryxdesign/core/ToggleButton';
@@ -23,6 +22,7 @@ import {api, type ApiErrorBody, type Page} from '@/lib/api';
 import {AskButton} from './Ask';
 import {ErrorNotice} from './ErrorNotice';
 import {PriceTag} from './PriceTag';
+import {QuantityInput} from './QuantityInput';
 import {COMPARE_MAX, useStorefront} from './StorefrontContext';
 import {errorBody, write} from './write';
 import {StatusTag} from './StatusTag';
@@ -282,7 +282,7 @@ export function ProductPurchase({
       </VStack>
 
       <HStack gap={2} vAlign="end" wrap="wrap">
-        <NumberInput label="Quantity" value={quantity} onChange={v => setQuantity(Math.max(1, Math.round(v || 1)))} min={1} isIntegerOnly width={120} hasNumberSteppers />
+        <QuantityInput value={quantity} onChange={setQuantity} size="lg" />
         <Button
           label={needsSize ? 'Choose a size' : inStock ? 'Add to cart' : 'Out of stock'}
           variant="primary"

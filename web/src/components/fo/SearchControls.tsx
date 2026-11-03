@@ -9,13 +9,13 @@
 // a collapsible section above them). Each group shows its first few values and the rest behind
 // "More"; a chosen value always shows.
 
-import {useAppShellMobile} from '@astryxdesign/core/AppShell';
 import {Button} from '@astryxdesign/core/Button';
 import {CheckboxInput} from '@astryxdesign/core/CheckboxInput';
 import {Collapsible} from '@astryxdesign/core/Collapsible';
 import {Divider} from '@astryxdesign/core/Divider';
 import {HStack, VStack} from '@astryxdesign/core/Layout';
 import {Text} from '@astryxdesign/core/Text';
+import {useMediaQuery} from '@astryxdesign/core/hooks';
 import {usePathname, useRouter} from 'next/navigation';
 import {useState, type ReactNode} from 'react';
 
@@ -27,6 +27,8 @@ import {hrefWith, type SearchParamsState} from '@/app/(storefront)/_lib/search-h
 /** Values a group shows before "More". */
 const VISIBLE = 5;
 const PANEL_WIDTH = 240;
+/** Where the filter panel stops fitting beside the results. */
+const PHONE = '(max-width: 767px)';
 
 function priceRangeLabel(value: string, currency: string): string {
   const [lo, hi] = value.split('-');
@@ -182,9 +184,12 @@ export function FilterPanel({
   return (
     <VStack gap={4}>
       <HStack gap={2} justify="between" vAlign="center">
-        <Text type="label" weight="semibold">
-          Filters
-        </Text>
+        {/* Folded on a phone, the fold's own trigger says "Filters". */}
+        <span className="acom-filters-title">
+          <Text type="label" weight="semibold">
+            Filters
+          </Text>
+        </span>
         {anyActive ? <Button label="Clear all" size="sm" variant="ghost" href={clearHref} /> : null}
       </HStack>
       {groups.map((g, i) => (
@@ -201,14 +206,21 @@ export function FilterPanel({
 
 /**
  * The filter panel on the left, kept in view while the results scroll; on a phone the filters
- * fold into a section above the results.
+ * fold, closed, into a section above the results, so the results come first.
  */
 export function BrowseLayout({filters, children}: {filters: ReactNode; children: ReactNode}) {
-  const {isMobile} = useAppShellMobile();
-  if (isMobile) {
+  const isPhone = useMediaQuery(PHONE);
+  if (isPhone) {
     return (
       <VStack gap={4}>
-        {filters ? <Collapsible trigger={<Text type="label">Filters</Text>}>{filters}</Collapsible> : null}
+        <style>{'.acom-filters-folded .acom-filters-title { display: none; }'}</style>
+        {filters ? (
+          <div className="acom-filters-folded">
+            <Collapsible trigger={<Text type="label">Filters</Text>} defaultIsOpen={false}>
+              {filters}
+            </Collapsible>
+          </div>
+        ) : null}
         {children}
       </VStack>
     );

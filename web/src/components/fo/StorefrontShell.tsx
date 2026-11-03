@@ -194,6 +194,10 @@ function Shell({categories, children}: {categories: NavCategory[]; children: Rea
     <AppShell
       height="fill"
       variant="surface"
+      // The top bar holds the categories, five links and the shopper's buttons; below 1280 px
+      // (`xl`) they no longer fit on one line and ran into each other, so the compact bar and the
+      // menu drawer take over there instead of only on phones.
+      mobileNav={{breakpoint: 'xl'}}
       topNav={
         <TopNav
           label="Store"

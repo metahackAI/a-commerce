@@ -13,6 +13,7 @@ import {count, date, dateTime, isMoney, money, percent, value, words} from '@/ap
 import type {SalesExplanation} from '@/app/bo/_lib/types';
 
 import {SuggestedIntents, TargetFact, TargetRow} from './targets';
+import {tableMinWidth} from '@/components/bo/tables';
 
 const show = (v: unknown) => (isMoney(v) ? money(v) : value(v));
 
@@ -75,7 +76,7 @@ export function SalesExplanationView({explanation, dayLabel, question}: {explana
         </TargetFact>
       </MetadataList>
 
-      <Table density="compact" verticalAlign="top">
+      <Table density="compact" verticalAlign="top" style={{minWidth: tableMinWidth(5)}}>
         <TableHeader>
           <TableRow isHeaderRow>
             <TableHeaderCell>Cause</TableHeaderCell>

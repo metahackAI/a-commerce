@@ -543,6 +543,18 @@ export const ailismTheme = {
             }
           }
         }
+      },
+      {
+        "when": {
+          "pointer": "coarse"
+        },
+        "value": {
+          "tokens": {
+            "--size-element-sm": "36px",
+            "--size-element-md": "40px",
+            "--size-element-lg": "44px"
+          }
+        }
       }
     ]
   },

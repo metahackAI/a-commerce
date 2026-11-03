@@ -149,7 +149,7 @@ export function SalesChart({
           {axis.map(v => (
             <g key={v}>
               <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke="var(--color-data-neutral)" strokeOpacity={0.25} />
-              <text x={PAD.left - 8} y={y(v) + 4} textAnchor="end" fontSize={11} fill="var(--color-data-neutral)">
+              <text x={PAD.left - 8} y={y(v) + 4} textAnchor="end" fontSize={12} fill="var(--color-data-neutral)">
                 {compact({value: v, currency})}
               </text>
             </g>
@@ -158,7 +158,7 @@ export function SalesChart({
             const d = day(p.date);
             const show = i === 0 || i === shown.length - 1 || i % 2 === 0;
             return show ? (
-              <text key={p.date} x={x(i)} y={H - 8} textAnchor="middle" fontSize={11} fill="var(--color-data-neutral)">
+              <text key={p.date} x={x(i)} y={H - 8} textAnchor="middle" fontSize={12} fill="var(--color-data-neutral)">
                 {i === 0 || d.day === 1 ? `${d.month} ${d.day}` : d.day}
               </text>
             ) : null;
@@ -173,7 +173,7 @@ export function SalesChart({
                 stroke="var(--color-data-neutral)"
                 strokeDasharray="4 4"
               />
-              <text x={W - PAD.right} y={y(baseline.value) - 6} textAnchor="end" fontSize={11} fill="var(--color-data-neutral)">
+              <text x={W - PAD.right} y={y(baseline.value) - 6} textAnchor="end" fontSize={12} fill="var(--color-data-neutral)">
                 {baselineLabel ? `${baselineLabel} ${compact(baseline)}` : compact(baseline)}
               </text>
             </g>
@@ -183,7 +183,7 @@ export function SalesChart({
             <Point key={p.date} point={p} x={x(i)} y={y(p.revenue.value)} marked={i === markedIndex} blockId={blockId} />
           ))}
           {markedIndex >= 0 ? (
-            <text x={x(markedIndex)} y={y(shown[markedIndex].revenue.value) + 20} textAnchor="end" fontSize={11} fontWeight={600} fill="currentColor">
+            <text x={x(markedIndex)} y={y(shown[markedIndex].revenue.value) + 20} textAnchor="end" fontSize={12} fontWeight={600} fill="currentColor">
               {`${day(shown[markedIndex].date).weekday} ${day(shown[markedIndex].date).month} ${day(shown[markedIndex].date).day} · ${compact(shown[markedIndex].revenue)}`}
             </text>
           ) : null}

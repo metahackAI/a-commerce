@@ -16,4 +16,20 @@ export const ailismTheme = defineTheme({
     '--color-on-accent': ['#FFFFFF', '#FFFFFF'],
     '--focus-outline-color': 'var(--color-accent)',
   },
+  adaptations: {
+    rules: [
+      {
+        // Under a finger, controls get a hit area a thumb can find: 36/40/44 px instead of
+        // 28/32/36 px (quantity buttons, date pickers, filter clears, segmented controls).
+        when: {pointer: 'coarse'},
+        value: {
+          tokens: {
+            '--size-element-sm': '36px',
+            '--size-element-md': '40px',
+            '--size-element-lg': '44px',
+          },
+        },
+      },
+    ],
+  },
 });

@@ -708,6 +708,16 @@
   }
   }
 }
+
+@media (pointer: coarse) {
+  @scope ([data-astryx-theme="ailism"]) to ([data-astryx-theme]) {
+    :scope {
+    --size-element-sm: 36px;
+    --size-element-md: 40px;
+    --size-element-lg: 44px;
+  }
+  }
+}
 }
 
 @layer astryx-theme {
