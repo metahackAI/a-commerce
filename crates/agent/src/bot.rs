@@ -125,6 +125,14 @@ fn num(v: &Value, key: &str) -> Option<f64> {
 
 /// Warning signs found by rule, never by the model: each says what and how many.
 fn anomalies(reads: &[Read]) -> Vec<Value> {
+    // Boards by name, for the reported posts on each.
+    let boards: Vec<(String, String)> = reads
+        .iter()
+        .filter(|r| r.tool == "list_boards")
+        .filter_map(|r| r.result.as_ref().ok())
+        .flat_map(items)
+        .filter_map(|b| Some((b.get("id")?.as_str()?.to_owned(), name_of(&b))))
+        .collect();
     let mut out = Vec::new();
     let mut add = |area: &str, code: &str, text: String, severity: &str| {
         out.push(json!({"area": area, "code": code, "text": text, "severity": severity}));
@@ -240,11 +248,19 @@ fn anomalies(reads: &[Read]) -> Vec<Value> {
                 }
             }
             ("community", "list_posts") if !list.is_empty() => {
-                let board = r.args.get("board_id").and_then(Value::as_str).unwrap_or("");
+                let id = r.args.get("board_id").and_then(Value::as_str).unwrap_or("");
+                let board = boards
+                    .iter()
+                    .find(|(b, _)| b == id)
+                    .map_or(id, |(_, name)| name.as_str());
+                let n = list.len();
                 add(
                     "community",
                     "reported_posts",
-                    format!("{} reported posts on {board}", list.len()),
+                    format!(
+                        "{n} reported post{} on {board}",
+                        if n == 1 { "" } else { "s" }
+                    ),
                     "medium",
                 );
             }
@@ -541,6 +557,11 @@ mod tests {
             ),
             read(
                 "community",
+                "list_boards",
+                json!({"items": [{"id": "brd_style", "name": "Style talk"}]}),
+            ),
+            read(
+                "community",
                 "list_posts",
                 json!({"items": [{"id": "pst_1"}]}),
             ),
@@ -559,6 +580,7 @@ mod tests {
         );
         assert_eq!(a[0]["text"], "1 priced under cost: Breton tee");
         assert_eq!(a[2]["text"], "12 return requests wait for a decision");
+        assert_eq!(a[3]["text"], "1 reported post on Style talk");
     }
 
     #[test]
