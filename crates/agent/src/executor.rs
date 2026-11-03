@@ -655,6 +655,12 @@ pub fn bind(
             .and_then(|p| p.get(&object))
             .and_then(|o| o.get("properties"))
             .and_then(|p| p.get(&field));
+        // A required object the plan left out (a banner's `content`) is written later by the
+        // arguments model; a value this plan's steps give goes in first, so it is not made up there.
+        let added = input.get(&object).is_none() && tool.required().contains(&object.as_str());
+        if added {
+            input.insert(object.clone(), json!({}));
+        }
         let Some(fields) = input.get_mut(&object).and_then(Value::as_object_mut) else {
             continue;
         };
@@ -685,24 +691,27 @@ pub fn bind(
                 let first = r.slots.get(&slot.name)?.first()?;
                 Some((r.step.clone(), first.clone(), r.slots[&slot.name].len()))
             });
+        // Else a record a write it uses changes: a banner for a sale shows one of the sale's
+        // products.
+        let changed = || {
+            used.iter().find_map(|r| {
+                let ids = changed_ids(r.preview.as_ref()?, &slot.name);
+                Some((r.step.clone(), ids.first()?.clone(), ids.len()))
+            })
+        };
         if let Some((source, value, count)) = found {
             notes.push(format!(
                 "{object}.{field}: the first of {count} from {source}"
             ));
             fields.insert(field, value);
-            continue;
-        }
-        // Else a record a write it uses changes: a banner for a sale shows one of the sale's
-        // products.
-        let changed = used.iter().find_map(|r| {
-            let ids = changed_ids(r.preview.as_ref()?, &slot.name);
-            Some((r.step.clone(), ids.first()?.clone(), ids.len()))
-        });
-        if let Some((source, value, count)) = changed {
+        } else if let Some((source, value, count)) = changed() {
             notes.push(format!(
                 "{object}.{field}: the first of the {count} {source} changes"
             ));
             fields.insert(field, value);
+        }
+        if added && fields.is_empty() {
+            input.remove(&object);
         }
     }
 
@@ -1730,6 +1739,29 @@ mod tests {
             "{:?}",
             b.notes
         );
+        // The plan left the content out. Where the tool requires it, it starts with the picture
+        // and the arguments model writes the rest; where it does not, it stays out.
+        let left_out = step(
+            "s2",
+            "schedule_banner",
+            json!({"slot_id": "slot_home_hero"}),
+            &["s1"],
+        );
+        let mut requiring = banner.clone();
+        requiring.input_schema["required"] = json!(["slot_id", "content"]);
+        let b = bind(
+            &left_out,
+            &requiring,
+            &done,
+            &["s1".into()],
+            &BTreeMap::new(),
+        );
+        assert_eq!(
+            b.input["content"],
+            json!({"image_product_id": "prd_overshirt"})
+        );
+        let b = bind(&left_out, &banner, &done, &["s1".into()], &BTreeMap::new());
+        assert!(b.input.get("content").is_none(), "{}", b.input);
         // A step that does not use the write gets nothing from it.
         let b = bind(
             &step(
