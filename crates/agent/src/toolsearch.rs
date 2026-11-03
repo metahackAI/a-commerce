@@ -573,12 +573,18 @@ mod tests {
     fn a_request_for_two_things_gets_a_start_on_both() {
         let p = repo();
         let promotion = p.get("promotion").unwrap();
+        // Without the related words: they would lift the sale over the main page here, and this
+        // test is about the anchors, not about the words a request brings in.
+        let cfg = ToolSearchConfig {
+            related_words: BTreeMap::new(),
+            ..p.runtime.tool_search.clone()
+        };
         let found = search(
             &two_things_manifest(),
             promotion,
             "A sale, and put it on the main page.",
             &[],
-            &p.runtime.tool_search,
+            &cfg,
         );
         let n = names(&found);
         // The sale ranks below all three main-page tools, and is an anchor anyway.
