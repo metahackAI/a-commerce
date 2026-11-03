@@ -38,7 +38,7 @@ use acom_store::{Cx, Page};
 use serde_json::{Value, json};
 
 pub use bot::report::record as record_bot_report;
-pub use task::TASK_NOT_FOUND;
+pub use task::{TASK_NOT_FOUND, note_undrafted};
 
 /// Adds every platform operation to the registry.
 pub fn register(b: &mut RegistryBuilder<Cx>) {

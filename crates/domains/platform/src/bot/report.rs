@@ -336,6 +336,17 @@ pub(crate) async fn open_decision(
         .iter()
         .map(|(e, id)| json!({"entity": e, "id": id}))
         .collect();
+    // The operations agent drafts from the sentence alone: it gets the ids too, so it acts on
+    // the question or post the bot meant instead of searching for it.
+    let ids: Vec<&str> = p.about.iter().map(|(_, id)| id.as_str()).collect();
+    let request: String = if ids.is_empty() || ids.iter().all(|id| p.request.contains(id)) {
+        p.request.clone()
+    } else {
+        format!("{} ({})", p.request, ids.join(", "))
+    }
+    .chars()
+    .take(1000)
+    .collect();
     let observation = json!({"bot": {"cycle_id": cycle_id, "decision_id": decision,
         "reason": p.reason, "evidence": p.evidence, "expected_effect": p.expected_effect,
         "risk": p.risk}});
@@ -351,7 +362,7 @@ pub(crate) async fn open_decision(
     .bind(origin)
     .bind("Proposed by Ailism Bot; the operations agent drafts the change.")
     .bind(&p.area)
-    .bind(&p.request)
+    .bind(&request)
     .bind(&observation)
     .bind(json!(related))
     .bind(now)
@@ -370,7 +381,7 @@ pub(crate) async fn open_decision(
     .bind(&task)
     .bind(&p.area)
     .bind(&p.title)
-    .bind(&p.request)
+    .bind(&request)
     .bind(&p.reason)
     .bind(&p.evidence)
     .bind(&p.expected_effect)

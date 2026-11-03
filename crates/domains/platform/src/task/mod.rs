@@ -44,3 +44,46 @@ struct TaskRow {
 const COLUMNS: &str = "id, title, task_state, task_origin, summary, tag, request_text, watcher,
     watcher_observation, related_entities, change_set_id, conversation_id, start_time, end_time,
     updated_at";
+
+/// The gateway handed a task to the operations agent and the turn ended without a change set
+/// (internal `POST /v1/platform/tasks/{task_id}/pickup-ended`, docs/api/platform.md): the task
+/// keeps the conversation and says what the agent answered, so it shows as waiting for a person
+/// instead of still being drafted. A task that is closed or has a change set is left alone.
+pub async fn note_undrafted(
+    tx: &mut acom_store::TxCx,
+    task: &str,
+    conversation: Option<&str>,
+    reply: &str,
+) -> Result<Value, ToolError> {
+    let said: String = reply.split_whitespace().collect::<Vec<_>>().join(" ");
+    let said: String = said.chars().take(300).collect();
+    let summary = if said.is_empty() {
+        "The agent did not draft a change; open it to continue.".to_owned()
+    } else {
+        format!("The agent did not draft a change: {said}")
+    };
+    let state: Option<String> = sqlx::query_scalar(
+        "UPDATE platform.task SET summary = $3, conversation_id = coalesce(conversation_id, $4),
+           task_state = 'needs_you', updated_at = $5, version = version + 1
+         WHERE tenant_id = $1 AND id = $2 AND change_set_id IS NULL
+           AND task_state IN ('needs_you', 'working')
+         RETURNING task_state",
+    )
+    .bind(tx.tenant.as_str())
+    .bind(task)
+    .bind(&summary)
+    .bind(conversation)
+    .bind(tx.clock.now())
+    .fetch_optional(&mut *tx.tx)
+    .await
+    .map_err(db)?;
+    if state.is_some() {
+        acom_changeset::notify(
+            tx,
+            "task.updated",
+            json!({"task_id": task, "state": "needs_you"}),
+        )
+        .await?;
+    }
+    Ok(json!({"task_id": task, "noted": state.is_some()}))
+}

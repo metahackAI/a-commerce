@@ -69,6 +69,13 @@ async fn clean() {
 #[ignore = "integration: needs the seeded demo database and MIGRATION_DATABASE_URL"]
 async fn a_cycle_proposes_once_per_cause_and_a_person_can_ask_again() {
     clean().await;
+    // From the store's defaults, whatever an earlier run left.
+    person(
+        UpdateBotSettings,
+        json!({"mode": "propose", "every_minutes": 240, "areas": {"community": true}}),
+    )
+    .await
+    .unwrap();
     let first = person(RunBotCycle, json!({})).await.unwrap();
     let cycle = first["id"].as_str().unwrap().to_owned();
     let again = person(RunBotCycle, json!({})).await.unwrap();
@@ -126,6 +133,48 @@ async fn a_cycle_proposes_once_per_cause_and_a_person_can_ask_again() {
         out["opened"][0]["decision_id"]
     );
     assert_eq!(c["decisions"].as_array().unwrap().len(), 2);
+
+    // The agent's turn for the second one ended without a draft: it waits for a person, with
+    // what the agent answered; the request carries the ids the proposal named.
+    let second = out["opened"][1]["task_id"].as_str().unwrap().to_owned();
+    {
+        let sys = cx_with(
+            "sys_task_pickup",
+            ActorKind::System,
+            scopes::all_tool_scopes(),
+        )
+        .await;
+        let mut tx = sys.begin().await.unwrap();
+        crate::task::note_undrafted(
+            &mut tx,
+            &second,
+            Some("conv_01testpickup"),
+            "I could not find the question.",
+        )
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+    }
+    let list = ListBotDecisions.read(&cx, input(json!({}))).await.unwrap();
+    let d = list["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|d| d["task_id"] == json!(second))
+        .cloned()
+        .unwrap();
+    assert_eq!(d["state"], "needs_you", "{d}");
+    assert_eq!(
+        d["summary"],
+        "The agent did not draft a change: I could not find the question."
+    );
+    assert!(
+        d["request"]
+            .as_str()
+            .unwrap()
+            .ends_with("(prd_windbreaker)"),
+        "{d}"
+    );
 
     // Asked again: the old one is put away, a new one revises it with the correction.
     let old = out["opened"][0]["decision_id"].as_str().unwrap().to_owned();
@@ -206,7 +255,11 @@ async fn a_cycle_proposes_once_per_cause_and_a_person_can_ask_again() {
         .unwrap();
     assert_eq!(status["settings"]["every_minutes"], 120);
     assert_eq!(status["settings"]["areas"]["community"], false);
-    assert_eq!(status["decisions"]["drafting"], 2);
+    assert_eq!(status["decisions"]["drafting"], 1, "the revision");
+    assert_eq!(
+        status["decisions"]["needs_you"], 1,
+        "the one the agent could not draft"
+    );
     assert!(
         person(UpdateBotSettings, json!({"acts_as": "adm_nobody"}))
             .await

@@ -273,10 +273,13 @@ async fn watchers_at_the_demo_clock_reproduce_the_seeded_tasks() {
                 .unwrap();
             }
             tx.commit().await.unwrap();
+            // Ailism Bot's seeded cycle is due at the demo clock too; it opens a cycle, not tasks.
             ran.extend(
                 acom_changeset::jobs::run_due(&registry, &cx, at)
                     .await
-                    .unwrap(),
+                    .unwrap()
+                    .into_iter()
+                    .filter(|j| j.kind != "watcher.ailism_bot"),
             );
         }
         (ran, snapshot(&pool).await)
@@ -402,6 +405,11 @@ async fn price_watch(
     let ran = acom_changeset::jobs::run_due(&registry, &cx, at)
         .await
         .unwrap();
+    // Ailism Bot's seeded cycle is due at the demo clock too; it is not this test's watcher.
+    let ran: Vec<_> = ran
+        .into_iter()
+        .filter(|j| j.kind != "watcher.ailism_bot")
+        .collect();
     let task_id = ran
         .iter()
         .flat_map(|j| &j.tasks)

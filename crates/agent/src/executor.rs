@@ -344,6 +344,15 @@ fn is_stand_in(v: &Value, field: &str, slot: &str, schema: Option<&Value>) -> bo
 /// An object that lacks one of its own required parts (`{"value": null, "currency": "USD"}` for a
 /// total): written as a shape, not a value, so it is filled like a missing field.
 fn is_hollow(v: Option<&Value>, schema: Option<&Value>) -> bool {
+    // A list of objects is hollow when one of its items is (reorder lines without their
+    // quantities, or with a quantity under the schema's minimum).
+    if let Some(Value::Array(items)) = v {
+        let item = schema.and_then(|s| s.get("items"));
+        return !items.is_empty()
+            && items
+                .iter()
+                .any(|i| i.is_object() && (is_hollow(Some(i), item) || under_minimum(i, item)));
+    }
     let (Some(Value::Object(o)), Some(required)) = (
         v,
         schema
@@ -356,6 +365,26 @@ fn is_hollow(v: Option<&Value>, schema: Option<&Value>) -> bool {
         .iter()
         .filter_map(Value::as_str)
         .any(|k| is_empty(o.get(k)))
+}
+
+/// A required whole number under its minimum (`order_quantity: 0` where at least 1 is asked):
+/// a number the model did not have, like a hollow part.
+fn under_minimum(o: &Value, schema: Option<&Value>) -> bool {
+    let (Some(props), Some(required)) = (
+        schema.and_then(|s| s.get("properties")),
+        schema
+            .and_then(|s| s.get("required"))
+            .and_then(Value::as_array),
+    ) else {
+        return false;
+    };
+    required.iter().filter_map(Value::as_str).any(|k| {
+        let min = props
+            .get(k)
+            .and_then(|p| p.get("minimum"))
+            .and_then(Value::as_f64);
+        matches!((min, o.get(k).and_then(Value::as_f64)), (Some(m), Some(x)) if x < m)
+    })
 }
 
 /// Money written as zero (`{"value": 0, "currency": "USD"}`): what a model writes for a figure it
@@ -2220,6 +2249,57 @@ mod tests {
             &BTreeMap::new(),
         );
         assert_eq!(b.input["lines"], "suggest.lines");
+    }
+
+    #[test]
+    fn lines_written_without_their_quantities_take_the_used_steps_lines() {
+        // The item schema as create_reorder serves it: each line needs a quantity of at least 1.
+        let mut m = reorder_tools();
+        for t in &mut m {
+            if t.tool == "create_reorder" {
+                t.input_schema["properties"]["lines"]["items"] = json!({"type": "object",
+                    "required": ["variant_id", "order_quantity"],
+                    "properties": {"variant_id": {"type": "string"},
+                                   "order_quantity": {"type": "integer", "minimum": 1}}});
+            }
+        }
+        let lines = json!([{"variant_id": "var_rain_parka_m_stone", "order_quantity": 2},
+                           {"variant_id": "var_rain_parka_l_stone", "order_quantity": 2}]);
+        let done = BTreeMap::from([("suggest".to_owned(), suggestion(lines.clone()))]);
+        let order = vec!["suggest".to_owned()];
+        for written in [
+            json!([{"variant_id": "var_rain_parka_m_stone"}, {"variant_id": "var_rain_parka_l_stone"}]),
+            json!([{"variant_id": "var_rain_parka_m_stone", "order_quantity": 0}]),
+        ] {
+            let b = bind(
+                &step(
+                    "draft",
+                    "create_reorder",
+                    json!({"product_id": "prd_rain_parka", "lines": written}),
+                    &["suggest"],
+                ),
+                get(&m, "create_reorder"),
+                &done,
+                &order,
+                &BTreeMap::new(),
+            );
+            assert_eq!(b.input["lines"], lines, "{written}");
+        }
+        // Lines the plan wrote in full stay.
+        let mine = json!([{"variant_id": "var_rain_parka_m_stone", "order_quantity": 30}]);
+        let b = bind(
+            &step(
+                "draft",
+                "create_reorder",
+                json!({"product_id": "prd_rain_parka", "lines": mine.clone()}),
+                &["suggest"],
+            ),
+            get(&m, "create_reorder"),
+            &done,
+            &order,
+            &BTreeMap::new(),
+        );
+        assert_eq!(b.input["lines"], mine);
     }
 
     #[test]
