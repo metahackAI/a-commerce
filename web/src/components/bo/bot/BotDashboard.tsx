@@ -72,6 +72,7 @@ export function BotDashboard({
   const n = (...states: string[]) => states.reduce((sum, k) => sum + (d[k] ?? 0), 0);
   const last = status.last_cycle;
   const observing = last?.state === 'observing';
+  const lastRow = last ? cycles.find(c => c.id === last.id) : undefined;
   const areasOn = Object.entries(s.areas).filter(([, on]) => on).length;
   return (
     <PageFrame
@@ -112,14 +113,14 @@ export function BotDashboard({
 
       <PageSection
         title="Last cycle"
-        actions={last ? <Button label="Open" size="sm" variant="ghost" href={`/bo/bot/history/${encodeURIComponent(last.id)}`} /> : undefined}>
+        actions={last ? <Button label="Open cycle" size="sm" variant="secondary" href={`/bo/bot/history/${encodeURIComponent(last.id)}`} /> : undefined}>
         {last ? (
           <Card>
-            <VStack gap={2}>
+            <VStack gap={3}>
               <HStack gap={2} vAlign="center" wrap="wrap">
                 <StateToken state={last.state} />
                 <Text type="supporting" color="secondary">
-                  {`${words(last.trigger)} · ${dateTime(last.at)}`}
+                  {`${last.trigger === 'manual' ? 'Run now' : 'On schedule'} · ${dateTime(last.at)}`}
                 </Text>
                 {observing ? <Spinner size="sm" /> : null}
               </HStack>
@@ -128,12 +129,27 @@ export function BotDashboard({
                   ? 'Reading the store and analysing it. Its proposals appear here as soon as they are opened.'
                   : (last.summary ?? last.error ?? 'No summary.')}
               </Text>
+              {lastRow && !observing ? (
+                <HStack gap={4} wrap="wrap">
+                  <Text type="supporting" color="secondary">
+                    {`${lastRow.opened} of ${lastRow.proposals} proposals opened`}
+                  </Text>
+                  <Text type="supporting" color="secondary">
+                    {`${lastRow.anomalies} warning sign${lastRow.anomalies === 1 ? '' : 's'}`}
+                  </Text>
+                </HStack>
+              ) : null}
             </VStack>
           </Card>
         ) : (
-          <Text type="supporting" color="secondary">
-            The bot has not run yet. Press Run now, or wait for its schedule.
-          </Text>
+          <Card variant="muted">
+            <VStack gap={2}>
+              <Text weight="semibold">The bot has not run yet</Text>
+              <Text type="supporting" color="secondary">
+                Press Run now, or wait for its schedule. It reads the store in the areas it watches, finds what is worth fixing, and opens each proposal as a task for the operations agent to draft.
+              </Text>
+            </VStack>
+          </Card>
         )}
       </PageSection>
 
@@ -156,7 +172,9 @@ export function BotDashboard({
 
       <PageSection title="Feedback and directives" count={feedback.length} description="Tell the bot what to do differently. It reads every open item in each analysis.">
         <FeedbackList items={feedback} />
-        <FeedbackForm />
+        <Card variant="muted">
+          <FeedbackForm />
+        </Card>
       </PageSection>
 
       <PageSection

@@ -26,7 +26,9 @@ export function BotDecisions({
   nextCursor,
   error,
   isOff,
+  counts,
 }: {
+  counts: Record<string, number>;
   view: string;
   items: BotDecision[];
   total: number;
@@ -46,7 +48,13 @@ export function BotDecisions({
       toolbar={
         <VStack gap={2}>
           <BotTabs value="decisions" />
-          <NavTabs value={current.value} tabs={DECISION_VIEWS.map(v => ({value: v.value, label: v.label, href: `/bo/bot/decisions?view=${v.value}`}))} />
+          <NavTabs
+            value={current.value}
+            tabs={DECISION_VIEWS.map(v => {
+              const n = v.states.length ? v.states.reduce((sum, st) => sum + (counts[st] ?? 0), 0) : Object.values(counts).reduce((a, b) => a + b, 0);
+              return {value: v.value, label: `${v.label} · ${n}`, href: `/bo/bot/decisions?view=${v.value}`};
+            })}
+          />
         </VStack>
       }>
       {error ? <ErrorState error={error} title="The decisions could not be loaded." /> : null}

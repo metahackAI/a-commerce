@@ -30,6 +30,7 @@ export default async function BotDecisionsPage({searchParams}: {searchParams: Se
       nextCursor={list.ok ? (list.data.next_cursor ?? null) : null}
       error={list.ok ? null : list.error}
       isOff={status.ok ? status.data.settings.mode === 'off' : false}
+      counts={status.ok ? status.data.decisions : {}}
     />
   );
 }
