@@ -237,6 +237,36 @@ pub fn product_detail_id(item: &Value) -> Option<String> {
     Some(product_id(item)).filter(|id| id.starts_with("prd_"))
 }
 
+/// Of the products read, the one what the person said names best: the most words of its name said,
+/// then the fewest not said, then the first. None when no word of any name was said.
+pub fn product_named<'a>(items: impl Iterator<Item = &'a Value>, said: &str) -> Option<String> {
+    let said = said.to_lowercase();
+    let said: Vec<&str> = said
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .collect();
+    let mut best: Option<(usize, usize, String)> = None;
+    for item in items {
+        let Some(id) = product_detail_id(item) else {
+            continue;
+        };
+        let name = name(item).to_lowercase();
+        let words: Vec<&str> = name
+            .split(|c: char| !c.is_alphanumeric())
+            .filter(|w| !w.is_empty())
+            .collect();
+        let hits = words.iter().filter(|w| said.contains(w)).count();
+        let misses = words.len() - hits;
+        let better = best
+            .as_ref()
+            .is_none_or(|(h, m, _)| hits > *h || (hits == *h && misses < *m));
+        if hits > 0 && better {
+            best = Some((hits, misses, id));
+        }
+    }
+    best.map(|(_, _, id)| id)
+}
+
 /// product_detail: one product, from a read of it. The web reads the rest of its page itself
 /// (chat.md §3.3), so what it shows is as current as the product page.
 pub fn product_detail(item: &Value) -> Option<Block> {
@@ -511,6 +541,22 @@ pub fn memory_note(memory_id: &str, text: &str) -> Block {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn the_product_they_named_beats_the_first_search_hit() {
+        let found = [
+            json!({"id": "prd_wool", "name": "Wool liner jacket"}),
+            json!({"id": "prd_down", "name": "Down liner jacket"}),
+            json!({"id": "prd_long", "name": "Packable down liner jacket"}),
+        ];
+        let named = |said: &str| product_named(found.iter(), said);
+        assert_eq!(
+            named("Tell me more about the Down liner jacket").as_deref(),
+            Some("prd_down")
+        );
+        assert_eq!(named("the wool one").as_deref(), Some("prd_wool"));
+        assert_eq!(named("what is good for rain?"), None);
+    }
 
     #[test]
     fn one_product_is_shown_from_its_read() {
