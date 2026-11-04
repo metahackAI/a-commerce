@@ -4,7 +4,8 @@
 //!
 //! One ChaCha8 stream seeded with `random_seed` is consumed in the order of the spec: catalog
 //! (summer outerwear, the other categories, placement), members, then orders day by day. The
-//! same named rows and spec give the same rows. Money is a JSON number with two decimals,
+//! same named rows and spec give the same rows. `catalog.more_products` comes last, with its own
+//! dice, so it moves none of them. Money is a JSON number with two decimals,
 //! times are RFC 3339 in the store time zone, and every row carries the store's `tenant_id`.
 //! A row only references rows earlier in the named rows or in the output.
 
@@ -40,6 +41,7 @@ pub fn generate(named: &SeedRows, spec_yaml: &str) -> Result<SeedRows, String> {
     let skus = orders::skus(&known, &catalog);
     let mut orders = orders::generate(&spec, &known, &skus, &members, &mut dice)?;
     orders::attribute_campaigns(&spec, &known, &skus, &mut orders)?;
+    let more = catalog::more(&spec, &known, &catalog)?;
 
     let autumn_knit = known
         .promotions
@@ -49,5 +51,6 @@ pub fn generate(named: &SeedRows, spec_yaml: &str) -> Result<SeedRows, String> {
     catalog::rows(&spec, &known, &catalog, autumn_knit, &mut out)?;
     members::rows(&spec, &known, &members, &mut out);
     orders::rows(&spec, &known, &skus, &members, &orders, &mut out);
+    catalog::rows(&spec, &known, &more, autumn_knit, &mut out)?;
     Ok(out)
 }

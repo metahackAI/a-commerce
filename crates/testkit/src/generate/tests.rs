@@ -265,9 +265,9 @@ fn summer_outerwear_has_42_products_and_40_with_ten_units() {
 }
 
 #[test]
-fn about_400_products_in_the_24_standard_categories() {
+fn over_1000_products_in_the_24_standard_categories() {
     let products: Vec<&Value> = all("catalog.product_group").collect();
-    assert_eq!(products.len(), 400);
+    assert_eq!(products.len(), 1009);
     let standard: BTreeSet<&str> = all("merchandising.defined_term")
         .filter(|t| s(t, "in_defined_term_set") == "standard")
         .map(|t| s(t, "id"))
@@ -291,6 +291,108 @@ fn about_400_products_in_the_24_standard_categories() {
         .map(|r| int(r, "position"))
         .collect();
     assert_eq!(travel, (1..=14).collect::<Vec<_>>());
+}
+
+/// The spec without `catalog.more_products`: the 400 products the scenes were written on.
+fn spec_of_the_scenes() -> String {
+    let mut v = spec();
+    if let Some(catalog) = v["catalog"].as_object_mut() {
+        catalog.remove("more_products");
+        catalog.insert("total_products".to_owned(), serde_json::json!(400));
+    }
+    serde_norway::to_string(&v).unwrap()
+}
+
+#[test]
+fn more_products_move_no_other_row() {
+    let before = generate(&seed().named, &spec_of_the_scenes()).unwrap();
+    let after = &seed().generated;
+    assert_eq!(&after[..before.len()], &before[..]);
+    let tables: BTreeSet<&str> = after[before.len()..]
+        .iter()
+        .map(|(t, _)| t.as_str())
+        .collect();
+    assert_eq!(
+        tables,
+        BTreeSet::from([
+            "catalog.offer",
+            "catalog.product",
+            "catalog.product_group",
+            "merchandising.product_group_category"
+        ])
+    );
+}
+
+#[test]
+fn a_new_name_at_the_end_changes_no_earlier_more_product() {
+    let mut v = spec();
+    let tees = &mut v["catalog"]["more_products"]["categories"]["tees"]["names"];
+    tees.as_array_mut()
+        .unwrap()
+        .push(serde_json::json!(["Merino", "henley"]));
+    v["catalog"]["total_products"] = serde_json::json!(1010);
+    let more = generate(&seed().named, &serde_norway::to_string(&v).unwrap()).unwrap();
+    let longer: BTreeSet<String> = more
+        .iter()
+        .map(|r| serde_json::to_string(r).unwrap())
+        .collect();
+    for row in &seed().generated {
+        assert!(
+            longer.contains(&serde_json::to_string(row).unwrap()),
+            "{row:?}"
+        );
+    }
+    assert!(more.len() > seed().generated.len());
+}
+
+#[test]
+fn more_products_follow_the_rules_of_their_category() {
+    let before = generate(&seed().named, &spec_of_the_scenes()).unwrap();
+    let more = &seed().generated[before.len()..].to_vec();
+    let ids: BTreeSet<&str> = rows(more, "catalog.product_group")
+        .map(|p| s(p, "id"))
+        .collect();
+    assert_eq!(ids.len(), 609);
+    // The categories the scenes count stay as they are.
+    for id in &ids {
+        assert!(
+            !id.starts_with("prd_summer_outerwear_") && !id.starts_with("prd_knitwear_"),
+            "{id}"
+        );
+    }
+    // Stock: every variant can be sold, and no product is lower than the store's two lowest (eval).
+    let mut stock: BTreeMap<&str, i64> = BTreeMap::new();
+    let group: BTreeMap<&str, &str> = rows(more, "catalog.product")
+        .map(|v| (s(v, "id"), s(v, "product_group_id")))
+        .collect();
+    for o in rows(more, "catalog.offer") {
+        assert_eq!(s(o, "availability"), "in_stock", "{o}");
+        assert!(int(o, "inventory_level") >= 1, "{o}");
+        // Prices end in 9, and the cost leaves the price above the floor.
+        let (price, cost) = (cents(o, "price"), cents(o, "cost_value"));
+        assert_eq!(price % 1000, 900, "{o}");
+        assert!(cost * 115 <= price * 100, "{o}");
+        *stock.entry(group[s(o, "product_id")]).or_default() += int(o, "inventory_level");
+    }
+    assert_eq!(stock.len(), 609);
+    assert!(stock.values().all(|n| *n >= 10), "{stock:?}");
+    // Brands: known to the store, and the store's own label is no longer nearly everything.
+    let known: BTreeSet<&str> = rows(&seed().named, "catalog.brand")
+        .map(|b| s(b, "id"))
+        .collect();
+    let mut by_brand: BTreeMap<&str, usize> = BTreeMap::new();
+    for p in rows(more, "catalog.product_group") {
+        assert!(known.contains(s(p, "brand_id")), "{p}");
+        *by_brand.entry(s(p, "brand_id")).or_default() += 1;
+    }
+    assert!(by_brand.len() >= 8, "{by_brand:?}");
+    assert!(by_brand["brn_northwind"] < 609 / 3, "{by_brand:?}");
+    // No order, no placement on a display shelf.
+    assert!(
+        !rows(&seed().generated, "sales.order_item")
+            .any(|l| group.contains_key(s(l, "product_id")))
+    );
+    assert!(rows(more, "merchandising.product_group_category").all(|r| r["is_primary"] == true));
 }
 
 #[test]
@@ -964,9 +1066,11 @@ fn subset_sums_use_each_value_once_and_prefer_early_ones() {
 
 #[test]
 fn rows_reference_only_earlier_rows_in_table_order() {
+    // `catalog.more_products` adds a second catalog run at the end: its rows only need the catalog.
+    let scenes = generate(&seed().named, &spec_of_the_scenes()).unwrap();
     let order: Vec<&str> = {
         let mut seen = Vec::new();
-        for (t, _) in &seed().generated {
+        for (t, _) in &scenes {
             if seen.last() != Some(&t.as_str()) {
                 assert!(!seen.contains(&t.as_str()), "{t} appears in two runs");
                 seen.push(t.as_str());
