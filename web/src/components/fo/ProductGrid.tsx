@@ -22,6 +22,7 @@ export function ProductGrid({products, minWidth = 220}: {products: ProductSummar
           currency={p.price_currency}
           member={p.member_price}
           image={imageUrl(p.image)}
+          color={p.color}
           availability={p.availability}
         />
       ))}

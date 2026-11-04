@@ -108,6 +108,24 @@ impl ProductCard {
         self.variants.first().and_then(|v| v.color.as_deref())
     }
 
+    /// The first variant, best-stocked color first, that search filters match. The words are
+    /// lowercase and an empty list allows anything, as in the search query.
+    pub fn first_variant_in(
+        &self,
+        colors: &[String],
+        sizes: &[String],
+        availability: &[String],
+    ) -> Option<&Variant> {
+        let allows = |words: &[String], word: Option<&str>| {
+            words.is_empty() || word.is_some_and(|w| words.contains(&w.to_lowercase()))
+        };
+        self.variants.iter().find(|v| {
+            allows(colors, v.color.as_deref())
+                && allows(sizes, v.size.as_deref())
+                && allows(availability, v.availability.as_deref())
+        })
+    }
+
     /// A comparison attribute as stored, by name.
     pub fn attribute(&self, name: &str) -> Option<&Value> {
         self.additional_property
@@ -198,5 +216,77 @@ mod tests {
         };
         let out = card.product_json(&viewer, &StoreTime::new(chrono_tz::America::New_York));
         assert_eq!(out["keywords"], json!(["packable", "travel"]));
+    }
+
+    fn variant(color: &str, size: &str, stock: i32, availability: &str) -> Variant {
+        Variant {
+            id: format!("var_{color}_{size}"),
+            product_group_id: "prd_tee".into(),
+            sku: format!("{color}-{size}"),
+            name: "Tee".into(),
+            color: Some(color.into()),
+            size: Some(size.into()),
+            image: Some(format!("/media/products/prd_tee--{color}.webp")),
+            sale_type: "always".into(),
+            is_managed: true,
+            offer_id: Some(format!("off_{color}_{size}")),
+            price: None,
+            price_currency: None,
+            availability: Some(availability.into()),
+            inventory_level: Some(stock),
+            safety_stock: None,
+            cost_value: None,
+            cost_currency: None,
+        }
+    }
+
+    #[test]
+    fn filters_pick_the_first_variant_they_match() {
+        let at: DateTime<Utc> = "2026-11-06T16:00:00Z".parse().unwrap();
+        let card = ProductCard::new(
+            Group {
+                id: "prd_tee".into(),
+                name: "Tee".into(),
+                description: None,
+                brand_id: None,
+                approval_status: "active".into(),
+                varies_by: vec!["color".into(), "size".into()],
+                material: None,
+                keywords: Vec::new(),
+                additional_property: json!([]),
+                image: Some("/media/products/prd_tee.webp".into()),
+                has_merchant_return_policy_id: None,
+                release_date: None,
+                version: 1,
+                updated_at: at,
+            },
+            vec![
+                variant("White", "S", 0, "out_of_stock"),
+                variant("White", "M", 3, "in_stock"),
+                variant("Rust", "M", 0, "out_of_stock"),
+                variant("Rust", "L", 9, "in_stock"),
+            ],
+            &[],
+        );
+        let words = |list: &[&str]| list.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>();
+        let in_stock = words(&["in_stock"]);
+        let found = |colors: &[&str], sizes: &[&str], availability: &[String]| {
+            card.first_variant_in(&words(colors), &words(sizes), availability)
+                .map(|v| v.id.clone())
+        };
+        // The color with more stock leads the product, but the color asked for wins.
+        assert_eq!(card.lead_color(), Some("Rust"));
+        assert_eq!(
+            found(&["white"], &[], &in_stock).as_deref(),
+            Some("var_White_M")
+        );
+        // Several colors: the best-stocked one of them.
+        assert_eq!(
+            found(&["white", "rust"], &[], &in_stock).as_deref(),
+            Some("var_Rust_L")
+        );
+        // One variant has to match everything, as it does in the query.
+        assert_eq!(found(&["rust"], &["m"], &in_stock), None);
+        assert_eq!(found(&["rust"], &["m"], &[]).as_deref(), Some("var_Rust_M"));
     }
 }

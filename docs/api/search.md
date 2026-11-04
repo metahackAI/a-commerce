@@ -78,6 +78,7 @@
   - `member_price`: 부르는 사람(운영자는 `valid_for_member_tier`·`as_of`)에게 그 시각 적용되는 회원·기간 한정 판매가(`UnitPriceSpecification`, `price_type: sale_price`). 없으면 `null`. `price`는 언제나 정가입니다.
   - `cost`: 운영자 주체에게만 있는 필드. 쇼퍼·외부 에이전트 응답에는 키 자체가 없습니다(`pricing.cost_visibility`).
   - `inventory_level`(상품)은 변형 재고의 합, `availability`(상품)는 변형에서 파생(하나라도 `in_stock`이면 `in_stock`).
+  - `image`: 상품의 대표 사진. **`color`를 입력으로 줬을 때만** 필터에 맞는 첫 변형(재고 많은 색부터, `size`·`availability`도 맞아야 함)의 사진이 되고, 항목에 그 색 이름 `color`가 함께 붙습니다. 흰색으로 찾았는데 대표 색인 빨간 사진이 나오지 않게 하는 규칙입니다. `color`를 주지 않으면 `color` 키는 없고 응답은 그대로입니다.
 - 프리뷰: 해당 없음(읽기)
 - 정책: [search.yml](../../policies/search.yml) `query.tenant_isolation`, `query.member_tier_filter_at_query_time`, `query.expansion_fallback_keeps_ranking`, `query.shopper_default_availability`, `ranking.signals`; 원가 노출은 [catalog.yml](../../policies/catalog.yml) `pricing.cost_visibility`
 - 에러: `invalid_input`(필터 값·범위가 틀림, `detail.field`) → `get_facets` · `tier_not_found` → `list_tiers` · `not_found`(`detail.entity: category`) → `list_categories` · `forbidden`(쇼퍼가 운영자 전용 필드를 보냄) → null · `index_unavailable`(검색 색인 장애) → `get_index_status`
