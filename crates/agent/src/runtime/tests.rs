@@ -2515,6 +2515,48 @@ async fn a_reply_that_keeps_repeating_the_request_keeps_what_it_says_besides() {
 }
 
 #[tokio::test]
+async fn a_reply_that_stays_a_dump_of_the_results_gives_way_to_the_plain_reply() {
+    let run = |first: &'static str, second: &'static str| async move {
+        let glimmer = Scripted::new(
+            "glimmer",
+            "Muse Glimmer 30B",
+            vec![
+                (
+                    "plan",
+                    json!({"interpretation": [], "about": "self", "reply_plan": "text", "steps": [
+                    {"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
+                    .to_string(),
+                ),
+                ("reply", first.to_owned()),
+                ("reply", second.to_owned()),
+            ],
+        );
+        let rt = runtime(
+            std::slice::from_ref(&glimmer),
+            Arc::new(MemoryLog::default()),
+        );
+        let events = turn(
+            &rt,
+            principal("adm_sj", Surface::Bo),
+            ChatSurface::Bo,
+            say("Which tier has the most members this week?"),
+            Commerce::new(),
+        )
+        .await;
+        message(&events)
+    };
+    let dump = "list_tiers ... member_count 1284 ...";
+    let reply = run(dump, dump).await;
+    assert!(
+        !reply.contains("list_tiers") && !reply.contains("not answering"),
+        "{reply}"
+    );
+    // One name left is a slip in an answer, and the answer is still worth more than no answer.
+    let slip = "VIP has the most members, per list_tiers.";
+    assert_eq!(run(slip, slip).await, slip);
+}
+
+#[tokio::test]
 async fn replies_stream_only_where_the_background_check_saw_streaming_work() {
     let plan = || {
         json!({"interpretation": [{"aspect": "who", "text": "VIP members"}], "about": "self",
@@ -2871,6 +2913,52 @@ async fn a_turn_for_a_task_drafts_its_change_set_for_that_task() {
     );
 }
 
+#[tokio::test]
+async fn a_task_whose_plan_only_read_plans_again_for_the_write() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            (
+                "route",
+                json!({"agent": "promotion", "confidence": 0.93}).to_string(),
+            ),
+            (
+                "plan",
+                json!({"interpretation": [], "about": "self", "reply_plan": "text", "steps": [
+                {"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
+                .to_string(),
+            ),
+            ("plan", b1_plan()),
+            ("reply", "I drafted change set #1042.".into()),
+        ],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let commerce = Commerce::new();
+    let request = TurnRequest {
+        task_id: Some("task_vip_weekend".into()),
+        ..say(B1)
+    };
+    turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        request,
+        commerce.clone(),
+    )
+    .await;
+    assert!(
+        commerce
+            .calls()
+            .contains(&"create_change_set VIP weekend for task_vip_weekend".to_owned()),
+        "{:?}",
+        commerce.calls()
+    );
+}
+
 #[test]
 fn a_task_id_must_look_like_one() {
     for bad in ["cs_1042", "task_", "task_A1", "task_1; drop"] {
@@ -2935,4 +3023,38 @@ fn a_larger_result_loses_its_biggest_list_first() {
     let tight = compact(&search, 10);
     assert_eq!(tight["items"].as_array().map(Vec::len), Some(2));
     assert_eq!(tight["items"][1], json!("… 19 more"));
+}
+
+#[test]
+fn a_title_from_a_request_reads_as_a_title() {
+    // The ids a bot lists for the agent stay out, the operator's words stay in.
+    assert_eq!(
+        title_from_request(
+            "Hide the reported post 'Buy cheap jackets here' on the Style talk board: it is spam. (post_8811)"
+        ),
+        "Hide the reported post 'Buy cheap jackets here' on the Style talk board"
+    );
+    assert_eq!(
+        title_from_request("Draft a reorder of the Light rain parka (prd_rain_parka, sku_12) soon"),
+        "Draft a reorder of the Light rain parka soon"
+    );
+    assert_eq!(
+        title_from_request("Publish col_cozy_knits (the winter one) today"),
+        "Publish col_cozy_knits (the winter one) today"
+    );
+    assert_eq!(
+        title_from_request("Mark down the 19.99 tee"),
+        "Mark down the 19.99 tee"
+    );
+    // Too long for a card: it ends on a whole word.
+    let long = title_from_request(
+        "Answer the question about the Packable windbreaker's hood from the product's details and tell them",
+    );
+    assert_eq!(
+        long,
+        "Answer the question about the Packable windbreaker's hood from the product's…"
+    );
+    assert!(long.chars().count() <= 80);
+    let wide = title_from_request(&"가나다라 ".repeat(40));
+    assert!(wide.ends_with('…') && wide.chars().count() <= 80, "{wide}");
 }

@@ -14,7 +14,7 @@ import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
 
 import {useAi} from '@/ai/AiProvider';
 import {PersonButton} from '@/components/PersonButton';
-import {dateTime, value, words} from '@/app/bo/_lib/format';
+import {dateTime, value, withoutIds, words} from '@/app/bo/_lib/format';
 import {entityHref, withParams} from '@/app/bo/_lib/links';
 import type {ChangeSet, Task} from '@/app/bo/_lib/types';
 
@@ -120,7 +120,7 @@ export function TaskView({task, changeSet}: {task: Task; changeSet: ChangeSet | 
       {task.request ? (
         <PageSection title="What the agent was asked">
           <TargetBlock target={{kind: 'task_request', label: task.request, ids, term: 'acom:Task'}}>
-            <Blockquote>{task.request}</Blockquote>
+            <Blockquote>{withoutIds(task.request)}</Blockquote>
           </TargetBlock>
         </PageSection>
       ) : null}

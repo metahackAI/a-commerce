@@ -231,6 +231,54 @@ pub fn system_words(reply: &str, request: &str, names: &BTreeSet<String>) -> Vec
     found
 }
 
+/// `text` without the lists of ids in parentheses it carries for the agent: "the parka (prd_rain,
+/// sku_12)" reads "the parka". Other parentheses stay.
+pub fn without_id_lists(text: &str) -> String {
+    let is_id = |w: &str| {
+        let w = w.trim();
+        w.contains('_')
+            && w.chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+    };
+    let mut plain = String::new();
+    let mut rest = text;
+    while let Some(open) = rest.find('(') {
+        let Some(close) = rest[open..].find(')') else {
+            break;
+        };
+        let inside = &rest[open + 1..open + close];
+        if inside.split(',').all(is_id) {
+            plain.push_str(rest[..open].trim_end());
+        } else {
+            plain.push_str(&rest[..=open + close]);
+        }
+        rest = &rest[open + close + 1..];
+    }
+    plain.push_str(rest);
+    plain.trim().to_owned()
+}
+
+/// Whether the reply is nothing but a text from the results, word for word.
+pub fn only_quotes(reply: &str, sources: &[&Value]) -> bool {
+    fn holds(v: &Value, wanted: &str) -> bool {
+        match v {
+            Value::String(s) => flat_lower(s) == wanted,
+            Value::Array(a) => a.iter().any(|x| holds(x, wanted)),
+            Value::Object(m) => m.values().any(|x| holds(x, wanted)),
+            _ => false,
+        }
+    }
+    let wanted = flat_lower(&without_id_lists(reply));
+    wanted.chars().count() >= 20 && sources.iter().any(|s| holds(s, &wanted))
+}
+
+fn flat_lower(s: &str) -> String {
+    s.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
+}
+
 /// The `text` of a structured reply that stopped before its closing brace, as a length limit
 /// leaves it: `{"text":"Two are low. The third is` gives `Two are low. The third is`. `None` when
 /// the answer does not start as that object.
@@ -524,6 +572,41 @@ mod tests {
         );
         let said = "since Monday, 3 orders";
         assert_eq!(fix_weekdays(said, today), said);
+    }
+
+    #[test]
+    fn a_reply_that_only_copies_a_text_from_the_results_is_seen() {
+        let question = json!({"items": [{"text": "Does the hood roll into the collar?"}]});
+        let post = json!({"headline": "My fall outfit board and more"});
+        let sources = [&question, &post];
+        assert!(only_quotes("Does the hood roll into the collar?", &sources));
+        assert!(only_quotes(
+            "does the hood roll  into the collar? (prd_windbreaker, qst_313)",
+            &sources
+        ));
+        assert!(only_quotes("My fall outfit board and more", &sources));
+        // Saying what was done with it is an answer, and a short word proves nothing.
+        assert!(!only_quotes(
+            "I drafted an answer to: Does the hood roll into the collar?",
+            &sources
+        ));
+        assert!(!only_quotes("hood", &[&json!({"text": "hood"})]));
+    }
+
+    #[test]
+    fn id_lists_leave_and_other_parentheses_stay() {
+        assert_eq!(
+            without_id_lists("The parka (prd_rain, sku_12)."),
+            "The parka."
+        );
+        assert_eq!(
+            without_id_lists("Publish col_knits (the winter one)"),
+            "Publish col_knits (the winter one)"
+        );
+        assert_eq!(
+            without_id_lists("Mark down (see the note"),
+            "Mark down (see the note"
+        );
     }
 
     #[test]

@@ -166,3 +166,8 @@ export function address(a: unknown): string {
     .filter(Boolean)
     .join(', ');
 }
+
+/** A request as a person reads it: without the ids listed at its end for the agent. */
+export function withoutIds(request: string): string {
+  return request.replace(/\s*\([a-z]+_[a-z0-9_]+(?:,\s*[a-z]+_[a-z0-9_]+)*\)\s*$/, '');
+}

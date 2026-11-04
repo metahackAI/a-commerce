@@ -59,6 +59,24 @@ fn without_echo(text: String, prompt: &str) -> Option<String> {
 const REPLY_MAX_CHARS: usize = 600;
 
 /// The reply's shape: two or three sentences in one field.
+/// A change set's title when the plan gave none: the request's first sentence, without the ids
+/// listed in parentheses for the agent, ending on a whole word.
+fn title_from_request(text: &str) -> String {
+    const MAX: usize = 80;
+    let plain = checker::without_id_lists(text);
+    let plain = plain.trim();
+    let first = plain
+        .find(['.', ':', '?', '!'])
+        .filter(|&i| plain[i + 1..].is_empty() || plain[i + 1..].starts_with(' '))
+        .map_or(plain, |i| &plain[..i]);
+    if first.chars().count() <= MAX {
+        return first.to_owned();
+    }
+    let cut: String = first.chars().take(MAX - 1).collect();
+    let whole = cut.rfind(' ').map_or(cut.as_str(), |i| &cut[..i]);
+    format!("{}…", whole.trim_end_matches([',', ';']))
+}
+
 fn reply_schema() -> Value {
     json!({"type": "object", "additionalProperties": false, "required": ["text"],
            "properties": {"text": {"type": "string", "maxLength": REPLY_MAX_CHARS,
@@ -120,6 +138,14 @@ const MODEL_DOWN: &str = "The assistant's model is not answering right now, so I
 /// What the reply model is told when its reply was cut at the length limit.
 const CUT_REPLY: &str = "That was cut off at the length limit. Write it again in two or three \
 short sentences; the blocks on screen show the details.";
+
+/// What the planner is told when a task's plan only read.
+const TASK_ONLY_READ: &str = "That plan only read. This task asks for a change: with what the \
+reads found, plan the write that makes it. A person still approves it.";
+
+/// How many tool and field names, still there after asking again, make a reply a dump of the
+/// results rather than an answer that slipped on one word.
+const DUMPED_NAMES: usize = 2;
 
 /// What the reply model is told when its reply named tools or result fields.
 const SYSTEM_WORDS: &str = "That names tools or result fields the person never sees";
@@ -1932,9 +1958,22 @@ impl<'r> Turn<'r> {
     // ---- 4. run --------------------------------------------------------------------------
 
     async fn execute_with_revisions(&mut self, mut plan: Plan) {
+        let mut asked_to_write = false;
         loop {
             self.plan = Some(plan.clone());
             match self.execute(&plan).await {
+                // A picked-up task asks for a change, and a plan that stopped at reading leaves it
+                // undone: once, plan again with what the reads found.
+                Flow::Done if !asked_to_write && self.task_stopped_at_reading() => {
+                    asked_to_write = true;
+                    match self.revise(TASK_ONLY_READ.into()).await {
+                        Ok(p) => plan = p,
+                        Err(Stop(why)) => {
+                            self.note_problem(why);
+                            return;
+                        }
+                    }
+                }
                 Flow::Done => return,
                 Flow::Stop(why) => {
                     self.note_problem(why);
@@ -1962,6 +2001,17 @@ impl<'r> Turn<'r> {
                 }
             }
         }
+    }
+
+    /// A task's turn that read and drafted nothing, where the reads did not already say there is
+    /// nothing to do.
+    fn task_stopped_at_reading(&self) -> bool {
+        self.request.task_id.is_some()
+            && self.draft.is_none()
+            && self.view.is_none()
+            && self.skipped.is_empty()
+            && !self.history.is_empty()
+            && self.history.iter().all(|r| r.kind == ToolKind::Read)
     }
 
     fn repair_env(&self) -> RepairEnv {
@@ -2582,7 +2632,7 @@ impl<'r> Turn<'r> {
             .title
             .clone()
             .filter(|t| !t.trim().is_empty())
-            .unwrap_or_else(|| self.text.chars().take(80).collect());
+            .unwrap_or_else(|| title_from_request(&self.text));
         let new = NewChangeSet {
             title,
             request_text: vec![self.text.clone()],
@@ -4084,6 +4134,13 @@ impl<'r> Turn<'r> {
             parts.push(format!("{} is saved.", r.tool));
         }
         parts.dedup();
+        // A task's turn that drafted nothing: this line is all the task's card shows, without the
+        // results it points at.
+        if self.request.task_id.is_some() && self.view.is_none() {
+            for part in parts.iter_mut().filter(|p| *p == "Here is what I found.") {
+                *part = "I read the records but need a person to decide how to go on.".into();
+            }
+        }
         parts.extend(self.problems.iter().cloned());
         if parts.is_empty() {
             let read = self.history.iter().any(|r| r.kind == ToolKind::Read);
@@ -4263,6 +4320,10 @@ impl<'r> Turn<'r> {
             {
                 text = t;
             }
+            // Asked again and still the results' fields: a dump of them, not an answer.
+            if checker::system_words(&text, &self.text, &names).len() >= DUMPED_NAMES {
+                return fallback;
+            }
         }
         // Owned copies: the retry below calls the model, which needs `self` mutably.
         let mut owned: Vec<Value> = self
@@ -4278,6 +4339,11 @@ impl<'r> Turn<'r> {
         );
         owned.push(facts);
         let sources: Vec<&Value> = owned.iter().collect();
+        // Someone's words from the results (a shopper's question, a post) say nothing of what was
+        // done with them.
+        if checker::only_quotes(&text, &sources) {
+            return fallback;
+        }
         let asked = self.text.clone();
         let mut unsupported = checker::unsupported_numbers(&text, &sources, &[&asked]);
         // One more try, naming the numbers no result holds (a sum the model did itself, a

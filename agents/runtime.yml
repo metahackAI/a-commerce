@@ -55,6 +55,8 @@ tool_search:
     seller: [seller, partner]
     marketplace: [seller, channel]
     reported: [report, post, community]
+    # Hiding a post is delete_post with action: blind, a word people don't say.
+    hide: [delete, blind, post]
     low: [inventory, stock]
 
 router:

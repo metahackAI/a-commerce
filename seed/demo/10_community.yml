@@ -17,11 +17,13 @@
 # - Elena's question about a gift note is secret: only she and the store see it.
 #
 # The operator role also gets the community tools, so the store's operators (Mina, and the
-# administrator) can moderate; SJ's roles (merchandiser, catalog admin) do not include them.
+# administrator) can moderate. So does the merchandiser: SJ is who the bot and picked-up tasks act
+# as, and a bot that notices a reported post has to be able to draft hiding it.
 tables:
   platform.role_scope:
     - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:read:community"}
     - {tenant_id: store_northwind, role_id: rol_operator, scope: "tools:write:community"}
+    - {tenant_id: store_northwind, role_id: rol_merchandiser, scope: "tools:write:community"}
   community.board:
     - {tenant_id: store_northwind, id: brd_reviews, name: Product reviews, board_type: review, write_permission: member, allow_secret: false, allow_attachment: true, moderation_mode: post_review}
     - {tenant_id: store_northwind, id: brd_style, name: Style talk, board_type: free, write_permission: member, allow_secret: false, allow_attachment: true, moderation_mode: post_review}

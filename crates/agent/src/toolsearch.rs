@@ -750,6 +750,14 @@ mod tests {
         assert!(q.iter().any(|w| w == "overcoat"));
         let q = expanded("What if I just wear a sweater?", &p.runtime.tool_search);
         assert!(q.iter().any(|w| w == "measurement"), "chains: {q:?}");
+        let q = expanded(
+            "Hide the reported post on the board",
+            &p.runtime.tool_search,
+        );
+        assert!(
+            q.iter().any(|w| w == "delete"),
+            "hiding is delete_post: {q:?}"
+        );
     }
 
     #[test]
