@@ -10,13 +10,13 @@ const LONGEST_TEXT = 420;
 /** Text in one piece runs one after another, but never later than this, in ms. */
 const LONGEST_PIECE = 700;
 /** A picture's whole mosaic, and how long to wait for one still loading, in ms. */
-const MOSAIC = 850;
+const MOSAIC = 700;
 const WAIT_FOR_PICTURE = 3000;
 /** Pictures smaller than this (an icon, a small thumbnail) just arrive with their piece. */
 const SMALLEST = 56;
 /** Cells across a picture, and how many finer cells each divides into on its way to clear. */
-const CELLS = 12;
-const FINER = 3;
+const CELLS = 20;
+const FINER = 2;
 
 interface Filling {
   node: Text;
@@ -86,7 +86,8 @@ function mosaicLayer(img: HTMLImageElement, cols: number, rows: number, width: n
 
 /**
  * Covers a picture with a canvas that resolves it, starting `delay` ms from now: from the top left
- * down, each cell goes from nothing to a coarse flickering mosaic, to a fine one, to the picture.
+ * down, each small cell goes from nothing through a brief coarse and fine mosaic, then fades into the
+ * picture. Most of a cell's time is the fade, so it reads as the picture forming, not as pixels.
  */
 export function mosaicIn(img: HTMLImageElement, delay: number): void {
   const parent = img.parentElement;
@@ -140,16 +141,17 @@ export function mosaicIn(img: HTMLImageElement, delay: number): void {
           if (t < 0) {
             ctx.fillStyle = blank;
             ctx.fillRect(x, y, cw, ch);
-          } else if (t < 0.45) {
-            // Each cell takes a neighbour's color for a moment: the mosaic visibly shifts.
-            const jitter = () => (t < 0.25 ? Math.floor(Math.random() * 3) - 1 : 0);
-            const sc = Math.max(0, Math.min(cols - 1, c + jitter()));
-            const sr = Math.max(0, Math.min(rows - 1, r + jitter()));
-            ctx.drawImage(coarse, sc, sr, 1, 1, x, y, cw, ch);
-          } else if (t < 0.8) {
+          } else if (t < 0.15) {
+            ctx.drawImage(coarse, c, r, 1, 1, x, y, cw, ch);
+          } else if (t < 0.35) {
             ctx.drawImage(fine, c * FINER, r * FINER, FINER, FINER, x, y, cw, ch);
           } else {
             ctx.clearRect(x, y, cw, ch);
+            if (t < 1) {
+              ctx.globalAlpha = 1 - (t - 0.35) / 0.65;
+              ctx.drawImage(fine, c * FINER, r * FINER, FINER, FINER, x, y, cw, ch);
+              ctx.globalAlpha = 1;
+            }
           }
         }
       }
