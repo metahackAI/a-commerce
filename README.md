@@ -14,6 +14,7 @@
 
 | | |
 |---|---|
+| Demo video | <https://youtu.be/KhHaOeO0g3s> (3 min) |
 | Storefront | <https://a-commerce.ailism.team> (sign in as Jamie (VIP), Alex (member), or continue as a guest) |
 | Back office | <https://a-commerce.ailism.team/bo> (`admin` / `admin123`, or the scenario's operator Son SeongJun) |
 | Store clock | Stands at **Fri Nov 6 2026, 11:00 New York**, so every scene below gives the same numbers. An admin moves it with *Move time* at the foot of the back office's menu (jobs that come due run on the way), and *Start the demo over* loads the store again. The live demo is shared, so someone else's approval, *Move time* or *Start the demo over* can change the numbers. |

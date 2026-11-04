@@ -2,14 +2,14 @@
 
 // A block the agent is putting on the canvas comes together piece by piece instead of all at once:
 // its card first, then its title, rows, pictures and buttons in reading order, quickly, with text
-// filling in and pictures forming from a mosaic (assembleEffects). It works on
+// filling in and pictures sliding into view (assembleEffects). It works on
 // the block's elements rather than knowing each block: the AI targets mark what the pieces are, so
 // every block, and any block added later, assembles the same way. Only what arrives while a turn
 // runs assembles; a turn a person flips back to just shows.
 
 import {useEffect, useLayoutEffect, useRef, type ReactNode, type RefObject} from 'react';
 
-import {fillTextIn, mosaicIn} from './assembleEffects';
+import {fillTextIn, revealPicture} from './assembleEffects';
 
 /** Between one piece and the next, in ms; a large block shortens it so it never takes longer than MOST. */
 const STEP = 40;
@@ -29,7 +29,7 @@ function unwrap(el: Element): Element {
 }
 
 function visible(el: Element): el is HTMLElement {
-  // A canvas here is a picture's mosaic cover, not a piece of the block.
+  // A canvas here is a picture's cover, not a piece of the block.
   return el instanceof HTMLElement && !['STYLE', 'SCRIPT', 'CANVAS'].includes(el.tagName) && el.getClientRects().length > 0;
 }
 
@@ -76,7 +76,7 @@ export function Assembling({isLive, nextStart, children}: {isLive: boolean; next
         p.style.setProperty('--acom-part-delay', `${delay}ms`);
         fillTextIn(p, delay);
         const pictures = p instanceof HTMLImageElement ? [p] : Array.from(p.querySelectorAll('img'));
-        pictures.forEach(img => mosaicIn(img, delay));
+        pictures.forEach(img => revealPicture(img, delay));
       });
       // Blocks sent together follow each other, each starting as the one before is finishing.
       nextStart.current = now + start + (fresh.length * step + PIECE) * 0.6;
