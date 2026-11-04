@@ -1,12 +1,15 @@
 'use client';
 
 // A block the agent is putting on the canvas comes together piece by piece instead of all at once:
-// its card first, then its title, rows, pictures and buttons in reading order, quickly. It works on
+// its card first, then its title, rows, pictures and buttons in reading order, quickly, with text
+// filling in and pictures forming from a mosaic (assembleEffects). It works on
 // the block's elements rather than knowing each block: the AI targets mark what the pieces are, so
 // every block, and any block added later, assembles the same way. Only what arrives while a turn
 // runs assembles; a turn a person flips back to just shows.
 
 import {useEffect, useLayoutEffect, useRef, type ReactNode, type RefObject} from 'react';
+
+import {fillTextIn, mosaicIn} from './assembleEffects';
 
 /** Between one piece and the next, in ms; a large block shortens it so it never takes longer than MOST. */
 const STEP = 40;
@@ -26,7 +29,8 @@ function unwrap(el: Element): Element {
 }
 
 function visible(el: Element): el is HTMLElement {
-  return el instanceof HTMLElement && el.tagName !== 'STYLE' && el.tagName !== 'SCRIPT' && el.getClientRects().length > 0;
+  // A canvas here is a picture's mosaic cover, not a piece of the block.
+  return el instanceof HTMLElement && !['STYLE', 'SCRIPT', 'CANVAS'].includes(el.tagName) && el.getClientRects().length > 0;
 }
 
 /** The pieces under `el`, in reading order. */
@@ -68,7 +72,11 @@ export function Assembling({isLive, nextStart, children}: {isLive: boolean; next
       fresh.forEach((p, i) => {
         p.setAttribute('data-acom-assembled', '');
         p.setAttribute('data-acom-part', '');
-        p.style.setProperty('--acom-part-delay', `${Math.round(start + i * step)}ms`);
+        const delay = Math.round(start + i * step);
+        p.style.setProperty('--acom-part-delay', `${delay}ms`);
+        fillTextIn(p, delay);
+        const pictures = p instanceof HTMLImageElement ? [p] : Array.from(p.querySelectorAll('img'));
+        pictures.forEach(img => mosaicIn(img, delay));
       });
       // Blocks sent together follow each other, each starting as the one before is finishing.
       nextStart.current = now + start + (fresh.length * step + PIECE) * 0.6;
