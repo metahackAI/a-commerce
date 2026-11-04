@@ -16,7 +16,7 @@ import {type Loaded, loadInBrowser} from '@/app/(storefront)/_lib/loaded';
 import type {DeliveryDate, Measurements, Product, ProductQuestion, Profile, ReturnPolicy, Review, ReviewSummary} from '@/app/(storefront)/_lib/types';
 import type {Page} from '@/lib/api';
 
-import {AskButton, Intents} from './Ask';
+import {Intents} from './Ask';
 import {OpenInNewTab} from './CanvasPages';
 import {ErrorNotice} from './ErrorNotice';
 import {ProductSections, type ProductReads} from './ProductSections';
@@ -82,10 +82,7 @@ function ProductParts({reads, color, blockId}: {reads: Reads & {product: {ok: tr
               <Text type="label" weight="semibold">
                 Ask about this product
               </Text>
-              <HStack gap={1} vAlign="center">
-                <AskButton target={target} label={p.name} />
-                <OpenInNewTab href={`/p/${encodeURIComponent(p.id)}`} />
-              </HStack>
+              <OpenInNewTab href={`/p/${encodeURIComponent(p.id)}`} />
             </HStack>
             <Intents says={NEXT_QUESTIONS} about={target.context} />
           </VStack>
