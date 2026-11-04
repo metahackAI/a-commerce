@@ -87,8 +87,8 @@ export interface TaskTableProps {
   intentsFor?: IntentsLookup;
 }
 
-/** The buttons' column, as wide in every group so the columns line up from one to the next. */
-const ACTIONS = {width: 190, minWidth: 190, maxWidth: 'none'} as const;
+/** The buttons' width, the same in every group so the columns line up from one card to the next. */
+const ACTIONS_WIDTH = 170;
 
 /** Below this width the inbox stacks each task in one column: a phone has no room for three. */
 const NARROW = '(max-width: 640px)';
@@ -194,9 +194,11 @@ function TaskRow({
         </TableCell>
       ) : (
         <>
-          <TableCell style={{width: '44%'}}>{what}</TableCell>
-          <TableCell>{where}</TableCell>
-          <TableCell style={ACTIONS}>{actions}</TableCell>
+          <TableCell style={{width: '50%'}}>{what}</TableCell>
+          <TableCell style={{width: '50%'}}>{where}</TableCell>
+          <TableCell style={{width: '1%', maxWidth: 'none'}}>
+            <div style={{width: ACTIONS_WIDTH}}>{actions}</div>
+          </TableCell>
         </>
       )}
     </TargetRow>

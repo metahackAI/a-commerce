@@ -101,7 +101,7 @@ export function TargetRow({target, intents, children}: {target: AiTarget; intent
     <TableRow ref={t.ref} {...t.props} {...reveal.container}>
       {children}
       {/* Its content sets its width (Astryx cells otherwise give up theirs to the table). */}
-      <TableCell style={{maxWidth: 'none'}}>
+      <TableCell style={{width: '1%', maxWidth: 'none'}}>
         <HStack gap={1} vAlign="center" hAlign="end">
           <SuggestedIntents intents={intents} target={t} />
           <StackItem {...reveal.ask}>
