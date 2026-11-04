@@ -1,5 +1,7 @@
 # Serving Muse Glimmer
 
+[README](../README.md) › [docs](README.md)
+
 The worker model, Muse Glimmer 30B, runs on one GPU that we host ourselves; every agent call on the live demo goes to it. This page covers what runs and why each setting is there, how fast it is, and a crash on the RTX 5090 that we traced and fixed. It also gives the scripts to measure all of it again.
 
 ## 1. What runs

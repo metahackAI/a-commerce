@@ -1,5 +1,7 @@
 # Front-end UI library
 
+[README](../README.md) › [docs](README.md) › [front end](frontend/README.md)
+
 Status: decided Oct 30, 2026. The back office (`/bo`) and the storefront (`/`) of Ailism Commerce are built on **[Meta Astryx](https://github.com/meta/astryx)**, Meta's open-source React design system (MIT).
 
 Links: [GitHub](https://github.com/meta/astryx) · [Docs](https://astryx.atmeta.com) · [Storybook](https://astryx.atmeta.com/storybook/) · [Sandbox](https://astryx.atmeta.com/sandbox/) · [npm `@astryxdesign/core`](https://www.npmjs.com/package/@astryxdesign/core)

@@ -1,5 +1,7 @@
 # Layout options
 
+[README](../../README.md) › [design](../README.md)
+
 Five layouts for the operator app, all showing the same request: *"Run a 20% weekend sale on summer outerwear for VIP members and put it on the main page."* Same data as [the mockups](../mockups) (40 of 42 products, overshirt at 15%, 1,284 VIP members, Nov 7–8).
 
 ![Overview](overview.png)

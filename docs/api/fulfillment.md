@@ -1,5 +1,7 @@
 # API 명세 — `fulfillment` (클레임[반품·취소·교환]·검수·환불·배송·배송비)
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 > 계층: `fulfillment.{resource}.{operation}`. 공통 규약(응답 형식·프리뷰/실행·멱등·헤더)은 [conventions.md](conventions.md)와 [README.md](README.md) §3, 상태·사유 값은 [enums.md](enums.md), 에러 분류는 [errors.md](errors.md), 데이터 타입은 [data-model.md](data-model.md), 정책은 [fulfillment.yml](../../policies/fulfillment.yml) · [approval.yml](../../policies/approval.yml). 예시 값은 데모 시나리오([../scenarios.md](../scenarios.md) B2·F5)와 같습니다.
 > **설계 축**: ① 반품 요청(`claim_type: return`인 클레임, schema.org `ReturnAction`)은 운영 에이전트가 **정책 근거와 함께 묶어 검토**하고, 환불·고객 메시지는 한 변경셋으로 사람이 승인, ② 반품·취소·교환 요청을 **보내는 것은 쇼퍼 본인**(사람 전용 엔드포인트, 툴 아님), ③ 환불은 원결제수단으로, 상태는 결제 이벤트로 확정(조용한 실패 없음), ④ 검수 결과가 클레임 상태·비용·재고 복원을 구동, ⑤ 귀책 → 비용 규칙은 정책 데이터, ⑥ 상태 변화는 이벤트 테이블에 append.
 >

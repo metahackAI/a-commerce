@@ -1,5 +1,7 @@
 # 채팅 스트림과 UI 블록
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 사람과 에이전트 사이의 계약입니다. 웹(Next.js)은 이 문서만 보고 대화 화면을 만들 수 있어야 하고, 에이전트 런타임([../backend/agent.md](../backend/agent.md))은 이 형식만 내보냅니다.
 
 ---

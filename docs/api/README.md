@@ -1,5 +1,7 @@
 # A-Commerce API 명세
 
+[README](../../README.md) › [docs](../README.md)
+
 A-Commerce의 전체 API(에이전트가 호출하는 툴, 사람 전용 엔드포인트, 에이전트 런타임 전용 엔드포인트)를 계층 구조로 정리한 명세입니다. 설계 배경은 [../architecture.md](../architecture.md), 구현(Rust 워크스페이스, 서비스, 변경셋·정책 엔진)은 [../backend/](../backend/README.md)에 있습니다.
 
 | 문서 | 내용 |

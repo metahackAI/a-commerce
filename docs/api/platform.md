@@ -1,5 +1,7 @@
 # API 명세 — `platform` (정책·변경셋·할 일·액션 로그·의미 enum·인증·스토어·권한)
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 > 계층: `platform.{resource}.{operation}`. 공통 규약(응답 형식·프리뷰/실행·멱등·헤더)은 [conventions.md](conventions.md)와 [README.md](README.md) §3, 에러는 [errors.md](errors.md), 값 목록은 [enums.md](enums.md), 데이터 타입은 [data-model.md](data-model.md), 정책 데이터는 [policies/](../../policies/README.md). 변경셋 엔진과 정책 엔진의 구현은 [../backend/commerce.md](../backend/commerce.md) §3–§4, 주체와 스코프는 [../backend/gateway.md](../backend/gateway.md), 채팅 이벤트와 블록은 [chat.md](chat.md). 데모 값은 [../scenarios.md](../scenarios.md).
 >
 > **설계 축**: ① 사람의 로그인·세션은 게이트웨이가 하고, 서비스는 게이트웨이가 서명한 내부 토큰만 받습니다. 스토어(테넌트)는 토큰의 `tenant` 클레임 하나로 정해집니다. ② enum은 숫자·문자 코드 대신 의미 있는 단어로 주고, 각 값의 뜻과 허용 전이를 함께 노출(목록의 출처는 enums.md). ③ 정책은 데이터로, 값마다 사람이 읽는 표기와 함께. ④ 쓰기 프리뷰는 변경셋으로 묶이고, 승인·거절·되돌리기는 사람만 누르는 엔드포인트. ⑤ 운영자 홈의 할 일은 감시 작업(watcher)과 대화에서 생기고, 무시는 사람만. ⑥ 모든 툴 호출·프리뷰·승인·실행은 schema.org `Action`으로 액션 로그에 남음.

@@ -1,5 +1,7 @@
 # API 명세 — `catalog` (상품·변형·가격·재고·브랜드·리뷰·문의)
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 > 계층: `catalog.{resource}.{operation}`. 공통 형식(읽기 봉투, 쓰기의 프리뷰 → `preview_id` 실행, 시간·금액·id)은 [conventions.md](conventions.md), 에러 코드는 [errors.md](errors.md), 상태 값은 [enums.md](enums.md), 데이터 타입은 [data-model.md](data-model.md), 정책은 [catalog.yml](../../policies/catalog.yml)·[approval.yml](../../policies/approval.yml). 예시 값은 데모 스토어([../scenarios.md](../scenarios.md))입니다.
 >
 > **설계 축**: ① 상품 = `ProductGroup`(`prd_`, 사람이 말하는 상품) → 변형 = `Product`(`var_`, 사이즈·색, SKU 단위). 다른 엔티티는 상품을 `product_id`, 변형을 `variant_id`로 가리킵니다([conventions.md](conventions.md) §9). ② 재고·가격은 변형 단위, 상품의 재고·상태는 변형에서 파생(읽기 전용). ③ 원가와 마진은 운영자에게만 보이고 쇼퍼에게는 보이지 않음(`pricing.cost_visibility`). ④ 설명·이미지 같은 콘텐츠 변경은 승인 없이, 가격·구조·단종은 승인 대상. ⑤ `price_floor`(원가 × 1.15) 아래 판매는 서버가 막음.

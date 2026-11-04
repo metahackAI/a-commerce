@@ -1,5 +1,7 @@
 # API 명세 — `customer` (회원·등급·주소·동의·기억(선호)·위시리스트·임직원·상담·보상·FAQ/공지)
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 > 계층: `customer.{resource}.{operation}`. 공통 규약(응답 형식·에러·프리뷰/실행·멱등·헤더)은 [README.md](README.md) §3, 데이터 타입은 [data-model.md](data-model.md), 정책은 [customer.yml](../../policies/customer.yml) · [approval.yml](../../policies/approval.yml). 식별자·시간·금액·페이지는 [conventions.md](conventions.md), 값 목록은 [enums.md](enums.md), 에러는 [errors.md](errors.md), 데모 스토어의 사람·등급은 [../scenarios.md](../scenarios.md) §2를 따릅니다.
 > **설계 축**: ① 개인정보는 기본 가림, 가림 해제는 사유를 액션 로그에 남김, ② 마케팅 발송은 동의(opt-in) 게이트, ③ 탈퇴·비밀번호는 **회원 본인만**(사람 전용 엔드포인트, 툴 아님). 에이전트는 비밀번호를 받지도 보지도 않고, 탈퇴는 자격 확인(읽기)까지만, ④ **등급은 코드가 아니라 데이터** — 등급 이름·개수·요건·혜택은 스토어가 정의, ⑤ **보이고 고칠 수 있는 기억** — 에이전트가 기억한 선호는 쇼퍼에게 한 줄로 보이고 한 번에 되돌릴 수 있음, ⑥ 보상은 귀책 분류 + 단계별 승인(현금은 지급 승인자 별도), ⑦ 동의·탈퇴·보상·등급 이력은 append만, ⑧ 본인 확인은 교체 가능한 방법(일회용 코드·링크·외부 제공자) 목록.
 

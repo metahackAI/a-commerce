@@ -1,5 +1,7 @@
 # API 명세 — `sales` (장바구니·주문 준비·주문·결제·영수증·구독·할부·선물 주문)
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 > 계층: `sales.{resource}.{operation}`. 공통 규약(응답 형식·에러·프리뷰/실행·멱등·헤더)은 [README.md](README.md) §3과 [conventions.md](conventions.md), 값 목록은 [enums.md](enums.md), 에러는 [errors.md](errors.md), 데이터 타입은 [data-model.md](data-model.md). 정책은 [order.yml](../../policies/order.yml) · [promotion.yml](../../policies/promotion.yml) · [approval.yml](../../policies/approval.yml). 예시의 사람·상품·금액은 데모 스토어([../scenarios.md](../scenarios.md))의 값이고, 장바구니·주문 확인 화면 블록은 [chat.md](chat.md) §3.3의 `cart`, `checkout_card`, `order_detail`입니다.
 > **설계 축**: ① 에이전트는 `prepare_order`·`prepare_subscription`·`prepare_gift_order`로 **준비만** 하고(프리뷰만, `needs_approval: false`), 주문하기는 쇼퍼가 누르는 사람 전용 `POST /v1/sales/orders`(모델은 보지 못함, [README.md](README.md) §2), ② 가격·할인은 서버가 `calculate_benefits`로 다시 계산한 값만 신뢰, ③ 주문·결제 쓰기는 멱등, ④ 주문 상태는 이벤트로 쌓음(덮어쓰기 금지).
 > 금액: 줄 단가·소계·할인·배송비·합계는 `{value, currency}`. 할인 금액은 **양수**(빼는 금액)이고 합계 = 소계 − 할인 합 + 배송비입니다.

@@ -1,5 +1,7 @@
 # 값 목록 (enum의 단일 출처)
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 상태·종류·사유처럼 정해진 단어 목록은 여기 하나에만 정의합니다. 도메인 파일, 정책 YAML, DB 체크 제약, Rust enum이 모두 이 목록을 씁니다. schema.org에 열거 멤버가 있으면 그 이름을 snake_case로 쓰고(오른쪽 열), 없으면 `acom:` 확장입니다.
 
 규칙:

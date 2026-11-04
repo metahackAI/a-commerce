@@ -1,5 +1,7 @@
 # 공통 규약
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 모든 오퍼레이션과 엔드포인트가 따르는 형식입니다. [README.md](README.md) §3은 이 문서의 요약입니다. 구현은 `acom-core`(값 타입)와 `acom-contract`(봉투·에러·스키마)가 강제합니다.
 
 ---

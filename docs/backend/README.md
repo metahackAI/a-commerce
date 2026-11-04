@@ -1,5 +1,7 @@
 # A-Commerce 백엔드 (Rust)
 
+[README](../../README.md) › [docs](../README.md)
+
 A-Commerce의 서버 측은 **전부 Rust**로 만듭니다. 게이트웨이, 커머스 백엔드(툴 레이어·정책 엔진·변경셋·저장소), 에이전트 런타임(하네스), 평가 러너까지 한 Cargo 워크스페이스에 있습니다. 프런트엔드는 Next.js이고 게이트웨이를 거쳐 이 워크스페이스의 REST와 채팅 API를 부릅니다.
 
 이 폴더는 **백엔드 구현 설계**입니다. 무엇을 만드는지(오퍼레이션·입출력·정책)는 [../api/](../api/README.md), 왜 이렇게 만드는지는 [../design.md](../design.md)와 [../architecture.md](../architecture.md), 웹은 [../frontend/](../frontend/README.md)에 있습니다.

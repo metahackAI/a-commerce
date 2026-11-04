@@ -1,5 +1,7 @@
 # 에러
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 모든 에러는 같은 모양이고, **분류(class)** 가 HTTP 상태를 정하며, **코드(code)** 는 에이전트가 분기할 만큼만 구체적입니다.
 
 ```jsonc

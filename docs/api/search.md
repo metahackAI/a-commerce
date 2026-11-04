@@ -1,5 +1,7 @@
 # API 명세 — `search` (검색·비교·자동완성·패싯·사전·색인)
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 > 계층: `search.{resource}.{operation}`. 공통 형식(읽기 봉투, 쓰기의 프리뷰 → `preview_id` 실행, 시간·금액·id)은 [conventions.md](conventions.md), 에러 코드는 [errors.md](errors.md), 상태 값은 [enums.md](enums.md), 데이터 타입은 [data-model.md](data-model.md), 정책은 [search.yml](../../policies/search.yml). 예시 값은 데모 스토어([../scenarios.md](../scenarios.md))입니다.
 >
 > **설계 축**: ① `search_products`는 운영자와 쇼퍼가 함께 쓰는 첫 툴로, 후속 툴의 입력 `product_id[]`를 만듭니다(툴 그래프의 맨 앞, [README.md](README.md) §5). ② Postgres 전문 검색으로 순위를 매기고 사전의 동의어로 질의를 넓힘. 검색 문서가 아직 없으면 카탈로그 글에서 같은 방식으로 찾음. 임베딩 모델(바깥 모델)은 연결하지 않아 벡터는 쓰지 않음(`reindex`의 `embeddings`도 그렇게 답함). ③ 스토어 격리와 등급·재고 필터는 질의 안에서 적용(결과를 받은 뒤 거르지 않음). ④ 동의어·신조어 변경은 재색인 후 반영(재색인은 트랜잭션 하나라 커밋 순간 새 문서로 바뀌어 무중단, [index](#index)).

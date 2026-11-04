@@ -1,5 +1,7 @@
 # Theme
 
+[README](../../../README.md) › [docs](../../../docs/README.md) › [front end](../../../docs/frontend/README.md)
+
 The app uses our **`ailism`** theme (`ailism.ts`): Neutral with the Ailism red as the accent and
 Pretendard as the typeface. After editing it, rebuild with
 `npm run astryx -- theme build src/theme/ailism.ts`; `src/app/providers.tsx` imports the built module

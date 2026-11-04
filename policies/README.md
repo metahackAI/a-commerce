@@ -1,5 +1,7 @@
 # 정책 데이터 (Policy as Data)
 
+[README](../README.md)
+
 > **규칙은 코드가 아니라 데이터입니다.** 할인 상한, 가격 하한, 반품 기간, 승인 임계 같은 비즈니스 규칙을 YAML 파일에 두고, 백엔드(`commerce` 서비스의 `acom-policy`)가 읽어 강제합니다. 프롬프트나 코드 상수에 숨기지 않습니다. 설계 배경은 [../docs/architecture.md](../docs/architecture.md) §6.4, 엔진 동작은 [../docs/backend/commerce.md](../docs/backend/commerce.md) §4, API에서 쓰는 방식은 [../docs/api/README.md](../docs/api/README.md) §6입니다.
 
 ---

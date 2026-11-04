@@ -1,5 +1,7 @@
 # Final runs, Nov 3: the runner's score and a reading of every reply
 
+[README](../../README.md) › [eval](../README.md)
+
 The runner (`cargo xtask eval`) decides "done" from tool calls, change sets and the numbers in a fact ([../README.md](../README.md) §8). Reading the replies of the final runs showed that it fails some right answers and passes some that are not. So every reply was also read and judged by the rules below. This page has both numbers and the reasons.
 
 ## Setup

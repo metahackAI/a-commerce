@@ -1,5 +1,7 @@
 # A-Commerce design
 
+[README](../README.md) › [docs](README.md)
+
 Status: written Oct 27; principles set Oct 31; §4–§9 checked against the code on Oct 31. This document is the brief for everyone building A-Commerce, people and coding agents alike.
 
 ## Principles

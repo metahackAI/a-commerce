@@ -1,5 +1,7 @@
 # API 명세 — `promotion` (프로모션·회원 판매가·쿠폰·혜택 계산·사은품·적립금·이벤트·세그먼트)
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 > 계층: `promotion.{resource}.{operation}`. 공통 규약은 [README.md](README.md) §3과 [conventions.md](conventions.md), 값 목록은 [enums.md](enums.md), 에러는 [errors.md](errors.md), 데이터 타입은 [data-model.md](data-model.md). 정책은 [promotion.yml](../../policies/promotion.yml) · [catalog.yml](../../policies/catalog.yml) · [approval.yml](../../policies/approval.yml). 예시의 등급·상품·금액·시각은 데모 스토어([../scenarios.md](../scenarios.md))의 값이고, 변경셋 화면 블록은 [chat.md](chat.md)의 `change_set`입니다.
 > **핵심**: 할인 로직을 주문에 심지 않는다. `calculate_benefits`(혜택 계산기)가 장바구니·주문 준비·검증의 **단일 기준**이다. 모든 쓰기는 먼저 프리뷰를 반환한다. 회원 등급·기간 한정 퍼센트 할인은 `set_sale_prices`, 그 혜택을 주문에 기록하는 것은 `create_coupon`이다.
 > 비율: 툴 입력의 `percent_off`는 0–100, 정책의 상한은 0–1([conventions.md](conventions.md) §4). 할인 금액은 양수(빼는 금액)로 씁니다.

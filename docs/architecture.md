@@ -1,5 +1,7 @@
 # A-Commerce architecture
 
+[README](../README.md) › [docs](README.md)
+
 This document is the reference for how A-Commerce is built: the services and their trust boundaries, how the API is organized, what makes it friendly to AI agents, how every interface follows [schema.org](https://schema.org), and the AI-native features on top. **The whole server side is written in Rust**: the gateway, the commerce back end, and the agent runtime.
 
 - [1. System at a glance](#1-system-at-a-glance)

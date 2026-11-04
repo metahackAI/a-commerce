@@ -1,5 +1,7 @@
 # infra/k8s — Kubernetes 매니페스트 (Kustomize)
 
+[README](../../README.md) › [infra](../README.md)
+
 A-Commerce의 컨테이너 서비스(gateway, commerce, commerce-worker, agent, web)와 마이그레이션 Job을
 Kubernetes에 올리는 Kustomize 매니페스트입니다. `base`는 환경과 무관한 공통 정의, `components`는
 켜고 끄는 선택 기능, `overlays`는 환경(local, production)별 차이만 담습니다.

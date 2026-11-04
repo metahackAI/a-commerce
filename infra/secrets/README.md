@@ -1,5 +1,7 @@
 # infra/secrets
 
+[README](../../README.md) › [infra](../README.md)
+
 Local secrets for Docker Compose and the local Kubernetes overlay. Files here are git-ignored.
 
 `make keys` (infra/scripts/gen-keys.sh) writes:

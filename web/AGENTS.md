@@ -1,5 +1,7 @@
 # AGENTS
 
+[README](../README.md) › [docs](../docs/README.md) › [front end](../docs/frontend/README.md)
+
 Project-specific guidance for AI coding agents.
 
 <!-- ASTRYX:START -->
