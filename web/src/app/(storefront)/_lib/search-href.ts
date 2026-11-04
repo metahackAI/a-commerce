@@ -6,6 +6,9 @@ export interface SearchParamsState {
   category_id?: string;
   sort?: string;
   availability?: string[];
+  brand?: string[];
+  color?: string[];
+  size?: string[];
   min_price?: string;
   max_price?: string;
   currency?: string;
@@ -18,6 +21,9 @@ export function hrefWith(pathname: string, state: SearchParamsState, change: Par
   if (next.category_id) p.set('category_id', next.category_id);
   if (next.sort) p.set('sort', next.sort);
   for (const a of next.availability ?? []) p.append('availability', a);
+  for (const b of next.brand ?? []) p.append('brand', b);
+  for (const c of next.color ?? []) p.append('color', c);
+  for (const s of next.size ?? []) p.append('size', s);
   if (next.min_price) p.set('min_price', next.min_price);
   if (next.max_price) p.set('max_price', next.max_price);
   if ((next.min_price || next.max_price) && next.currency) p.set('currency', next.currency);

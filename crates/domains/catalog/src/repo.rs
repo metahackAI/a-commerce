@@ -283,6 +283,13 @@ pub struct Find<'a> {
     pub with_drafts: bool,
     pub brand_id: Option<&'a str>,
     pub approval_status: Option<&'a str>,
+    /// Products of one of these brands; empty is any.
+    pub brands: &'a [String],
+    /// A variant in one of these colors, lowercase; empty is any. With `sizes`, one variant has
+    /// to match both, and it has to have one of the `availability` words.
+    pub colors: &'a [String],
+    /// A variant in one of these sizes, lowercase; empty is any.
+    pub sizes: &'a [String],
     pub order: Order,
     pub limit: i64,
     pub offset: i64,
@@ -303,7 +310,15 @@ const FIND_FROM: &str = "FROM catalog.product_group g
       AND (NOT $14::boolean OR g.approval_status = 'active')
       AND ($15::boolean OR s.id IS NOT NULL)
       AND ($16::text IS NULL OR g.brand_id = $16)
-      AND ($17::text IS NULL OR g.approval_status = $17)";
+      AND ($17::text IS NULL OR g.approval_status = $17)
+      AND (cardinality($18::text[]) = 0 OR g.brand_id = ANY($18::text[]))
+      AND ((cardinality($19::text[]) = 0 AND cardinality($20::text[]) = 0) OR EXISTS (
+            SELECT 1 FROM catalog.product p
+            JOIN catalog.offer o ON o.tenant_id = p.tenant_id AND o.product_id = p.id
+            WHERE p.tenant_id = g.tenant_id AND p.product_group_id = g.id
+              AND (cardinality($19::text[]) = 0 OR lower(p.color) = ANY($19::text[]))
+              AND (cardinality($20::text[]) = 0 OR lower(p.size) = ANY($20::text[]))
+              AND (cardinality($8::text[]) = 0 OR o.availability = ANY($8::text[]))))";
 
 /// Product ids in order for one page, and how many products match in all.
 pub async fn find(tx: &mut TxCx, f: &Find<'_>) -> Result<(Vec<String>, i64), ToolError> {
@@ -331,6 +346,9 @@ pub async fn find(tx: &mut TxCx, f: &Find<'_>) -> Result<(Vec<String>, i64), Too
                 .bind(f.with_drafts)
                 .bind(f.brand_id)
                 .bind(f.approval_status)
+                .bind(f.brands)
+                .bind(f.colors)
+                .bind(f.sizes)
         };
     }
     let total: i64 = binds!(sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
@@ -341,7 +359,7 @@ pub async fn find(tx: &mut TxCx, f: &Find<'_>) -> Result<(Vec<String>, i64), Too
     .map_err(db)?;
     let page: Vec<String> = binds!(sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
         "{with} SELECT g.id {FIND_FROM}
-         ORDER BY {} LIMIT $18 OFFSET $19",
+         ORDER BY {} LIMIT $21 OFFSET $22",
         f.order.sql()
     ))))
     .bind(f.limit)

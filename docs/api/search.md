@@ -14,7 +14,7 @@
 
 ### `search_products` — Kind: R  (데모 장면, 운영자·쇼퍼 공용)
 - 논리주소/REST: `search.product.search` · `GET /v1/search/products`
-- 요약: 질의·카테고리·재고·가격 조건으로 상품을 찾습니다. 상품마다 정가(`price`), 부르는 사람에게 해당하는 회원가(`member_price`), 재고(`inventory_level`), 변형(`has_variant[]`)을 붙입니다. 운영자는 `valid_for_member_tier`·`as_of`로 "그 등급이 그 시각에 보는 가격"을 볼 수 있고 원가(`cost`)도 받습니다. 쇼퍼가 부르면 가격은 그 쇼퍼의 등급과 지금 시각 기준이고 `cost`는 응답에 없습니다.
+- 요약: 질의·카테고리·재고·가격·브랜드·색·사이즈 조건으로 상품을 찾습니다. 상품마다 정가(`price`), 부르는 사람에게 해당하는 회원가(`member_price`), 재고(`inventory_level`), 변형(`has_variant[]`)을 붙입니다. 운영자는 `valid_for_member_tier`·`as_of`로 "그 등급이 그 시각에 보는 가격"을 볼 수 있고 원가(`cost`)도 받습니다. 쇼퍼가 부르면 가격은 그 쇼퍼의 등급과 지금 시각 기준이고 `cost`는 응답에 없습니다.
 - consumes → produces: `category_id`? → `product_id[]`
 - 입력 (닫힌 객체, 모두 선택):
   | 필드 | 타입 | 필수 | 설명 | 예 |
@@ -25,6 +25,9 @@
   | availability | enum[] | | `in_stock`: 재고 있음; `out_of_stock`: 품절; `pre_order`: 예약 판매; `back_order`: 입고 대기 판매; `discontinued`: 단종. 기본: 운영자 전체, 쇼퍼 `search.yml query.shopper_default_availability` | `["in_stock"]` |
   | min_inventory_level | Integer ≥ 0 | | **운영자만.** 변형 합계 재고가 이 수 이상인 상품 | `10` |
   | max_inventory_level | Integer ≥ 0 | | **운영자만.** 변형 합계 재고가 이 수 이하인 상품(재고 부족 찾기) | `9` |
+  | brand_id | Text[] | | 이 브랜드 중 하나의 상품만(`list_brands`) | `["brn_northwind"]` |
+  | color | Text[] | | 이 색 중 하나인 변형이 있는 상품만(대소문자 무시, 값은 `get_facets`). 변형은 `availability`에 드는 것만 봅니다(주지 않으면 위 기본값). 그래서 쇼퍼에게 그 색이 품절인 상품은 나오지 않습니다 | `["Navy"]` |
+  | size | Text[] | | 이 사이즈 중 하나인 변형이 있는 상품만. 변형을 보는 규칙은 `color`와 같습니다. `color`와 함께 주면 **한 변형이 둘 다** 맞아야 합니다(Navy-L과 Black-M만 있으면 Navy+M에 나오지 않음) | `["M"]` |
   | min_price | MonetaryAmount | | 정가 하한 `{value, currency}` | `{"value": 50.00, "currency": "USD"}` |
   | max_price | MonetaryAmount | | 정가 상한 | `{"value": 150.00, "currency": "USD"}` |
   | valid_for_member_tier | Text | | **운영자만.** 회원가를 계산할 등급 id(`list_tiers`) 또는 `"everyone"`. 기본 `"everyone"` | `"vip"` |
@@ -147,7 +150,8 @@
 - 논리주소/REST: `search.product.get_facets` · `GET /v1/search/facets`
 - 요약: 지금 질의·필터에서 걸 수 있는 필터 차원과 값별 건수를 돌려줍니다. 화면의 필터 패널과 에이전트의 필터 제안에 씁니다. 격리된 상품은 세지 않습니다.
 - consumes → produces: → facets
-- 입력: `query?`, `category_id?`, `tags?[]`, `facet_fields?[]`(`category` | `brand` | `price_range` | `color` | `size` | `availability`)
+- 입력: `query?`, `category_id?`, `tags?[]`, `brand_id?[]`, `color?[]`, `size?[]`(뜻은 `search_products`와 같음), `facet_fields?[]`(`category` | `brand` | `price_range` | `color` | `size` | `availability`)
+- 건수: 그 값을 고를 때 `search_products`가 찾을 상품 수입니다. `brand_id`·`color`·`size`는 다른 필터에는 모두 적용하고 자기 필터에는 적용하지 않습니다(Navy를 골라도 Slate는 Slate의 건수를 그대로 보여 줌). `color`·`size`는 그 값의 변형이 있는 상품을 세되, 쇼퍼에게는 살 수 있는 변형만 세고, 다른 쪽을 골랐으면 그 값과 같은 변형만 셉니다. `brand`의 값은 브랜드 id이고 이름은 `label`에 있습니다
 - 출력: `{items: [{name: "price_range", value: "50.00-100.00", count: 18}, {name: "availability", value: "in_stock", count: 40}], total: 2}`
 - 프리뷰: 해당 없음(읽기)
 - 정책: [search.yml](../../policies/search.yml) `query.tenant_isolation`
