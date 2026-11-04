@@ -2,8 +2,8 @@
 
 // Sorting and filters for search and category pages. Filters come from `get_facets` (search.md)
 // with the store's counts; choosing one changes the URL, and the page reads search_products again.
-// search_products filters by category, availability and list-price range; brand, color and size
-// facets narrow the search words instead.
+// A filter never changes the search words: search_products takes the category, availability,
+// list-price range, brand, color and size as conditions.
 //
 // The filters sit in a panel on the left that stays in view while the results scroll (on a phone,
 // a collapsible section above them). Each group shows its first few values and the rest behind
@@ -27,6 +27,9 @@ import {hrefWith, type SearchParamsState} from '@/app/(storefront)/_lib/search-h
 import {useStorefront} from './StorefrontContext';
 
 /** Values a group shows before "More". */
+/** The filters that take several values; each facet's name is also its key in the URL state. */
+type ListFilter = 'availability' | 'brand' | 'color' | 'size';
+
 const VISIBLE = 5;
 const PANEL_WIDTH = 240;
 /** Where the filter panel stops fitting beside the results. */
@@ -144,7 +147,10 @@ export function FilterPanel({
     {name: 'brand', title: 'Brand', items: facets.filter(f => f.name === 'brand')},
     {name: 'color', title: 'Color', items: facets.filter(f => f.name === 'color')},
     {name: 'size', title: 'Size', items: facets.filter(f => f.name === 'size')},
-  ].filter(g => g.items.length > 0);
+  ]
+    .filter(g => g.items.length > 0)
+    // Every product in the list is available, so the one choice would change nothing.
+    .filter(g => g.name !== 'availability' || g.items.length > 1 || g.items.some(active));
 
   function labelOf(f: Facet): string {
     if (f.label) return f.label;
@@ -156,26 +162,22 @@ export function FilterPanel({
 
   function active(f: Facet): boolean {
     if (f.name === 'category') return state.category_id === f.value;
-    if (f.name === 'availability') return (state.availability ?? []).includes(f.value);
     if (f.name === 'price_range') {
       const [lo, hi] = f.value.split('-');
       return (state.min_price ?? '') === (lo ?? '') && (state.max_price ?? '') === (hi ?? '');
     }
-    return (state.q ?? '').toLowerCase().split(/\s+/).includes(f.value.toLowerCase());
+    return (state[f.name as ListFilter] ?? []).includes(f.value);
   }
 
   function change(f: Facet, on: boolean): Partial<SearchParamsState> {
     if (f.name === 'category') return {category_id: on ? f.value : undefined};
-    if (f.name === 'availability') {
-      const cur = state.availability ?? [];
-      return {availability: on ? [...cur, f.value] : cur.filter(a => a !== f.value)};
-    }
     if (f.name === 'price_range') {
       const [lo, hi] = f.value.split('-');
       return on ? {min_price: lo || undefined, max_price: hi || undefined, currency} : {min_price: undefined, max_price: undefined};
     }
-    const q = (state.q ?? '').split(/\s+/).filter(Boolean);
-    return {q: on ? [...q, f.value].join(' ') : q.filter(w => w.toLowerCase() !== f.value.toLowerCase()).join(' ')};
+    const list = f.name as ListFilter;
+    const cur = state[list] ?? [];
+    return {[list]: on ? [...cur, f.value] : cur.filter(v => v !== f.value)};
   }
 
   const onChange = (f: Facet, on: boolean) => router.push(hrefWith(pathname, state, change(f, on)), {scroll: false});

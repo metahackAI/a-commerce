@@ -434,6 +434,62 @@ pub fn price_band(price: Decimal, width: Decimal) -> String {
     format!("{:.2}-{:.2}", low, low + width)
 }
 
+/// What is chosen in the filter panel, for counting. A value counts what `search_products` would
+/// find if it were chosen: every filter applies but the value's own, so the other values of a
+/// filter keep their numbers when one is chosen.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FacetChoice<'a> {
+    /// Availability words a variant needs; empty is any.
+    pub availability: &'a [String],
+    /// Lowercase; empty is any.
+    pub brands: &'a [String],
+    /// Lowercase; empty is any.
+    pub colors: &'a [String],
+    /// Lowercase; empty is any.
+    pub sizes: &'a [String],
+}
+
+impl FacetChoice<'_> {
+    /// Whether this variant counts for `field`: it can be had and it matches the other side,
+    /// since one variant has to match both the color and the size.
+    fn variant_counts(
+        &self,
+        field: FacetField,
+        availability: Option<&str>,
+        color: Option<&str>,
+        size: Option<&str>,
+    ) -> bool {
+        let chosen = |list: &[String], value: Option<&str>| {
+            list.is_empty() || value.is_some_and(|x| list.contains(&x.to_lowercase()))
+        };
+        chosen(self.availability, availability)
+            && (field == FacetField::Color || chosen(self.colors, color))
+            && (field == FacetField::Size || chosen(self.sizes, size))
+    }
+
+    /// Whether this product counts for `field`.
+    fn product_counts(&self, field: FacetField, c: &ProductCard) -> bool {
+        let brand = field == FacetField::Brand
+            || self.brands.is_empty()
+            || c.brand_id
+                .as_ref()
+                .is_some_and(|b| self.brands.contains(&b.to_lowercase()));
+        // With nothing chosen a product is not asked for a variant: it has its own availability.
+        let nothing_to_match = (field == FacetField::Color || self.colors.is_empty())
+            && (field == FacetField::Size || self.sizes.is_empty());
+        brand
+            && (nothing_to_match
+                || c.variants.iter().any(|v| {
+                    self.variant_counts(
+                        field,
+                        v.availability.as_deref(),
+                        v.color.as_deref(),
+                        v.size.as_deref(),
+                    )
+                }))
+    }
+}
+
 /// Facet values and how many products have each. `labels` names ids (brands, categories).
 pub fn facets(
     fields: &[FacetField],
@@ -441,9 +497,14 @@ pub fn facets(
     links: &[CategoryLink],
     labels: &BTreeMap<String, String>,
     band_width: Decimal,
+    choice: &FacetChoice<'_>,
 ) -> Vec<Value> {
     let mut out = Vec::new();
     for f in fields {
+        let cards: Vec<&ProductCard> = cards
+            .iter()
+            .filter(|c| choice.product_counts(*f, c))
+            .collect();
         // Facet value → the products that have it.
         let mut pairs: Vec<(String, String)> = Vec::new();
         match f {
@@ -470,7 +531,15 @@ pub fn facets(
             }
             FacetField::Color | FacetField::Size => {
                 for c in cards {
-                    for v in &c.variants {
+                    let counted = c.variants.iter().filter(|v| {
+                        choice.variant_counts(
+                            *f,
+                            v.availability.as_deref(),
+                            v.color.as_deref(),
+                            v.size.as_deref(),
+                        )
+                    });
+                    for v in counted {
                         let value = if *f == FacetField::Color {
                             &v.color
                         } else {
@@ -806,6 +875,7 @@ mod tests {
             &links,
             &labels,
             d("50.00"),
+            &FacetChoice::default(),
         );
         assert_eq!(
             f[0],
@@ -825,6 +895,78 @@ mod tests {
         );
         assert_eq!(price_band(d("89.00"), d("50.00")), "50.00-100.00");
         assert_eq!(price_band(d("100.00"), d("50.00")), "100.00-150.00");
+    }
+
+    #[test]
+    fn a_color_or_size_counts_the_variants_its_filter_would_find() {
+        let mut c = card("prd_a", "A", "89.00", None, json!([]));
+        let base = c.variants[0].clone();
+        let variant = |color: &str, size: &str, availability: &str| {
+            let mut v = base.clone();
+            v.color = Some(color.into());
+            v.size = Some(size.into());
+            v.availability = Some(availability.into());
+            v
+        };
+        c.variants = vec![
+            variant("Navy", "L", "in_stock"),
+            variant("Black", "M", "in_stock"),
+            variant("Navy", "M", "out_of_stock"),
+        ];
+        let mut other = c.clone();
+        other.id = "prd_b".into();
+        other.brand_id = Some("brn_other".into());
+        other.variants = vec![variant("Sky", "XL", "in_stock")];
+        let cards = vec![c, other];
+        let counted = |field: FacetField, choice: FacetChoice<'_>| -> Vec<String> {
+            facets(&[field], &cards, &[], &BTreeMap::new(), d("50.00"), &choice)
+                .iter()
+                .map(|f| f["value"].as_str().unwrap_or_default().to_owned())
+                .collect()
+        };
+        let sold = ["in_stock".to_owned()];
+        let navy = ["navy".to_owned()];
+        let medium = ["m".to_owned()];
+        let other = ["brn_other".to_owned()];
+        // An operator counts every variant; a shopper only what can be bought.
+        assert_eq!(
+            counted(FacetField::Size, FacetChoice::default()),
+            ["M", "L", "XL"]
+        );
+        let shopper = FacetChoice {
+            availability: &sold,
+            ..FacetChoice::default()
+        };
+        assert_eq!(
+            counted(FacetField::Color, shopper),
+            ["Black", "Navy", "Sky"]
+        );
+        // One variant has to match both sides: Navy comes in L only, M in Black only.
+        let with_navy = FacetChoice {
+            colors: &navy,
+            ..shopper
+        };
+        assert_eq!(counted(FacetField::Size, with_navy), ["L"]);
+        let with_medium = FacetChoice {
+            sizes: &medium,
+            ..shopper
+        };
+        assert_eq!(counted(FacetField::Color, with_medium), ["Black"]);
+        // A filter's own choice leaves its other values alone, and narrows the other filters.
+        assert_eq!(
+            counted(FacetField::Color, with_navy),
+            ["Black", "Navy", "Sky"]
+        );
+        assert_eq!(counted(FacetField::Brand, with_navy), ["brn_northwind"]);
+        let with_brand = FacetChoice {
+            brands: &other,
+            ..shopper
+        };
+        assert_eq!(
+            counted(FacetField::Brand, with_brand),
+            ["brn_northwind", "brn_other"]
+        );
+        assert_eq!(counted(FacetField::Color, with_brand), ["Sky"]);
     }
 
     #[test]

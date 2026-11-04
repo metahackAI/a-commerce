@@ -13,7 +13,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{category_filter, shopper_availability, text_ranks};
+use super::{category_filter, filter_words, shopper_availability, text_ranks};
 use crate::INDEX_UNAVAILABLE;
 use crate::model::{self, FacetField};
 
@@ -29,6 +29,15 @@ pub struct GetFacetsInput {
     /// Product tags; only products with all of them.
     #[schemars(example = ["packable"])]
     pub tags: Option<Vec<String>>,
+    /// Only products of one of these brands, as in `search_products`.
+    #[schemars(example = ["brn_northwind"])]
+    pub brand_id: Option<Vec<String>>,
+    /// Only products with a variant in one of these colors, as in `search_products`.
+    #[schemars(example = ["Navy"])]
+    pub color: Option<Vec<String>>,
+    /// Only products with a variant in one of these sizes, as in `search_products`.
+    #[schemars(example = ["M"])]
+    pub size: Option<Vec<String>>,
     /// Which facets. Default all.
     #[schemars(example = ["price_range", "availability"])]
     pub facet_fields: Option<Vec<FacetField>>,
@@ -103,6 +112,9 @@ impl ReadOp<Cx> for GetFacets {
             .map(|t| t.trim().to_lowercase())
             .filter(|t| !t.is_empty())
             .collect();
+        let chosen_brands = filter_words(input.brand_id);
+        let colors = filter_words(input.color);
+        let sizes = filter_words(input.size);
         // Every matching product counts, not one page.
         let (ids, _) = for_search::find_products(
             &mut tx,
@@ -116,6 +128,10 @@ impl ReadOp<Cx> for GetFacets {
                 min_price: None,
                 max_price: None,
                 active_only: !operator,
+                // The chosen values are applied per facet below (`model::FacetChoice`).
+                brands: &[],
+                colors: &[],
+                sizes: &[],
                 sort: ProductSort::Newest,
                 limit: i64::from(i32::MAX),
                 offset: 0,
@@ -140,7 +156,13 @@ impl ReadOp<Cx> for GetFacets {
                 .iter()
                 .map(|l| (l.category_id.clone(), l.name.clone())),
         );
-        let items = model::facets(&fields, &cards, &links, &labels, width);
+        let choice = model::FacetChoice {
+            availability: &availability,
+            brands: &chosen_brands,
+            colors: &colors,
+            sizes: &sizes,
+        };
+        let items = model::facets(&fields, &cards, &links, &labels, width, &choice);
         let total = items.len();
         Ok(json!({"items": items, "total": total}))
     }
@@ -149,6 +171,7 @@ impl ReadOp<Cx> for GetFacets {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::product::{SearchProducts, SearchProductsInput};
     use crate::testing;
     use acom_core::enums::ActorKind;
 
@@ -177,6 +200,109 @@ mod tests {
         assert_eq!(width.map(|w| w.to_string()), Some("50.00".into()));
     }
 
+    /// A facet's values and counts for these filters.
+    async fn counts(
+        cx: &Cx,
+        field: FacetField,
+        brand_id: Option<Vec<String>>,
+        color: Option<Vec<String>>,
+        size: Option<Vec<String>>,
+    ) -> Vec<(String, i64)> {
+        let out = GetFacets
+            .read(
+                cx,
+                GetFacetsInput {
+                    query: None,
+                    category_id: None,
+                    tags: None,
+                    brand_id,
+                    color,
+                    size,
+                    facet_fields: Some(vec![field]),
+                },
+            )
+            .await
+            .unwrap_or_else(|e| panic!("{e}"));
+        out["items"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|i| {
+                (
+                    i["value"].as_str().unwrap_or_default().to_owned(),
+                    i["count"].as_i64().unwrap_or_default(),
+                )
+            })
+            .collect()
+    }
+
+    /// How many products `search_products` finds for these filters.
+    async fn total(
+        cx: &Cx,
+        brand_id: Option<Vec<String>>,
+        color: Option<Vec<String>>,
+        size: Option<Vec<String>>,
+    ) -> i64 {
+        let input: SearchProductsInput = serde_json::from_value(json!({
+            "brand_id": brand_id, "color": color, "size": size, "limit": 1,
+        }))
+        .unwrap_or_else(|e| panic!("{e}"));
+        let out = SearchProducts
+            .read(cx, input)
+            .await
+            .unwrap_or_else(|e| panic!("{e}"));
+        out["total"].as_i64().unwrap_or_default()
+    }
+
+    #[tokio::test]
+    #[ignore = "integration: needs a PostgreSQL database"]
+    async fn a_filter_shows_the_number_it_finds() {
+        for cx in [
+            testing::db(ActorKind::Shopper, "cus_jamie").await,
+            testing::db(ActorKind::Operator, "adm_sj").await,
+        ] {
+            for (value, count) in counts(&cx, FacetField::Size, None, None, None).await {
+                assert_eq!(
+                    total(&cx, None, None, Some(vec![value.clone()])).await,
+                    count,
+                    "{value}"
+                );
+            }
+            for (value, count) in counts(&cx, FacetField::Color, None, None, None).await {
+                assert_eq!(
+                    total(&cx, None, Some(vec![value.clone()]), None).await,
+                    count,
+                    "{value}"
+                );
+            }
+            for (value, count) in counts(&cx, FacetField::Brand, None, None, None).await {
+                assert_eq!(
+                    total(&cx, Some(vec![value.clone()]), None, None).await,
+                    count,
+                    "{value}"
+                );
+            }
+            // With a color chosen, a size shows what the two find together, a brand likewise.
+            let navy = Some(vec!["Navy".to_owned()]);
+            for (value, count) in counts(&cx, FacetField::Size, None, navy.clone(), None).await {
+                let found = total(&cx, None, navy.clone(), Some(vec![value.clone()])).await;
+                assert_eq!(found, count, "Navy {value}");
+            }
+            for (value, count) in counts(&cx, FacetField::Brand, None, navy.clone(), None).await {
+                let found = total(&cx, Some(vec![value.clone()]), navy.clone(), None).await;
+                assert_eq!(found, count, "Navy {value}");
+            }
+            // The other colors keep the number they would find on their own.
+            for (value, count) in counts(&cx, FacetField::Color, None, navy.clone(), None).await {
+                assert_eq!(
+                    total(&cx, None, Some(vec![value.clone()]), None).await,
+                    count,
+                    "{value}"
+                );
+            }
+        }
+    }
+
     #[tokio::test]
     #[ignore = "integration: needs a PostgreSQL database"]
     async fn summer_outerwear_facets_count_products() {
@@ -188,6 +314,9 @@ mod tests {
                     query: None,
                     category_id: Some("cat_summer_outerwear".into()),
                     tags: None,
+                    brand_id: None,
+                    color: None,
+                    size: None,
                     facet_fields: Some(vec![FacetField::Availability]),
                 },
             )

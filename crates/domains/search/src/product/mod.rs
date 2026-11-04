@@ -117,6 +117,16 @@ pub(crate) fn list(items: Vec<Value>, total: i64, page: &acom_store::Page) -> Va
     out
 }
 
+/// Filter values as the query compares them: trimmed, lowercase, none empty.
+pub(crate) fn filter_words(values: Option<Vec<String>>) -> Vec<String> {
+    values
+        .unwrap_or_default()
+        .into_iter()
+        .map(|v| v.trim().to_lowercase())
+        .filter(|v| !v.is_empty())
+        .collect()
+}
+
 /// The availability shoppers see by default (`query.shopper_default_availability`).
 pub(crate) fn shopper_availability(cx: &Cx) -> Vec<String> {
     cx.policy

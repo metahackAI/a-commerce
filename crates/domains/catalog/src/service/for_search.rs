@@ -51,6 +51,13 @@ pub struct ProductQuery<'a> {
     pub max_price: Option<Money>,
     /// Only active products (shoppers).
     pub active_only: bool,
+    /// Products of one of these brands; empty is any.
+    pub brands: &'a [String],
+    /// A variant in one of these colors, lowercase; empty is any. With `sizes`, one variant has
+    /// to match both, and it has to have one of the `availability` words.
+    pub colors: &'a [String],
+    /// A variant in one of these sizes, lowercase; empty is any.
+    pub sizes: &'a [String],
     pub sort: ProductSort,
     pub limit: i64,
     pub offset: i64,
@@ -86,6 +93,9 @@ pub async fn find_products(
             with_drafts: false,
             brand_id: None,
             approval_status: None,
+            brands: q.brands,
+            colors: q.colors,
+            sizes: q.sizes,
             order,
             limit: q.limit,
             offset: q.offset,

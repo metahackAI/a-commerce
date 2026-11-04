@@ -14,7 +14,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use super::{category_filter, list, shopper_availability, text_ranks};
+use super::{category_filter, filter_words, list, shopper_availability, text_ranks};
 use crate::INDEX_UNAVAILABLE;
 
 /// How results are ordered.
@@ -62,6 +62,17 @@ pub struct SearchProductsInput {
     /// Operators only. Products whose variants hold at most this many units in all (low stock).
     #[schemars(range(min = 0), example = 9)]
     pub max_inventory_level: Option<i64>,
+    /// Only products of one of these brands (`list_brands`).
+    #[schemars(example = ["brn_northwind"])]
+    pub brand_id: Option<Vec<String>>,
+    /// Only products with a variant in one of these colors that has one of the availabilities
+    /// above. With `size`, one variant has to match both.
+    #[schemars(example = ["Navy"])]
+    pub color: Option<Vec<String>>,
+    /// Only products with a variant in one of these sizes that has one of the availabilities
+    /// above. With `color`, one variant has to match both.
+    #[schemars(example = ["M"])]
+    pub size: Option<Vec<String>>,
     /// Lowest list price.
     pub min_price: Option<Money>,
     /// Highest list price.
@@ -214,6 +225,9 @@ impl ReadOp<Cx> for SearchProducts {
             .map(|t| t.trim().to_lowercase())
             .filter(|t| !t.is_empty())
             .collect();
+        let brands = filter_words(input.brand_id);
+        let colors = filter_words(input.color);
+        let sizes = filter_words(input.size);
         let (ids, total) = for_search::find_products(
             &mut tx,
             &ProductQuery {
@@ -226,6 +240,9 @@ impl ReadOp<Cx> for SearchProducts {
                 min_price: input.min_price,
                 max_price: input.max_price,
                 active_only: !operator,
+                brands: &brands,
+                colors: &colors,
+                sizes: &sizes,
                 sort,
                 limit: page.limit,
                 offset: page.offset,
@@ -259,6 +276,9 @@ mod tests {
             availability: None,
             min_inventory_level: None,
             max_inventory_level: None,
+            brand_id: None,
+            color: None,
+            size: None,
             min_price: None,
             max_price: None,
             valid_for_member_tier: None,
@@ -313,6 +333,121 @@ mod tests {
                 "-inventory_level"
             ])
         );
+    }
+
+    /// The ids and the total a shopper or operator gets with these filters.
+    async fn found(cx: &Cx, change: impl FnOnce(&mut SearchProductsInput)) -> (Vec<String>, i64) {
+        let mut i = input();
+        i.limit = Some(100);
+        change(&mut i);
+        let out = SearchProducts
+            .read(cx, i)
+            .await
+            .unwrap_or_else(|e| panic!("{e}"));
+        let ids = out["items"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|p| p["id"].as_str().map(str::to_owned))
+            .collect();
+        (ids, out["total"].as_i64().unwrap_or_default())
+    }
+
+    #[tokio::test]
+    #[ignore = "integration: needs a PostgreSQL database"]
+    async fn a_size_finds_what_a_shopper_can_buy_in_it() {
+        let cx = testing::db(ActorKind::Shopper, "cus_jamie").await;
+        let in_outerwear = |i: &mut SearchProductsInput| {
+            i.category_id = Some("cat_summer_outerwear".into());
+            i.size = Some(vec!["M".into()]);
+        };
+        let (ids, total) = found(&cx, in_outerwear).await;
+        assert!(ids.contains(&"prd_windbreaker".to_owned()), "{ids:?}");
+        // Sold out in M since Wednesday; S and XL are still in stock.
+        assert!(!ids.contains(&"prd_chore_coat".to_owned()), "{ids:?}");
+        assert_eq!(total, 40);
+        // Case and spaces do not matter.
+        let (lower, _) = found(&cx, |i| {
+            in_outerwear(i);
+            i.size = Some(vec![" m ".into()]);
+        })
+        .await;
+        assert_eq!(lower, ids);
+        // An operator still sees it, sold out or not.
+        let op = testing::db(ActorKind::Operator, "adm_sj").await;
+        let (ids, _) = found(&op, in_outerwear).await;
+        assert!(ids.contains(&"prd_chore_coat".to_owned()), "{ids:?}");
+    }
+
+    #[tokio::test]
+    #[ignore = "integration: needs a PostgreSQL database"]
+    async fn one_variant_has_to_match_the_color_and_the_size() {
+        // This dress is in stock in Rust and in stock in XL, but sold out in Rust XL.
+        let dress = "prd_dresses_12".to_owned();
+        let with = |color: Option<&str>, size: Option<&str>| {
+            let (color, size) = (color.map(str::to_owned), size.map(str::to_owned));
+            move |i: &mut SearchProductsInput| {
+                i.category_id = Some("cat_dresses".into());
+                i.color = color.map(|c| vec![c]);
+                i.size = size.map(|s| vec![s]);
+            }
+        };
+        let cx = testing::db(ActorKind::Shopper, "cus_jamie").await;
+        assert!(
+            found(&cx, with(Some("Rust"), None))
+                .await
+                .0
+                .contains(&dress)
+        );
+        assert!(found(&cx, with(None, Some("XL"))).await.0.contains(&dress));
+        assert!(
+            !found(&cx, with(Some("Rust"), Some("XL")))
+                .await
+                .0
+                .contains(&dress)
+        );
+        // An operator looks at every variant, sold out or not.
+        let op = testing::db(ActorKind::Operator, "adm_sj").await;
+        assert!(
+            found(&op, with(Some("Rust"), Some("XL")))
+                .await
+                .0
+                .contains(&dress)
+        );
+        // Several values in one filter: any of them.
+        let (either, _) = found(&cx, |i| {
+            with(Some("Rust"), None)(i);
+            i.size = Some(vec!["XL".into(), "M".into()]);
+        })
+        .await;
+        let has_rust_m = either.contains(&dress);
+        let (rust_m, _) = found(&cx, with(Some("Rust"), Some("M"))).await;
+        assert_eq!(has_rust_m, rust_m.contains(&dress));
+    }
+
+    #[tokio::test]
+    #[ignore = "integration: needs a PostgreSQL database"]
+    async fn a_brand_finds_its_products_and_no_filter_changes_nothing() {
+        let cx = testing::db(ActorKind::Shopper, "cus_jamie").await;
+        let (all, total) = found(&cx, |_| {}).await;
+        let (fieldstone, some) = found(&cx, |i| {
+            i.brand_id = Some(vec!["brn_fieldstone".into()]);
+        })
+        .await;
+        assert!(fieldstone.contains(&"prd_chelsea_boots".to_owned()));
+        assert!(some > 0 && some < total);
+        // Empty lists are no filter at all.
+        let (same, same_total) = found(&cx, |i| {
+            i.brand_id = Some(vec![]);
+            i.color = Some(vec![" ".into()]);
+            i.size = Some(vec![]);
+        })
+        .await;
+        assert_eq!((same, same_total), (all, total));
+        // A value no product has finds nothing, and is not an error.
+        let (none, zero) = found(&cx, |i| i.size = Some(vec!["XXXL".into()])).await;
+        assert!(none.is_empty());
+        assert_eq!(zero, 0);
     }
 
     #[tokio::test]

@@ -32,6 +32,10 @@ function many(v: string | string[] | undefined): string[] {
   return (Array.isArray(v) ? v : v ? [v] : []).flatMap(s => s.split(',')).filter(Boolean);
 }
 
+function nonEmpty(list?: string[]): string[] | undefined {
+  return list && list.length > 0 ? list : undefined;
+}
+
 /** The URL's search state, keeping only values the API accepts. */
 export function parseSearchParams(raw: RawParams): SearchParamsState & {cursor?: string} {
   const sort = one(raw.sort);
@@ -41,6 +45,9 @@ export function parseSearchParams(raw: RawParams): SearchParamsState & {cursor?:
     category_id: one(raw.category_id),
     sort: sort && SORTS.has(sort) ? sort : undefined,
     availability: many(raw.availability).filter(a => AVAILABILITY.has(a)),
+    brand: many(raw.brand),
+    color: many(raw.color),
+    size: many(raw.size),
     min_price: money(one(raw.min_price)),
     max_price: money(one(raw.max_price)),
     currency: one(raw.currency)?.toUpperCase(),
@@ -67,11 +74,13 @@ export async function ResultsView({
   const currency = state.currency ?? 'USD';
   // The query without a cursor: the results keep loading its next pages as the shopper scrolls,
   // and a new query (its key) starts over.
+  const chosen = {brand_id: nonEmpty(state.brand), color: nonEmpty(state.color), size: nonEmpty(state.size)};
   const baseQuery: Query = {
     query: state.q,
     category_id: categoryId,
     sort: state.sort,
-    availability: state.availability && state.availability.length > 0 ? state.availability : undefined,
+    availability: nonEmpty(state.availability),
+    ...chosen,
     min_price: state.min_price ? JSON.stringify({value: Number(state.min_price), currency}) : undefined,
     max_price: state.max_price ? JSON.stringify({value: Number(state.max_price), currency}) : undefined,
     limit: PAGE_SIZE,
@@ -82,6 +91,7 @@ export async function ResultsView({
     load<Page<Facet>>('/v1/search/facets', {
       query: state.q,
       category_id: categoryId,
+      ...chosen,
       facet_fields: [...(fixedCategoryId ? [] : ['category']), 'price_range', 'availability', 'brand', 'color', 'size'],
     }),
     load<Page<Category>>('/v1/merchandising/categories', {term_set: 'standard', limit: 100}),
