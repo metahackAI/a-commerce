@@ -46,7 +46,7 @@ web/
     │   └── bo/                       # 운영자
     │       ├── login/
     │       ├── (console)/layout.tsx  세션 확인, AppShell + BoNav, AiProvider(surface="bo"), AgentDock
-    │       ├── (console)/page.tsx    홈: 할 일(task_list) + Workspace (B5)
+    │       ├── (console)/page.tsx    홈: 할 일(task_list) + Workspace (B5). Inbox는 왼쪽에 결정할 일(카드: 변경셋이면 Review #N, 변경셋 없이 에이전트가 답을 기다리면 그 말과 Reply), 오른쪽에 에이전트가 하는 일(진행 막대). 끝난 일은 변경셋·활동 페이지에
     │       ├── (console)/…           change-sets/  activity/  tasks/[task_id]/  products/(new, drafts, [product_id])  categories/
     │       │                         brands/  promotions/  merchandising/  orders/  returns/  claims/[claim_id]/  customers/
     │       │                         insights/  policies/  data/(데이터 사전)
