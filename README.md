@@ -14,6 +14,7 @@
 
 | | |
 |---|---|
+| Demo video | <https://youtu.be/KhHaOeO0g3s> (3 min) |
 | Storefront | <https://a-commerce.ailism.team> (sign in as Jamie (VIP), Alex (member), or continue as a guest) |
 | Back office | <https://a-commerce.ailism.team/bo> (`admin` / `admin123`, or the scenario's operator Son SeongJun) |
 | Store clock | Stands at **Fri Nov 6 2026, 11:00 New York**, so every scene below gives the same numbers. An admin moves it with *Move time* at the foot of the back office's menu (jobs that come due run on the way), and *Start the demo over* loads the store again. The live demo is shared, so someone else's approval, *Move time* or *Start the demo over* can change the numbers. |
@@ -292,7 +293,7 @@ The back end is complete for the showcase: every specified operation is built. W
 - [ ] Tier evaluation reads each member's orders one by one; a bulk reader from sales would make an all-member run fast.
 
 **Story**
-- [x] Demo video (3 min).
+- [x] [Demo video (3 min)](https://youtu.be/KhHaOeO0g3s).
 
 Out of scope for the showcase: real payment, carrier, channel and messaging providers; a secret store for channel signing secrets; outside agents (the MCP endpoint is a placeholder crate, and the gateway does not yet sign outside clients in); settlement and taxes.
 
