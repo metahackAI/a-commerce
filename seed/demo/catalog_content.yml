@@ -10,7 +10,7 @@
 # Photos (image, images by color) are drawn by Muse Image (muse-image-1.0, Meta Model API) from the
 # same facts, and checked before they go in; image_provenance names the run and the API response of each.
 # Reviews: generated store data, not from real shoppers. Shape by rule, text by Muse Glimmer from each
-# product's facts (notes/tools/product_reviews.py, run 20261104-120737-full); the rows are columns of catalog.review.
+# product's facts (notes/tools/product_reviews.py, runs 20261104-120737-full, 20261104-155125-rain-layers); the rows are columns of catalog.review.
 version: 1
 products:
 - id: prd_accessories_01
@@ -41716,7 +41716,7 @@ reviews:
   rating_value: 4
   review_body: It’s a handy everyday case that keeps my glasses safe without fuss.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_accessories_01_02
   product_group_id: prd_accessories_01
   product_id: var_accessories_01_black
@@ -41766,7 +41766,7 @@ reviews:
   rating_value: 5
   review_body: Feels right for everyday use and the case holds its shape well.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_accessories_02_02
   product_group_id: prd_accessories_02
   product_id: var_accessories_02_white
@@ -41776,7 +41776,7 @@ reviews:
   rating_value: 5
   review_body: It feels solid in the hand and the snap holds firmly. The canvas keeps its form through the day.
   keywords: [sturdy]
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_accessories_02_03
   product_group_id: prd_accessories_02
   product_id: var_accessories_02_white
@@ -41858,7 +41858,7 @@ reviews:
   rating_value: 5
   review_body: Feels solid in the hand and the snap holds firm. I trust it with my glasses every day.
   keywords: [sturdy]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_accessories_03_02
   product_group_id: prd_accessories_03
   product_id: var_accessories_03_navy
@@ -42045,7 +42045,7 @@ reviews:
   rating_value: 5
   review_body: I like having it for travel and it keeps my phone safe in a bag.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_accessories_06_04
   product_group_id: prd_accessories_06
   product_id: var_accessories_06_slate
@@ -42065,7 +42065,7 @@ reviews:
   rating_value: 5
   review_body: I use it every day and it still feels soft after regular handling. The open top is easy for quick access.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_accessories_06_06
   product_group_id: prd_accessories_06
   product_id: var_accessories_06_clay
@@ -42780,7 +42780,7 @@ reviews:
   author_height_value: 184.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-25'
 - id: rev_activewear_02_03
   product_group_id: prd_activewear_02
   product_id: var_activewear_02_m_olive
@@ -42888,7 +42888,7 @@ reviews:
   review_body: The compression feels tight across the chest and I have to size up for comfort.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_activewear_03_02
   product_group_id: prd_activewear_03
   product_id: var_activewear_03_xl_white
@@ -42991,7 +42991,7 @@ reviews:
   author_height_value: 160.0
   author_height_unit_text: cm
   keywords: [keeps sweat off]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_activewear_05_03
   product_group_id: prd_activewear_05
   product_id: var_activewear_05_xs_stone
@@ -43002,7 +43002,7 @@ reviews:
   review_body: Sweat moves off nicely, though the fabric feels a touch plain for the price.
   fit_vote: true_to_size
   keywords: [keeps sweat off]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_activewear_05_04
   product_group_id: prd_activewear_05
   product_id: var_activewear_05_m_olive
@@ -43155,7 +43155,7 @@ reviews:
   author_height_value: 180.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_activewear_07_03
   product_group_id: prd_activewear_07
   product_id: var_activewear_07_l_stone
@@ -43192,7 +43192,7 @@ reviews:
   author_height_value: 180.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_activewear_07_06
   product_group_id: prd_activewear_07
   product_id: var_activewear_07_l_stone
@@ -43203,7 +43203,7 @@ reviews:
   review_body: The shorts feel just right on the body. Regular fit is true to size for training days.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_activewear_07_07
   product_group_id: prd_activewear_07
   product_id: var_activewear_07_m_stone
@@ -43229,7 +43229,7 @@ reviews:
   author_height_value: 152.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_activewear_07_09
   product_group_id: prd_activewear_07
   product_id: var_activewear_07_s_clay
@@ -43386,7 +43386,7 @@ reviews:
   review_body: Works fine for an easy run, though the fabric looks a little plain compared with what I hoped.
   fit_vote: runs_small
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_activewear_08_04
   product_group_id: prd_activewear_08
   product_id: var_activewear_08_xl_black
@@ -43443,7 +43443,7 @@ reviews:
   review_body: It runs a bit small for my usual training top. The compression feels snug where I expected a bit more room.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_activewear_08_10
   product_group_id: prd_activewear_08
   product_id: var_activewear_08_xs_black
@@ -43454,7 +43454,7 @@ reviews:
   review_body: The compression is steady and the scoop neck sits where I expect. It matches my usual size and feels balanced.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_activewear_08_11
   product_group_id: prd_activewear_08
   product_id: var_activewear_08_s_black
@@ -43500,7 +43500,7 @@ reviews:
   author_height_value: 172.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_activewear_09_03
   product_group_id: prd_activewear_09
   product_id: var_activewear_09_xl_navy
@@ -43524,7 +43524,7 @@ reviews:
   author_height_value: 190.0
   author_height_unit_text: cm
   keywords: [dries fast]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_activewear_09_05
   product_group_id: prd_activewear_09
   product_id: var_activewear_09_xs_navy
@@ -43577,7 +43577,7 @@ reviews:
   review_body: The fabric moves with me and the stretch feels just right for a workout.
   fit_vote: true_to_size
   keywords: [stretchy]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_activewear_10_02
   product_group_id: prd_activewear_10
   product_id: var_activewear_10_m_clay
@@ -43660,7 +43660,7 @@ reviews:
   review_body: The fit runs a bit small for me. I like the compression feel for training.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_activewear_12_03
   product_group_id: prd_activewear_12
   product_id: var_activewear_12_xs_white
@@ -43671,7 +43671,7 @@ reviews:
   review_body: It dries fast after a sweaty session and stays light on the body.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_activewear_12_04
   product_group_id: prd_activewear_12
   product_id: var_activewear_12_l_sand
@@ -43722,7 +43722,7 @@ reviews:
   author_height_value: 167.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_activewear_13_04
   product_group_id: prd_activewear_13
   product_id: var_activewear_13_xs_black
@@ -43735,7 +43735,7 @@ reviews:
   author_height_value: 156.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_activewear_13_05
   product_group_id: prd_activewear_13
   product_id: var_activewear_13_xs_black
@@ -43761,7 +43761,7 @@ reviews:
   author_height_value: 187.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_activewear_13_07
   product_group_id: prd_activewear_13
   product_id: var_activewear_13_m_black
@@ -43772,7 +43772,7 @@ reviews:
   review_body: I stay dry even when the workout gets intense. The fabric pulls sweat away and feels cool against the skin.
   fit_vote: true_to_size
   keywords: [keeps sweat off]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_activewear_13_08
   product_group_id: prd_activewear_13
   product_id: var_activewear_13_xs_olive
@@ -43817,7 +43817,7 @@ reviews:
   review_body: Fresh out of a run it feels dry and light on my skin.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_activewear_14_01
   product_group_id: prd_activewear_14
   product_id: var_activewear_14_xl_sand
@@ -43899,7 +43899,7 @@ reviews:
   author_height_value: 170.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_activewear_16_01
   product_group_id: prd_activewear_16
   product_id: var_activewear_16_xl_rust
@@ -43943,7 +43943,7 @@ reviews:
   review_body: The nylon-elastane jersey has nice stretch that moves with me during runs.
   fit_vote: true_to_size
   keywords: [stretchy]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_activewear_16_05
   product_group_id: prd_activewear_16
   product_id: var_activewear_16_l_sky
@@ -43966,7 +43966,7 @@ reviews:
     I hoped.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_activewear_17_01
   product_group_id: prd_activewear_17
   product_id: var_activewear_17_m_rust
@@ -44028,7 +44028,7 @@ reviews:
   review_body: True to size and comfortable for regular training.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_activewear_19_02
   product_group_id: prd_activewear_19
   product_id: var_activewear_19_xl_slate
@@ -44041,7 +44041,7 @@ reviews:
   author_height_value: 182.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_activewear_19_03
   product_group_id: prd_activewear_19
   product_id: var_activewear_19_l_slate
@@ -44052,7 +44052,7 @@ reviews:
   review_body: The seamless nylon knit feels smooth and moves with me.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_activewear_19_04
   product_group_id: prd_activewear_19
   product_id: var_activewear_19_xs_olive
@@ -45166,7 +45166,7 @@ reviews:
   rating_value: 4
   review_body: I use it for my commute and it handles the route well. It feels light on the back and the zip closes easily.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_bags_02_03
   product_group_id: prd_bags_02
   product_id: var_bags_02_rust
@@ -46596,7 +46596,7 @@ reviews:
   review_body: Works fine for everyday wear. Looks simple and holds up okay.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_belts_01_02
   product_group_id: prd_belts_01
   product_id: var_belts_01_l_navy
@@ -46607,7 +46607,7 @@ reviews:
   review_body: The cotton canvas webbing feels stiffer than I expected. It’s plain for everyday use.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_belts_01_03
   product_group_id: prd_belts_01
   product_id: var_belts_01_m_rust
@@ -46629,7 +46629,7 @@ reviews:
   review_body: It’s okay for everyday. The strap is narrow and the look is basic.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_belts_02_01
   product_group_id: prd_belts_02
   product_id: var_belts_02_s_rust
@@ -46683,7 +46683,7 @@ reviews:
   review_body: It sits snug on my waist and feels right for everyday wear. I wish the fit ran a bit less small.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_belts_04_02
   product_group_id: prd_belts_04
   product_id: var_belts_04_l_rust
@@ -46796,7 +46796,7 @@ reviews:
   review_body: It sits right on my waist and matches the chart. I wear it with dress slacks and it stays in place.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_belts_06_03
   product_group_id: prd_belts_06
   product_id: var_belts_06_l_sky
@@ -46829,7 +46829,7 @@ reviews:
   review_body: It feels sturdy enough for daily wear. The strap holds its shape and the buckle feels solid.
   fit_vote: true_to_size
   keywords: [sturdy]
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_belts_06_06
   product_group_id: prd_belts_06
   product_id: var_belts_06_m_sky
@@ -46873,7 +46873,7 @@ reviews:
   review_body: The full-grain leather feels smooth and holds its shape well. It looks right with dress pants.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_belts_06_10
   product_group_id: prd_belts_06
   product_id: var_belts_06_m_slate
@@ -46884,7 +46884,7 @@ reviews:
   review_body: The full-grain leather has a nice, clean look. It feels a bit stiff at first but settles in.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_belts_06_11
   product_group_id: prd_belts_06
   product_id: var_belts_06_l_sky
@@ -46895,7 +46895,7 @@ reviews:
   review_body: The strap feels solid and holds its shape well on my waist. Feels sturdy for everyday office wear.
   fit_vote: true_to_size
   keywords: [sturdy]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_belts_06_12
   product_group_id: prd_belts_06
   product_id: var_belts_06_l_white
@@ -46948,7 +46948,7 @@ reviews:
   review_body: Fits true to size but feels plainer than I hoped.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_belts_07_03
   product_group_id: prd_belts_07
   product_id: var_belts_07_l_navy
@@ -46995,7 +46995,7 @@ reviews:
   review_body: Wore it on a trail all afternoon and the strap stayed put. The low profile buckle didn’t catch on anything.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-22'
 - id: rev_belts_08_02
   product_group_id: prd_belts_08
   product_id: var_belts_08_s_navy
@@ -47007,7 +47007,7 @@ reviews:
     hip on long hikes.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_belts_08_03
   product_group_id: prd_belts_08
   product_id: var_belts_08_m_rust
@@ -47596,7 +47596,7 @@ reviews:
   review_body: It works for everyday wear without trying too hard.
   fit_vote: runs_large
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_denim_02_03
   product_group_id: prd_denim_02
   product_id: var_denim_02_xs_sand
@@ -47620,7 +47620,7 @@ reviews:
   review_body: The light-wash denim looks easy to wear with most things.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_denim_02_05
   product_group_id: prd_denim_02
   product_id: var_denim_02_xl_sand
@@ -47805,7 +47805,7 @@ reviews:
   author_height_value: 168.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_denim_07_04
   product_group_id: prd_denim_07
   product_id: var_denim_07_l_stone
@@ -47818,7 +47818,7 @@ reviews:
   author_height_value: 178.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_denim_07_05
   product_group_id: prd_denim_07
   product_id: var_denim_07_s_stone
@@ -47870,7 +47870,7 @@ reviews:
     time.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_denim_08_02
   product_group_id: prd_denim_08
   product_id: var_denim_08_l_olive
@@ -47917,7 +47917,7 @@ reviews:
   review_body: The regular shape sits right and the fit runs a bit small so I size up next time.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_denim_10_02
   product_group_id: prd_denim_10
   product_id: var_denim_10_s_sky
@@ -47959,7 +47959,7 @@ reviews:
   review_body: The five pockets are handy and feel just right.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_denim_12_02
   product_group_id: prd_denim_12
   product_id: var_denim_12_xl_olive
@@ -48045,7 +48045,7 @@ reviews:
   author_height_value: 175.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_denim_13_03
   product_group_id: prd_denim_13
   product_id: var_denim_13_xl_white
@@ -48119,7 +48119,7 @@ reviews:
   author_height_value: 182.0
   author_height_unit_text: cm
   keywords: [soft]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_denim_15_01
   product_group_id: prd_denim_15
   product_id: var_denim_15_l_stone
@@ -48132,7 +48132,7 @@ reviews:
   author_height_value: 182.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_denim_15_02
   product_group_id: prd_denim_15
   product_id: var_denim_15_xs_navy
@@ -48218,7 +48218,7 @@ reviews:
   author_height_value: 162.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_denim_16_02
   product_group_id: prd_denim_16
   product_id: var_denim_16_s_clay
@@ -48231,7 +48231,7 @@ reviews:
   author_height_value: 162.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_denim_16_03
   product_group_id: prd_denim_16
   product_id: var_denim_16_s_sand
@@ -49240,7 +49240,7 @@ reviews:
   author_height_value: 187.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_dresses_02_02
   product_group_id: prd_dresses_02
   product_id: var_dresses_02_s_black
@@ -49291,7 +49291,7 @@ reviews:
   review_body: The crepe has a light drape and looks neat for warm days. It’s plainer than I pictured for a silk blend.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_dresses_03_02
   product_group_id: prd_dresses_03
   product_id: var_dresses_03_xl_clay
@@ -49363,7 +49363,7 @@ reviews:
   author_height_value: 184.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_dresses_04_02
   product_group_id: prd_dresses_04
   product_id: var_dresses_04_l_black
@@ -49532,7 +49532,7 @@ reviews:
   author_height_value: 174.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_dresses_10_02
   product_group_id: prd_dresses_10
   product_id: var_dresses_10_l_slate
@@ -49702,7 +49702,7 @@ reviews:
   review_body: Runs a bit large on me. The relaxed shape still feels comfortable.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_dresses_15_01
   product_group_id: prd_dresses_15
   product_id: var_dresses_15_xs_stone
@@ -49715,7 +49715,7 @@ reviews:
   author_height_value: 162.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_dresses_15_02
   product_group_id: prd_dresses_15
   product_id: var_dresses_15_xl_white
@@ -49741,7 +49741,7 @@ reviews:
   author_height_value: 172.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_dresses_15_04
   product_group_id: prd_dresses_15
   product_id: var_dresses_15_xl_white
@@ -50018,7 +50018,7 @@ reviews:
   review_body: Wore it on vacation and it felt soft to the touch. The tiers were plainer than I hoped for a trip.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_dresses_20_01
   product_group_id: prd_dresses_20
   product_id: var_dresses_20_xs_black
@@ -51252,7 +51252,7 @@ reviews:
   rating_value: 5
   review_body: The corduroy feels soft and the surface has a nice, subtle texture.
   keywords: [nice texture]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_hats_01_03
   product_group_id: prd_hats_01
   product_id: var_hats_01_black
@@ -51271,7 +51271,7 @@ reviews:
   review_body: The all-around brim sits nicely and frames the face without feeling bulky. It is a simple, clean look I reach
     for on casual outings.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_hats_02_02
   product_group_id: prd_hats_02
   product_id: var_hats_02_sand
@@ -51363,7 +51363,7 @@ reviews:
   rating_value: 4
   review_body: Six panels give a neat shape that sits right on my head.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_hats_04_02
   product_group_id: prd_hats_04
   product_id: var_hats_04_slate
@@ -51408,7 +51408,7 @@ reviews:
   rating_value: 3
   review_body: For outdoor walks the hat feels light and the brim is wide enough. I wish it looked a bit less plain.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_hats_05_03
   product_group_id: prd_hats_05
   product_id: var_hats_05_navy
@@ -51459,7 +51459,7 @@ reviews:
   rating_value: 5
   review_body: Works fine for everyday runs and errands. I reach for it without thinking.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_hats_06_02
   product_group_id: prd_hats_06
   product_id: var_hats_06_olive
@@ -51469,7 +51469,7 @@ reviews:
   rating_value: 5
   review_body: It holds warmth well on a cold morning walk. I like the ribbed knit and fold-up cuff for everyday winter use.
   keywords: [warm]
-  date_published: '2026-11-05'
+  date_published: '2026-10-21'
 - id: rev_hats_06_03
   product_group_id: prd_hats_06
   product_id: var_hats_06_sand
@@ -51479,7 +51479,7 @@ reviews:
   rating_value: 4
   review_body: Great for winter walks, though it is plainer than I hoped.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_hats_06_04
   product_group_id: prd_hats_06
   product_id: var_hats_06_olive
@@ -51490,7 +51490,7 @@ reviews:
   review_body: I wanted an everyday beanie but the ribbed knit feels stiff to me. It also looks plainer than I expected for
     regular wear.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_hats_06_05
   product_group_id: prd_hats_06
   product_id: var_hats_06_sand
@@ -51526,7 +51526,7 @@ reviews:
   rating_value: 3
   review_body: The fold-down ear flaps feel a little bulky when worn up. I like the idea, but I keep them down most days.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_hats_07_02
   product_group_id: prd_hats_07
   product_id: var_hats_07_stone
@@ -51941,7 +51941,7 @@ reviews:
     relaxed layer.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_knitwear_02_01
   product_group_id: prd_knitwear_02
   product_id: var_knitwear_02_l_navy
@@ -51988,7 +51988,7 @@ reviews:
   author_height_value: 173.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_knitwear_03_03
   product_group_id: prd_knitwear_03
   product_id: var_knitwear_03_s_sky
@@ -51999,7 +51999,7 @@ reviews:
   review_body: Fit runs a bit large, so it sits a little looser than I expected.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_knitwear_03_04
   product_group_id: prd_knitwear_03
   product_id: var_knitwear_03_l_sky
@@ -52077,7 +52077,7 @@ reviews:
     there.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_knitwear_04_02
   product_group_id: prd_knitwear_04
   product_id: var_knitwear_04_xl_stone
@@ -52384,7 +52384,7 @@ reviews:
   author_height_value: 163.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_knitwear_09_02
   product_group_id: prd_knitwear_09
   product_id: var_knitwear_09_s_clay
@@ -52465,7 +52465,7 @@ reviews:
   author_height_value: 173.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_knitwear_11_01
   product_group_id: prd_knitwear_11
   product_id: var_knitwear_11_m_white
@@ -52533,7 +52533,7 @@ reviews:
     warmth well for cold days.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_knitwear_15_02
   product_group_id: prd_knitwear_15
   product_id: var_knitwear_15_l_clay
@@ -52814,7 +52814,7 @@ reviews:
   author_height_value: 180.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_knitwear_20_02
   product_group_id: prd_knitwear_20
   product_id: var_knitwear_20_xl_slate
@@ -52839,7 +52839,7 @@ reviews:
   author_height_value: 165.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_knitwear_20_04
   product_group_id: prd_knitwear_20
   product_id: var_knitwear_20_s_slate
@@ -53108,7 +53108,7 @@ reviews:
   review_body: The relaxed fisherman sweater feels snug on my frame.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_knitwear_25_02
   product_group_id: prd_knitwear_25
   product_id: var_knitwear_25_s_black
@@ -53160,7 +53160,7 @@ reviews:
   review_body: I live in these for the couch after work. They feel soft on the skin and stay comfortable all evening.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_loungewear_01_02
   product_group_id: prd_loungewear_01
   product_id: var_loungewear_01_xl_navy
@@ -53173,7 +53173,7 @@ reviews:
   author_height_value: 186.0
   author_height_unit_text: cm
   keywords: [stretchy]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_loungewear_01_03
   product_group_id: prd_loungewear_01
   product_id: var_loungewear_01_l_black
@@ -53401,7 +53401,7 @@ reviews:
   review_body: The fit runs a bit large, which is comfortable for sleep. I like the extra room in the relaxed cut.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_loungewear_03_03
   product_group_id: prd_loungewear_03
   product_id: var_loungewear_03_s_white
@@ -53510,7 +53510,7 @@ reviews:
   review_body: The tie belt is plain and doesn’t hold the robe closed very well at the front.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_loungewear_05_02
   product_group_id: prd_loungewear_05
   product_id: var_loungewear_05_xs_rust
@@ -53573,7 +53573,7 @@ reviews:
   author_height_value: 186.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_loungewear_05_07
   product_group_id: prd_loungewear_05
   product_id: var_loungewear_05_xl_sky
@@ -53660,7 +53660,7 @@ reviews:
   author_height_value: 166.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_loungewear_06_02
   product_group_id: prd_loungewear_06
   product_id: var_loungewear_06_xs_black
@@ -53718,7 +53718,7 @@ reviews:
   author_height_value: 165.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_loungewear_07_02
   product_group_id: prd_loungewear_07
   product_id: var_loungewear_07_m_clay
@@ -53731,7 +53731,7 @@ reviews:
   author_height_value: 171.0
   author_height_unit_text: cm
   keywords: [warm]
-  date_published: '2026-11-05'
+  date_published: '2026-10-23'
 - id: rev_loungewear_07_03
   product_group_id: prd_loungewear_07
   product_id: var_loungewear_07_xl_clay
@@ -53802,7 +53802,7 @@ reviews:
   author_height_value: 188.0
   author_height_unit_text: cm
   keywords: [soft]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_loungewear_08_03
   product_group_id: prd_loungewear_08
   product_id: var_loungewear_08_s_white
@@ -53873,7 +53873,7 @@ reviews:
     bedtime feel calm.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_loungewear_09_03
   product_group_id: prd_loungewear_09
   product_id: var_loungewear_09_s_stone
@@ -53977,7 +53977,7 @@ reviews:
   author_height_value: 179.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_loungewear_10_03
   product_group_id: prd_loungewear_10
   product_id: var_loungewear_10_l_stone
@@ -54083,7 +54083,7 @@ reviews:
   author_height_value: 174.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_loungewear_11_03
   product_group_id: prd_loungewear_11
   product_id: var_loungewear_11_s_navy
@@ -54163,7 +54163,7 @@ reviews:
     about adjusting.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_loungewear_12_02
   product_group_id: prd_loungewear_12
   product_id: var_loungewear_12_xl_black
@@ -54236,7 +54236,7 @@ reviews:
   review_body: It feels breathable at night, which is what I wanted for sleep.
   fit_vote: true_to_size
   keywords: [breathable]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_loungewear_12_08
   product_group_id: prd_loungewear_12
   product_id: var_loungewear_12_s_stone
@@ -55256,7 +55256,7 @@ reviews:
   review_body: Fit feels roomy in the shoulders and gives me a bit more ease than I expected.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_outerwear_06_02
   product_group_id: prd_outerwear_06
   product_id: var_outerwear_06_xl_slate
@@ -55331,7 +55331,7 @@ reviews:
   author_height_value: 164.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_outerwear_09_03
   product_group_id: prd_outerwear_09
   product_id: var_outerwear_09_m_stone
@@ -55486,7 +55486,7 @@ reviews:
   author_height_value: 180.0
   author_height_unit_text: cm
   keywords: [blocks wind]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_outerwear_11_02
   product_group_id: prd_outerwear_11
   product_id: var_outerwear_11_xl_olive
@@ -55532,7 +55532,7 @@ reviews:
   author_height_value: 162.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-25'
 - id: rev_outerwear_13_02
   product_group_id: prd_outerwear_13
   product_id: var_outerwear_13_xs_clay
@@ -55649,7 +55649,7 @@ reviews:
   author_height_value: 165.0
   author_height_unit_text: cm
   keywords: [blocks wind]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_outerwear_14_02
   product_group_id: prd_outerwear_14
   product_id: var_outerwear_14_xl_slate
@@ -55836,7 +55836,7 @@ reviews:
   review_body: Adjustable cuffs stay put all day and feel tidy around the wrist. I like that small detail on a shell jacket.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_outerwear_17_02
   product_group_id: prd_outerwear_17
   product_id: var_outerwear_17_l_rust
@@ -55847,7 +55847,7 @@ reviews:
   review_body: The stretch is there but not as much as I expected. It moves fine for casual wear but feels a bit restrained.
   fit_vote: true_to_size
   keywords: [stretchy]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_outerwear_17_03
   product_group_id: prd_outerwear_17
   product_id: var_outerwear_17_xl_sand
@@ -57094,7 +57094,7 @@ reviews:
   author_height_value: 156.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-25'
 - id: rev_pants_01_02
   product_group_id: prd_pants_01
   product_id: var_pants_01_l_white
@@ -57196,7 +57196,7 @@ reviews:
   author_height_value: 183.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_pants_02_04
   product_group_id: prd_pants_02
   product_id: var_pants_02_xl_slate
@@ -57219,7 +57219,7 @@ reviews:
     move in.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_pants_02_06
   product_group_id: prd_pants_02
   product_id: var_pants_02_xl_slate
@@ -57498,7 +57498,7 @@ reviews:
   author_height_value: 158.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_pants_04_07
   product_group_id: prd_pants_04
   product_id: var_pants_04_s_white
@@ -57624,7 +57624,7 @@ reviews:
   author_height_value: 185.0
   author_height_unit_text: cm
   keywords: [sturdy]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_pants_08_02
   product_group_id: prd_pants_08
   product_id: var_pants_08_m_olive
@@ -57820,7 +57820,7 @@ reviews:
   review_body: The relaxed cut is nice, but it runs a bit small for my usual fit.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_pants_14_02
   product_group_id: prd_pants_14
   product_id: var_pants_14_xs_navy
@@ -57968,7 +57968,7 @@ reviews:
   author_height_value: 185.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_pants_17_02
   product_group_id: prd_pants_17
   product_id: var_pants_17_l_slate
@@ -58009,7 +58009,7 @@ reviews:
   review_body: The pair stays cool after a long walk on a hot afternoon. It feels light and breathable for daily errands.
   fit_vote: true_to_size
   keywords: [breathable]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_pants_18_02
   product_group_id: prd_pants_18
   product_id: var_pants_18_l_navy
@@ -58046,7 +58046,7 @@ reviews:
   author_height_value: 179.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_pants_19_02
   product_group_id: prd_pants_19
   product_id: var_pants_19_s_white
@@ -58079,7 +58079,7 @@ reviews:
   review_body: The pants held up on a trip but looked plainer than I hoped.
   fit_vote: runs_small
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_pants_20_02
   product_group_id: prd_pants_20
   product_id: var_pants_20_xl_sand
@@ -58114,7 +58114,7 @@ reviews:
   author_height_value: 187.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_pants_21_03
   product_group_id: prd_pants_21
   product_id: var_pants_21_m_navy
@@ -58178,7 +58178,7 @@ reviews:
   review_body: The relaxed fit sits true to size and comfortable for everyday wear.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_pants_23_03
   product_group_id: prd_pants_23
   product_id: var_pants_23_xs_olive
@@ -58345,7 +58345,7 @@ reviews:
   author_height_value: 168.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_pants_26_02
   product_group_id: prd_pants_26
   product_id: var_pants_26_s_sand
@@ -59711,7 +59711,7 @@ reviews:
   review_body: Fit runs a bit small so I went up a size for trail walks. The heel stays put even on rocky paths.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_sandals_01_02
   product_group_id: prd_sandals_01
   product_id: var_sandals_01_11_sand
@@ -59722,7 +59722,7 @@ reviews:
   review_body: Fit feels true to size for my usual hiking footwear. The straps hold without digging on longer walks.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_sandals_01_03
   product_group_id: prd_sandals_01
   product_id: var_sandals_01_11_sand
@@ -59733,7 +59733,7 @@ reviews:
   review_body: These fit a bit small for me, and I like that snug feel on hikes. The footbed feels supportive on uneven ground.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-24'
 - id: rev_sandals_01_04
   product_group_id: prd_sandals_01
   product_id: var_sandals_01_9_sand
@@ -59755,7 +59755,7 @@ reviews:
   review_body: Runs a bit small, so sizing up helps for all-day wear on the trail.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-21'
 - id: rev_sandals_01_06
   product_group_id: prd_sandals_01
   product_id: var_sandals_01_8_sand
@@ -59775,7 +59775,7 @@ reviews:
   review_body: The fit feels true to size and comfy right out of the slip-on.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_sandals_02_02
   product_group_id: prd_sandals_02
   product_id: var_sandals_02_11_slate
@@ -59955,7 +59955,7 @@ reviews:
   review_body: They sit true to size and feel fine for a slip-on clog.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_sandals_04_08
   product_group_id: prd_sandals_04
   product_id: var_sandals_04_8_white
@@ -59966,7 +59966,7 @@ reviews:
   review_body: They work fine for everyday wear around the house.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_sandals_04_09
   product_group_id: prd_sandals_04
   product_id: var_sandals_04_8_white
@@ -60133,7 +60133,7 @@ reviews:
   review_body: Fit feels true to size and comfortable right away. I wear them for short walks and they stay put.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_sandals_06_02
   product_group_id: prd_sandals_06
   product_id: var_sandals_06_11_sand
@@ -60202,7 +60202,7 @@ reviews:
     easy vibe.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_sandals_06_08
   product_group_id: prd_sandals_06
   product_id: var_sandals_06_7_navy
@@ -60225,7 +60225,7 @@ reviews:
   review_body: These feel a touch snug across the top, and the fit runs a bit small for everyday wear.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_sandals_07_02
   product_group_id: prd_sandals_07
   product_id: var_sandals_07_8_navy
@@ -60260,7 +60260,7 @@ reviews:
   review_body: The woven toe feels more secure than I expected. It still lets my foot breathe on hot walks.
   fit_vote: runs_large
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_sandals_07_05
   product_group_id: prd_sandals_07
   product_id: var_sandals_07_11_navy
@@ -60335,7 +60335,7 @@ reviews:
   review_body: The pair is snug and runs a bit small. I'll go a size up next time.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_sandals_09_02
   product_group_id: prd_sandals_09
   product_id: var_sandals_09_10_slate
@@ -61003,7 +61003,7 @@ reviews:
   review_body: The fabric feels soft to the touch and breathable for warm days. It moves easily and feels comfortable all
     afternoon.
   keywords: [soft]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_scarves_03_02
   product_group_id: prd_scarves_03
   product_id: var_scarves_03_olive
@@ -61093,7 +61093,7 @@ reviews:
   rating_value: 4
   review_body: Works well for city days, light and easy to wear.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_scarves_06_02
   product_group_id: prd_scarves_06
   product_id: var_scarves_06_black
@@ -61103,7 +61103,7 @@ reviews:
   rating_value: 5
   review_body: The fringed ends move nicely and look neat. I like the little finish they give.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_scarves_06_03
   product_group_id: prd_scarves_06
   product_id: var_scarves_06_black
@@ -61172,7 +61172,7 @@ reviews:
   rating_value: 5
   review_body: Loop shape sits comfortably and stays put on my head.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_scarves_07_03
   product_group_id: prd_scarves_07
   product_id: var_scarves_07_black
@@ -61247,7 +61247,7 @@ reviews:
   review_body: The little rolled edge keeps the fabric tidy and feels neat against the skin. It looks finished without adding
     bulk.
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_scarves_08_02
   product_group_id: prd_scarves_08
   product_id: var_scarves_08_navy
@@ -61961,7 +61961,7 @@ reviews:
   review_body: Runs a bit small but the regular shape still feels comfortable. The corduroy sits nicely after a few wears.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_shirts_02_02
   product_group_id: prd_shirts_02
   product_id: var_shirts_02_l_navy
@@ -61972,7 +61972,7 @@ reviews:
   review_body: Works great for everyday and I reach for it all the time.
   fit_vote: runs_large
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_shirts_02_03
   product_group_id: prd_shirts_02
   product_id: var_shirts_02_m_clay
@@ -61985,7 +61985,7 @@ reviews:
   author_height_value: 177.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-23'
 - id: rev_shirts_02_04
   product_group_id: prd_shirts_02
   product_id: var_shirts_02_l_clay
@@ -61996,7 +61996,7 @@ reviews:
   review_body: Pockets are handy, though the snap flaps sit a little plain against the textured surface.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_shirts_02_05
   product_group_id: prd_shirts_02
   product_id: var_shirts_02_s_clay
@@ -62080,7 +62080,7 @@ reviews:
   review_body: The texture feels cool and airy on the skin. The little puckers give it a casual, relaxed vibe.
   fit_vote: runs_large
   keywords: [nice texture]
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_shirts_03_02
   product_group_id: prd_shirts_03
   product_id: var_shirts_03_m_stone
@@ -62093,7 +62093,7 @@ reviews:
   author_height_value: 171.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_shirts_03_03
   product_group_id: prd_shirts_03
   product_id: var_shirts_03_xs_stone
@@ -62120,7 +62120,7 @@ reviews:
   author_height_value: 184.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_shirts_03_05
   product_group_id: prd_shirts_03
   product_id: var_shirts_03_xs_stone
@@ -62164,7 +62164,7 @@ reviews:
   review_body: I noticed it stays comfortable on warmer days. The cotton chambray feels soft and breathable through the day.
   fit_vote: true_to_size
   keywords: [breathable]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_shirts_04_03
   product_group_id: prd_shirts_04
   product_id: var_shirts_04_xs_sand
@@ -62229,7 +62229,7 @@ reviews:
   author_height_value: 172.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_shirts_04_08
   product_group_id: prd_shirts_04
   product_id: var_shirts_04_m_sand
@@ -62274,7 +62274,7 @@ reviews:
   author_height_value: 161.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_shirts_05_02
   product_group_id: prd_shirts_05
   product_id: var_shirts_05_m_stone
@@ -62300,7 +62300,7 @@ reviews:
   author_height_value: 170.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_shirts_05_04
   product_group_id: prd_shirts_05
   product_id: var_shirts_05_l_clay
@@ -62313,7 +62313,7 @@ reviews:
   author_height_value: 187.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_shirts_05_05
   product_group_id: prd_shirts_05
   product_id: var_shirts_05_m_stone
@@ -62326,7 +62326,7 @@ reviews:
   author_height_value: 166.0
   author_height_unit_text: cm
   keywords: [soft]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_shirts_06_01
   product_group_id: prd_shirts_06
   product_id: var_shirts_06_xl_rust
@@ -62338,7 +62338,7 @@ reviews:
     feeling stiff.
   fit_vote: runs_large
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_shirts_06_02
   product_group_id: prd_shirts_06
   product_id: var_shirts_06_xs_rust
@@ -62349,7 +62349,7 @@ reviews:
   review_body: The fit runs a bit small for a regular cut, so it feels snug across the chest.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_shirts_06_03
   product_group_id: prd_shirts_06
   product_id: var_shirts_06_s_rust
@@ -62380,7 +62380,7 @@ reviews:
   review_body: It keeps me cool on hot afternoons. The fabric feels airy against my skin.
   fit_vote: true_to_size
   keywords: [breathable]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_shirts_07_02
   product_group_id: prd_shirts_07
   product_id: var_shirts_07_xl_navy
@@ -62451,7 +62451,7 @@ reviews:
   author_height_value: 169.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_shirts_08_03
   product_group_id: prd_shirts_08
   product_id: var_shirts_08_l_slate
@@ -62477,7 +62477,7 @@ reviews:
   author_height_value: 158.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_shirts_08_05
   product_group_id: prd_shirts_08
   product_id: var_shirts_08_m_olive
@@ -62589,7 +62589,7 @@ reviews:
   author_height_value: 177.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_shirts_10_01
   product_group_id: prd_shirts_10
   product_id: var_shirts_10_l_white
@@ -62601,7 +62601,7 @@ reviews:
     wear.
   fit_vote: true_to_size
   keywords: [breathable]
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_shirts_10_02
   product_group_id: prd_shirts_10
   product_id: var_shirts_10_m_sky
@@ -62673,7 +62673,7 @@ reviews:
   author_height_value: 161.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_shirts_12_01
   product_group_id: prd_shirts_12
   product_id: var_shirts_12_s_slate
@@ -62719,7 +62719,7 @@ reviews:
   author_height_value: 178.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_shirts_14_02
   product_group_id: prd_shirts_14
   product_id: var_shirts_14_xl_sand
@@ -62730,7 +62730,7 @@ reviews:
   review_body: Runs a bit large, so I'm glad I had the regular cut to work with. I like the relaxed feel for everyday wear.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_shirts_14_03
   product_group_id: prd_shirts_14
   product_id: var_shirts_14_xs_sand
@@ -62865,7 +62865,7 @@ reviews:
     shirt.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_shirts_16_01
   product_group_id: prd_shirts_16
   product_id: var_shirts_16_s_sky
@@ -62932,7 +62932,7 @@ reviews:
   author_height_value: 163.0
   author_height_unit_text: cm
   keywords: [soft]
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_shirts_16_06
   product_group_id: prd_shirts_16
   product_id: var_shirts_16_s_sky
@@ -62985,7 +62985,7 @@ reviews:
   author_height_value: 166.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_shirts_18_02
   product_group_id: prd_shirts_18
   product_id: var_shirts_18_m_black
@@ -64382,7 +64382,7 @@ reviews:
   review_body: I wear them around town and on errands. They feel soft to the touch and work fine for everyday.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-23'
 - id: rev_shoes_02_02
   product_group_id: prd_shoes_02
   product_id: var_shoes_02_12_white
@@ -64421,7 +64421,7 @@ reviews:
   review_body: Suede feels soft to the touch but looks plainer than I expected for office wear.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_shoes_04_01
   product_group_id: prd_shoes_04
   product_id: var_shoes_04_11_sand
@@ -64588,7 +64588,7 @@ reviews:
     nice but looks plain after a day out.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_shoes_07_02
   product_group_id: prd_shoes_07
   product_id: var_shoes_07_10_black
@@ -64609,7 +64609,7 @@ reviews:
     wear.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_shoes_08_02
   product_group_id: prd_shoes_08
   product_id: var_shoes_08_7_slate
@@ -64621,7 +64621,7 @@ reviews:
     color for photos.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-25'
 - id: rev_shoes_08_03
   product_group_id: prd_shoes_08
   product_id: var_shoes_08_8_slate
@@ -64652,7 +64652,7 @@ reviews:
     way.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-24'
 - id: rev_shoes_09_02
   product_group_id: prd_shoes_09
   product_id: var_shoes_09_10_navy
@@ -64701,7 +64701,7 @@ reviews:
   review_body: Fit feels true to size for me. The ankle height sits fine around the top of my foot.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_shoes_10_02
   product_group_id: prd_shoes_10
   product_id: var_shoes_10_8_white
@@ -64757,7 +64757,7 @@ reviews:
   review_body: The fit feels true to size and settles comfortably for office wear.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_shoes_12_01
   product_group_id: prd_shoes_12
   product_id: var_shoes_12_11_navy
@@ -66109,7 +66109,7 @@ reviews:
   author_height_value: 177.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_shorts_02_04
   product_group_id: prd_shorts_02
   product_id: var_shorts_02_s_olive
@@ -66133,7 +66133,7 @@ reviews:
   review_body: The relaxed fit runs a bit large, still comfortable overall.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_shorts_02_06
   product_group_id: prd_shorts_02
   product_id: var_shorts_02_s_rust
@@ -66172,7 +66172,7 @@ reviews:
   author_height_value: 178.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_shorts_03_02
   product_group_id: prd_shorts_03
   product_id: var_shorts_03_s_navy
@@ -66280,7 +66280,7 @@ reviews:
   review_body: Sturdy and feels built for regular trail use.
   fit_vote: true_to_size
   keywords: [sturdy]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_shorts_04_03
   product_group_id: prd_shorts_04
   product_id: var_shorts_04_l_sand
@@ -66304,7 +66304,7 @@ reviews:
   review_body: Comfortable for hiking in the summer heat.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_shorts_04_05
   product_group_id: prd_shorts_04
   product_id: var_shorts_04_xs_sand
@@ -66330,7 +66330,7 @@ reviews:
   author_height_value: 181.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_shorts_04_07
   product_group_id: prd_shorts_04
   product_id: var_shorts_04_xs_stone
@@ -66643,7 +66643,7 @@ reviews:
   author_height_value: 180.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_shorts_06_07
   product_group_id: prd_shorts_06
   product_id: var_shorts_06_xs_white
@@ -66656,7 +66656,7 @@ reviews:
   author_height_value: 158.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_shorts_06_08
   product_group_id: prd_shorts_06
   product_id: var_shorts_06_xs_white
@@ -66667,7 +66667,7 @@ reviews:
   review_body: These were perfect for a relaxed day out on vacation. The front pleats give a neat shape without fuss.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_shorts_06_09
   product_group_id: prd_shorts_06
   product_id: var_shorts_06_s_sand
@@ -66860,7 +66860,7 @@ reviews:
   author_height_value: 183.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_shorts_08_02
   product_group_id: prd_shorts_08
   product_id: var_shorts_08_xl_white
@@ -66871,7 +66871,7 @@ reviews:
   review_body: Runs a bit large, which is nice for airflow on warm days.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_shorts_08_03
   product_group_id: prd_shorts_08
   product_id: var_shorts_08_m_white
@@ -66904,7 +66904,7 @@ reviews:
   review_body: The cotton seersucker feels light and breathable. The texture stays put without looking creased.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_shorts_09_03
   product_group_id: prd_shorts_09
   product_id: var_shorts_09_m_rust
@@ -66996,7 +66996,7 @@ reviews:
   review_body: I was out in the heat and the shorts dried fast after a quick rinse.
   fit_vote: true_to_size
   keywords: [dries fast]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_shorts_10_08
   product_group_id: prd_shorts_10
   product_id: var_shorts_10_l_navy
@@ -67132,7 +67132,7 @@ reviews:
   review_body: These shorts worked fine for vacation, nothing special.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_shorts_12_02
   product_group_id: prd_shorts_12
   product_id: var_shorts_12_xl_olive
@@ -67145,7 +67145,7 @@ reviews:
   author_height_value: 185.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-25'
 - id: rev_shorts_12_03
   product_group_id: prd_shorts_12
   product_id: var_shorts_12_xl_white
@@ -67158,7 +67158,7 @@ reviews:
   author_height_value: 192.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_shorts_12_04
   product_group_id: prd_shorts_12
   product_id: var_shorts_12_s_olive
@@ -67204,7 +67204,7 @@ reviews:
   review_body: These are my go-to for summer walks. The cotton twill feels comfortable for everyday use.
   fit_vote: runs_small
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_shorts_13_04
   product_group_id: prd_shorts_13
   product_id: var_shorts_13_m_slate
@@ -67286,7 +67286,7 @@ reviews:
   author_height_value: 158.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-25'
 - id: rev_shorts_14_02
   product_group_id: prd_shorts_14
   product_id: var_shorts_14_m_slate
@@ -67299,7 +67299,7 @@ reviews:
   author_height_value: 178.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_shorts_14_03
   product_group_id: prd_shorts_14
   product_id: var_shorts_14_s_slate
@@ -67312,7 +67312,7 @@ reviews:
   author_height_value: 159.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_shorts_14_04
   product_group_id: prd_shorts_14
   product_id: var_shorts_14_xl_navy
@@ -67326,7 +67326,7 @@ reviews:
   author_height_value: 188.0
   author_height_unit_text: cm
   keywords: [soft]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_shorts_14_05
   product_group_id: prd_shorts_14
   product_id: var_shorts_14_xl_slate
@@ -67361,7 +67361,7 @@ reviews:
   review_body: The cut sits relaxed the way I like. It feels true to size without pulling at the waist.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-24'
 - id: rev_shorts_14_08
   product_group_id: prd_shorts_14
   product_id: var_shorts_14_xl_slate
@@ -67421,7 +67421,7 @@ reviews:
   author_height_value: 178.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_shorts_15_03
   product_group_id: prd_shorts_15
   product_id: var_shorts_15_m_slate
@@ -67434,7 +67434,7 @@ reviews:
   author_height_value: 177.0
   author_height_unit_text: cm
   keywords: [soft]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_shorts_15_04
   product_group_id: prd_shorts_15
   product_id: var_shorts_15_m_sky
@@ -67460,7 +67460,7 @@ reviews:
   author_height_value: 171.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_shorts_16_02
   product_group_id: prd_shorts_16
   product_id: var_shorts_16_l_black
@@ -67471,7 +67471,7 @@ reviews:
   review_body: The linen feels rough against the skin. It creases the moment I move.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_shorts_16_03
   product_group_id: prd_shorts_16
   product_id: var_shorts_16_xs_black
@@ -67504,7 +67504,7 @@ reviews:
   author_height_value: 185.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_shorts_17_02
   product_group_id: prd_shorts_17
   product_id: var_shorts_17_s_navy
@@ -67517,7 +67517,7 @@ reviews:
   author_height_value: 169.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_shorts_17_03
   product_group_id: prd_shorts_17
   product_id: var_shorts_17_s_navy
@@ -68488,7 +68488,7 @@ reviews:
   author_height_value: 169.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_skirts_02_02
   product_group_id: prd_skirts_02
   product_id: var_skirts_02_s_sand
@@ -68499,7 +68499,7 @@ reviews:
   review_body: Works for everyday. Soft to the touch and the texture feels nice around the house.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_skirts_02_03
   product_group_id: prd_skirts_02
   product_id: var_skirts_02_m_olive
@@ -68568,7 +68568,7 @@ reviews:
   author_height_value: 194.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_skirts_03_03
   product_group_id: prd_skirts_03
   product_id: var_skirts_03_xl_rust
@@ -68628,7 +68628,7 @@ reviews:
   author_height_value: 192.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_skirts_03_08
   product_group_id: prd_skirts_03
   product_id: var_skirts_03_xs_stone
@@ -68659,7 +68659,7 @@ reviews:
   review_body: Cotton denim feels sturdy and holds its shape on me.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_skirts_04_02
   product_group_id: prd_skirts_04
   product_id: var_skirts_04_xs_clay
@@ -68771,7 +68771,7 @@ reviews:
   author_height_value: 178.0
   author_height_unit_text: cm
   keywords: [breathable]
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_skirts_06_02
   product_group_id: prd_skirts_06
   product_id: var_skirts_06_xs_navy
@@ -68782,7 +68782,7 @@ reviews:
   review_body: The linen has a nice soft drape and looks put together for the office.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_skirts_06_03
   product_group_id: prd_skirts_06
   product_id: var_skirts_06_s_white
@@ -68834,7 +68834,7 @@ reviews:
   author_height_value: 159.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_skirts_06_07
   product_group_id: prd_skirts_06
   product_id: var_skirts_06_s_olive
@@ -68871,7 +68871,7 @@ reviews:
   author_height_value: 169.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_skirts_06_10
   product_group_id: prd_skirts_06
   product_id: var_skirts_06_l_white
@@ -68925,7 +68925,7 @@ reviews:
   author_height_value: 166.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_skirts_07_02
   product_group_id: prd_skirts_07
   product_id: var_skirts_07_s_black
@@ -68936,7 +68936,7 @@ reviews:
   review_body: The linen mix feels breathable and comfortable for warm days.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_skirts_07_03
   product_group_id: prd_skirts_07
   product_id: var_skirts_07_m_black
@@ -68971,7 +68971,7 @@ reviews:
   author_height_value: 180.0
   author_height_unit_text: cm
   keywords: [stretchy]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_skirts_08_02
   product_group_id: prd_skirts_08
   product_id: var_skirts_08_s_slate
@@ -69033,7 +69033,7 @@ reviews:
   review_body: The wool flannel looks nice but the fabric feels heavier than I expected.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_skirts_10_02
   product_group_id: prd_skirts_10
   product_id: var_skirts_10_m_clay
@@ -69057,7 +69057,7 @@ reviews:
   author_height_value: 179.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_skirts_10_04
   product_group_id: prd_skirts_10
   product_id: var_skirts_10_xl_sand
@@ -69936,7 +69936,7 @@ reviews:
   review_body: Fit runs a bit small, so I sized up and they sit comfortably now.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_sneakers_03_04
   product_group_id: prd_sneakers_03
   product_id: var_sneakers_03_8_clay
@@ -69956,7 +69956,7 @@ reviews:
   review_body: The knit feels light and breathable on my feet and the stretch shows up when I move around.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_sneakers_04_02
   product_group_id: prd_sneakers_04
   product_id: var_sneakers_04_11_sky
@@ -69967,7 +69967,7 @@ reviews:
   review_body: The knit is breathable and has stretch, but it looks plainer than I hoped.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_sneakers_04_03
   product_group_id: prd_sneakers_04
   product_id: var_sneakers_04_9_sky
@@ -69987,7 +69987,7 @@ reviews:
   review_body: The leather looks clean and holds its shape well. I like the simple finish for daily wear.
   fit_vote: runs_small
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_sneakers_05_02
   product_group_id: prd_sneakers_05
   product_id: var_sneakers_05_7_clay
@@ -70130,7 +70130,7 @@ reviews:
   review_body: Solid everyday choice for errands and coffee runs. Feels comfortable with the lace-up closure.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_sneakers_09_03
   product_group_id: prd_sneakers_09
   product_id: var_sneakers_09_9_stone
@@ -70141,7 +70141,7 @@ reviews:
   review_body: Runs a bit large, so they feel roomy out of the box.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_sneakers_09_04
   product_group_id: prd_sneakers_09
   product_id: var_sneakers_09_8_stone
@@ -70174,7 +70174,7 @@ reviews:
     nicely.
   fit_vote: runs_small
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_sneakers_10_03
   product_group_id: prd_sneakers_10
   product_id: var_sneakers_10_10_sky
@@ -70185,7 +70185,7 @@ reviews:
   review_body: I notice the mesh gives a nice give around the foot. The upper looks fresh and holds up through regular wear.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_sneakers_10_04
   product_group_id: prd_sneakers_10
   product_id: var_sneakers_10_12_sky
@@ -70247,7 +70247,7 @@ reviews:
     again.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_sneakers_11_02
   product_group_id: prd_sneakers_11
   product_id: var_sneakers_11_10_sky
@@ -70258,7 +70258,7 @@ reviews:
   review_body: The engineered polyester mesh keeps the upper light and flexible.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_sneakers_11_03
   product_group_id: prd_sneakers_11
   product_id: var_sneakers_11_12_sky
@@ -70389,7 +70389,7 @@ reviews:
     steady for walking.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_sneakers_14_01
   product_group_id: prd_sneakers_14
   product_id: var_sneakers_14_9_sky
@@ -70630,7 +70630,7 @@ reviews:
   review_body: Suede feels soft to the touch and looks clean on the trail.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_sneakers_19_02
   product_group_id: prd_sneakers_19
   product_id: var_sneakers_19_8_white
@@ -70706,7 +70706,7 @@ reviews:
   review_body: True to size and comfortable right away.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_sneakers_20_02
   product_group_id: prd_sneakers_20
   product_id: var_sneakers_20_10_rust
@@ -71097,7 +71097,7 @@ reviews:
   review_body: They keep my feet dry on long hikes. I like how they pull moisture away without feeling damp.
   fit_vote: true_to_size
   keywords: [keeps sweat off]
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_socks_01_02
   product_group_id: prd_socks_01
   product_id: var_socks_01_m_white
@@ -71166,7 +71166,7 @@ reviews:
   review_body: True to size and comfortable for a long work day. I reach for them first in winter.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_socks_01_08
   product_group_id: prd_socks_01
   product_id: var_socks_01_m_olive
@@ -71252,7 +71252,7 @@ reviews:
   review_body: Fit is true to size on me. Comfortable for everyday wear and training runs.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_socks_02_06
   product_group_id: prd_socks_02
   product_id: var_socks_02_l_rust
@@ -71319,7 +71319,7 @@ reviews:
   review_body: The stretch feels even from heel to arch and the sock stays put without pulling.
   fit_vote: true_to_size
   keywords: [stretchy]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_socks_03_02
   product_group_id: prd_socks_03
   product_id: var_socks_03_m_white
@@ -71331,7 +71331,7 @@ reviews:
     in my shoes.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_socks_03_03
   product_group_id: prd_socks_03
   product_id: var_socks_03_l_white
@@ -71343,7 +71343,7 @@ reviews:
     all day.
   fit_vote: true_to_size
   keywords: [warm]
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_socks_03_05
   product_group_id: prd_socks_03
   product_id: var_socks_03_l_sky
@@ -71437,7 +71437,7 @@ reviews:
   review_body: Feet stayed dry on a long hike. The socks wick moisture well and I noticed less sweat buildup.
   fit_vote: runs_large
   keywords: [keeps sweat off]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_socks_04_02
   product_group_id: prd_socks_04
   product_id: var_socks_04_l_rust
@@ -71481,7 +71481,7 @@ reviews:
   review_body: Cushioned sole makes the foot feel supported on rocky ground. The arch support adds comfort on hikes.
   fit_vote: true_to_size
   keywords: [cushioned]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_socks_04_06
   product_group_id: prd_socks_04
   product_id: var_socks_04_l_sand
@@ -71580,7 +71580,7 @@ reviews:
   review_body: Heel and toe feel sturdier than my usual crew socks.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_socks_05_08
   product_group_id: prd_socks_05
   product_id: var_socks_05_l_sky
@@ -71591,7 +71591,7 @@ reviews:
   review_body: Fine for everyday use but plainer than I hoped.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_socks_05_09
   product_group_id: prd_socks_05
   product_id: var_socks_05_l_white
@@ -71613,7 +71613,7 @@ reviews:
   review_body: Reinforced heel and toe are noticeable. The fabric feels a bit firmer than I expected.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_socks_05_11
   product_group_id: prd_socks_05
   product_id: var_socks_05_m_slate
@@ -71684,7 +71684,7 @@ reviews:
   review_body: These trail socks fit true to size. I didn’t have to think about sizing on my hike.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_socks_06_02
   product_group_id: prd_socks_06
   product_id: var_socks_06_l_white
@@ -71695,7 +71695,7 @@ reviews:
   review_body: Runs a bit large for me, so I swapped down and they sit nicely on my feet now.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_socks_06_03
   product_group_id: prd_socks_06
   product_id: var_socks_06_l_navy
@@ -71772,7 +71772,7 @@ reviews:
   review_body: Arch support is there but feels mild for my foot. It does not bother me on short hikes.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_socks_06_10
   product_group_id: prd_socks_06
   product_id: var_socks_06_m_white
@@ -71833,7 +71833,7 @@ reviews:
   review_body: The sole feels supportive on long walks. It holds up well under boots.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_socks_07_02
   product_group_id: prd_socks_07
   product_id: var_socks_07_l_white
@@ -71929,7 +71929,7 @@ reviews:
   review_body: Fit runs a bit small for me. I was fine after a gentle stretch in wear.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_socks_08_02
   product_group_id: prd_socks_08
   product_id: var_socks_08_m_olive
@@ -71940,7 +71940,7 @@ reviews:
   review_body: They sit fine under office trousers and look neat all day.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_socks_08_03
   product_group_id: prd_socks_08
   product_id: var_socks_08_m_clay
@@ -71951,7 +71951,7 @@ reviews:
   review_body: The stretch is there, but it feels just enough for a normal step.
   fit_vote: true_to_size
   keywords: [stretchy]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_socks_08_04
   product_group_id: prd_socks_08
   product_id: var_socks_08_l_clay
@@ -72038,7 +72038,7 @@ reviews:
   review_body: These are solid for everyday wear. The cushioning holds up through normal use.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_socks_09_03
   product_group_id: prd_socks_09
   product_id: var_socks_09_l_clay
@@ -72049,7 +72049,7 @@ reviews:
   review_body: The terry-cushioned knit feels soft against the skin.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-11'
 - id: rev_socks_09_04
   product_group_id: prd_socks_09
   product_id: var_socks_09_m_white
@@ -72093,7 +72093,7 @@ reviews:
   review_body: The cushioning feels supportive on my feet during walks.
   fit_vote: true_to_size
   keywords: [cushioned]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_socks_09_08
   product_group_id: prd_socks_09
   product_id: var_socks_09_m_white
@@ -72803,7 +72803,7 @@ reviews:
   review_body: Nylon bomber handled a light shower on the walk home.
   fit_vote: runs_small
   keywords: [handles light rain]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_summer_outerwear_04_03
   product_group_id: prd_summer_outerwear_04
   product_id: var_summer_outerwear_04_s_rust
@@ -72816,7 +72816,7 @@ reviews:
   author_height_value: 161.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-20'
 - id: rev_summer_outerwear_04_04
   product_group_id: prd_summer_outerwear_04
   product_id: var_summer_outerwear_04_m_rust
@@ -72829,7 +72829,7 @@ reviews:
   author_height_value: 176.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_summer_outerwear_04_05
   product_group_id: prd_summer_outerwear_04
   product_id: var_summer_outerwear_04_s_clay
@@ -72944,7 +72944,7 @@ reviews:
   review_body: It keeps the breeze off nicely on chilly walks.
   fit_vote: true_to_size
   keywords: [blocks wind]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_summer_outerwear_07_02
   product_group_id: prd_summer_outerwear_07
   product_id: var_summer_outerwear_07_xl_stone
@@ -72957,7 +72957,7 @@ reviews:
   author_height_value: 184.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_summer_outerwear_07_03
   product_group_id: prd_summer_outerwear_07
   product_id: var_summer_outerwear_07_s_stone
@@ -72994,7 +72994,7 @@ reviews:
   author_height_value: 161.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_summer_outerwear_07_06
   product_group_id: prd_summer_outerwear_07
   product_id: var_summer_outerwear_07_l_white
@@ -73007,7 +73007,7 @@ reviews:
   author_height_value: 183.0
   author_height_unit_text: cm
   keywords: [sturdy]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_summer_outerwear_07_07
   product_group_id: prd_summer_outerwear_07
   product_id: var_summer_outerwear_07_xl_white
@@ -73033,7 +73033,7 @@ reviews:
   author_height_value: 174.0
   author_height_unit_text: cm
   keywords: [sturdy]
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_summer_outerwear_08_02
   product_group_id: prd_summer_outerwear_08
   product_id: var_summer_outerwear_08_xl_white
@@ -73081,7 +73081,7 @@ reviews:
   author_height_value: 185.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_summer_outerwear_09_04
   product_group_id: prd_summer_outerwear_09
   product_id: var_summer_outerwear_09_s_clay
@@ -73105,7 +73105,7 @@ reviews:
   author_height_value: 155.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_summer_outerwear_09_06
   product_group_id: prd_summer_outerwear_09
   product_id: var_summer_outerwear_09_s_clay
@@ -73141,7 +73141,7 @@ reviews:
   author_height_value: 165.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_summer_outerwear_10_02
   product_group_id: prd_summer_outerwear_10
   product_id: var_summer_outerwear_10_s_black
@@ -73152,7 +73152,7 @@ reviews:
   review_body: Wind comes off okay, the gilet cuts it a bit on the bike ride. Looks a little plain for an outdoor layer.
   fit_vote: true_to_size
   keywords: [blocks wind]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_summer_outerwear_11_01
   product_group_id: prd_summer_outerwear_11
   product_id: var_summer_outerwear_11_s_navy
@@ -73221,7 +73221,7 @@ reviews:
   author_height_value: 162.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_summer_outerwear_12_03
   product_group_id: prd_summer_outerwear_12
   product_id: var_summer_outerwear_12_xs_sky
@@ -73246,7 +73246,7 @@ reviews:
   author_height_value: 167.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_summer_outerwear_13_02
   product_group_id: prd_summer_outerwear_13
   product_id: var_summer_outerwear_13_m_white
@@ -73347,7 +73347,7 @@ reviews:
   author_height_value: 169.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_summer_outerwear_16_02
   product_group_id: prd_summer_outerwear_16
   product_id: var_summer_outerwear_16_l_navy
@@ -73360,7 +73360,7 @@ reviews:
   author_height_value: 172.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_summer_outerwear_16_03
   product_group_id: prd_summer_outerwear_16
   product_id: var_summer_outerwear_16_xs_navy
@@ -73384,7 +73384,7 @@ reviews:
   author_height_value: 183.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_summer_outerwear_16_05
   product_group_id: prd_summer_outerwear_16
   product_id: var_summer_outerwear_16_xl_navy
@@ -73431,7 +73431,7 @@ reviews:
   review_body: This is my everyday jacket for the city. It just works.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_summer_outerwear_17_03
   product_group_id: prd_summer_outerwear_17
   product_id: var_summer_outerwear_17_s_slate
@@ -73500,7 +73500,7 @@ reviews:
   review_body: The collar lets air through on a gust. I wanted more wind protection than this jacket gives.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_summer_outerwear_19_01
   product_group_id: prd_summer_outerwear_19
   product_id: var_summer_outerwear_19_s_slate
@@ -73525,7 +73525,7 @@ reviews:
   author_height_value: 177.0
   author_height_unit_text: cm
   keywords: [handles light rain]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_summer_outerwear_19_03
   product_group_id: prd_summer_outerwear_19
   product_id: var_summer_outerwear_19_l_white
@@ -73571,7 +73571,7 @@ reviews:
   author_height_value: 163.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-24'
 - id: rev_summer_outerwear_20_02
   product_group_id: prd_summer_outerwear_20
   product_id: var_summer_outerwear_20_s_sand
@@ -73608,7 +73608,7 @@ reviews:
   author_height_value: 173.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_summer_outerwear_20_05
   product_group_id: prd_summer_outerwear_20
   product_id: var_summer_outerwear_20_m_sky
@@ -73680,7 +73680,7 @@ reviews:
   author_height_value: 166.0
   author_height_unit_text: cm
   keywords: [nice texture]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_summer_outerwear_22_04
   product_group_id: prd_summer_outerwear_22
   product_id: var_summer_outerwear_22_xl_stone
@@ -73693,7 +73693,7 @@ reviews:
   author_height_value: 177.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_summer_outerwear_22_05
   product_group_id: prd_summer_outerwear_22
   product_id: var_summer_outerwear_22_xs_rust
@@ -73797,7 +73797,7 @@ reviews:
   author_height_value: 187.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_summer_outerwear_25_01
   product_group_id: prd_summer_outerwear_25
   product_id: var_summer_outerwear_25_s_clay
@@ -73836,7 +73836,7 @@ reviews:
   author_height_value: 180.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_summer_outerwear_25_04
   product_group_id: prd_summer_outerwear_25
   product_id: var_summer_outerwear_25_l_clay
@@ -74003,7 +74003,7 @@ reviews:
   author_height_value: 165.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_summer_outerwear_27_04
   product_group_id: prd_summer_outerwear_27
   product_id: var_summer_outerwear_27_s_sky
@@ -74016,7 +74016,7 @@ reviews:
   author_height_value: 163.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_summer_outerwear_27_05
   product_group_id: prd_summer_outerwear_27
   product_id: var_summer_outerwear_27_s_sky
@@ -74052,7 +74052,7 @@ reviews:
   author_height_value: 172.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_summer_outerwear_28_02
   product_group_id: prd_summer_outerwear_28
   product_id: var_summer_outerwear_28_xl_black
@@ -74066,7 +74066,7 @@ reviews:
   author_height_value: 195.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_summer_outerwear_28_03
   product_group_id: prd_summer_outerwear_28
   product_id: var_summer_outerwear_28_xl_black
@@ -74113,7 +74113,7 @@ reviews:
   author_height_value: 170.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_summer_outerwear_29_02
   product_group_id: prd_summer_outerwear_29
   product_id: var_summer_outerwear_29_xs_black
@@ -74171,7 +74171,7 @@ reviews:
     for everyday city wear.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_summer_outerwear_31_02
   product_group_id: prd_summer_outerwear_31
   product_id: var_summer_outerwear_31_xl_black
@@ -74236,7 +74236,7 @@ reviews:
   author_height_value: 155.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_summer_outerwear_32_05
   product_group_id: prd_summer_outerwear_32
   product_id: var_summer_outerwear_32_s_white
@@ -74260,7 +74260,7 @@ reviews:
   author_height_value: 171.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_summer_outerwear_33_03
   product_group_id: prd_summer_outerwear_33
   product_id: var_summer_outerwear_33_m_black
@@ -74314,7 +74314,7 @@ reviews:
   review_body: The regular cut feels a touch tight through the chest. I like the shape but would want a little more room.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_summer_outerwear_34_02
   product_group_id: prd_summer_outerwear_34
   product_id: var_summer_outerwear_34_m_sand
@@ -74327,7 +74327,7 @@ reviews:
   author_height_value: 177.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_summer_outerwear_34_03
   product_group_id: prd_summer_outerwear_34
   product_id: var_summer_outerwear_34_m_sand
@@ -74340,7 +74340,7 @@ reviews:
   author_height_value: 179.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_summer_outerwear_34_04
   product_group_id: prd_summer_outerwear_34
   product_id: var_summer_outerwear_34_xl_sand
@@ -74384,7 +74384,7 @@ reviews:
   review_body: The cagoule sits relaxed and true to size, easy for a day outside.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_summer_outerwear_35_02
   product_group_id: prd_summer_outerwear_35
   product_id: var_summer_outerwear_35_xl_navy
@@ -74414,7 +74414,7 @@ reviews:
     wear right out of the bag.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_sweatshirts_01_02
   product_group_id: prd_sweatshirts_01
   product_id: var_sweatshirts_01_s_slate
@@ -74427,7 +74427,7 @@ reviews:
   author_height_value: 158.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_sweatshirts_02_01
   product_group_id: prd_sweatshirts_02
   product_id: var_sweatshirts_02_s_stone
@@ -74451,7 +74451,7 @@ reviews:
   author_height_value: 178.0
   author_height_unit_text: cm
   keywords: [soft]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_sweatshirts_02_03
   product_group_id: prd_sweatshirts_02
   product_id: var_sweatshirts_02_m_sand
@@ -74567,7 +74567,7 @@ reviews:
   review_body: Great for lounge on the couch with a book in the evening. Soft and warm, it stays cozy all night.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_sweatshirts_04_03
   product_group_id: prd_sweatshirts_04
   product_id: var_sweatshirts_04_m_clay
@@ -74580,7 +74580,7 @@ reviews:
   author_height_value: 167.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-19'
 - id: rev_sweatshirts_04_04
   product_group_id: prd_sweatshirts_04
   product_id: var_sweatshirts_04_xl_clay
@@ -74615,7 +74615,7 @@ reviews:
   author_height_value: 183.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_sweatshirts_05_03
   product_group_id: prd_sweatshirts_05
   product_id: var_sweatshirts_05_xs_white
@@ -74693,7 +74693,7 @@ reviews:
   author_height_value: 195.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_sweatshirts_06_03
   product_group_id: prd_sweatshirts_06
   product_id: var_sweatshirts_06_xs_black
@@ -74706,7 +74706,7 @@ reviews:
   author_height_value: 157.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-10-24'
 - id: rev_sweatshirts_06_04
   product_group_id: prd_sweatshirts_06
   product_id: var_sweatshirts_06_s_black
@@ -74787,7 +74787,7 @@ reviews:
   author_height_value: 165.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-10-24'
 - id: rev_sweatshirts_09_03
   product_group_id: prd_sweatshirts_09
   product_id: var_sweatshirts_09_s_sky
@@ -74800,7 +74800,7 @@ reviews:
   author_height_value: 162.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_sweatshirts_10_01
   product_group_id: prd_sweatshirts_10
   product_id: var_sweatshirts_10_xs_rust
@@ -74813,7 +74813,7 @@ reviews:
   author_height_value: 152.0
   author_height_unit_text: cm
   keywords: [warm]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_sweatshirts_10_02
   product_group_id: prd_sweatshirts_10
   product_id: var_sweatshirts_10_m_rust
@@ -75021,7 +75021,7 @@ reviews:
   author_height_value: 184.0
   author_height_unit_text: cm
   keywords: [warm]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_sweatshirts_12_02
   product_group_id: prd_sweatshirts_12
   product_id: var_sweatshirts_12_s_rust
@@ -75275,7 +75275,7 @@ reviews:
     and it is comfortable all day.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_sweatshirts_16_02
   product_group_id: prd_sweatshirts_16
   product_id: var_sweatshirts_16_xl_olive
@@ -75412,7 +75412,7 @@ reviews:
   author_height_value: 173.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_sweatshirts_18_02
   product_group_id: prd_sweatshirts_18
   product_id: var_sweatshirts_18_m_rust
@@ -75423,7 +75423,7 @@ reviews:
   review_body: The regular fit feels true to size and easy for daily reach and movement.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-25'
 - id: rev_sweatshirts_18_03
   product_group_id: prd_sweatshirts_18
   product_id: var_sweatshirts_18_l_white
@@ -75449,7 +75449,7 @@ reviews:
   author_height_value: 175.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-25'
 - id: rev_sweatshirts_18_05
   product_group_id: prd_sweatshirts_18
   product_id: var_sweatshirts_18_xl_rust
@@ -75460,7 +75460,7 @@ reviews:
   review_body: The cotton French terry is soft to the touch and feels cozy. I reach for it often for everyday wear.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-20'
 - id: rev_sweatshirts_18_06
   product_group_id: prd_sweatshirts_18
   product_id: var_sweatshirts_18_m_white
@@ -75544,7 +75544,7 @@ reviews:
   review_body: Fit is true to size and the relaxed cut sits easy. It looks plainer than I hoped.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_sweatshirts_19_03
   product_group_id: prd_sweatshirts_19
   product_id: var_sweatshirts_19_l_clay
@@ -76707,7 +76707,7 @@ reviews:
   review_body: The slim cut is nice but it runs a bit small, I’ll size up next time.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_swimwear_01_03
   product_group_id: prd_swimwear_01
   product_id: var_swimwear_01_s_olive
@@ -76809,7 +76809,7 @@ reviews:
   author_height_value: 165.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_swimwear_03_02
   product_group_id: prd_swimwear_03
   product_id: var_swimwear_03_l_olive
@@ -76835,7 +76835,7 @@ reviews:
   author_height_value: 180.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_swimwear_03_04
   product_group_id: prd_swimwear_03
   product_id: var_swimwear_03_xl_white
@@ -76928,7 +76928,7 @@ reviews:
   review_body: It sits true to size and feels slim. The crew neck stays comfortable on longer sessions.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_swimwear_06_04
   product_group_id: prd_swimwear_06
   product_id: var_swimwear_06_xs_rust
@@ -77006,7 +77006,7 @@ reviews:
   author_height_value: 157.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_swimwear_08_02
   product_group_id: prd_swimwear_08
   product_id: var_swimwear_08_l_black
@@ -77092,7 +77092,7 @@ reviews:
   author_height_value: 185.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_swimwear_09_04
   product_group_id: prd_swimwear_09
   product_id: var_swimwear_09_xs_sand
@@ -77126,7 +77126,7 @@ reviews:
   review_body: The lining feels smooth against skin and stays in place. I like that it looks tidy without extra bulk.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_swimwear_10_03
   product_group_id: prd_swimwear_10
   product_id: var_swimwear_10_s_clay
@@ -77876,7 +77876,7 @@ reviews:
   author_height_value: 182.0
   author_height_unit_text: cm
   keywords: [soft]
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_tees_01_02
   product_group_id: prd_tees_01
   product_id: var_tees_01_l_clay
@@ -77902,7 +77902,7 @@ reviews:
   author_height_value: 171.0
   author_height_unit_text: cm
   keywords: [soft]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_tees_01_04
   product_group_id: prd_tees_01
   product_id: var_tees_01_l_white
@@ -77950,7 +77950,7 @@ reviews:
   review_body: The crew neck T-shirt runs a bit large and I like the roomy feel.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-10-23'
 - id: rev_tees_01_08
   product_group_id: prd_tees_01
   product_id: var_tees_01_xs_white
@@ -77990,7 +77990,7 @@ reviews:
   author_height_value: 176.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_tees_02_03
   product_group_id: prd_tees_02
   product_id: var_tees_02_l_olive
@@ -78003,7 +78003,7 @@ reviews:
   author_height_value: 177.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_tees_02_04
   product_group_id: prd_tees_02
   product_id: var_tees_02_xl_clay
@@ -78016,7 +78016,7 @@ reviews:
   author_height_value: 192.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-10-19'
 - id: rev_tees_02_05
   product_group_id: prd_tees_02
   product_id: var_tees_02_xs_olive
@@ -78027,7 +78027,7 @@ reviews:
   review_body: This is my go-to for everyday errands. The soft cotton jersey feels easy all day.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_tees_02_06
   product_group_id: prd_tees_02
   product_id: var_tees_02_xl_clay
@@ -78040,7 +78040,7 @@ reviews:
   author_height_value: 186.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_tees_02_07
   product_group_id: prd_tees_02
   product_id: var_tees_02_m_clay
@@ -78053,7 +78053,7 @@ reviews:
   author_height_value: 171.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_tees_02_08
   product_group_id: prd_tees_02
   product_id: var_tees_02_l_clay
@@ -78090,7 +78090,7 @@ reviews:
   review_body: The shirt feels genuinely soft against the skin. I reach for it often for layering and everyday wear.
   fit_vote: true_to_size
   keywords: [soft]
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_tees_02_11
   product_group_id: prd_tees_02
   product_id: var_tees_02_l_white
@@ -78139,7 +78139,7 @@ reviews:
     T-shirt.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_tees_03_04
   product_group_id: prd_tees_03
   product_id: var_tees_03_xl_stone
@@ -78163,7 +78163,7 @@ reviews:
   review_body: Fit runs a bit small on me. The regular fit feels snugger than I expected.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_tees_03_06
   product_group_id: prd_tees_03
   product_id: var_tees_03_m_stone
@@ -78187,7 +78187,7 @@ reviews:
   author_height_value: 183.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_tees_03_08
   product_group_id: prd_tees_03
   product_id: var_tees_03_xl_stone
@@ -78462,7 +78462,7 @@ reviews:
   author_height_value: 170.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_tees_06_02
   product_group_id: prd_tees_06
   product_id: var_tees_06_l_rust
@@ -78531,7 +78531,7 @@ reviews:
   review_body: The dropped shoulders help the tee sit easy on the frame. It looks a bit plainer than I pictured.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_tees_06_08
   product_group_id: prd_tees_06
   product_id: var_tees_06_s_rust
@@ -78544,7 +78544,7 @@ reviews:
   author_height_value: 162.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_tees_06_09
   product_group_id: prd_tees_06
   product_id: var_tees_06_xl_white
@@ -78663,7 +78663,7 @@ reviews:
   author_height_value: 152.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_tees_07_06
   product_group_id: prd_tees_07
   product_id: var_tees_07_l_white
@@ -78690,7 +78690,7 @@ reviews:
   author_height_value: 177.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_tees_07_08
   product_group_id: prd_tees_07
   product_id: var_tees_07_m_navy
@@ -78701,7 +78701,7 @@ reviews:
   review_body: The slim fit is true to size and comfortable for everyday use.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-18'
 - id: rev_tees_07_09
   product_group_id: prd_tees_07
   product_id: var_tees_07_l_sand
@@ -78712,7 +78712,7 @@ reviews:
   review_body: The slim fit feels true to size and sits clean over a tee. It works well for layering without adding bulk.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_tees_07_10
   product_group_id: prd_tees_07
   product_id: var_tees_07_xl_navy
@@ -78793,7 +78793,7 @@ reviews:
   review_body: Feels sturdy and substantial. I like how it holds its shape after washing.
   fit_vote: runs_small
   keywords: [sturdy]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_tees_08_03
   product_group_id: prd_tees_08
   product_id: var_tees_08_m_sand
@@ -78911,7 +78911,7 @@ reviews:
   author_height_value: 186.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_tees_10_03
   product_group_id: prd_tees_10
   product_id: var_tees_10_m_black
@@ -78924,7 +78924,7 @@ reviews:
   author_height_value: 171.0
   author_height_unit_text: cm
   keywords: [soft]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_tees_10_04
   product_group_id: prd_tees_10
   product_id: var_tees_10_xl_black
@@ -79065,7 +79065,7 @@ reviews:
   review_body: This is the right size for me. The slim fit sits neat under a jacket.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_tees_11_05
   product_group_id: prd_tees_11
   product_id: var_tees_11_xl_sky
@@ -79078,7 +79078,7 @@ reviews:
   author_height_value: 194.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_tees_11_06
   product_group_id: prd_tees_11
   product_id: var_tees_11_m_sky
@@ -79178,7 +79178,7 @@ reviews:
   author_height_value: 187.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-25'
 - id: rev_tees_12_01
   product_group_id: prd_tees_12
   product_id: var_tees_12_l_olive
@@ -79206,7 +79206,7 @@ reviews:
   author_height_value: 180.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_tees_12_03
   product_group_id: prd_tees_12
   product_id: var_tees_12_s_olive
@@ -79230,7 +79230,7 @@ reviews:
   review_body: Runs a bit large and still looks neat for everyday wear.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_tees_12_05
   product_group_id: prd_tees_12
   product_id: var_tees_12_xs_stone
@@ -79254,7 +79254,7 @@ reviews:
   review_body: Sleeve length feels right and the V sits clean. The regular fit runs a bit small for my usual shape.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_tees_12_08
   product_group_id: prd_tees_12
   product_id: var_tees_12_xl_olive
@@ -79291,7 +79291,7 @@ reviews:
   author_height_value: 174.0
   author_height_unit_text: cm
   keywords: [nice texture]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_tees_13_02
   product_group_id: prd_tees_13
   product_id: var_tees_13_m_rust
@@ -79339,7 +79339,7 @@ reviews:
   review_body: The fit feels true to size and the boxy shape sits how I expected.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_tees_13_06
   product_group_id: prd_tees_13
   product_id: var_tees_13_xl_rust
@@ -79363,7 +79363,7 @@ reviews:
   review_body: This jersey feels airy in the heat and the texture looks relaxed. It holds the boxy shape without feeling heavy.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_tees_13_09
   product_group_id: prd_tees_13
   product_id: var_tees_13_m_black
@@ -79471,7 +79471,7 @@ reviews:
   author_height_value: 175.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_tees_14_03
   product_group_id: prd_tees_14
   product_id: var_tees_14_l_clay
@@ -79482,7 +79482,7 @@ reviews:
   review_body: The regular fit runs a bit large on me. I like the roomy feel for casual days.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_tees_14_04
   product_group_id: prd_tees_14
   product_id: var_tees_14_l_olive
@@ -79519,7 +79519,7 @@ reviews:
   author_height_value: 170.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_tees_14_07
   product_group_id: prd_tees_14
   product_id: var_tees_14_m_olive
@@ -79589,7 +79589,7 @@ reviews:
   review_body: The regular fit sits where I expect. It’s true to size and easy to live in.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-16'
 - id: rev_tees_14_13
   product_group_id: prd_tees_14
   product_id: var_tees_14_l_slate
@@ -79600,7 +79600,7 @@ reviews:
   review_body: Layering is smooth with this tee. The textured surface adds a little interest under a sweater.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_tees_14_14
   product_group_id: prd_tees_14
   product_id: var_tees_14_s_clay
@@ -79613,7 +79613,7 @@ reviews:
   author_height_value: 164.0
   author_height_unit_text: cm
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_tees_14_15
   product_group_id: prd_tees_14
   product_id: var_tees_14_l_clay
@@ -79626,7 +79626,7 @@ reviews:
   author_height_value: 173.0
   author_height_unit_text: cm
   keywords: [nice texture]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_tees_14_16
   product_group_id: prd_tees_14
   product_id: var_tees_14_xl_olive
@@ -79661,7 +79661,7 @@ reviews:
   review_body: I use it for layering under a jacket, and it looks plainer than I hoped.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_tees_15_03
   product_group_id: prd_tees_15
   product_id: var_tees_15_xs_stone
@@ -79720,7 +79720,7 @@ reviews:
   author_height_value: 157.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_tees_15_08
   product_group_id: prd_tees_15
   product_id: var_tees_15_s_rust
@@ -79790,7 +79790,7 @@ reviews:
   author_height_value: 164.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-17'
 - id: rev_tees_16_03
   product_group_id: prd_tees_16
   product_id: var_tees_16_xs_clay
@@ -79803,7 +79803,7 @@ reviews:
   author_height_value: 165.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_tees_16_04
   product_group_id: prd_tees_16
   product_id: var_tees_16_xl_clay
@@ -79844,7 +79844,7 @@ reviews:
   author_height_value: 163.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_tees_17_01
   product_group_id: prd_tees_17
   product_id: var_tees_17_m_clay
@@ -79870,7 +79870,7 @@ reviews:
   author_height_value: 187.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_tees_17_03
   product_group_id: prd_tees_17
   product_id: var_tees_17_m_clay
@@ -79894,7 +79894,7 @@ reviews:
   author_height_value: 183.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_tees_17_05
   product_group_id: prd_tees_17
   product_id: var_tees_17_xs_clay
@@ -79987,7 +79987,7 @@ reviews:
   author_height_value: 174.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_tees_18_02
   product_group_id: prd_tees_18
   product_id: var_tees_18_m_black
@@ -80014,7 +80014,7 @@ reviews:
   author_height_value: 187.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-25'
 - id: rev_tees_18_04
   product_group_id: prd_tees_18
   product_id: var_tees_18_s_slate
@@ -80060,7 +80060,7 @@ reviews:
   author_height_value: 179.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-21'
 - id: rev_tees_19_03
   product_group_id: prd_tees_19
   product_id: var_tees_19_xl_black
@@ -80084,7 +80084,7 @@ reviews:
   author_height_value: 167.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_tees_19_05
   product_group_id: prd_tees_19
   product_id: var_tees_19_l_black
@@ -80145,7 +80145,7 @@ reviews:
   review_body: The linen-cotton jersey feels soft and breathable for everyday wear. The surface has a subtle texture I like.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_tees_19_10
   product_group_id: prd_tees_19
   product_id: var_tees_19_m_black
@@ -80158,7 +80158,7 @@ reviews:
   author_height_value: 172.0
   author_height_unit_text: cm
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_tees_19_11
   product_group_id: prd_tees_19
   product_id: var_tees_19_xl_black
@@ -80180,7 +80180,7 @@ reviews:
   review_body: The linen-cotton jersey drapes easy and feels soft against the skin.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_tees_19_13
   product_group_id: prd_tees_19
   product_id: var_tees_19_s_black
@@ -80217,7 +80217,7 @@ reviews:
   author_height_value: 159.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_tees_19_16
   product_group_id: prd_tees_19
   product_id: var_tees_19_s_clay
@@ -80228,7 +80228,7 @@ reviews:
   review_body: This pocket tee sits just right, though it runs a bit small, so I expect it to feel snug right away.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-25'
 - id: rev_tees_19_17
   product_group_id: prd_tees_19
   product_id: var_tees_19_xl_clay
@@ -80322,7 +80322,7 @@ reviews:
   review_body: It layers cleanly under a jacket and still looks neat. The henley neck keeps it simple for everyday wear.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_tees_21_02
   product_group_id: prd_tees_21
   product_id: var_tees_21_xl_black
@@ -80345,7 +80345,7 @@ reviews:
   review_body: Rib cuffs sit nicely and stay put all day. The placket feels neat and the fabric holds its shape.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_tees_21_04
   product_group_id: prd_tees_21
   product_id: var_tees_21_s_clay
@@ -80370,7 +80370,7 @@ reviews:
   author_height_value: 153.0
   author_height_unit_text: cm
   keywords: [sturdy]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_tees_21_07
   product_group_id: prd_tees_21
   product_id: var_tees_21_xl_black
@@ -80492,7 +80492,7 @@ reviews:
   author_height_value: 173.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_tees_21_17
   product_group_id: prd_tees_21
   product_id: var_tees_21_xl_black
@@ -80601,7 +80601,7 @@ reviews:
   review_body: The fit is true to size and the boxy shape sits easy on me.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-27'
 - id: rev_tees_22_08
   product_group_id: prd_tees_22
   product_id: var_tees_22_s_white
@@ -80612,7 +80612,7 @@ reviews:
   review_body: The fit fits as expected. It works well for everyday use.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-22'
 - id: rev_tees_22_09
   product_group_id: prd_tees_22
   product_id: var_tees_22_s_white
@@ -80625,7 +80625,7 @@ reviews:
   author_height_value: 160.0
   author_height_unit_text: cm
   keywords: [soft]
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_tees_22_10
   product_group_id: prd_tees_22
   product_id: var_tees_22_s_white
@@ -80696,7 +80696,7 @@ reviews:
   author_height_value: 161.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_tees_23_02
   product_group_id: prd_tees_23
   product_id: var_tees_23_xl_black
@@ -80723,7 +80723,7 @@ reviews:
   author_height_value: 182.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-21'
 - id: rev_tees_23_04
   product_group_id: prd_tees_23
   product_id: var_tees_23_s_black
@@ -80736,7 +80736,7 @@ reviews:
   author_height_value: 162.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_tees_23_05
   product_group_id: prd_tees_23
   product_id: var_tees_23_m_black
@@ -82251,7 +82251,7 @@ reviews:
   review_body: The cotton jersey is soft to the touch. It feels comfortable for regular wear.
   fit_vote: runs_small
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_underwear_01_03
   product_group_id: prd_underwear_01
   product_id: var_underwear_01_m_rust
@@ -82273,7 +82273,7 @@ reviews:
   review_body: The stretch is smooth and feels natural all day. I like how it moves with me.
   fit_vote: runs_small
   keywords: [stretchy]
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_underwear_01_05
   product_group_id: prd_underwear_01
   product_id: var_underwear_01_s_stone
@@ -82295,7 +82295,7 @@ reviews:
   review_body: Felt snug from the first wear. The slim cut runs a bit small for everyday use.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-10-24'
 - id: rev_underwear_01_07
   product_group_id: prd_underwear_01
   product_id: var_underwear_01_xs_rust
@@ -82315,7 +82315,7 @@ reviews:
   review_body: After a sweaty workout I’m surprised how fast it dries.
   fit_vote: true_to_size
   keywords: [dries fast]
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_underwear_02_02
   product_group_id: prd_underwear_02
   product_id: var_underwear_02_m_clay
@@ -82326,7 +82326,7 @@ reviews:
   review_body: The slim fit feels clean and comfortable around the waist. I find it runs a bit large for my usual size.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_underwear_02_03
   product_group_id: prd_underwear_02
   product_id: var_underwear_02_xs_clay
@@ -82359,7 +82359,7 @@ reviews:
   review_body: The contour pouch holds things nicely and feels supportive. It’s a subtle detail I appreciate every day.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_underwear_02_06
   product_group_id: prd_underwear_02
   product_id: var_underwear_02_m_clay
@@ -82434,7 +82434,7 @@ reviews:
   review_body: Fit feels true to size and sits slim without pinching. The pouch keeps things supported for daily wear.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-19'
 - id: rev_underwear_03_02
   product_group_id: prd_underwear_03
   product_id: var_underwear_03_xs_sky
@@ -82445,7 +82445,7 @@ reviews:
   review_body: They’re fine for everyday, though the fabric looks plainer than I hoped.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_underwear_03_03
   product_group_id: prd_underwear_03
   product_id: var_underwear_03_m_navy
@@ -82522,7 +82522,7 @@ reviews:
   review_body: The covered waistband looks neat and feels smooth against my skin. It’s a small detail I notice every time.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_underwear_03_10
   product_group_id: prd_underwear_03
   product_id: var_underwear_03_l_navy
@@ -82546,7 +82546,7 @@ reviews:
     without thinking twice.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-30'
 - id: rev_underwear_03_12
   product_group_id: prd_underwear_03
   product_id: var_underwear_03_m_navy
@@ -82596,7 +82596,7 @@ reviews:
   review_body: The covered waistband keeps it tidy under pants. It looks plainer than I hoped for everyday wear.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-13'
 - id: rev_underwear_04_03
   product_group_id: prd_underwear_04
   product_id: var_underwear_04_xl_clay
@@ -82629,7 +82629,7 @@ reviews:
   review_body: I slept in these and the relaxed shape shifted around.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_underwear_05_02
   product_group_id: prd_underwear_05
   product_id: var_underwear_05_xl_navy
@@ -82662,7 +82662,7 @@ reviews:
   review_body: I like the relaxed feel overall. It still runs a bit small, so I size up next time.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_underwear_05_05
   product_group_id: prd_underwear_05
   product_id: var_underwear_05_xl_olive
@@ -82707,7 +82707,7 @@ reviews:
   review_body: I tried these for sleep and they felt too plain for bedtime. The relaxed fit is okay but not as cozy as I hoped.
   fit_vote: runs_small
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-31'
 - id: rev_underwear_05_09
   product_group_id: prd_underwear_05
   product_id: var_underwear_05_xl_navy
@@ -82737,7 +82737,7 @@ reviews:
     me.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_underwear_06_02
   product_group_id: prd_underwear_06
   product_id: var_underwear_06_s_clay
@@ -82748,7 +82748,7 @@ reviews:
   review_body: The slim shape sits clean under jeans. It runs a bit large so the waist sits a touch low for me.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-10-24'
 - id: rev_underwear_06_03
   product_group_id: prd_underwear_06
   product_id: var_underwear_06_l_clay
@@ -82792,7 +82792,7 @@ reviews:
   review_body: Feels like it moves with me and never pulls. The stretch is easy on long days at work.
   fit_vote: true_to_size
   keywords: [stretchy]
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_underwear_06_07
   product_group_id: prd_underwear_06
   product_id: var_underwear_06_l_olive
@@ -82814,7 +82814,7 @@ reviews:
   review_body: Soft to the touch from the first wear. I reach for it when I want something gentle against skin.
   fit_vote: true_to_size
   keywords: [soft]
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_underwear_06_09
   product_group_id: prd_underwear_06
   product_id: var_underwear_06_l_olive
@@ -82848,7 +82848,7 @@ reviews:
   review_body: These boxer briefs feel slim and snug where it counts, and the fit runs a bit small, so I size up for comfort.
   fit_vote: runs_small
   keywords: [runs a bit small]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_underwear_06_12
   product_group_id: prd_underwear_06
   product_id: var_underwear_06_xl_clay
@@ -82892,7 +82892,7 @@ reviews:
   review_body: They work great for everyday and feel soft with a little stretch that stays comfortable all day.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-18'
 - id: rev_underwear_07_03
   product_group_id: prd_underwear_07
   product_id: var_underwear_07_xs_sky
@@ -82944,7 +82944,7 @@ reviews:
   review_body: Nice short leg that sits right above the knee. I reach for these on casual days.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-28'
 - id: rev_underwear_08_02
   product_group_id: prd_underwear_08
   product_id: var_underwear_08_s_clay
@@ -82989,7 +82989,7 @@ reviews:
   review_body: Fit is true to size and the slim shape sits comfortably.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-01'
 - id: rev_underwear_08_06
   product_group_id: prd_underwear_08
   product_id: var_underwear_08_m_rust
@@ -83011,7 +83011,7 @@ reviews:
   review_body: The fit runs a bit large on me and feels looser than I expected.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_underwear_08_08
   product_group_id: prd_underwear_08
   product_id: var_underwear_08_m_rust
@@ -83022,7 +83022,7 @@ reviews:
   review_body: The short leg sits right where I like for everyday wear. It looks clean and simple without extra bulk.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_underwear_08_09
   product_group_id: prd_underwear_08
   product_id: var_underwear_08_xl_rust
@@ -83044,7 +83044,7 @@ reviews:
   review_body: The stretch is there but it feels tighter than I hoped when I move.
   fit_vote: true_to_size
   keywords: [stretchy]
-  date_published: '2026-11-05'
+  date_published: '2026-10-23'
 - id: rev_underwear_08_11
   product_group_id: prd_underwear_08
   product_id: var_underwear_08_s_clay
@@ -83066,7 +83066,7 @@ reviews:
   review_body: They work fine for casual days at home.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_underwear_08_13
   product_group_id: prd_underwear_08
   product_id: var_underwear_08_l_clay
@@ -83088,7 +83088,7 @@ reviews:
   review_body: After a quick rinse they feel dry again fast.
   fit_vote: true_to_size
   keywords: [dries fast]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_underwear_08_15
   product_group_id: prd_underwear_08
   product_id: var_underwear_08_m_rust
@@ -83150,7 +83150,7 @@ reviews:
   author_height_value: 171.0
   author_height_unit_text: cm
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_underwear_10_02
   product_group_id: prd_underwear_10
   product_id: var_underwear_10_xl_white
@@ -83279,7 +83279,7 @@ reviews:
   review_body: The slim shape follows the body without pulling. It feels true to size in everyday wear.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-02'
 - id: rev_underwear_10_14
   product_group_id: prd_underwear_10
   product_id: var_underwear_10_s_rust
@@ -83305,7 +83305,7 @@ reviews:
   author_height_value: 180.0
   author_height_unit_text: cm
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_underwear_10_16
   product_group_id: prd_underwear_10
   product_id: var_underwear_10_xl_rust
@@ -83359,7 +83359,7 @@ reviews:
   review_body: The short leg ends higher than I expected. It feels a bit cropped for everyday wear.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_underwear_11_03
   product_group_id: prd_underwear_11
   product_id: var_underwear_11_xl_olive
@@ -83381,7 +83381,7 @@ reviews:
   review_body: Slim fit sits right where I want it, but these run a bit large for me.
   fit_vote: runs_large
   keywords: [runs a bit large]
-  date_published: '2026-11-05'
+  date_published: '2026-11-03'
 - id: rev_underwear_12_02
   product_group_id: prd_underwear_12
   product_id: var_underwear_12_xl_white
@@ -83392,7 +83392,7 @@ reviews:
   review_body: True to size and feels comfortable for daily wear.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-26'
 - id: rev_underwear_12_03
   product_group_id: prd_underwear_12
   product_id: var_underwear_12_xs_white
@@ -83425,7 +83425,7 @@ reviews:
   review_body: Fit is true to size and the slim cut feels right.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-10-18'
 - id: rev_underwear_12_06
   product_group_id: prd_underwear_12
   product_id: var_underwear_12_l_black
@@ -83437,7 +83437,7 @@ reviews:
     stays comfortable all day.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_underwear_12_07
   product_group_id: prd_underwear_12
   product_id: var_underwear_12_m_white
@@ -83448,7 +83448,7 @@ reviews:
   review_body: The slim fit sits where it should and feels true to size for everyday wear.
   fit_vote: true_to_size
   keywords: [true to size]
-  date_published: '2026-11-05'
+  date_published: '2026-11-04'
 - id: rev_underwear_12_08
   product_group_id: prd_underwear_12
   product_id: var_underwear_12_m_white
@@ -83494,7 +83494,7 @@ reviews:
   review_body: The cotton-elastane jersey feels soft to the touch with a gentle stretch that holds up through the day.
   fit_vote: true_to_size
   keywords: []
-  date_published: '2026-11-05'
+  date_published: '2026-10-29'
 - id: rev_underwear_12_12
   product_group_id: prd_underwear_12
   product_id: var_underwear_12_xs_black
@@ -84409,3 +84409,274 @@ reviews:
   fit_vote: true_to_size
   keywords: []
   date_published: '2026-02-04'
+- id: rev_windbreaker_01
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_s_navy
+  author_id: cus_m010896
+  author_name: Mi**
+  order_id: ord_26901
+  rating_value: 5
+  review_body: The windbreaker cuts the breeze on the boardwalk without weighing me down. I can move with it and stay comfortable
+    when the air picks up.
+  fit_vote: true_to_size
+  keywords: [blocks wind]
+  date_published: '2026-11-05'
+- id: rev_windbreaker_02
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_l_navy
+  author_id: cus_m013034
+  author_name: Di***
+  order_id: ord_22538
+  rating_value: 5
+  review_body: It slides into a day bag for trips and is ready the second I need a wind layer.
+  fit_vote: true_to_size
+  author_height_value: 187.0
+  author_height_unit_text: cm
+  keywords: [travel]
+  date_published: '2026-10-21'
+- id: rev_windbreaker_03
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_xs_navy
+  author_id: cus_m008664
+  author_name: Sk****
+  order_id: ord_22600
+  rating_value: 5
+  review_body: I slip it on for quick walks and it disappears into its own pocket. It makes travel easy.
+  fit_vote: true_to_size
+  author_height_value: 163.0
+  author_height_unit_text: cm
+  keywords: [packable]
+  date_published: '2026-10-28'
+- id: rev_windbreaker_04
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_xl_olive
+  author_id: cus_m009163
+  author_name: Qu***
+  order_id: ord_26143
+  rating_value: 5
+  review_body: Light rain beads and runs off while I’m walking to the train. The fabric handles a drizzle fine for a wind
+    layer.
+  fit_vote: true_to_size
+  author_height_value: 181.0
+  author_height_unit_text: cm
+  keywords: [handles light rain]
+  date_published: '2026-11-01'
+- id: rev_windbreaker_05
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_m_black
+  author_id: cus_m001153
+  author_name: Mo****
+  order_id: ord_23679
+  rating_value: 5
+  review_body: The fit is true to size and easy to layer over a tee. It sits clean at the waist and feels right for daily
+    wear.
+  fit_vote: true_to_size
+  author_height_value: 174.0
+  author_height_unit_text: cm
+  keywords: [true to size]
+  date_published: '2026-10-22'
+- id: rev_windbreaker_06
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_l_olive
+  author_id: cus_m007549
+  author_name: Qu***
+  order_id: ord_23724
+  rating_value: 5
+  review_body: I like that it’s made from recycled nylon and still feels smooth against the skin.
+  fit_vote: true_to_size
+  author_height_value: 185.0
+  author_height_unit_text: cm
+  keywords: []
+  date_published: '2026-10-24'
+- id: rev_windbreaker_07
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_xs_slate
+  author_id: cus_m002338
+  author_name: Mi**
+  order_id: ord_21545
+  rating_value: 4
+  review_body: It feels almost weightless on my shoulders during the day.
+  fit_vote: true_to_size
+  author_height_value: 153.0
+  author_height_unit_text: cm
+  keywords: [lightweight]
+  date_published: '2026-10-31'
+- id: rev_windbreaker_08
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_s_sand
+  author_id: cus_m002399
+  author_name: Ro***
+  order_id: ord_24542
+  rating_value: 5
+  review_body: True to size with room for a light top underneath. The cut looks neat without pulling at the sides.
+  fit_vote: true_to_size
+  author_height_value: 166.0
+  author_height_unit_text: cm
+  keywords: [true to size]
+  date_published: '2026-11-03'
+- id: rev_windbreaker_09
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_xl_black
+  author_id: cus_m000933
+  author_name: Yu***
+  order_id: ord_23532
+  rating_value: 5
+  review_body: A gusty afternoon on the pier was much more comfortable with this on. It blocks wind well and lets me keep
+    moving.
+  fit_vote: true_to_size
+  keywords: [blocks wind]
+  date_published: '2026-10-21'
+- id: rev_windbreaker_10
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_m_navy
+  author_id: cus_m005025
+  author_name: Pa****
+  order_id: ord_22470
+  rating_value: 3
+  review_body: It’s handy on trips, though it looks plainer than I hoped for photos.
+  fit_vote: true_to_size
+  author_height_value: 172.0
+  author_height_unit_text: cm
+  keywords: [travel]
+  date_published: '2026-10-24'
+- id: rev_windbreaker_11
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_l_slate
+  author_id: cus_m003985
+  author_name: Ro***
+  order_id: ord_24597
+  rating_value: 5
+  review_body: This windbreaker fits a little snug through the shoulders. I’ll size up next time for a looser everyday feel.
+  fit_vote: runs_small
+  author_height_value: 185.0
+  author_height_unit_text: cm
+  keywords: [runs a bit small]
+  date_published: '2026-10-28'
+- id: rev_rain_parka_01
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_l_stone
+  author_id: cus_m000778
+  author_name: Ch***
+  order_id: ord_23380
+  rating_value: 5
+  review_body: Rainy walks feel easy with this parka on. It stays light and keeps me dry without fuss.
+  fit_vote: true_to_size
+  keywords: [keeps rain out]
+  date_published: '2026-10-21'
+- id: rev_rain_parka_02
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_m_stone
+  author_id: cus_m004880
+  author_name: Mi**
+  order_id: ord_24771
+  rating_value: 5
+  review_body: The fit runs a bit small, so I sized up and it sits right now.
+  fit_vote: runs_small
+  author_height_value: 179.0
+  author_height_unit_text: cm
+  keywords: [runs a bit small]
+  date_published: '2026-10-29'
+- id: rev_rain_parka_03
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_s_stone
+  author_id: cus_m003928
+  author_name: Yu***
+  order_id: ord_25189
+  rating_value: 5
+  review_body: I stayed dry even with steady rain. The parka kept water out where it counts.
+  fit_vote: true_to_size
+  author_height_value: 167.0
+  author_height_unit_text: cm
+  keywords: [keeps rain out]
+  date_published: '2026-11-03'
+- id: rev_rain_parka_04
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_l_stone
+  author_id: cus_m011069
+  author_name: Em***
+  order_id: ord_24824
+  rating_value: 5
+  review_body: Rolling it into its own hood is handy when I’m out. It packs away small and comes back on fast.
+  fit_vote: true_to_size
+  author_height_value: 173.0
+  author_height_unit_text: cm
+  keywords: [rolls into hood]
+  date_published: '2026-11-01'
+- id: rev_rain_parka_05
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_m_stone
+  author_id: cus_m004375
+  author_name: Fi****
+  order_id: ord_21769
+  rating_value: 5
+  review_body: The stone parka feels light and the fit runs a bit small so I went up a step. It looks clean on and handles
+    drizzle well.
+  fit_vote: runs_small
+  author_height_value: 167.0
+  author_height_unit_text: cm
+  keywords: [runs a bit small]
+  date_published: '2026-10-27'
+- id: rev_rain_parka_06
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_l_stone
+  author_id: cus_m010921
+  author_name: Ke*****
+  order_id: ord_24896
+  rating_value: 2
+  review_body: It feels very light for a rain jacket, almost too thin for my taste. I wanted a bit more substance on cool
+    days.
+  fit_vote: true_to_size
+  keywords: []
+  date_published: '2026-11-02'
+- id: rev_rain_parka_07
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_m_stone
+  author_id: cus_m007668
+  author_name: Bl***
+  order_id: ord_21664
+  rating_value: 5
+  review_body: The nylon with its waterproof coating feels smooth and sheds rain nicely.
+  fit_vote: true_to_size
+  author_height_value: 178.0
+  author_height_unit_text: cm
+  keywords: []
+  date_published: '2026-10-27'
+- id: rev_rain_parka_08
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_l_stone
+  author_id: cus_m013298
+  author_name: Lo***
+  order_id: ord_23282
+  rating_value: 4
+  review_body: It works fine for rainy days around town. The stone color looks clean and simple.
+  fit_vote: true_to_size
+  author_height_value: 184.0
+  author_height_unit_text: cm
+  keywords: [keeps rain out]
+  date_published: '2026-10-23'
+- id: rev_rain_parka_09
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_m_stone
+  author_id: cus_m001889
+  author_name: Fi****
+  order_id: ord_24933
+  rating_value: 5
+  review_body: It runs a bit small, so check the fit before ordering.
+  fit_vote: runs_small
+  author_height_value: 173.0
+  author_height_unit_text: cm
+  keywords: [runs a bit small]
+  date_published: '2026-10-30'
+- id: rev_rain_parka_10
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_l_stone
+  author_id: cus_m002118
+  author_name: Lo***
+  order_id: ord_21649
+  rating_value: 5
+  review_body: Rain didn’t soak through during my commute. The parka kept me dry and I stayed comfortable.
+  fit_vote: true_to_size
+  author_height_value: 178.0
+  author_height_unit_text: cm
+  keywords: [keeps rain out]
+  date_published: '2026-10-18'

@@ -8,9 +8,10 @@
 //! A photo replaces the drawn picture (`crate::media`): `image` for the product, and `images`
 //! for the variants of each color it shows. Variants of other colors keep their drawing.
 //!
-//! `reviews:` adds rows to `catalog.review`, for generated products only. A review with an order
-//! comes from the shopper who received that line; one without an order dates from before the
-//! store's order history, like the imported reviews of the named products.
+//! `reviews:` adds rows to `catalog.review`, for the generated products and the named products in
+//! [`NAMED_WITH_GENERATED_BUYERS`]. A review with an order comes from the shopper who received that
+//! line; one without an order dates from before the store's order history, like the imported
+//! reviews of the named products.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -18,6 +19,10 @@ use serde_json::{Value, json};
 
 use super::util::decimal;
 use crate::SeedRows;
+
+/// Named products that generated shoppers have bought and reviewed. Those orders exist only once
+/// the generator has run, so their reviews come through this file; no scene counts these reviews.
+const NAMED_WITH_GENERATED_BUYERS: [&str; 2] = ["prd_rain_parka", "prd_windbreaker"];
 
 /// The measurement names `catalog.measurement` takes, in the order a size chart lists them.
 const MEASUREMENTS: [&str; 10] = [
@@ -317,7 +322,7 @@ fn add_reviews(rows: &mut SeedRows, doc: &Value) -> Result<(), String> {
             return Err(format!("{at}: `{id}` is listed twice"));
         }
         let group = text(r, "product_group_id").unwrap_or_default();
-        if !generated_id(&group) {
+        if !generated_id(&group) && !NAMED_WITH_GENERATED_BUYERS.contains(&group.as_str()) {
             return Err(format!("{at}: `{group}` is not a generated product"));
         }
         let variant = text(r, "product_id").unwrap_or_default();
@@ -459,8 +464,16 @@ products:
         );
     }
 
-    /// One order line of a generated member, delivered, with its product and buyer.
+    /// One order line of a generated product, delivered, with its product and buyer.
     fn delivered_line(rows: &SeedRows) -> (String, String, String, String, String) {
+        delivered_line_of(rows, generated_id)
+    }
+
+    /// One delivered order line of a product `wanted` accepts, with its product and buyer.
+    fn delivered_line_of(
+        rows: &SeedRows,
+        wanted: impl Fn(&str) -> bool,
+    ) -> (String, String, String, String, String) {
         let variant_group: BTreeMap<&str, &str> = rows
             .iter()
             .filter(|(t, _)| t == "catalog.product")
@@ -496,7 +509,7 @@ products:
             .find(|(t, r)| {
                 t == "sales.order_item"
                     && delivered.contains_key(r["order_id"].as_str().unwrap())
-                    && generated_id(variant_group[r["product_id"].as_str().unwrap()])
+                    && wanted(variant_group[r["product_id"].as_str().unwrap()])
             })
             .unwrap();
         let order = line["order_id"].as_str().unwrap();
@@ -534,6 +547,26 @@ products:
             .collect();
         assert_eq!(added.len(), 1);
         assert_eq!(added[0]["tenant_id"], "store_northwind");
+    }
+
+    #[test]
+    fn the_named_products_with_generated_buyers_take_reviews_from_their_buyers() {
+        let mut rows = demo();
+        for named in NAMED_WITH_GENERATED_BUYERS {
+            let (group, variant, order, buyer, date) = delivered_line_of(&rows, |g| g == named);
+            let review = |author: &str| {
+                serde_norway::to_string(&json!({"version": 1, "products": [], "reviews": [{
+                    "id": format!("rev_test_{group}"), "product_group_id": group,
+                    "product_id": variant, "author_id": author, "author_name": "Ke*****",
+                    "order_id": order, "rating_value": 4, "review_body": "Holds up well.",
+                    "keywords": [], "date_published": date,
+                }]}))
+                .unwrap()
+            };
+            let e = overlay(&mut rows.clone(), &review("cus_m000001")).unwrap_err();
+            assert!(e.contains("did not place"), "{e}");
+            overlay(&mut rows, &review(&buyer)).unwrap();
+        }
     }
 
     #[test]
