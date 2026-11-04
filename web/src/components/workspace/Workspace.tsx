@@ -28,10 +28,14 @@ import {ConversationActions, RecentConversations} from '@/components/chat/Histor
 import {CanvasPageView} from '@/components/fo/CanvasPageView';
 import {CanvasPagesProvider, OpenInNewTab, type CanvasPage} from '@/components/fo/CanvasPages';
 
+import {Assembling} from './Assembling';
+
 /** Below this width of the workspace the canvas folds into the conversation. */
 const NARROW = 900;
 /** The conversation's width beside the canvas: where it starts, and how far a person can drag it. */
 const CHAT = {start: 420, min: 320};
+/** How long the canvas takes to open far enough to watch a block assemble in it, in ms. */
+const OPENING = 260;
 /** The canvas never gets narrower than this beside the conversation (a comparison stays readable). */
 const CANVAS_MIN = 480;
 
@@ -94,6 +98,10 @@ function useChatWidth(surface: string, width: number) {
 // The three states share one tree so the change between them can animate: the chat column's width
 // and the canvas's growth are transitioned, the blocks rise in as they arrive.
 const WORKSPACE_CSS = `
+/* A piece of a block arriving (Assembling). Only its start is set, so it ends on whatever the element
+   is on its own: a button that shows on hover stays hidden. */
+@keyframes acom-part { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+[data-acom-part] { animation: acom-part 280ms cubic-bezier(.2,.8,.2,1) var(--acom-part-delay, 0ms) backwards; }
 .acom-ws { position: relative; display: flex; width: 100%; height: 100%; min-height: 0; overflow: hidden; background: var(--color-background-body); }
 .acom-ws-chat { display: flex; flex-direction: column; min-width: 0; min-height: 0; flex: 1 1 100%; background: var(--color-background-card);
   transition: flex-basis 560ms cubic-bezier(.2,.7,.2,1), flex-grow 560ms cubic-bezier(.2,.7,.2,1); }
@@ -122,7 +130,7 @@ const WORKSPACE_CSS = `
 .acom-ws-new[data-settled="true"] { outline-color: transparent; }
 @media (prefers-reduced-motion: reduce) {
   .acom-ws-chat, .acom-ws-chat-inner, .acom-ws-canvas { transition: none; }
-  .acom-ws-next-page { animation: none; }
+  .acom-ws-next-page, [data-acom-part] { animation: none; }
 }
 `;
 
@@ -188,6 +196,9 @@ function Canvas({
   const [newest, setNewest] = useState<string | null>(null);
   const [settled, setSettled] = useState(false);
   const last = blocks[blocks.length - 1]?.block_id ?? null;
+  // When the next block may start assembling; the first waits for the canvas to open.
+  const nextStart = useRef(0);
+  if (nextStart.current === 0 && typeof performance !== 'undefined') nextStart.current = performance.now() + OPENING;
 
   useEffect(() => {
     if (!last) return;
@@ -228,7 +239,9 @@ function Canvas({
               data-block-id={b.block_id}
               className={b.block_id === newest ? 'acom-rise acom-ws-new' : 'acom-rise'}
               data-settled={b.block_id === newest ? settled : undefined}>
-              <BlockView block={b} />
+              <Assembling isLive={isLive} nextStart={nextStart}>
+                <BlockView block={b} />
+              </Assembling>
             </div>
           ))}
         </div>
