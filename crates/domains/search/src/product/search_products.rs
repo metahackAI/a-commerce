@@ -1,7 +1,7 @@
 //! `search_products` (docs/api/search.md#product): the first tool of most requests, shared by
 //! operators and shoppers.
 
-use acom_catalog::service::for_search::{self, ProductQuery, ProductSort, Viewer};
+use acom_catalog::service::for_search::{self, ProductCard, ProductQuery, ProductSort, Viewer};
 use acom_catalog::{TIER_NOT_FOUND, is_operator};
 use acom_contract::{
     ActionType, Audience, ErrorCode, Group, Kind, Method, OpMeta, Operation, ReadOp, Slot,
@@ -183,6 +183,27 @@ fn check(cx: &Cx, i: &SearchProductsInput) -> Result<(), ToolError> {
     Ok(())
 }
 
+/// A product found by color shows that color: the picture and the name of the first variant the
+/// filters match, not the product's main photo. Without `color` the item stays as it is, and a
+/// variant with no picture of its own leaves it as it is too.
+fn show_chosen_color(
+    item: &mut Value,
+    card: &ProductCard,
+    colors: &[String],
+    sizes: &[String],
+    availability: &[String],
+) {
+    if colors.is_empty() {
+        return;
+    }
+    if let Some(v) = card.first_variant_in(colors, sizes, availability)
+        && v.image.is_some()
+    {
+        item["image"] = json!(v.image);
+        item["color"] = json!(v.color);
+    }
+}
+
 impl ReadOp<Cx> for SearchProducts {
     async fn read(&self, cx: &Cx, input: SearchProductsInput) -> Result<Value, ToolError> {
         let page = Page::new(input.limit, input.cursor.as_deref())?;
@@ -254,7 +275,11 @@ impl ReadOp<Cx> for SearchProducts {
         let fields = input.fields.unwrap_or_default();
         let items = cards
             .iter()
-            .map(|c| c.item_json(&viewer, &cx.time))
+            .map(|c| {
+                let mut item = c.item_json(&viewer, &cx.time);
+                show_chosen_color(&mut item, c, &colors, &sizes, &availability);
+                item
+            })
             .collect();
         Ok(list(fields::keep_each(items, &fields)?, total, &page))
     }
@@ -377,6 +402,63 @@ mod tests {
         let op = testing::db(ActorKind::Operator, "adm_sj").await;
         let (ids, _) = found(&op, in_outerwear).await;
         assert!(ids.contains(&"prd_chore_coat".to_owned()), "{ids:?}");
+    }
+
+    #[tokio::test]
+    #[ignore = "integration: needs a PostgreSQL database"]
+    async fn a_color_shows_its_own_photo() {
+        // The main photo of this product is the Olive one, and it also comes in White.
+        let holder = "prd_accessories_09";
+        let cx = testing::db(ActorKind::Shopper, "cus_jamie").await;
+        let read = |change: fn(&mut SearchProductsInput)| {
+            let mut i = input();
+            i.query = Some("leather card holder".into());
+            i.limit = Some(100);
+            change(&mut i);
+            SearchProducts.read(&cx, i)
+        };
+        let item = |out: &Value| {
+            out["items"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .find(|p| p["id"] == holder)
+                .cloned()
+                .unwrap_or_else(|| panic!("{holder} is not in the results"))
+        };
+        let plain = item(&read(|_| {}).await.unwrap_or_else(|e| panic!("{e}")));
+        assert!(plain.get("color").is_none());
+        assert!(!plain["image"].as_str().unwrap_or("").contains("--white-"));
+
+        let white = item(
+            &read(|i| i.color = Some(vec!["white".into()]))
+                .await
+                .unwrap_or_else(|e| panic!("{e}")),
+        );
+        assert_eq!(white["color"], "White");
+        assert!(white["image"].as_str().unwrap_or("").contains("--white-"));
+        // Only the picture and the color differ from the plain item.
+        let without = |v: &Value| {
+            let mut v = v.clone();
+            for key in ["image", "color"] {
+                if let Some(m) = v.as_object_mut() {
+                    m.remove(key);
+                }
+            }
+            v
+        };
+        assert_eq!(without(&plain), without(&white));
+
+        // A size alone does not change the picture.
+        let sized = read(|i| {
+            i.query = None;
+            i.size = Some(vec!["M".into()]);
+        })
+        .await
+        .unwrap_or_else(|e| panic!("{e}"));
+        let items = sized["items"].as_array().cloned().unwrap_or_default();
+        assert!(!items.is_empty());
+        assert!(items.iter().all(|p| p.get("color").is_none()));
     }
 
     #[tokio::test]

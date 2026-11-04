@@ -17,6 +17,7 @@ import {AskButton, Intents} from './Ask';
 import {OpenInNewTab, useCanvasLink} from './CanvasPages';
 import {PriceTag} from './PriceTag';
 import {ProductImage} from './ProductImage';
+import {productHref} from './ProductThumb';
 import {COMPARE_MAX, useStorefront} from './StorefrontContext';
 import {StatusTag} from './StatusTag';
 
@@ -31,6 +32,8 @@ export interface ProductCardProps {
   priceText?: string | null;
   listPriceText?: string | null;
   image?: string | null;
+  /** The color the picture shows, when the shopper filtered by color: the product opens on it. */
+  color?: string | null;
   caption?: string | null;
   availability?: Availability | null;
   blockId?: string;
@@ -50,6 +53,7 @@ export function ProductCard({
   priceText,
   listPriceText,
   image,
+  color,
   caption,
   availability,
   blockId,
@@ -66,12 +70,12 @@ export function ProductCard({
   });
   const {compare, toggleCompare} = useStorefront();
   const comparing = compare.some(c => c.productId === productId);
-  const href = `/p/${encodeURIComponent(productId)}`;
+  const href = productHref(productId, color);
   const link = useCanvasLink(href, name);
 
   return (
     <VStack gap={3} ref={target.ref} {...target.props}>
-      <ProductImage src={image} alt={name} ratio={ratio} {...link} />
+      <ProductImage src={image} alt={color ? `${name}, ${color}` : name} ratio={ratio} {...link} />
       <VStack gap={1.5}>
         <Link {...link}>
           <Text type="body" weight="semibold" maxLines={2}>

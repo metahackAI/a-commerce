@@ -61,6 +61,8 @@ export interface ProductSummary {
   availability?: Availability;
   has_variant?: Variant[];
   image?: ImageRef;
+  /** The color `image` shows, when the search was filtered by color (search.md). */
+  color?: string | null;
   description?: string | null;
 }
 
