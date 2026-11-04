@@ -8,8 +8,7 @@
 import {HStack} from '@astryxdesign/core/Layout';
 import {Button} from '@astryxdesign/core/Button';
 import {Icon} from '@astryxdesign/core/Icon';
-import {IconButton} from '@astryxdesign/core/IconButton';
-import {ChatBubbleLeftEllipsisIcon} from '@heroicons/react/24/outline';
+import {SparklesIcon} from '@heroicons/react/24/outline';
 import {useCallback} from 'react';
 
 import {useAi} from '@/ai/AiProvider';
@@ -53,16 +52,21 @@ export function useSayEvent() {
   );
 }
 
-/** "Ask about this": picks the element as context for the next message and opens the assistant. */
-export function AskButton({target, label}: {target: {ask: () => void}; label: string}) {
+/**
+ * "Ask AI", the same on everything a shopper can ask about: picks the element as "this" for the next
+ * message and opens the assistant. `compact` keeps only the icon where a row has no room for words.
+ */
+export function AskButton({target, label, compact = false}: {target: {ask: () => void}; label: string; compact?: boolean}) {
   const openAssistant = useOpenAssistant();
   return (
-    <IconButton
-      label={`Ask about ${label}`}
-      tooltip="Ask about this"
+    <Button
+      label={compact ? `Ask AI about ${label}` : 'Ask AI'}
+      aria-label={`Ask AI about ${label}`}
+      isIconOnly={compact}
+      tooltip={compact ? 'Ask AI' : undefined}
       variant="ghost"
       size="sm"
-      icon={<Icon icon={ChatBubbleLeftEllipsisIcon} />}
+      icon={<Icon icon={SparklesIcon} />}
       onClick={() => {
         target.ask();
         openAssistant();
@@ -79,9 +83,9 @@ export function Intents({says, about}: {says: string[]; about: ElementContext}) 
   const say = useSay();
   if (says.length === 0) return null;
   return (
-    <HStack gap={1} wrap="wrap">
+    <HStack gap={2} wrap="wrap">
       {says.map(s => (
-        <Button key={s} label={s} size="sm" variant="ghost" onClick={() => say(s, about)} />
+        <Button key={s} label={s} size="sm" variant="secondary" onClick={() => say(s, about)} />
       ))}
     </HStack>
   );

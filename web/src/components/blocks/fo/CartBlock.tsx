@@ -10,6 +10,8 @@ import {HStack} from '@astryxdesign/core/Layout';
 
 import {day} from '@/app/(storefront)/_lib/format';
 
+import {useCanvasLink} from '@/components/fo/CanvasPages';
+
 import type {BlockProps} from '../types';
 import {BlockActions, BlockFrame, dataOf, list} from './common';
 import type {CartBlockData} from './data';
@@ -29,6 +31,7 @@ export function CartBlock({block}: BlockProps) {
     note: l.note,
     image: l.image,
   }));
+  const cartLink = useCanvasLink('/cart');
   const hasOpen = block.actions.some(a => a.kind === 'open');
   return (
     <BlockFrame
@@ -36,7 +39,7 @@ export function CartBlock({block}: BlockProps) {
       footer={
         <HStack gap={2} wrap="wrap" vAlign="center">
           <BlockActions block={block} />
-          {hasOpen ? null : <Button label="Open cart" size="sm" variant="ghost" href="/cart" />}
+          {hasOpen ? null : <Button label="Open cart" size="sm" variant="ghost" {...cartLink} />}
         </HStack>
       }>
       <Lines block={block} lines={lines} kind="cart_line" />

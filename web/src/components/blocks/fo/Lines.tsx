@@ -14,6 +14,7 @@ import {useAiTarget} from '@/ai/useAiTarget';
 import {imageUrl, words} from '@/app/(storefront)/_lib/format';
 import type {ImageRef} from '@/app/(storefront)/_lib/types';
 import {AskButton, Intents} from '@/components/fo/Ask';
+import {useCanvasLink} from '@/components/fo/CanvasPages';
 
 import {intentsFor} from './common';
 import type {MoneyLike} from './data';
@@ -41,6 +42,7 @@ function Line({block, line, kind, index}: {block: UiBlock; line: LineView; kind:
   const details = [line.color, line.size, typeof line.quantity === 'number' ? `Qty ${line.quantity}` : null].filter(Boolean).join(' · ');
   const target = useAiTarget({kind, label: [line.name, details].filter(Boolean).join(' · '), ids, term: 'schema:OrderItem', blockId: block.block_id});
   const price = moneyText(line.price);
+  const productLink = useCanvasLink(`/p/${encodeURIComponent(line.product_id ?? '')}`, line.name);
   return (
     <ListItem
       ref={target.ref}
@@ -49,7 +51,7 @@ function Line({block, line, kind, index}: {block: UiBlock; line: LineView; kind:
       startContent={<Thumbnail src={imageUrl(line.image as ImageRef) ?? undefined} alt={line.name} label={line.name} />}
       label={
         line.product_id ? (
-          <Link href={`/p/${encodeURIComponent(line.product_id)}`}>
+          <Link {...productLink}>
             <Text type="body" weight="semibold">
               {line.name}
             </Text>

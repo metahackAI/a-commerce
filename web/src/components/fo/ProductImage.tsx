@@ -9,18 +9,24 @@ import {ClickableCard} from '@astryxdesign/core/ClickableCard';
 import {Center} from '@astryxdesign/core/Center';
 import {Icon} from '@astryxdesign/core/Icon';
 import {PhotoIcon} from '@heroicons/react/24/outline';
+import type {MouseEvent} from 'react';
 
 export function ProductImage({
   src,
   alt,
   ratio = 4 / 5,
   href,
+  target,
+  onClick,
 }: {
   src: string | null | undefined;
   alt: string;
   ratio?: number;
   /** Makes the picture a link (a product card's picture opens the product). */
   href?: string;
+  target?: string;
+  /** On the canvas, opens the product there (`useCanvasLink`). */
+  onClick?: (e: MouseEvent<HTMLElement>) => void;
 }) {
   const picture = (
     <AspectRatio ratio={ratio} fit="cover">
@@ -34,7 +40,7 @@ export function ProductImage({
     </AspectRatio>
   );
   return href ? (
-    <ClickableCard href={href} label={alt} padding={0} variant="muted">
+    <ClickableCard href={href} target={target} onClick={onClick} label={alt} padding={0} variant="muted">
       {picture}
     </ClickableCard>
   ) : (

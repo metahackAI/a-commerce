@@ -232,6 +232,27 @@ pub fn products(ui: &str, output: &Value, why: Option<&str>) -> Option<Block> {
     Some(b)
 }
 
+/// The product's id in a read of it (`get_product`, or a row of a search).
+pub fn product_detail_id(item: &Value) -> Option<String> {
+    Some(product_id(item)).filter(|id| id.starts_with("prd_"))
+}
+
+/// product_detail: one product, from a read of it. The web reads the rest of its page itself
+/// (chat.md §3.3), so what it shows is as current as the product page.
+pub fn product_detail(item: &Value) -> Option<Block> {
+    let id = product_detail_id(item)?;
+    let title = name(item);
+    if title.is_empty() {
+        return None;
+    }
+    let data = json!({
+        "product_id": id, "name": title, "price": price_of(item, "price"),
+        "list_price": price_of(item, "list_price"), "image": image(item),
+        "facts": facts(item, 4),
+    });
+    Some(Block::new("product_detail", title, data))
+}
+
 /// A comparison: the tool's own rows when it has them, else the fields the items share.
 fn compare_data(output: &Value, shown: &[&Value]) -> Value {
     let products: Vec<Value> = shown
@@ -490,6 +511,17 @@ pub fn memory_note(memory_id: &str, text: &str) -> Block {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn one_product_is_shown_from_its_read() {
+        let read = json!({"id": "prd_windbreaker", "name": "Packable windbreaker", "price": 89.0,
+                          "price_currency": "USD", "image": "/media/garment/wind-slate.svg"});
+        let b = product_detail(&read).unwrap();
+        assert_eq!(b.ui, "product_detail");
+        assert_eq!(b.title, "Packable windbreaker");
+        assert_eq!(b.data["product_id"], "prd_windbreaker");
+        assert!(product_detail(&json!({"id": "ord_1", "name": "Not a product"})).is_none());
+    }
 
     #[test]
     fn a_comparison_shows_each_attribute_as_a_row() {

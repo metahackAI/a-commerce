@@ -19,7 +19,8 @@ import {day, money, words} from '@/app/(storefront)/_lib/format';
 import type {CartWriteResult, DeliveryDate, PriceBreakdown, Product, Variant} from '@/app/(storefront)/_lib/types';
 import {api, type ApiErrorBody, type Page} from '@/lib/api';
 
-import {AskButton} from './Ask';
+import {AskButton, useSay} from './Ask';
+import {useOnCanvas} from './CanvasPages';
 import {ErrorNotice} from './ErrorNotice';
 import {PriceTag} from './PriceTag';
 import {QuantityInput} from './QuantityInput';
@@ -85,6 +86,8 @@ export function ProductPurchase({
 }) {
   const router = useRouter();
   const {isShopper, compare, toggleCompare} = useStorefront();
+  const onCanvas = useOnCanvas();
+  const say = useSay();
   const variants: Variant[] = useMemo(() => product.has_variant ?? [], [product.has_variant]);
   const colors = unique(variants.map(v => v.color));
   const sizes = unique(variants.map(v => v.size));
@@ -303,7 +306,13 @@ export function ProductPurchase({
           isDisabled={!comparing && compare.length >= COMPARE_MAX}
           onClick={() => toggleCompare({productId: product.id, name: product.name})}
         />
-        {compare.length >= 2 ? <Button label={`Compare ${compare.length}`} variant="ghost" href="/compare" /> : null}
+        {compare.length >= 2 ? (
+          onCanvas ? (
+            <Button label={`Compare ${compare.length}`} variant="ghost" onClick={() => say(`Compare ${compare.map(c => c.name).join(' and ')}`)} />
+          ) : (
+            <Button label={`Compare ${compare.length}`} variant="ghost" href="/compare" />
+          )
+        ) : null}
       </HStack>
 
       {added ? (
@@ -311,7 +320,13 @@ export function ProductPurchase({
           status="success"
           title="Added to your cart"
           description={added.cart ? `Cart total ${money(added.cart.total)}` : undefined}
-          endContent={<Button label="View cart" size="sm" variant="primary" href="/cart" />}
+          endContent={
+            onCanvas ? (
+              <Button label="View cart" size="sm" variant="primary" onClick={() => say('Show my cart')} />
+            ) : (
+              <Button label="View cart" size="sm" variant="primary" href="/cart" />
+            )
+          }
         />
       ) : null}
       {error ? <ErrorNotice error={error} askAbout={`I couldn't add the ${product.name}. What can I do?`} /> : null}

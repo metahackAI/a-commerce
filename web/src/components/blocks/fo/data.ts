@@ -34,6 +34,15 @@ export interface ProductListData {
   items: {product_id: string; name: string; price?: MoneyLike; list_price?: MoneyLike; image?: unknown; facts?: string[]}[];
 }
 
+export interface ProductDetailData {
+  product_id: string;
+  name: string;
+  price?: MoneyLike;
+  list_price?: MoneyLike;
+  image?: unknown;
+  facts?: string[];
+}
+
 export interface FitCheckData {
   product: {product_id?: string; name?: string; image?: unknown; facts?: string[]; summary?: string | null; price?: MoneyLike; list_price?: MoneyLike; note?: string | null};
   options: {label?: string; size: string; reason?: string | null; price?: MoneyLike; recommended?: boolean}[];

@@ -27,6 +27,7 @@ import type {
 } from '@/app/(storefront)/_lib/types';
 
 import {AskButton} from './Ask';
+import {useCanvasLink} from './CanvasPages';
 import {BuyAgainButton, ProductThumb, productHref} from './ProductThumb';
 import {ReturnPanel} from './ReturnPanel';
 import {StatusTag} from './StatusTag';
@@ -112,6 +113,7 @@ function OrderLineRow({orderId, item, canReturn, claim}: {orderId: string; item:
     ids: {order_item_id: item.id, order_id: orderId, product_id: item.product_id},
     term: 'schema:OrderItem',
   });
+  const productLink = useCanvasLink(productHref(item.product_id, item.color), item.name);
   return (
     <ListItem
       ref={target.ref}
@@ -120,7 +122,7 @@ function OrderLineRow({orderId, item, canReturn, claim}: {orderId: string; item:
       startContent={<ProductThumb productId={item.product_id} name={item.name} image={item.image} color={item.color} size={72} />}
       label={
         <HStack gap={2} vAlign="center" wrap="wrap">
-          <Link href={productHref(item.product_id, item.color)}>
+          <Link {...productLink}>
             <Text weight="semibold">{item.name}</Text>
           </Link>
           <StatusBadge status={item.order_item_status} />

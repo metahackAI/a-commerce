@@ -1038,6 +1038,7 @@ impl<'r> Turn<'r> {
             }
         }
         self.finish_change_set().await;
+        self.read_one_product().await;
         self.compare_for_layout().await;
         self.cart_for_reply().await;
         self.build_blocks();
@@ -3248,6 +3249,120 @@ impl<'r> Turn<'r> {
         (ui, rule)
     }
 
+    /// The one product this turn is about, when that is all it is about: the plan said so, the
+    /// shopper pressed "Tell me more" on a product, or the search found only that one. A turn that
+    /// changed something, or that answers with another block (a fit check, the cart), is not.
+    fn one_product(&self) -> Option<String> {
+        if !self.profile.blocks.iter().any(|b| b == "product_detail")
+            || self.history.iter().any(|r| r.kind != ToolKind::Read)
+        {
+            return None;
+        }
+        let reply_plan = self
+            .plan
+            .as_ref()?
+            .reply_plan
+            .as_deref()
+            .unwrap_or_default();
+        let planned = reply_plan == "product_detail";
+        if !planned
+            && !matches!(
+                reply_plan,
+                "compare_table" | "look_gallery" | "product_list" | "text" | ""
+            )
+        {
+            return None;
+        }
+        let pointed = self
+            .pointed
+            .get("product_id")
+            .filter(|ids| ids.len() == 1)
+            .and_then(|ids| ids.first())
+            .cloned();
+        if pointed.is_some() && (planned || self.text.to_lowercase().contains("tell me more")) {
+            return pointed;
+        }
+        // Several products read one by one, or compared: the answer is about them all.
+        let mut read: Vec<String> = self
+            .history
+            .iter()
+            .filter(|r| r.tool == "get_product")
+            .filter_map(|r| shop::product_detail_id(r.output.as_ref()?))
+            .collect();
+        read.dedup();
+        if !planned && (read.len() > 1 || self.history.iter().any(|r| r.tool == "compare_products"))
+        {
+            return None;
+        }
+        if let Some(id) = read.pop() {
+            return Some(id);
+        }
+        let found = self.last_output(|r| r.tool == "search_products")?;
+        let items = shop::items_of(found.output.as_ref()?);
+        (planned || items.len() == 1)
+            .then(|| items.first().and_then(shop::product_detail_id))
+            .flatten()
+    }
+
+    /// Everything the shopper would want to know about the one product the turn is about, for the
+    /// reply and the block: the product, what reviewers say, questions, measurements and returns.
+    /// A read that fails (no reviews yet) only leaves that part out.
+    async fn read_one_product(&mut self) {
+        let (Some(plan), Some(id)) = (self.plan.clone(), self.one_product()) else {
+            return;
+        };
+        let reads = [
+            ("get_product", json!({"product_id": id})),
+            ("get_review_summary", json!({"product_id": id})),
+            ("list_reviews", json!({"product_id": id, "limit": 5})),
+            ("list_questions", json!({"product_id": id, "limit": 5})),
+            ("get_product_measurements", json!({"product_id": id})),
+            ("get_return_policy", json!({"product_id": id})),
+        ];
+        for (name, input) in reads {
+            let done = self
+                .history
+                .iter()
+                .any(|r| r.tool == name && r.input.get("product_id") == input.get("product_id"));
+            let Some(tool) = self
+                .tool(name)
+                .filter(|t| !done && self.profile.allows(t))
+                .cloned()
+            else {
+                continue;
+            };
+            let _ = self
+                .call(
+                    &plan,
+                    "product",
+                    &tool,
+                    input,
+                    vec!["for the answer about this one product".into()],
+                )
+                .await;
+        }
+    }
+
+    /// The product_detail block for the turn's one product, from what was read about it.
+    fn product_detail_block(&self) -> Option<Block> {
+        let id = self.one_product()?;
+        let read = self
+            .last_output(|r| {
+                r.tool == "get_product"
+                    && r.output
+                        .as_ref()
+                        .and_then(shop::product_detail_id)
+                        .is_some_and(|i| i == id)
+            })
+            .and_then(|r| r.output.clone())
+            .or_else(|| {
+                shop::items_of(self.product_read()?.output.as_ref()?)
+                    .into_iter()
+                    .find(|i| shop::product_detail_id(i).is_some_and(|x| x == id))
+            })?;
+        shop::product_detail(&read)
+    }
+
     /// A comparison shows the products' attributes side by side, which only `compare_products`
     /// reads. When the turn will show one and the plan only searched, compare the top few.
     async fn compare_for_layout(&mut self) {
@@ -3256,6 +3371,7 @@ impl<'r> Turn<'r> {
         };
         let reply_plan = plan.reply_plan.clone().unwrap_or_default();
         if !["compare_table", "look_gallery", "product_list"].contains(&reply_plan.as_str())
+            || self.one_product().is_some()
             || self.history.iter().any(|r| r.tool == "compare_products")
             || self.product_layout(&reply_plan).0 != "compare_table"
         {
@@ -3475,7 +3591,9 @@ impl<'r> Turn<'r> {
             }
         }
         let allowed = |ui: &str| self.profile.blocks.iter().any(|b| b == ui);
+        let one_product = self.product_detail_block();
         let block = match reply_plan.as_str() {
+            _ if one_product.is_some() => one_product,
             "product_drafts" => drafts,
             // Return requests have their own review (scene B2), even when only listed.
             "product_table"
@@ -3871,13 +3989,21 @@ impl<'r> Turn<'r> {
         records::reviews_with_summary(of("list_reviews"), of("get_review_summary"))
     }
 
-    /// Reviews and questions this turn read, each as its own `record_list`.
+    /// Reviews and questions this turn read, each as its own `record_list`, when there are any.
     fn product_content_blocks(&self) -> Vec<Block> {
         let mut out: Vec<Block> = self.reviews_block().into_iter().collect();
         out.extend(
             self.last_output(|r| r.tool == "list_questions")
                 .and_then(|r| records::record_list(&r.tool, r.output.as_ref()?)),
         );
+        // Nothing to say beside the products: no "0 questions" under them.
+        out.retain(|b| {
+            b.data.get("summary").is_some_and(|s| !s.is_null())
+                || b.data
+                    .get("rows")
+                    .and_then(Value::as_array)
+                    .is_some_and(|rows| !rows.is_empty())
+        });
         out
     }
 

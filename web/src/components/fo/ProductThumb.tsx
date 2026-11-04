@@ -13,6 +13,7 @@ import {useState} from 'react';
 import {imageUrl} from '@/app/(storefront)/_lib/format';
 import type {ApiErrorBody} from '@/lib/api';
 
+import {useCanvasLink} from './CanvasPages';
 import {ProductImage} from './ProductImage';
 import {errorBody, write} from './write';
 
@@ -36,9 +37,10 @@ export function ProductThumb({
   color?: string | null;
   size?: number;
 }) {
+  const link = useCanvasLink(productHref(productId, color), name);
   return (
     <div style={{width: size, flexShrink: 0}}>
-      <ProductImage src={imageUrl(image ?? null)} alt={color ? `${name}, ${color}` : name} ratio={1} href={productHref(productId, color)} />
+      <ProductImage src={imageUrl(image ?? null)} alt={color ? `${name}, ${color}` : name} ratio={1} {...link} />
     </div>
   );
 }

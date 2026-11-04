@@ -21,6 +21,7 @@ import { useAiTarget } from "@/ai/useAiTarget";
 import { imageUrl, words } from "@/app/(storefront)/_lib/format";
 import type { ImageRef } from "@/app/(storefront)/_lib/types";
 import { Intents } from "@/components/fo/Ask";
+import { useCanvasLink } from "@/components/fo/CanvasPages";
 import { ProductImage } from "@/components/fo/ProductImage";
 
 import type { BlockProps } from "../types";
@@ -53,6 +54,7 @@ function ColumnHeader({
     blockId: block.block_id,
   });
   const src = imageUrl(product.image as ImageRef);
+  const link = useCanvasLink(`/p/${encodeURIComponent(product.product_id)}`, product.name);
   const sub = [product.color, product.material].filter(Boolean).join(" · ");
   return (
     <TableHeaderCell scope="col" ref={target.ref} {...target.props}>
@@ -64,8 +66,8 @@ function ColumnHeader({
               <StatusTag label={product.badge} tone="info" />
             </HStack>
           ) : null}
-          {src ? <ProductImage src={src} alt={product.name} ratio={1} /> : null}
-          <Link href={`/p/${encodeURIComponent(product.product_id)}`}>
+          {src ? <ProductImage src={src} alt={product.name} ratio={1} {...link} /> : null}
+          <Link {...link}>
             <Text type="body" weight="semibold">
               {product.name}
             </Text>

@@ -18,6 +18,7 @@ import type {OrderDetailData} from './data';
 import {Lines} from './Lines';
 import {Totals} from './Totals';
 import {StatusTag} from '@/components/fo/StatusTag';
+import {useCanvasLink} from '@/components/fo/CanvasPages';
 
 function statusVariant(status: string): 'success' | 'warning' | 'error' | 'info' | 'neutral' {
   if (status === 'delivered') return 'success';
@@ -60,6 +61,7 @@ export function OrderDetailBlock({block}: BlockProps) {
   const deliveryState = delivery?.delivery_state ?? delivery?.state ?? null;
   // The frame's title already says the order number ("Order #29202"): the line under it adds the status.
   const titled = block.title === `Order #${data.order_number}`;
+  const orderLink = useCanvasLink(`/orders/${encodeURIComponent(data.order_id ?? '')}`, `Order #${data.order_number}`);
   const pay = payment?.label ?? (payment?.card_last4 ? `Card ending ${payment.card_last4}` : payment?.payment_method ? words(payment.payment_method) : null);
 
   return (
@@ -69,7 +71,7 @@ export function OrderDetailBlock({block}: BlockProps) {
         <HStack gap={2} wrap="wrap" vAlign="center">
           <BlockActions block={block} />
           {data.order_id && !block.actions.some(a => a.kind === 'open') ? (
-            <Button label="Open order" size="sm" variant="ghost" href={`/orders/${encodeURIComponent(data.order_id)}`} />
+            <Button label="Open order" size="sm" variant="ghost" {...orderLink} />
           ) : null}
         </HStack>
       }>

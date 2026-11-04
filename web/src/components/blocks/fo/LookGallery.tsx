@@ -17,7 +17,7 @@ export function LookGalleryBlock({block}: BlockProps) {
   const items = list(dataOf<LookGalleryData>(block).items);
   return (
     <BlockFrame block={block}>
-      <Grid columns={{minWidth: 200}} gap={4}>
+      <Grid columns={{minWidth: 200}} gap={5}>
         {items.map(item => (
           <ProductCard
             key={item.product_id}

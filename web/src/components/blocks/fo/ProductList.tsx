@@ -7,14 +7,15 @@ import {HStack, VStack} from '@astryxdesign/core/Layout';
 import {Link} from '@astryxdesign/core/Link';
 import {List, ListItem} from '@astryxdesign/core/List';
 import {Text} from '@astryxdesign/core/Text';
-import {Thumbnail} from '@astryxdesign/core/Thumbnail';
 
 import type {UiBlock} from '@/ai/types';
 import {useAiTarget} from '@/ai/useAiTarget';
 import {imageUrl} from '@/app/(storefront)/_lib/format';
 import type {ImageRef} from '@/app/(storefront)/_lib/types';
 import {AskButton, Intents} from '@/components/fo/Ask';
+import {OpenInNewTab, useCanvasLink} from '@/components/fo/CanvasPages';
 import {PriceTag} from '@/components/fo/PriceTag';
+import {ProductImage} from '@/components/fo/ProductImage';
 
 import type {BlockProps} from '../types';
 import {BlockFrame, dataOf, intentsFor, list} from './common';
@@ -32,6 +33,7 @@ function Row({block, item}: {block: UiBlock; item: Item}) {
     blockId: block.block_id,
   });
   const href = `/p/${encodeURIComponent(item.product_id)}`;
+  const link = useCanvasLink(href, item.name);
   const p = cardPrice(item.price, item.list_price);
   const facts = list(item.facts).join(' · ');
   return (
@@ -39,16 +41,20 @@ function Row({block, item}: {block: UiBlock; item: Item}) {
       ref={target.ref}
       {...target.props}
       align="start"
-      startContent={<Thumbnail src={imageUrl(item.image as ImageRef) ?? undefined} alt={item.name} label={item.name} />}
+      startContent={
+        <div style={{width: 88}}>
+          <ProductImage src={imageUrl(item.image as ImageRef)} alt={item.name} {...link} />
+        </div>
+      }
       label={
-        <Link href={href}>
+        <Link {...link}>
           <Text type="body" weight="semibold">
             {item.name}
           </Text>
         </Link>
       }
       description={
-        <VStack gap={1}>
+        <VStack gap={2}>
           {'price' in p && typeof p.price === 'number' ? (
             <PriceTag
               productId={item.product_id}
@@ -79,7 +85,12 @@ function Row({block, item}: {block: UiBlock; item: Item}) {
           <Intents says={intentsFor(block, 'product_card', item.product_id)} about={target.context} />
         </VStack>
       }
-      endContent={<AskButton target={target} label={item.name} />}
+      endContent={
+        <HStack gap={1} vAlign="center">
+          <AskButton target={target} label={item.name} />
+          <OpenInNewTab href={href} />
+        </HStack>
+      }
     />
   );
 }

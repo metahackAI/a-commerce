@@ -17,6 +17,7 @@ import {useAiTarget} from '@/ai/useAiTarget';
 import {imageUrl} from '@/app/(storefront)/_lib/format';
 import type {ImageRef} from '@/app/(storefront)/_lib/types';
 import {Intents} from '@/components/fo/Ask';
+import {useCanvasLink} from '@/components/fo/CanvasPages';
 
 import type {BlockProps} from '../types';
 import {ActionButton, BlockActions, BlockFrame, dataOf, intentsFor, list} from './common';
@@ -172,6 +173,7 @@ function UsedFact({block, label, value, used}: {block: UiBlock; label: string; v
 export function FitCheckBlock({block}: BlockProps) {
   const data = dataOf<FitCheckData>(block);
   const product = data.product ?? {};
+  const productLink = useCanvasLink(`/p/${encodeURIComponent(product.product_id ?? '')}`, product.name);
   const options = list(data.options);
   const reviews = data.reviews ?? {};
   const used = pairs(list(data.used));
@@ -199,7 +201,7 @@ export function FitCheckBlock({block}: BlockProps) {
           <Thumbnail src={imageUrl(product.image as ImageRef) ?? undefined} alt={product.name} label={product.name} />
           <VStack gap={0.5}>
             {product.product_id ? (
-              <Link href={`/p/${encodeURIComponent(product.product_id)}`}>
+              <Link {...productLink}>
                 <Text type="body" weight="semibold">
                   {product.name}
                 </Text>

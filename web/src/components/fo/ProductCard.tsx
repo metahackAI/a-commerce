@@ -14,6 +14,7 @@ import {words} from '@/app/(storefront)/_lib/format';
 import type {Availability, MemberPrice} from '@/app/(storefront)/_lib/types';
 
 import {AskButton, Intents} from './Ask';
+import {OpenInNewTab, useCanvasLink} from './CanvasPages';
 import {PriceTag} from './PriceTag';
 import {ProductImage} from './ProductImage';
 import {COMPARE_MAX, useStorefront} from './StorefrontContext';
@@ -66,19 +67,17 @@ export function ProductCard({
   const {compare, toggleCompare} = useStorefront();
   const comparing = compare.some(c => c.productId === productId);
   const href = `/p/${encodeURIComponent(productId)}`;
+  const link = useCanvasLink(href, name);
 
   return (
-    <VStack gap={2} ref={target.ref} {...target.props}>
-      <ProductImage src={image} alt={name} ratio={ratio} href={href} />
-      <VStack gap={1}>
-        <HStack gap={1} vAlign="start" justify="between">
-          <Link href={href}>
-            <Text type="body" weight="semibold" maxLines={2}>
-              {name}
-            </Text>
-          </Link>
-          <AskButton target={target} label={name} />
-        </HStack>
+    <VStack gap={3} ref={target.ref} {...target.props}>
+      <ProductImage src={image} alt={name} ratio={ratio} {...link} />
+      <VStack gap={1.5}>
+        <Link {...link}>
+          <Text type="body" weight="semibold" maxLines={2}>
+            {name}
+          </Text>
+        </Link>
         {typeof price === 'number' ? (
           <PriceTag productId={productId} name={name} price={price} currency={currency} member={member} memberLabel={memberLabel} blockId={blockId} />
         ) : priceText ? (
@@ -103,20 +102,22 @@ export function ProductCard({
             <StatusTag label={words(availability)} tone={availability === 'out_of_stock' ? 'warning' : 'neutral'} />
           </HStack>
         ) : null}
-        {canCompare ? (
-          <HStack>
-            <Button
-              label={comparing ? 'Comparing' : 'Compare'}
-              size="sm"
-              variant={comparing ? 'secondary' : 'ghost'}
-              isDisabled={!comparing && compare.length >= COMPARE_MAX}
-              tooltip={!comparing && compare.length >= COMPARE_MAX ? `Up to ${COMPARE_MAX} products` : undefined}
-              onClick={() => toggleCompare({productId, name})}
-            />
-          </HStack>
-        ) : null}
-        <Intents says={intents} about={target.context} />
       </VStack>
+      <HStack gap={1} vAlign="center" wrap="wrap">
+        <AskButton target={target} label={name} />
+        {canCompare ? (
+          <Button
+            label={comparing ? 'Comparing' : 'Compare'}
+            size="sm"
+            variant={comparing ? 'secondary' : 'ghost'}
+            isDisabled={!comparing && compare.length >= COMPARE_MAX}
+            tooltip={!comparing && compare.length >= COMPARE_MAX ? `Up to ${COMPARE_MAX} products` : undefined}
+            onClick={() => toggleCompare({productId, name})}
+          />
+        ) : null}
+        <OpenInNewTab href={href} />
+      </HStack>
+      <Intents says={intents} about={target.context} />
     </VStack>
   );
 }

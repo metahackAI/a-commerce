@@ -30,6 +30,7 @@ pub const KNOWN_BLOCKS: &[&str] = &[
     "compare_table",
     "look_gallery",
     "product_list",
+    "product_detail",
     "cart",
     "checkout_card",
     "return_options",
