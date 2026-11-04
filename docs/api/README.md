@@ -59,7 +59,7 @@ a-commerce API
 | 툴 이름(모델이 보는 이름) | `verb_noun`, 평이한 영어 | `set_sale_prices` |
 | REST 경로 | `METHOD /v1/{domain}/{resources}/...` | `POST /v1/promotion/sale-prices` |
 
-툴 검색은 이 계층을 씁니다. 에이전트마다 쓸 수 있는 도메인(`agents/*.yml`의 `tool_scope`)과 주 도메인(`home_domains`)이 정해져 있고, 그 안에서 요청의 낱말로 툴에 점수를 매긴 뒤(BM25, 주 도메인 가산) 툴 그래프 이웃을 더해 후보 5–8개를 냅니다(`agents/runtime.yml` `tool_search`). 모델은 291개 목록이 아니라 이 후보만 봅니다([../backend/agent.md](../backend/agent.md) §3).
+툴 검색은 이 계층을 씁니다. 에이전트마다 쓸 수 있는 도메인(`agents/*.yml`의 `tool_scope`)과 주 도메인(`home_domains`)이 정해져 있고, 그 안에서 요청의 낱말로 툴에 점수를 매긴 뒤(BM25, 주 도메인 가산) 툴 그래프 이웃을 더해 후보 5–8개를 냅니다(`agents/runtime.yml` `tool_search`). 모델은 298개 목록이 아니라 이 후보만 봅니다([../backend/agent.md](../backend/agent.md) §3).
 
 ## 2. 오퍼레이션 종류
 
@@ -102,7 +102,7 @@ a-commerce API
 | `POST /v1/customer/account-recovery/login-id` | `{contact}` | 누구나(익명 세션) | `human:account` | 로그인 아이디 찾기 | 〃 |
 | `PUT /v1/customer/me/password` | `{current_password, new_password}` | 회원 본인 | `human:account` | 로그인 상태에서 비밀번호 변경 | 〃 |
 
-18개 모두 commerce에 있습니다(`cargo xtask check-coverage`). 웹에 버튼이 있는 것은 승인·거절·되돌리기, 할 일 치우기, 주문하기, 선물 수락, 주문 취소, 반품 요청, 기억 되돌리기의 아홉입니다. 정기 주문 시작, 교환 요청, 추가 비용 결제, 클레임 철회, 탈퇴, 비밀번호 재설정 요청·확정, 로그인 아이디 찾기, 비밀번호 변경의 아홉은 아직 웹 화면이 없습니다.
+23개 모두 commerce에 있습니다(`cargo xtask check-coverage`). 웹에 버튼이 있는 것은 승인·거절·되돌리기, 할 일 치우기, 주문하기, 선물 수락, 주문 취소, 반품 요청, 기억 되돌리기의 아홉입니다. 정기 주문 시작, 교환 요청, 추가 비용 결제, 클레임 철회, 탈퇴, 비밀번호 재설정 요청·확정, 로그인 아이디 찾기, 비밀번호 변경의 아홉은 아직 웹 화면이 없습니다.
 
 에이전트는 `get_*_options`·`prepare_*`로 준비만 하고, 보내는 것은 사람입니다. 서버는 보내는 순간 다시 계산해 사람이 본 금액과 다르면 `estimate_changed`로 거부합니다. 비밀번호는 어떤 툴도 다루지 않습니다.
 
@@ -190,7 +190,7 @@ a-commerce API
 
 ## 4. 전체 오퍼레이션 인덱스
 
-툴 **291개**(R 132 · W 119 · W$ 40), 도메인 13개. 그 밖에 사람 전용 엔드포인트 18개(§2.1)와 런타임 전용 엔드포인트 9개(§2.2: 변경셋 6개, 데모 시계 2개, 데모 스토어 다시 적재 1개). **굵게** 표시한 30개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
+툴 **298개**(R 138 · W 119 · W$ 41), 도메인 13개. 그 밖에 사람 전용 엔드포인트 23개(§2.1)와 런타임 전용 엔드포인트 9개(§2.2: 변경셋 6개, 데모 시계 2개, 데모 스토어 다시 적재 1개). **굵게** 표시한 30개는 데모 시나리오가 쓰는 툴이고, 위치는 [architecture.md §3.4](../architecture.md)와 같습니다.
 
 ### Offer
 

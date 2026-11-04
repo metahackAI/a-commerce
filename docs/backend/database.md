@@ -169,7 +169,7 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 
 ## 12. 테이블 목록
 
-마이그레이션 31개가 만드는 테이블과 뷰는 135개, 컬럼은 1,816개이고, 모두 schema.org나 `acom:` 용어로 시작하는 주석이 있습니다(`cargo xtask check-schema`). 컬럼까지는 [schema.generated.md](schema.generated.md)에 있습니다.
+마이그레이션 34개가 만드는 테이블과 뷰는 139개, 컬럼은 1,878개이고, 모두 schema.org나 `acom:` 용어로 시작하는 주석이 있습니다(`cargo xtask check-schema`). 컬럼까지는 [schema.generated.md](schema.generated.md)에 있습니다.
 
 | 스키마.테이블 | 용어 (`@type`/`additionalType`, `-`는 기술 테이블) | 접두 | 비고 |
 |---|---|---|---|
