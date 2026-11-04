@@ -16,7 +16,7 @@ import type {ReactNode} from 'react';
 import type {BlockAction, UiBlock} from '@/ai/types';
 import {useAiTarget} from '@/ai/useAiTarget';
 import {PersonButton} from '@/components/PersonButton';
-import {useSay, useSayEvent} from '@/components/fo/Ask';
+import {AskButton, useSay, useSayEvent} from '@/components/fo/Ask';
 
 /** The block's suggested sentences for one element (`<kind>:<id>`). */
 export function intentsFor(block: UiBlock, kind: string, id: string): string[] {
@@ -131,11 +131,11 @@ export function BlockFrame({
   });
   return (
     <Card ref={target.ref} {...target.props}>
-      <VStack gap={3}>
-        {block.title || aside ? (
+      <VStack gap={4}>
+        <HStack gap={2} vAlign="center" justify="between" wrap="wrap">
           <HStack gap={2} vAlign="center" wrap="wrap">
             {block.title ? (
-              <Text type="label" weight="semibold">
+              <Text type="large" weight="semibold">
                 {block.title}
               </Text>
             ) : null}
@@ -145,7 +145,8 @@ export function BlockFrame({
               </Text>
             ) : null}
           </HStack>
-        ) : null}
+          <AskButton target={target} label={block.title ?? 'this'} />
+        </HStack>
         {children}
         {block.why ? (
           <Text type="supporting" color="secondary">

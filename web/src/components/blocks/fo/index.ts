@@ -10,6 +10,7 @@ import {LookGalleryBlock} from './LookGallery';
 import {LookingForBlock} from './LookingFor';
 import {MemoryNoteBlock} from './MemoryNote';
 import {OrderDetailBlock} from './OrderDetail';
+import {ProductDetailBlock} from './ProductDetail';
 import {ProductListBlock} from './ProductList';
 import {ProfileCardBlock} from './ProfileCard';
 import {RecordListBlock} from './RecordList';
@@ -20,6 +21,7 @@ export const foBlocks: Record<string, BlockComponent> = {
   compare_table: CompareTableBlock,
   look_gallery: LookGalleryBlock,
   product_list: ProductListBlock,
+  product_detail: ProductDetailBlock,
   record_list: RecordListBlock,
   fit_check: FitCheckBlock,
   gift_picker: GiftPickerBlock,

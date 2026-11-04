@@ -3,18 +3,13 @@
 // offer the next step.
 import 'server-only';
 
-import {ApiError, type ApiErrorBody, type Query} from '@/lib/api';
+import {ApiError, type Query} from '@/lib/api';
 import {serverApi, serverPost, serverSession} from '@/lib/server-api';
 import type {Session} from '@/lib/session';
 
-export type Loaded<T> = {ok: true; data: T} | {ok: false; status: number; error: ApiErrorBody};
+import {type Loaded, unreachable} from './loaded';
 
-const unreachable: ApiErrorBody = {
-  code: 'upstream_unavailable',
-  class: 'upstream_unavailable',
-  message: 'The store could not be reached. Try again in a moment.',
-  next_tool: null,
-};
+export type {Loaded};
 
 /** `GET /api{path}` with the shopper's cookies. */
 export async function load<T>(path: string, query?: Query): Promise<Loaded<T>> {

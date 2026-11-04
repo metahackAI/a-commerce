@@ -1,18 +1,13 @@
 import type {Metadata} from 'next';
 import {BreadcrumbItem, Breadcrumbs} from '@astryxdesign/core/Breadcrumbs';
-import {Collapsible, CollapsibleGroup} from '@astryxdesign/core/Collapsible';
 import {Layout, LayoutContent, VStack} from '@astryxdesign/core/Layout';
-import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
-import {Heading, Text} from '@astryxdesign/core/Text';
 
 import {ErrorNotice} from '@/components/fo/ErrorNotice';
-import {MeasurementsTable, ProductFacts, ReviewList, ReviewSummaryView} from '@/components/fo/ProductDetails';
+import {ProductSections} from '@/components/fo/ProductSections';
 import {ProductShowcase} from '@/components/fo/ProductShowcase';
-import {QuestionList} from '@/components/fo/StoreContent';
 import {StorePopup} from '@/components/fo/StorePopup';
 import type {Page} from '@/lib/api';
 
-import {words} from '../../_lib/format';
 import {jsonLdScript, productJsonLd} from '../../_lib/jsonld';
 import {load, shopper} from '../../_lib/server';
 import type {
@@ -86,9 +81,6 @@ export default async function ProductPage({params, searchParams}: {params: Param
     p.brand_id ? load<Brand>(`/v1/catalog/brands/${encodeURIComponent(p.brand_id)}`) : null,
   ]);
 
-  const rp = policy.ok ? policy.data : null;
-  const nonReturnable = rp ? (rp['acom:non_returnable_when'] ?? rp.non_returnable_when ?? []) : [];
-  const sizeExchangeDays = rp ? (rp['acom:size_exchange_days'] ?? rp.size_exchange_days ?? null) : null;
   const ld = productJsonLd(p, g, summary.ok ? summary.data : null, path, brand?.ok ? brand.data.name : null);
 
   return (
@@ -114,53 +106,7 @@ export default async function ProductPage({params, searchParams}: {params: Param
               initialDelivery={delivery?.ok ? (delivery.data.items[0] ?? null) : null}
               initialColor={initialColor}
             />
-            <CollapsibleGroup type="multiple" defaultValue={['details', 'fit', 'reviews', 'questions', 'returns']} hasDividers>
-              {p.additional_property && p.additional_property.length > 0 ? (
-                <Collapsible value="details" trigger={<Heading level={2}>Details</Heading>}>
-                  <ProductFacts productId={p.id} facts={p.additional_property} />
-                </Collapsible>
-              ) : null}
-              <Collapsible value="fit" trigger={<Heading level={2}>Measurements and fit</Heading>}>
-                {measurements.ok ? (
-                  <MeasurementsTable productName={p.name} measurements={measurements.data} />
-                ) : (
-                  <Text color="secondary">{measurements.error.message}</Text>
-                )}
-              </Collapsible>
-              <Collapsible value="reviews" trigger={<Heading level={2}>Reviews</Heading>}>
-                <VStack gap={4}>
-                  {summary.ok ? (
-                    <ReviewSummaryView productName={p.name} summary={summary.data} />
-                  ) : (
-                    <Text color="secondary">{summary.error.code === 'no_reviews' ? 'No reviews yet.' : summary.error.message}</Text>
-                  )}
-                  {reviews.ok && reviews.data.items.length > 0 ? <ReviewList reviews={reviews.data.items} /> : null}
-                </VStack>
-              </Collapsible>
-              <Collapsible value="questions" trigger={<Heading level={2}>{questions.ok && questions.data.total > 0 ? `Questions (${questions.data.total})` : 'Questions'}</Heading>}>
-                {!questions.ok ? (
-                  <Text color="secondary">{questions.error.message}</Text>
-                ) : questions.data.items.length === 0 ? (
-                  <Text color="secondary">No questions yet.</Text>
-                ) : (
-                  <QuestionList questions={questions.data.items} />
-                )}
-              </Collapsible>
-              <Collapsible value="returns" trigger={<Heading level={2}>Delivery and returns</Heading>}>
-                {rp ? (
-                  <MetadataList>
-                    <MetadataListItem label="Returns">Within {rp.merchant_return_days} days of delivery</MetadataListItem>
-                    <MetadataListItem label="Return shipping">{words(rp.return_fees)}</MetadataListItem>
-                    {sizeExchangeDays ? <MetadataListItem label="Size exchange">Within {sizeExchangeDays} days</MetadataListItem> : null}
-                    {nonReturnable.length > 0 ? (
-                      <MetadataListItem label="Not returnable when">{nonReturnable.map(words).join(', ')}</MetadataListItem>
-                    ) : null}
-                  </MetadataList>
-                ) : (
-                  <Text color="secondary">{policy.ok ? '' : policy.error.message}</Text>
-                )}
-              </Collapsible>
-            </CollapsibleGroup>
+            <ProductSections product={p} reads={{measurements, summary, reviews, policy, questions}} />
           </VStack>
         </LayoutContent>
       }

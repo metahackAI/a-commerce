@@ -2,8 +2,9 @@
 // sections, then get_product for each of the first few products (the shopper's own prices).
 import 'server-only';
 
+import {slotItemId} from './format';
 import {load} from './server';
-import type {CollectionPage, CollectionPageSummary, Product, ProductSummary, SlotItem} from './types';
+import type {CollectionPage, CollectionPageSummary, Product, ProductSummary} from './types';
 
 /** Products a collection card shows. */
 const PREVIEW = 4;
@@ -13,10 +14,7 @@ export interface CollectionPreview {
   products: ProductSummary[];
 }
 
-export function slotItemId(item: SlotItem): string | null {
-  if (typeof item === 'string') return item;
-  return item.item_id ?? item.product_id ?? item.id ?? null;
-}
+export {slotItemId};
 
 /** The products of a collection page in section order, without the ones the rules hide. */
 export function collectionProductIds(page: CollectionPage): string[] {

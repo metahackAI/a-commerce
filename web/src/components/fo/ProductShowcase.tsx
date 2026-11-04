@@ -23,6 +23,7 @@ export function ProductShowcase({
   addressLabel,
   initialDelivery,
   initialColor,
+  compact = false,
 }: {
   product: Product;
   /** The product's own picture, shown for a color that has none. */
@@ -33,6 +34,8 @@ export function ProductShowcase({
   initialDelivery: DeliveryDate | null;
   /** The color to open on (`?color=`), when the product has it. */
   initialColor?: string | null;
+  /** On the canvas: the columns fold sooner and the picture never fills the screen. */
+  compact?: boolean;
 }) {
   const variants = product.has_variant ?? [];
   const asked = initialColor ? variants.find(v => v.color?.toLowerCase() === initialColor.toLowerCase()) : undefined;
@@ -40,10 +43,12 @@ export function ProductShowcase({
   const [color, setColor] = useState<string | null>(first?.color ?? null);
   const shown = variants.find(v => v.color === color && imageUrl(v.image ?? null))?.image;
   return (
-    <Grid columns={{minWidth: 320, repeat: 'fit'}} gap={6} align="start">
-      <ProductImage src={imageUrl(shown ?? image)} alt={color ? `${product.name}, ${color}` : product.name} />
+    <Grid columns={{minWidth: compact ? 260 : 320, repeat: 'fit'}} gap={6} align="start">
+      <div style={compact ? {maxWidth: 420, width: '100%', margin: '0 auto'} : undefined}>
+        <ProductImage src={imageUrl(shown ?? image)} alt={color ? `${product.name}, ${color}` : product.name} />
+      </div>
       <VStack gap={4}>
-        <Heading level={1}>{product.name}</Heading>
+        <Heading level={compact ? 2 : 1}>{product.name}</Heading>
         {description ? <Text color="secondary">{description}</Text> : null}
         <ProductPurchase
           product={product}

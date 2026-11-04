@@ -1,7 +1,7 @@
 // Display formatting only. Every number shown here comes from an API response as it is; these
 // helpers change how it reads (currency sign, date words), never what it is.
 
-import type {ImageRef, Money} from './types';
+import type {ImageRef, Money, SlotItem} from './types';
 
 const moneyFormats = new Map<string, Intl.NumberFormat>();
 
@@ -181,4 +181,10 @@ export function imageUrl(image: ImageRef): string | null {
 export function categoryIdFromSlug(slug: string): string {
   const s = decodeURIComponent(slug);
   return s.startsWith('cat_') ? s : `cat_${s.replace(/-/g, '_')}`;
+}
+
+/** The product a collection section's slot holds. */
+export function slotItemId(item: SlotItem): string | null {
+  if (typeof item === 'string') return item;
+  return item.item_id ?? item.product_id ?? item.id ?? null;
 }

@@ -16,6 +16,7 @@ import {useAiTarget} from '@/ai/useAiTarget';
 import {dateTime, day, imageUrl, words} from '@/app/(storefront)/_lib/format';
 import type {ImageRef} from '@/app/(storefront)/_lib/types';
 import {AskButton, Intents} from '@/components/fo/Ask';
+import {OpenInNewTab, useCanvasLink} from '@/components/fo/CanvasPages';
 import {StatusTag, type Tone} from '@/components/fo/StatusTag';
 
 import type {BlockProps} from '../types';
@@ -68,6 +69,7 @@ function RecordRow({block, kind, row}: {block: UiBlock; kind: string; row: Row})
     .map(d => (d.label ? `${d.label} ${when(d.at)}` : when(d.at)))
     .join(' · ');
   const meta = list(row.meta).join(' · ');
+  const link = useCanvasLink(row.href ?? '', row.title);
   const title = (
     <Text type="body" weight="semibold">
       {row.title}
@@ -81,7 +83,7 @@ function RecordRow({block, kind, row}: {block: UiBlock; kind: string; row: Row})
       startContent={row.image ? <Thumbnail src={imageUrl(row.image as ImageRef) ?? undefined} alt={row.title} label={row.title} /> : undefined}
       label={
         <HStack gap={2} vAlign="center" wrap="wrap">
-          {row.href ? <Link href={row.href}>{title}</Link> : title}
+          {row.href ? <Link {...link}>{title}</Link> : title}
           {row.status ? <StatusTag label={words(row.status)} tone={tone(row.status)} /> : null}
           {typeof row.rating === 'number' ? (
             <Text type="supporting" weight="semibold">
@@ -91,7 +93,7 @@ function RecordRow({block, kind, row}: {block: UiBlock; kind: string; row: Row})
         </HStack>
       }
       description={
-        <VStack gap={1}>
+        <VStack gap={1.5}>
           {row.subtitle ? (
             <Text type="supporting" color="secondary">
               {row.subtitle}
@@ -120,7 +122,12 @@ function RecordRow({block, kind, row}: {block: UiBlock; kind: string; row: Row})
           <Intents says={intentsFor(block, 'record', row.id)} about={target.context} />
         </VStack>
       }
-      endContent={<AskButton target={target} label={row.title} />}
+      endContent={
+        <HStack gap={1} vAlign="center">
+          <AskButton target={target} label={row.title} />
+          {row.href ? <OpenInNewTab href={row.href} /> : null}
+        </HStack>
+      }
     />
   );
 }
@@ -128,6 +135,7 @@ function RecordRow({block, kind, row}: {block: UiBlock; kind: string; row: Row})
 function Summary({summary}: {summary: NonNullable<RecordListData['summary']>}) {
   const amount = moneyText(summary.amount);
   const value = amount || summary.value || (typeof summary.rating === 'number' ? `${summary.rating} out of 5` : '');
+  const link = useCanvasLink(summary.href ?? '', summary.label);
   const head = (
     <HStack gap={2} vAlign="center" wrap="wrap">
       {value ? (
@@ -142,7 +150,7 @@ function Summary({summary}: {summary: NonNullable<RecordListData['summary']>}) {
   );
   return (
     <VStack gap={1}>
-      {summary.href ? <Link href={summary.href}>{head}</Link> : head}
+      {summary.href ? <Link {...link}>{head}</Link> : head}
       {list(summary.detail).length > 0 ? (
         <Text type="supporting" color="secondary">
           {list(summary.detail).join(' · ')}

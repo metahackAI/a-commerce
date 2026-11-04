@@ -17,7 +17,7 @@ import {MetadataListItem} from '@astryxdesign/core/MetadataList';
 import {TableCell, TableHeaderCell, TableRow} from '@astryxdesign/core/Table';
 import {VisuallyHidden} from '@astryxdesign/core/VisuallyHidden';
 import {useContainerReveal} from '@astryxdesign/core/hooks';
-import {ChatBubbleOvalLeftEllipsisIcon} from '@heroicons/react/24/outline';
+import {SparklesIcon} from '@heroicons/react/24/outline';
 
 import {useAi} from '@/ai/AiProvider';
 import {useAiTarget, type AiTarget} from '@/ai/useAiTarget';
@@ -31,11 +31,11 @@ export function AskButton({target, label}: {target: Registered; label: string}) 
   const dock = useAgentDock();
   return (
     <IconButton
-      label={`Ask about ${label}`}
-      tooltip="Ask the agent about this"
+      label={`Ask AI about ${label}`}
+      tooltip="Ask AI"
       variant="ghost"
       size="sm"
-      icon={<Icon icon={ChatBubbleOvalLeftEllipsisIcon} />}
+      icon={<Icon icon={SparklesIcon} />}
       onClick={() => {
         target.ask();
         dock.open();

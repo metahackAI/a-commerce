@@ -4,8 +4,9 @@
 // the back office's conversation view. It opens as one large conversation in the middle of the
 // screen. When the agent answers with UI blocks (docs/api/chat.md §3) the conversation slides to
 // the left and the canvas opens on the right, where the blocks are assembled as they arrive. The
-// canvas shows one turn's blocks at a time: the latest, or the turn a person put there with the
-// button under its answer. A handle between the two sets how wide the conversation is. On a
+// canvas shows one page at a time: a turn's blocks (the latest, or the turn a person put there with
+// the button under its answer), or on the storefront a product, order or collection a person opened
+// from them, which comes up as the next page. A handle between the two sets how wide the conversation is. On a
 // narrow screen there is no room for a canvas, so the blocks stay in the conversation.
 
 import {Button} from '@astryxdesign/core/Button';
@@ -16,7 +17,7 @@ import {ResizeHandle, type ResizableProps} from '@astryxdesign/core/Resizable';
 import {Heading, Text} from '@astryxdesign/core/Text';
 import {ChevronLeftIcon, ChevronRightIcon} from '@heroicons/react/24/outline';
 import {useSearchParams} from 'next/navigation';
-import {useEffect, useRef, useState, type CSSProperties} from 'react';
+import {useCallback, useEffect, useRef, useState, type CSSProperties} from 'react';
 
 import {useAi} from '@/ai/AiProvider';
 import type {UiBlock} from '@/ai/types';
@@ -24,6 +25,8 @@ import {AilismAvatar} from '@/components/brand/Ailism';
 import {BlockView} from '@/components/bo/BlockView';
 import {ChatStyles, Composer, Starters, StepProgress, Transcript} from '@/components/chat/ChatParts';
 import {ConversationActions, RecentConversations} from '@/components/chat/History';
+import {CanvasPageView} from '@/components/fo/CanvasPageView';
+import {CanvasPagesProvider, OpenInNewTab, type CanvasPage} from '@/components/fo/CanvasPages';
 
 /** Below this width of the workspace the canvas folds into the conversation. */
 const NARROW = 900;
@@ -107,8 +110,11 @@ const WORKSPACE_CSS = `
 .acom-ws-canvas-for > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* While the handle is dragged the widths follow the pointer, not an animation. */
 .acom-ws[data-resizing="true"] .acom-ws-chat, .acom-ws[data-resizing="true"] .acom-ws-chat-inner, .acom-ws[data-resizing="true"] .acom-ws-canvas { transition: none; }
-.acom-ws-canvas-body { flex: 1; min-height: 0; overflow-y: auto; padding: var(--spacing-5); }
-.acom-ws-canvas-stack { display: flex; flex-direction: column; gap: var(--spacing-4); max-width: 1100px; margin: 0 auto; }
+.acom-ws-canvas-body { flex: 1; min-height: 0; overflow-y: auto; padding: var(--spacing-6); }
+.acom-ws-canvas-stack { display: flex; flex-direction: column; gap: var(--spacing-5); max-width: 1100px; margin: 0 auto; }
+/* A page opened from the canvas comes in from the side: it is the next page, not more of this one. */
+@keyframes acom-next-page { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+.acom-ws-next-page { animation: acom-next-page var(--duration-slow, 320ms) cubic-bezier(.2,.7,.2,1) both; }
 .acom-ws-hero { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; gap: var(--spacing-5); padding: var(--spacing-8) var(--spacing-5); }
 .acom-ws-hero-head { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-3); text-align: center; }
 .acom-ws-hero .acom-ws-hero-below { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-3); }
@@ -116,6 +122,7 @@ const WORKSPACE_CSS = `
 .acom-ws-new[data-settled="true"] { outline-color: transparent; }
 @media (prefers-reduced-motion: reduce) {
   .acom-ws-chat, .acom-ws-chat-inner, .acom-ws-canvas { transition: none; }
+  .acom-ws-next-page { animation: none; }
 }
 `;
 
@@ -133,13 +140,27 @@ function useWidth(ref: React.RefObject<HTMLElement | null>): number {
   return width;
 }
 
-/** Moving between the turns that put results on the canvas. */
+/** Moving between the canvas's pages: the turns that put results there and what was opened from them. */
 interface CanvasNav {
   position: number;
   total: number;
   onEarlier?: () => void;
   onLater?: () => void;
   onLatest?: () => void;
+}
+
+function CanvasPager({nav}: {nav: CanvasNav}) {
+  if (nav.total <= 1) return null;
+  return (
+    <HStack gap={1} vAlign="center">
+      {nav.onLatest ? <Button label="Latest" variant="ghost" size="sm" onClick={nav.onLatest} /> : null}
+      <IconButton label="Earlier page" variant="ghost" size="sm" icon={<Icon icon={ChevronLeftIcon} />} isDisabled={!nav.onEarlier} onClick={nav.onEarlier} />
+      <Text type="supporting" color="secondary" hasTabularNumbers>
+        {nav.position} / {nav.total}
+      </Text>
+      <IconButton label="Next page" variant="ghost" size="sm" icon={<Icon icon={ChevronRightIcon} />} isDisabled={!nav.onLater} onClick={nav.onLater} />
+    </HStack>
+  );
 }
 
 /**
@@ -197,30 +218,7 @@ function Canvas({
             {question ? `${results} for “${question}”` : results}
           </Text>
         </div>
-        {nav.total > 1 ? (
-          <HStack gap={1} vAlign="center">
-            {nav.onLatest ? <Button label="Latest" variant="ghost" size="sm" onClick={nav.onLatest} /> : null}
-            <IconButton
-              label="Earlier results"
-              variant="ghost"
-              size="sm"
-              icon={<Icon icon={ChevronLeftIcon} />}
-              isDisabled={!nav.onEarlier}
-              onClick={nav.onEarlier}
-            />
-            <Text type="supporting" color="secondary" hasTabularNumbers>
-              {nav.position} / {nav.total}
-            </Text>
-            <IconButton
-              label="Later results"
-              variant="ghost"
-              size="sm"
-              icon={<Icon icon={ChevronRightIcon} />}
-              isDisabled={!nav.onLater}
-              onClick={nav.onLater}
-            />
-          </HStack>
-        ) : null}
+        <CanvasPager nav={nav} />
       </div>
       <div className="acom-ws-canvas-body" ref={body}>
         <div className="acom-ws-canvas-stack">
@@ -237,6 +235,91 @@ function Canvas({
       </div>
     </>
   );
+}
+
+/** A page opened from the canvas: what it is, the way back, and the full page in a new tab. */
+function OpenedPage({page, onBack, nav}: {page: CanvasPage; onBack?: () => void; nav: CanvasNav}) {
+  const kinds = {product: 'Product', order: 'Order', collection: 'Collection'};
+  return (
+    <>
+      <div className="acom-ws-canvas-bar">
+        <HStack gap={2} vAlign="center">
+          {onBack ? <Button label="Back" variant="ghost" size="sm" icon={<Icon icon={ChevronLeftIcon} />} onClick={onBack} /> : null}
+          <div className="acom-ws-canvas-for">
+            <Text type="label" weight="semibold">
+              {page.label ?? kinds[page.kind]}
+            </Text>
+            <Text type="supporting" color="secondary">
+              {`${kinds[page.kind]} opened from your results`}
+            </Text>
+          </div>
+        </HStack>
+        <HStack gap={2} vAlign="center">
+          <OpenInNewTab href={page.href} showLabel />
+          <CanvasPager nav={nav} />
+        </HStack>
+      </div>
+      <div className="acom-ws-canvas-body" key={page.href}>
+        <div className="acom-ws-canvas-stack acom-ws-next-page">
+          <CanvasPageView page={page} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** What was opened on the canvas, and the turn it was opened from. */
+interface Opened {
+  after: string;
+  page: CanvasPage;
+}
+
+/**
+ * The canvas's pages in order: each turn, then what was opened from it. Moving among them and
+ * opening a page are here; a turn that puts new results on the canvas shows them.
+ */
+function useCanvasPages() {
+  const ai = useAi();
+  const [opened, setOpened] = useState<Opened[]>([]);
+  const [shown, setShown] = useState<string | null>(null);
+  const turns = ai.resultTurns;
+  const turn = ai.canvasTurn;
+  const newestTurn = turns[turns.length - 1] ?? null;
+
+  useEffect(() => {
+    setShown(null);
+  }, [newestTurn]);
+  useEffect(() => {
+    setOpened([]);
+    setShown(null);
+  }, [ai.conversationId]);
+
+  const pages = turns.flatMap(t => [{turn: t, page: null as CanvasPage | null}, ...opened.filter(o => o.after === t).map(o => ({turn: t, page: o.page as CanvasPage | null}))]);
+  const page = opened.find(o => o.after === turn && o.page.href === shown)?.page ?? null;
+  const at = pages.findIndex(p => p.turn === turn && p.page === page);
+  const go = (to: (typeof pages)[number] | undefined) => {
+    if (!to) return;
+    ai.showOnCanvas(to.turn);
+    setShown(to.page?.href ?? null);
+  };
+
+  const open = useCallback(
+    (next: CanvasPage) => {
+      if (!turn) return;
+      setOpened(all => (all.some(o => o.after === turn && o.page.href === next.href) ? all : [...all, {after: turn, page: next}]));
+      setShown(next.href);
+    },
+    [turn],
+  );
+
+  const nav: CanvasNav = {
+    position: at + 1,
+    total: pages.length,
+    onEarlier: at > 0 ? () => go(pages[at - 1]) : undefined,
+    onLater: at >= 0 && at < pages.length - 1 ? () => go(pages[at + 1]) : undefined,
+    onLatest: at >= 0 && at < pages.length - 1 ? () => go(pages[pages.length - 1]) : undefined,
+  };
+  return {page, nav, open, onBack: () => setShown(null)};
 }
 
 export interface WorkspaceProps {
@@ -264,16 +347,8 @@ export function Workspace({greeting, intro, composerPlaceholder, canvasTitle, st
   const chat = useChatWidth(ai.surface, width);
   const style = {'--acom-ws-chat-width': `${chat.size}px`} as CSSProperties;
 
-  const turns = ai.resultTurns;
   const turn = ai.canvasTurn;
-  const at = turn ? turns.indexOf(turn) : -1;
-  const nav: CanvasNav = {
-    position: at + 1,
-    total: turns.length,
-    onEarlier: at > 0 ? () => ai.showOnCanvas(turns[at - 1]) : undefined,
-    onLater: at >= 0 && at < turns.length - 1 ? () => ai.showOnCanvas(turns[at + 1]) : undefined,
-    onLatest: at >= 0 && at < turns.length - 1 ? () => ai.showOnCanvas(null) : undefined,
-  };
+  const {page, nav, open, onBack} = useCanvasPages();
   const question = ai.messages.find(m => m.turn_id === turn && m.sender === 'user')?.text ?? null;
   const firstRequest = ai.messages.find(m => m.sender === 'user')?.text ?? null;
 
@@ -332,14 +407,20 @@ export function Workspace({greeting, intro, composerPlaceholder, canvasTitle, st
       ) : null}
       <section className="acom-ws-canvas" aria-label={canvasTitle} aria-hidden={mode !== 'split'}>
         {turn && !narrow ? (
-          <Canvas
-            title={canvasTitle}
-            turnId={turn}
-            question={question}
-            blocks={ai.blocksOf(turn)}
-            isLive={ai.liveTurn === turn}
-            nav={nav}
-          />
+          <CanvasPagesProvider value={ai.surface === 'fo' ? open : null}>
+            {page ? (
+              <OpenedPage page={page} onBack={onBack} nav={nav} />
+            ) : (
+              <Canvas
+                title={canvasTitle}
+                turnId={turn}
+                question={question}
+                blocks={ai.blocksOf(turn)}
+                isLive={ai.liveTurn === turn}
+                nav={nav}
+              />
+            )}
+          </CanvasPagesProvider>
         ) : null}
       </section>
     </div>
