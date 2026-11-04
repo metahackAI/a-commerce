@@ -17,7 +17,7 @@
     allowed: [get_inventory, list_categories]
   expect:
     facts:
-      - "5 of the 62 outerwear products have a sold-out size"
+      - "5 of the 97 outerwear products have a sold-out size"
       - "Cotton chore coat, Light rain parka and Denim jacket are out in M and L; Poplin shacket is out in M; Cotton overshirt is out in XL"
     must_not_call: [set_variant_stock]
   notes: >

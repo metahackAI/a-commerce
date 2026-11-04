@@ -84,6 +84,38 @@ pub(crate) struct CatalogSpec {
     pub categories: Vec<CategorySpec>,
     /// Names fixed after every product is drawn (`catalog.renames`), in the order written.
     pub renames: Vec<Rename>,
+    /// Products added after every other row (`catalog.more_products`); none when not written.
+    pub more: Option<MoreProducts>,
+}
+
+/// `catalog.more_products`: the catalog grown past what the scenes count, without moving a row.
+#[derive(Debug)]
+pub(crate) struct MoreProducts {
+    pub seed: u64,
+    /// Categories the scenes count, which take no more products.
+    pub leave_out: Vec<String>,
+    /// Materials sold in the upper half of a category's prices.
+    pub premium: BTreeSet<String>,
+    /// Category term -> the brands one is drawn from, for each product of that category.
+    pub brands: BTreeMap<String, Vec<String>>,
+    /// Noun -> list price range in dollars, for nouns priced apart from the rest of the category.
+    pub noun_prices: BTreeMap<String, (i64, i64)>,
+    pub categories: Vec<MoreCategory>,
+}
+
+impl MoreProducts {
+    pub(crate) fn count(&self) -> usize {
+        self.categories.iter().map(|c| c.names.len()).sum()
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct MoreCategory {
+    pub term: String,
+    /// The colors of this category, when the store's palette does not suit it.
+    pub colors: Option<Vec<String>>,
+    /// (material, noun) in the order written. Ids follow this order, so a new name goes last.
+    pub names: Vec<(String, String)>,
 }
 
 /// A generated product whose drawn name reads wrong, renamed without using the dice.
@@ -95,7 +127,7 @@ pub(crate) struct Rename {
     pub material: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct CategorySpec {
     pub term: String,
     pub count: usize,
@@ -112,7 +144,7 @@ pub(crate) struct CategorySpec {
     pub attributes: Option<Attributes>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Attributes {
     pub packing: Vec<String>,
     pub warmth: Vec<String>,
@@ -223,6 +255,19 @@ fn min_max(v: &Value, path: &str) -> Result<(i64, i64), String> {
     match pair {
         (Some(lo), Some(hi)) if lo <= hi => Ok((lo, hi)),
         _ => Err(format!("generate.yml: `{path}` is not a min/max pair")),
+    }
+}
+
+/// `noun_prices.<noun>`: the key may have spaces, so it is not a path.
+fn pair(more: &Value, noun: &str) -> Result<(i64, i64), String> {
+    let range = more["noun_prices"][noun]
+        .as_array()
+        .map(|r| r.iter().filter_map(Value::as_i64).collect::<Vec<_>>());
+    match range.as_deref() {
+        Some([lo, hi]) if lo <= hi => Ok((*lo, *hi)),
+        _ => Err(format!(
+            "generate.yml: `noun_prices.{noun}` is not [low, high]"
+        )),
     }
 }
 
@@ -430,7 +475,62 @@ impl Spec {
             safety_stock: int(v, "catalog.all_generated.safety_stock")?,
             categories,
             renames,
+            more: Self::more(v)?,
         })
+    }
+
+    fn more(v: &Value) -> Result<Option<MoreProducts>, String> {
+        let Some(more) = v.get("catalog").and_then(|c| c.get("more_products")) else {
+            return Ok(None);
+        };
+        let seed = at(more, "random_seed")?
+            .as_u64()
+            .ok_or("generate.yml: `more_products.random_seed` is not a whole number")?;
+        let mut categories = Vec::new();
+        for (term, c) in at(more, "categories")?
+            .as_object()
+            .ok_or("generate.yml: `more_products.categories` is not a map")?
+        {
+            let mut names = Vec::new();
+            for row in at(c, "names")?
+                .as_array()
+                .ok_or_else(|| format!("generate.yml: `{term}.names` is not a list"))?
+            {
+                let words: Vec<&str> = row
+                    .as_array()
+                    .map(|r| r.iter().filter_map(Value::as_str).collect())
+                    .unwrap_or_default();
+                let Some((material, nouns)) = words.split_first() else {
+                    return Err(format!("generate.yml: `{term}.names` has an empty row"));
+                };
+                for noun in nouns {
+                    names.push(((*material).to_owned(), (*noun).to_owned()));
+                }
+            }
+            categories.push(MoreCategory {
+                term: term.clone(),
+                colors: c.get("colors").map(|_| texts(c, "colors")).transpose()?,
+                names,
+            });
+        }
+        Ok(Some(MoreProducts {
+            seed,
+            leave_out: texts(more, "leave_out")?,
+            premium: texts(more, "premium_materials")?.into_iter().collect(),
+            brands: at(more, "brands")?
+                .as_object()
+                .ok_or("generate.yml: `more_products.brands` is not a map")?
+                .iter()
+                .map(|(term, _)| Ok((term.clone(), texts(&more["brands"], term)?)))
+                .collect::<Result<_, String>>()?,
+            noun_prices: at(more, "noun_prices")?
+                .as_object()
+                .ok_or("generate.yml: `more_products.noun_prices` is not a map")?
+                .keys()
+                .map(|noun| Ok((noun.clone(), pair(more, noun)?)))
+                .collect::<Result<_, String>>()?,
+            categories,
+        }))
     }
 
     fn members(v: &Value) -> Result<MembersSpec, String> {

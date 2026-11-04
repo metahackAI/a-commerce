@@ -27,7 +27,7 @@ id_patterns:                     # prefixes from docs/api/conventions.md §9; nn
                                                             # delivery dlv_<number>, events keyed by (order_id, position)
 
 catalog:
-  total_products: 400            # 18 named + 382 generated, in 24 standard categories
+  total_products: 1009           # 18 named + 382 generated + 609 more_products, in 24 standard categories
   all_generated:
     approval_status: active
     brand_id: [brn_northwind, brn_northwind, brn_northwind, brn_ridgeline]   # pick uniformly from this list
@@ -88,6 +88,301 @@ catalog:
     prd_underwear_06: {name: Bamboo rayon boxer briefs, material: Bamboo rayon}   # US fiber labeling: rayon made from bamboo
     prd_underwear_09: {name: Bamboo rayon bralette, material: Bamboo rayon}
     prd_denim_06: {name: White straight jeans, material: White}           # was Black straight jeans: its only color is White
+  more_products:                 # the catalog grown past the scenes' 400. Drawn after every other row, each product with its own dice (random_seed + its id), so no row above changes and adding a name changes no earlier product. A new name goes at the END of its category's list; ids follow the list.
+    random_seed: 20261104
+    never_in_orders: "no order has these products, so the sales history and the numbers of scene B3 stay as they are"
+    leave_out: [summer_outerwear, knitwear]   # scenes count them: 40 of 42 in B1, 26 in promo_autumn_knit
+    premium_materials: [Leather, Waxed leather, Pebbled leather, Braided leather, Suede, Nubuck, Cashmere blend, Silk, Silk blend, Merino, Lambswool, Wool, Melton, Tweed, Down, Selvedge, Pima cotton, Micromodal]   # the upper half of the category's prices; the others take the lower two thirds
+    brands:                      # one is drawn per product, by category. Northwind is the store's own label; the others carry what they are known for
+      outerwear: [brn_ridgeline, brn_ridgeline, brn_greyfell, brn_greyfell, brn_northwind]
+      shirts: [brn_cedar_row, brn_cedar_row, brn_millbrook, brn_northwind]
+      tees: [brn_cedar_row, brn_cedar_row, brn_longstride, brn_northwind]
+      sweatshirts: [brn_greyfell, brn_greyfell, brn_hearth_loom, brn_northwind]
+      pants: [brn_cedar_row, brn_cedar_row, brn_millbrook, brn_northwind]
+      denim: [brn_millbrook, brn_millbrook, brn_millbrook, brn_northwind]
+      shorts: [brn_saltline, brn_saltline, brn_cedar_row, brn_ridgeline]
+      dresses: [brn_cedar_row, brn_cedar_row, brn_northwind, brn_northwind]
+      skirts: [brn_cedar_row, brn_cedar_row, brn_northwind]
+      activewear: [brn_longstride, brn_longstride, brn_longstride, brn_ridgeline]
+      loungewear: [brn_hearth_loom, brn_hearth_loom, brn_hearth_loom, brn_northwind]
+      swimwear: [brn_saltline, brn_saltline, brn_saltline, brn_northwind]
+      underwear: [brn_hearth_loom, brn_hearth_loom, brn_northwind]
+      shoes: [brn_fieldstone, brn_fieldstone, brn_fieldstone, brn_northwind]
+      sneakers: [brn_longstride, brn_longstride, brn_longstride, brn_northwind]
+      sandals: [brn_saltline, brn_saltline, brn_fieldstone]
+      accessories: [brn_waymark, brn_waymark, brn_waymark, brn_northwind]
+      bags: [brn_waymark, brn_waymark, brn_ridgeline, brn_northwind]
+      hats: [brn_waymark, brn_waymark, brn_ridgeline]
+      socks: [brn_longstride, brn_longstride, brn_ridgeline, brn_northwind]
+      scarves: [brn_hearth_loom, brn_waymark, brn_northwind]
+      belts: [brn_fieldstone, brn_fieldstone, brn_waymark]
+    noun_prices:                 # dollars, inside the category's range: a keyring is not priced like gloves, a belt bag not like a backpack
+      keyring: [19, 39]
+      card holder: [19, 49]
+      phone sleeve: [19, 49]
+      glasses case: [19, 49]
+      wallet: [29, 69]
+      gloves: [29, 79]
+      belt bag: [39, 79]
+      sling bag: [49, 99]
+      crossbody bag: [49, 119]
+      tote: [39, 119]
+      messenger bag: [69, 149]
+      backpack: [79, 169]
+      duffel: [89, 189]
+      weekender: [99, 189]
+      coach jacket: [99, 179]
+      anorak: [99, 179]
+      liner jacket: [99, 169]
+      utility jacket: [109, 199]
+      bomber: [109, 199]
+      puffer jacket: [129, 249]
+      field coat: [149, 279]
+      car coat: [179, 319]
+      trench coat: [179, 319]
+      parka: [179, 349]
+      peacoat: [199, 349]
+      duffle coat: [199, 349]
+      overcoat: [219, 349]
+      tank top: [39, 69]
+      sports bra: [39, 79]
+      running tee: [39, 79]
+      training shorts: [39, 79]
+      leggings: [49, 99]
+      running tights: [59, 109]
+      half-zip top: [59, 109]
+      track jacket: [69, 119]
+      boat shoes: [99, 179]
+      loafers: [119, 229]
+      derby shoes: [129, 249]
+      desert boots: [129, 239]
+      brogues: [139, 259]
+      ankle boots: [139, 259]
+      chelsea boots: [149, 279]
+      work boots: [159, 289]
+      hiking boots: [149, 299]
+      flip-flops: [39, 59]
+      slides: [39, 79]
+      sandals: [49, 99]
+      trail sandals: [49, 89]
+      clogs: [59, 99]
+      fisherman sandals: [59, 99]
+      bandana: [29, 49]
+      neckerchief: [29, 59]
+      snood: [39, 79]
+      wrap: [49, 99]
+      stole: [49, 99]
+      denim vest: [69, 109]
+      tank dress: [69, 119]
+      slip dress: [69, 139]
+      maxi dress: [89, 189]
+      lounge shorts: [39, 59]
+      robe: [59, 99]
+      pajama set: [59, 99]
+      bikini top: [39, 59]
+      bikini bottom: [39, 59]
+      one-piece: [59, 99]
+    categories:                  # each row: a material, then the nouns it is sold as. Only pairs that make sense; every word has facts in the content vocabulary
+      outerwear:
+        names:
+          - [Wool, peacoat, car coat, duffle coat, field coat]
+          - [Melton, overcoat, peacoat, car coat, duffle coat, field coat]
+          - [Tweed, overcoat, peacoat, car coat, duffle coat, field coat]
+          - [Waxed cotton, parka, field coat, trench coat, utility jacket]
+          - [Quilted, puffer jacket, field coat, utility jacket, bomber]
+          - [Down, parka, puffer jacket, car coat]
+          - [Recycled nylon, parka, puffer jacket, liner jacket, field coat, coach jacket, anorak]
+          - [Corduroy, car coat, field coat, utility jacket, bomber]
+      shirts:
+        names:
+          - [Oxford, button-down, band-collar shirt, popover shirt, work shirt]
+          - [Poplin, shirt, button-down, band-collar shirt, camp shirt, popover shirt]
+          - [Flannel, work shirt, utility shirt]
+          - [Chambray, shirt, work shirt, western shirt, camp shirt, band-collar shirt, popover shirt, utility shirt]
+          - [Linen, button-down, camp shirt, band-collar shirt, popover shirt, work shirt, utility shirt]
+          - [Twill, shirt, button-down, work shirt, western shirt, band-collar shirt, popover shirt]
+          - [Corduroy, shirt, utility shirt, popover shirt]
+          - [Seersucker, button-down, utility shirt]
+          - [Cotton, shirt, work shirt, camp shirt, band-collar shirt, utility shirt]
+      tees:
+        names:
+          - [Cotton, tee, pocket tee, long-sleeve tee, boxy tee, crew tee]
+          - [Slub cotton, pocket tee, henley, raglan tee, boxy tee]
+          - [Organic cotton, tee, long-sleeve tee, henley, V-neck tee]
+          - [Pima cotton, tee, pocket tee, long-sleeve tee, raglan tee, boxy tee, crew tee, V-neck tee]
+          - [Jersey, tee, pocket tee, henley, crew tee, V-neck tee]
+          - [Heavyweight cotton, tee, pocket tee, long-sleeve tee, boxy tee, crew tee]
+          - [Linen blend, tee, henley, crew tee, raglan tee, long-sleeve tee]
+          - [Waffle, henley, long-sleeve tee, pocket tee, raglan tee, boxy tee]
+      sweatshirts:
+        names:
+          - [Loopback, sweatshirt, hoodie, quarter-zip]
+          - [Fleece, sweatshirt, quarter-zip, raglan sweatshirt, half-zip sweatshirt]
+          - [French terry, sweatshirt, hoodie, zip hoodie, quarter-zip, half-zip sweatshirt]
+          - [Brushed cotton, sweatshirt, zip hoodie, half-zip sweatshirt]
+          - [Organic cotton, sweatshirt, hoodie, crewneck, quarter-zip, raglan sweatshirt]
+          - [Heavyweight, sweatshirt, hoodie, zip hoodie, raglan sweatshirt]
+          - [Waffle, sweatshirt, zip hoodie, crewneck, quarter-zip, half-zip sweatshirt]
+          - [Recycled cotton, sweatshirt, hoodie, crewneck, quarter-zip]
+      pants:
+        names:
+          - [Chino, pants, carpenter pants, straight pants]
+          - [Twill, trousers, pants, carpenter pants, drawstring pants]
+          - [Corduroy, pants, cargo pants, pleated trousers, drawstring pants, tapered pants]
+          - [Linen, trousers, drawstring pants, tapered pants]
+          - [Wool, trousers, pants, pleated trousers, straight pants]
+          - [Ripstop, carpenter pants, drawstring pants, straight pants, tapered pants]
+          - [Canvas, pants, carpenter pants, straight pants, tapered pants]
+          - [Seersucker, trousers, pleated trousers, straight pants, tapered pants]
+          - [Cotton, trousers, pants, drawstring pants, tapered pants, straight pants, pleated trousers]
+      denim:
+        colors: [Navy, Slate, Black, Stone]   # denim colors; the palette's Sky, Rust or Clay read as a fashion dye, and these names promise plain denim
+        names:
+          - [Rigid, jeans, straight jeans, wide jeans, carpenter jeans, denim shirt, denim vest]
+          - [Selvedge, slim jeans, wide jeans, denim shirt, denim overshirt, denim vest]
+          - [Washed, jeans, straight jeans, wide jeans, carpenter jeans, denim shirt, denim overshirt]
+          - [Stretch, jeans, slim jeans, denim overshirt]
+          - [Raw, jeans, straight jeans, slim jeans, wide jeans, denim shirt, denim overshirt]
+          - [Organic, jeans, slim jeans, wide jeans, denim shirt]
+      shorts:
+        names:
+          - [Chino, shorts, pull-on shorts, pleated shorts, camp shorts]
+          - [Linen, pull-on shorts, pleated shorts, camp shorts]
+          - [Ripstop, shorts, cargo shorts, trail shorts, camp shorts]
+          - [Twill, shorts, pull-on shorts, pleated shorts, camp shorts]
+          - [Seersucker, shorts, pull-on shorts]
+          - [Nylon, shorts, pull-on shorts, camp shorts]
+          - [Cotton, pleated shorts, camp shorts]
+          - [Terry, shorts, pull-on shorts]
+      dresses:
+        names:
+          - [Linen, midi dress, shirt dress, slip dress, wrap dress, maxi dress, tiered dress, tank dress]
+          - [Poplin, midi dress, tiered dress]
+          - [Jersey, midi dress, slip dress, tank dress]
+          - [Silk blend, midi dress, shirt dress, slip dress, wrap dress, maxi dress]
+          - [Cotton, midi dress, shirt dress, wrap dress, maxi dress, tiered dress, tank dress]
+          - [Satin, midi dress, shirt dress, slip dress, maxi dress]
+          - [Knit, sweater dress, wrap dress, tank dress]
+          - [Gauze, midi dress, shirt dress, wrap dress, tiered dress, tank dress]
+      skirts:
+        names:
+          - [Linen, midi skirt, maxi skirt]
+          - [Wool, midi skirt, wrap skirt, A-line skirt]
+          - [Satin, midi skirt, wrap skirt, maxi skirt, A-line skirt]
+          - [Denim, midi skirt, wrap skirt, A-line skirt, maxi skirt]
+          - [Crepe, midi skirt, mini skirt, wrap skirt, A-line skirt, slip skirt]
+          - [Corduroy, midi skirt, wrap skirt, A-line skirt]
+          - [Cotton, midi skirt, mini skirt, wrap skirt, A-line skirt, maxi skirt]
+          - [Knit, midi skirt, mini skirt, maxi skirt]
+      activewear:
+        names:
+          - [Recycled polyester, leggings, running tee, training shorts, sports bra, running tights]
+          - [Merino, running tee, half-zip top, leggings, running tights]
+          - [Stretch, leggings, sports bra, track jacket, tank top, half-zip top]
+          - [Nylon, leggings, running tee, track jacket, running tights, half-zip top]
+          - [Mesh, running tee, training shorts, tank top]
+          - [Seamless, leggings, running tee, running tights, tank top, half-zip top]
+          - [Quick-dry, track jacket, half-zip top]
+          - [Ribbed, leggings, sports bra, tank top]
+      loungewear:
+        names:
+          - [Modal, lounge top, joggers, sleep shirt]
+          - [Waffle, lounge pants, robe, lounge top, joggers, sleep shirt, lounge shorts]
+          - [Brushed cotton, lounge pants, pajama set, lounge top, joggers, sleep shirt]
+          - [Fleece, lounge pants, robe, lounge top, joggers]
+          - [Terry, lounge pants, lounge top, joggers]
+          - [Jersey, lounge pants, lounge top, joggers, sleep shirt, lounge shorts]
+          - [Flannel, lounge pants, robe, sleep shirt, lounge shorts]
+          - [Cashmere blend, lounge pants, lounge top, joggers]
+      swimwear:
+        names:
+          - [Recycled nylon, swim trunks, bikini bottom, swim shorts, rash guard]
+          - [Ribbed, bikini top, bikini bottom]
+          - [Textured, swim trunks, one-piece, bikini top, bikini bottom, swim shorts]
+          - [Quick-dry, swim trunks, one-piece, bikini top, bikini bottom, swim shorts]
+          - [Printed, swim trunks, one-piece, bikini bottom, swim shorts, rash guard]
+          - [Seersucker, bikini top, bikini bottom, swim shorts]
+      underwear:
+        names:
+          - [Cotton, trunks, bralette]
+          - [Modal, boxer briefs, briefs, bralette, undershirt, boxers]
+          - [Merino, boxer briefs, briefs, undershirt, bralette]
+          - [Organic cotton, boxer briefs, briefs, trunks, bralette, undershirt, boxers]
+          - [Bamboo rayon, briefs, trunks, undershirt, boxers]
+          - [Mesh, briefs, bralette]
+          - [Stretch cotton, trunks, bralette, undershirt]
+          - [Micromodal, boxer briefs, briefs, trunks, bralette]
+      shoes:
+        names:
+          - [Leather, derby shoes, loafers, desert boots, hiking boots, work boots, brogues, ankle boots]
+          - [Suede, derby shoes, loafers, desert boots, boat shoes, chelsea boots]
+          - [Nubuck, derby shoes, loafers, hiking boots, boat shoes, ankle boots, chelsea boots]
+          - [Waxed leather, work boots, brogues, boat shoes, chelsea boots]
+          - [Canvas, boat shoes, loafers]
+          - [Pebbled leather, derby shoes, loafers, work boots, chelsea boots]
+      sneakers:
+        names:
+          - [Leather, court sneakers, runners, trail runners, slip-on sneakers]
+          - [Canvas, court sneakers, runners, low-tops]
+          - [Suede, court sneakers, high-tops, low-tops]
+          - [Knit, high-tops, trail runners, retro runners]
+          - [Mesh, low-tops, trail runners, retro runners]
+          - [Recycled, high-tops, low-tops, trail runners, slip-on sneakers]
+      sandals:
+        names:
+          - [Leather, slides, sandals, trail sandals, flip-flops, clogs, fisherman sandals]
+          - [Cork, slides, sandals]
+          - [Rubber, slides, flip-flops, clogs, trail sandals]
+          - [Suede, sandals, clogs, fisherman sandals]
+          - [Recycled, sandals, trail sandals, flip-flops]
+          - [Webbing, sandals]
+      accessories:
+        names:
+          - [Leather, card holder, wallet, gloves, keyring, phone sleeve]
+          - [Wool, gloves, phone sleeve, glasses case]
+          - [Canvas, card holder, wallet, keyring, phone sleeve]
+          - [Cotton, card holder, phone sleeve, gloves]
+          - [Recycled, card holder, keyring, phone sleeve, glasses case]
+      bags:
+        names:
+          - [Canvas, backpack, crossbody bag, sling bag, weekender]
+          - [Leather, backpack, tote, crossbody bag, duffel, weekender]
+          - [Nylon, backpack, tote, crossbody bag, duffel, sling bag, weekender, messenger bag]
+          - [Waxed canvas, backpack, tote, crossbody bag, duffel, sling bag, weekender, messenger bag, belt bag]
+          - [Recycled polyester, backpack, crossbody bag, duffel, sling bag, weekender, belt bag]
+          - [Ripstop, tote, crossbody bag, duffel, sling bag, belt bag, weekender]
+      hats:
+        names:
+          - [Wool, cap, beanie, bucket hat]
+          - [Cotton, cap, beanie, bucket hat]
+          - [Corduroy, cap, bucket hat]
+          - [Fleece, beanie, trail cap]
+          - [Canvas, bucket hat, trail cap, sun hat]
+          - [Linen, cap, bucket hat, sun hat]
+      socks:
+        names:
+          - [Merino, crew socks, ankle socks, trail socks, dress socks, boot socks]
+          - [Cotton, crew socks, ankle socks, no-show socks]
+          - [Wool blend, crew socks, dress socks, boot socks]
+          - [Recycled, ankle socks, trail socks, no-show socks]
+          - [Cushioned, no-show socks]
+          - [Bamboo rayon, crew socks, ankle socks, no-show socks, dress socks]
+      scarves:
+        names:
+          - [Cashmere blend, scarf, wrap, stole]
+          - [Wool, wrap, snood]
+          - [Linen, scarf, wrap, stole]
+          - [Silk, scarf, stole, neckerchief, bandana]
+          - [Lambswool, scarf, wrap, snood]
+          - [Cotton, bandana, neckerchief]
+      belts:
+        names:
+          - [Leather, belt, casual belt, reversible belt]
+          - [Suede, belt, casual belt, dress belt]
+          - [Braided leather, belt, casual belt, dress belt]
+          - [Webbing, trail belt, casual belt]
+          - [Canvas, casual belt]
+          - [Elastic, casual belt]
 
 members:                         # program_membership in prg_rewards; tier counts include the 13 named people (02_customer.yml)
   tiers:

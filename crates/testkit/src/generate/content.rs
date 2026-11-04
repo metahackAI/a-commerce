@@ -7,6 +7,10 @@
 //!
 //! A photo replaces the drawn picture (`crate::media`): `image` for the product, and `images`
 //! for the variants of each color it shows. Variants of other colors keep their drawing.
+//!
+//! `reviews:` adds rows to `catalog.review`, for generated products only. A review with an order
+//! comes from the shopper who received that line; one without an order dates from before the
+//! store's order history, like the imported reviews of the named products.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -236,7 +240,111 @@ pub fn overlay(rows: &mut SeedRows, yaml: &str) -> Result<usize, String> {
         }
     }
     rows.extend(charts);
+    add_reviews(rows, &doc)?;
     Ok(seen.len())
+}
+
+/// The keys a review may have: its columns, apart from the store.
+const REVIEW_KEYS: [&str; 13] = [
+    "id",
+    "product_group_id",
+    "product_id",
+    "author_id",
+    "author_name",
+    "order_id",
+    "rating_value",
+    "review_body",
+    "fit_vote",
+    "author_height_value",
+    "author_height_unit_text",
+    "keywords",
+    "date_published",
+];
+
+/// Appends the rows of `reviews:` and refuses one no shopper could have written: a review with an
+/// order must come from its buyer, for a line of that order, after the parcel arrived, once.
+fn add_reviews(rows: &mut SeedRows, doc: &Value) -> Result<(), String> {
+    let Some(reviews) = doc.get("reviews") else {
+        return Ok(());
+    };
+    let reviews = reviews
+        .as_array()
+        .ok_or("catalog_content.yml: `reviews:` is not a list")?;
+    let text = |r: &Value, key: &str| r.get(key).and_then(Value::as_str).map(str::to_owned);
+    let mut tenant = None;
+    let mut variants = BTreeMap::new();
+    let mut buyers = BTreeMap::new();
+    let mut lines = BTreeSet::new();
+    let mut delivered = BTreeMap::new();
+    for (table, r) in rows.iter() {
+        match table.as_str() {
+            "catalog.product_group" => tenant = tenant.or_else(|| r.get("tenant_id").cloned()),
+            "catalog.product" => {
+                if let (Some(id), Some(group)) = (text(r, "id"), text(r, "product_group_id")) {
+                    variants.insert(id, group);
+                }
+            }
+            "sales.sales_order" => {
+                if let (Some(id), Some(buyer)) = (text(r, "id"), text(r, "customer_id")) {
+                    buyers.insert(id, buyer);
+                }
+            }
+            "sales.order_item" => {
+                if let (Some(order), Some(variant)) = (text(r, "order_id"), text(r, "product_id")) {
+                    lines.insert((order, variant));
+                }
+            }
+            "fulfillment.parcel_delivery" => {
+                if let (Some(order), Some(at)) = (text(r, "order_id"), text(r, "delivered_at")) {
+                    delivered.insert(order, at.chars().take(10).collect::<String>());
+                }
+            }
+            _ => {}
+        }
+    }
+    let tenant = tenant.ok_or("catalog_content.yml: reviews, but no products")?;
+    let mut ids = BTreeSet::new();
+    let mut reviewed = BTreeSet::new();
+    let mut out = SeedRows::new();
+    for (n, r) in reviews.iter().enumerate() {
+        let at = format!("catalog_content.yml reviews[{n}]");
+        let map = r.as_object().ok_or_else(|| format!("{at}: not a map"))?;
+        if let Some(key) = map.keys().find(|k| !REVIEW_KEYS.contains(&k.as_str())) {
+            return Err(format!("{at}: unknown key `{key}`"));
+        }
+        let id = text(r, "id").ok_or_else(|| format!("{at}: no `id`"))?;
+        if !ids.insert(id.clone()) {
+            return Err(format!("{at}: `{id}` is listed twice"));
+        }
+        let group = text(r, "product_group_id").unwrap_or_default();
+        if !generated_id(&group) {
+            return Err(format!("{at}: `{group}` is not a generated product"));
+        }
+        let variant = text(r, "product_id").unwrap_or_default();
+        if variants.get(&variant) != Some(&group) {
+            return Err(format!("{at}: `{variant}` is not a variant of `{group}`"));
+        }
+        let date = text(r, "date_published").unwrap_or_default();
+        if let Some(order) = text(r, "order_id") {
+            if buyers.get(&order) != text(r, "author_id").as_ref() {
+                return Err(format!("{at}: the author did not place `{order}`"));
+            }
+            if !lines.contains(&(order.clone(), variant.clone())) {
+                return Err(format!("{at}: `{order}` has no line for `{variant}`"));
+            }
+            if delivered.get(&order).is_none_or(|d| *d > date) {
+                return Err(format!("{at}: published before `{order}` arrived"));
+            }
+            if !reviewed.insert((order.clone(), variant)) {
+                return Err(format!("{at}: `{order}` has a review of this line already"));
+            }
+        }
+        let mut row = r.clone();
+        row["tenant_id"] = tenant.clone();
+        out.push(("catalog.review".to_owned(), row));
+    }
+    rows.extend(out);
+    Ok(())
 }
 
 #[cfg(test)]
@@ -343,6 +451,134 @@ products:
                 &problems[..problems.len().min(20)]
             );
         }
+        let problems = schema_check::check(&schema_check::parse(&repo().join("migrations")), &rows);
+        assert!(
+            problems.is_empty(),
+            "{:#?}",
+            &problems[..problems.len().min(20)]
+        );
+    }
+
+    /// One order line of a generated member, delivered, with its product and buyer.
+    fn delivered_line(rows: &SeedRows) -> (String, String, String, String, String) {
+        let variant_group: BTreeMap<&str, &str> = rows
+            .iter()
+            .filter(|(t, _)| t == "catalog.product")
+            .map(|(_, r)| {
+                (
+                    r["id"].as_str().unwrap(),
+                    r["product_group_id"].as_str().unwrap(),
+                )
+            })
+            .collect();
+        let delivered: BTreeMap<&str, &str> = rows
+            .iter()
+            .filter(|(t, r)| t == "fulfillment.parcel_delivery" && r["delivered_at"].is_string())
+            .map(|(_, r)| {
+                (
+                    r["order_id"].as_str().unwrap(),
+                    r["delivered_at"].as_str().unwrap(),
+                )
+            })
+            .collect();
+        let buyer: BTreeMap<&str, &str> = rows
+            .iter()
+            .filter(|(t, _)| t == "sales.sales_order")
+            .map(|(_, r)| {
+                (
+                    r["id"].as_str().unwrap(),
+                    r["customer_id"].as_str().unwrap(),
+                )
+            })
+            .collect();
+        let (_, line) = rows
+            .iter()
+            .find(|(t, r)| {
+                t == "sales.order_item"
+                    && delivered.contains_key(r["order_id"].as_str().unwrap())
+                    && generated_id(variant_group[r["product_id"].as_str().unwrap()])
+            })
+            .unwrap();
+        let order = line["order_id"].as_str().unwrap();
+        let variant = line["product_id"].as_str().unwrap();
+        (
+            variant_group[variant].to_owned(),
+            variant.to_owned(),
+            order.to_owned(),
+            buyer[order].to_owned(),
+            delivered[order].chars().take(10).collect(),
+        )
+    }
+
+    fn review_yaml(rows: &SeedRows, change: impl Fn(&mut Value)) -> String {
+        let (group, variant, order, buyer, date) = delivered_line(rows);
+        let mut review = json!({
+            "id": "rev_test_01", "product_group_id": group, "product_id": variant, "author_id": buyer,
+            "author_name": "Ke*****", "order_id": order, "rating_value": 4,
+            "review_body": "Holds up well.", "keywords": [], "date_published": date,
+        });
+        change(&mut review);
+        serde_norway::to_string(&json!({"version": 1, "products": [], "reviews": [review]}))
+            .unwrap()
+    }
+
+    #[test]
+    fn a_review_comes_from_the_buyer_of_a_delivered_line() {
+        let mut rows = demo();
+        let good = review_yaml(&rows, |_| {});
+        overlay(&mut rows, &good).unwrap();
+        let added: Vec<&Value> = rows
+            .iter()
+            .filter(|(t, r)| t == "catalog.review" && r["id"] == "rev_test_01")
+            .map(|(_, r)| r)
+            .collect();
+        assert_eq!(added.len(), 1);
+        assert_eq!(added[0]["tenant_id"], "store_northwind");
+    }
+
+    #[test]
+    fn a_review_no_shopper_could_write_is_refused() {
+        let rows = demo();
+        for (change, words) in [
+            (
+                Box::new(|r: &mut Value| r["author_id"] = json!("cus_m000001"))
+                    as Box<dyn Fn(&mut Value)>,
+                "did not place",
+            ),
+            (
+                Box::new(|r: &mut Value| r["date_published"] = json!("2026-01-01")),
+                "before",
+            ),
+            (
+                Box::new(|r: &mut Value| r["product_group_id"] = json!("prd_wool_overcoat")),
+                "not a generated",
+            ),
+            (
+                Box::new(|r: &mut Value| r["surprise"] = json!(1)),
+                "unknown key",
+            ),
+        ] {
+            let e = overlay(&mut rows.clone(), &review_yaml(&rows, change)).unwrap_err();
+            assert!(e.contains(words), "{e}");
+        }
+    }
+
+    #[test]
+    fn reviews_in_the_content_file_fit_the_migrations_and_the_named_products_keep_theirs() {
+        let Ok(text) = std::fs::read_to_string(repo().join("seed/demo/catalog_content.yml")) else {
+            return;
+        };
+        let mut rows = demo();
+        let overcoat_before = rows
+            .iter()
+            .filter(|(t, r)| t == "catalog.review" && r["product_group_id"] == "prd_wool_overcoat")
+            .count();
+        overlay(&mut rows, &text).unwrap_or_else(|e| panic!("{e}"));
+        let overcoat = rows
+            .iter()
+            .filter(|(t, r)| t == "catalog.review" && r["product_group_id"] == "prd_wool_overcoat")
+            .count();
+        assert_eq!(overcoat, overcoat_before);
         let problems = schema_check::check(&schema_check::parse(&repo().join("migrations")), &rows);
         assert!(
             problems.is_empty(),

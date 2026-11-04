@@ -11,6 +11,13 @@ tables:
     - {tenant_id: store_northwind, id: brn_northwind, name: Northwind, logo: "https://cdn.northwind.example/brand/northwind.svg", description: "The store's own label."}
     - {tenant_id: store_northwind, id: brn_fieldstone, name: Fieldstone Boot Co., logo: "https://cdn.northwind.example/brand/fieldstone.svg", description: Leather boots made to be resoled.}
     - {tenant_id: store_northwind, id: brn_ridgeline, name: Ridgeline Outdoor, logo: "https://cdn.northwind.example/brand/ridgeline.svg", description: Trail layers and socks.}
+    - {tenant_id: store_northwind, id: brn_cedar_row, name: Cedar Row, logo: "https://cdn.northwind.example/brand/cedar-row.svg", description: "Everyday shirts, tees and trousers."}
+    - {tenant_id: store_northwind, id: brn_greyfell, name: Greyfell, logo: "https://cdn.northwind.example/brand/greyfell.svg", description: "Coats and heavy sweats for cold weather."}
+    - {tenant_id: store_northwind, id: brn_hearth_loom, name: "Hearth & Loom", logo: "https://cdn.northwind.example/brand/hearth-loom.svg", description: "Soft things for home and under everything."}
+    - {tenant_id: store_northwind, id: brn_longstride, name: Longstride, logo: "https://cdn.northwind.example/brand/longstride.svg", description: "Running and training wear."}
+    - {tenant_id: store_northwind, id: brn_millbrook, name: Millbrook Denim Co., logo: "https://cdn.northwind.example/brand/millbrook.svg", description: "Denim, cut and washed plainly."}
+    - {tenant_id: store_northwind, id: brn_saltline, name: Saltline, logo: "https://cdn.northwind.example/brand/saltline.svg", description: "Swim, shorts and sandals for warm days."}
+    - {tenant_id: store_northwind, id: brn_waymark, name: Waymark Goods, logo: "https://cdn.northwind.example/brand/waymark.svg", description: "Bags and small goods for carrying what you need."}
   catalog.merchant_return_policy:
     - {tenant_id: store_northwind, id: mrp_standard, name: Standard 30 days, merchant_return_days: 30, return_fees: return_fees_customer_responsibility, return_method: [pickup, drop_off], refund_type: full_refund}
     - {tenant_id: store_northwind, id: mrp_free_size_exchange, name: "30 days, free size exchange", merchant_return_days: 30, return_fees: free_return, return_method: [pickup, drop_off], refund_type: full_refund, size_exchange_days: 30}

@@ -113,7 +113,7 @@ cargo xtask check-eval
 고쳐진 것:
 - `cs_1041`(Linen shirt 재주문)에 `create_reorder` 항목이 하나 있고, 재주문 툴(`create_reorder`, `receive_reorder`)이 있습니다.
 - 시드의 작업 로그 행은 `change_set_id`로 변경셋에 이어집니다.
-- 생성 상품 382개에 설명·태그·소재 같은 사실(`seed/demo/catalog_content.yml`)이 있고, 이미지 주소는 웹이 그리는 자리표시 그림(`/media/garment/…`)이라 열립니다.
+- 생성 상품 991개에 설명·태그·소재 같은 사실(`seed/demo/catalog_content.yml`)이 있고, 이미지 주소는 웹이 그리는 자리표시 그림(`/media/garment/…`)이라 열립니다.
 - 배송 중 소포에 시드를 넣은 시각으로 찍힌 `in_transit` 스캔이 더는 나오지 않습니다.
 
 ## 8. 돌리기

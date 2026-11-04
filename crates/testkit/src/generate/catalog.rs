@@ -104,9 +104,10 @@ pub(crate) fn generate(spec: &Spec, named: &Named, dice: &mut Dice) -> Result<Ca
         }
     }
     let named_count = named.products.len();
-    if named_count + products.len() != c.total_products {
+    let more = c.more.as_ref().map_or(0, |m| m.count());
+    if named_count + products.len() + more != c.total_products {
         return Err(format!(
-            "catalog: {named_count} named + {} generated products, the spec wants {}",
+            "catalog: {named_count} named + {} generated + {more} more products, the spec wants {}",
             products.len(),
             c.total_products
         ));
@@ -148,8 +149,6 @@ fn product(
     used_names: &mut BTreeSet<String>,
     dice: &mut Dice,
 ) -> Result<Product, String> {
-    let c = &spec.catalog;
-    let suffix = format!("{}_{nn:02}", cat.term);
     let mut material = String::new();
     let mut noun = String::new();
     let mut name = String::new();
@@ -164,14 +163,59 @@ fn product(
             break;
         }
     }
-    let brand_id = dice.pick(&c.brands).clone();
+    let prices = list_prices(cat)?;
+    drawn(
+        spec,
+        cat,
+        category_id,
+        nn,
+        Drawn {
+            material,
+            noun,
+            name,
+        },
+        &prices,
+        dice,
+    )
+}
+
+/// A category's list prices: whole dollars ending in 9.
+fn list_prices(cat: &CategorySpec) -> Result<Vec<i64>, String> {
     let prices: Vec<i64> = (cat.price_dollars.0..=cat.price_dollars.1)
         .filter(|p| p % 10 == 9)
         .collect();
     if prices.is_empty() {
         return Err(format!("{}: no x9 price in the range", cat.term));
     }
-    let price = dice.pick(&prices) * 100;
+    Ok(prices)
+}
+
+/// What a product is called.
+struct Drawn {
+    material: String,
+    noun: String,
+    name: String,
+}
+
+/// The rest of a product once it has a name: brand, price, cost, colors, stock and release date.
+fn drawn(
+    spec: &Spec,
+    cat: &CategorySpec,
+    category_id: &str,
+    nn: usize,
+    called: Drawn,
+    prices: &[i64],
+    dice: &mut Dice,
+) -> Result<Product, String> {
+    let c = &spec.catalog;
+    let suffix = format!("{}_{nn:02}", cat.term);
+    let Drawn {
+        material,
+        noun,
+        name,
+    } = called;
+    let brand_id = dice.pick(&c.brands).clone();
+    let price = dice.pick(prices) * 100;
     let ratio = dice.range(cat.cost_ratio_bp.0, cat.cost_ratio_bp.1);
     let cost = round_div(price * ratio, 10_000);
     if round_div(cost * 115, 100) > price {
@@ -288,6 +332,135 @@ fn product(
         },
         attributes,
         variants,
+    })
+}
+
+/// The products of `catalog.more_products`. They come after every other draw and each has its own
+/// dice, from the seed and its id, so no other row moves and adding a name changes no earlier
+/// product. No order has them (`orders::skus` reads only the catalog above).
+pub(crate) fn more(spec: &Spec, named: &Named, catalog: &Catalog) -> Result<Catalog, String> {
+    let mut products = Vec::new();
+    let Some(more) = &spec.catalog.more else {
+        return Ok(Catalog {
+            products,
+            placements: Vec::new(),
+        });
+    };
+    let mut names: BTreeSet<String> = named
+        .products
+        .values()
+        .map(|(n, _)| n.to_lowercase())
+        .chain(catalog.products.iter().map(|p| p.name.to_lowercase()))
+        .collect();
+    let mut skus = named.skus.clone();
+    skus.extend(
+        catalog
+            .products
+            .iter()
+            .flat_map(|p| p.variants.iter().map(|v| v.sku.clone())),
+    );
+    for m in &more.categories {
+        if more.leave_out.contains(&m.term) {
+            return Err(format!(
+                "catalog.more_products: the scenes count `{}`; it takes no more products",
+                m.term
+            ));
+        }
+        let mut cat = spec
+            .catalog
+            .categories
+            .iter()
+            .find(|c| c.term == m.term)
+            .cloned()
+            .ok_or_else(|| format!("catalog.more_products: no category `{}`", m.term))?;
+        if let Some(colors) = &m.colors {
+            cat.colors.clone_from(colors);
+        }
+        // Enough units for one of every variant: a new product starts with nothing sold out.
+        let most_variants = cat.colors_per_product.1 * cat.sizes.len() as i64;
+        cat.stock.0 = cat.stock.0.max(most_variants);
+        cat.stock.1 = cat.stock.1.max(cat.stock.0);
+        let category_id = named
+            .categories
+            .get(&cat.term)
+            .cloned()
+            .ok_or_else(|| format!("no named category with term_code `{}`", cat.term))?;
+        let prices = list_prices(&cat)?;
+        // Ids take two digits after the category (`content::generated_id`).
+        for (i, (material, noun)) in m.names.iter().enumerate() {
+            let nn = cat.count + i + 1;
+            if nn > 99 {
+                return Err(format!("catalog.more_products: `{}` is past 99", cat.term));
+            }
+            let name = format!("{material} {noun}");
+            if !names.insert(name.to_lowercase()) {
+                return Err(format!(
+                    "catalog.more_products: `{name}` has the same name as another product"
+                ));
+            }
+            let id = format!("{}_{nn:02}", cat.term);
+            let of_noun: Vec<i64> = match more.noun_prices.get(noun) {
+                Some((lo, hi)) => prices
+                    .iter()
+                    .copied()
+                    .filter(|p| (*lo..=*hi).contains(p))
+                    .collect(),
+                None => prices.clone(),
+            };
+            if of_noun.is_empty() {
+                return Err(format!(
+                    "catalog.more_products: `{noun}` has no price in the range of `{}`",
+                    cat.term
+                ));
+            }
+            let band = price_band(&of_noun, more.premium.contains(material));
+            let mut p = drawn(
+                spec,
+                &cat,
+                &category_id,
+                nn,
+                Drawn {
+                    material: material.clone(),
+                    noun: noun.clone(),
+                    name,
+                },
+                band,
+                &mut Dice::new(own_seed(more.seed, &id)),
+            )?;
+            // On its own dice, so the brand changes nothing else the product drew.
+            let brands = more
+                .brands
+                .get(&cat.term)
+                .ok_or_else(|| format!("catalog.more_products: no brands for `{}`", cat.term))?;
+            let mut brand_dice = Dice::new(own_seed(more.seed, &format!("{id}:brand")));
+            p.brand_id.clone_from(brand_dice.pick(brands));
+            for v in &p.variants {
+                if !skus.insert(v.sku.clone()) {
+                    return Err(format!("generated SKU `{}` is not unique", v.sku));
+                }
+            }
+            products.push(p);
+        }
+    }
+    Ok(Catalog {
+        products,
+        placements: Vec::new(),
+    })
+}
+
+/// The upper half of a category's prices for a premium material, the lower two thirds otherwise.
+fn price_band(prices: &[i64], premium: bool) -> &[i64] {
+    if premium {
+        &prices[prices.len() / 2..]
+    } else {
+        &prices[..(prices.len() * 2).div_ceil(3)]
+    }
+}
+
+/// A product's own seed: FNV-1a over its id, from the spec's seed.
+fn own_seed(seed: u64, id: &str) -> u64 {
+    id.bytes().fold(seed ^ 0xcbf2_9ce4_8422_2325, |h, b| {
+        (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
     })
 }
 
