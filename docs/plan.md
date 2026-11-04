@@ -88,7 +88,7 @@ Unit tests reproduce the B1, B2, F1, F2 and F5 numbers. The SQL paths have datab
 - **Evaluation:** Nov 3, every call on Glimmer, each reply read against the expected facts: held-out (9 tasks × 10 runs) A-Commerce tools 44%, the same screen API through a2api 33%, the screen-shaped facade 0%; fresh (8 tasks × 5 runs) 50% / 12% / 0%. Through the screen API a customer message went out without approval in 10 of 10 runs; A-Commerce drafted it for approval ([design.md](design.md) §7, [eval/results](../eval/results/2026-11-03-glimmer-judged.md)).
 - **Look:** the web app is **Ailism Commerce**, with the Ailism theme, logo and voice ([frontend-ui.md](frontend-ui.md)).
 
-**Open work.** Everything left is inside the store; the list with the eval task behind each item is the TODO section of the [README](../README.md#todo).
+**Open work.** Everything left is inside the store; the list with the eval task behind each item is [What is not done yet](../README.md#what-is-not-done-yet) in the README.
 - Agent quality on the design set: bind later change-set items to earlier ones' results, look up what a person names instead of asking for its id, say the exact times the results hold.
 - The domains added on Oct 31 in the agents (no profile lists `community`, `partner` or `integration` yet) and on screen (UI blocks and back-office pages).
 - More watchers (reported posts, seller grades, failed campaigns) and the expiry of unaccepted gifts and unpaid orders (the policies exist; no job applies them).

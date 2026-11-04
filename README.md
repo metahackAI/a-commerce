@@ -99,6 +99,10 @@ Method: [eval/README.md](eval/README.md).
 | **Muse Voice Transcribe** | Meta Model API | The composer's microphone: speech becomes the draft message, with the names on the screen (products, sizes) as spelling hints ([docs/api/chat.md](docs/api/chat.md) §4); used when `META_API_KEY` and `VOICE_MODEL` are set. |
 | **Muse Image** | Meta Model API | The photos of all 1,009 demo products, one for each color (2,051 files), made offline with each response id kept beside its photo ([seed/demo/catalog_content.yml](seed/demo/catalog_content.yml), [seed/demo/03_catalog.yml](seed/demo/03_catalog.yml)). In the product: `generate_page_image` draws the picture across the top of a curated page at preview, so the person approving sees it; shoppers see it only after approval ([docs/api/catalog.md](docs/api/catalog.md) page_image). Used when `META_API_KEY` and `IMAGE_MODEL` are set; otherwise a placeholder that says so. |
 
+**The proof is in [docs/meta-models.md](docs/meta-models.md).** Each of the 2,051 product photos carries the id of the Muse Image response that made it, and those ids match the seed and a list of all 2,128 calls ($20.94). The 6,390 Glimmer calls that wrote the store's text are listed the same way.
+
+![The Cozy knits page in the demo video, with the banner Muse Image drew.](docs/img/evidence-page-image-live.jpg)
+
 **Why Meta models matter here:** open weights let a merchant run the agent on its own infrastructure, keeping catalog and customer data in-house, and a small model keeps the cost per request low enough to put an agent behind every request. The structure (closed tools, previews, policy checks, a reply that may only use numbers found in the tool results) is what makes a 30B model dependable.
 
 ## What is in the box
@@ -177,7 +181,7 @@ Every markdown file can be reached from here by following links. Each folder's R
 
 - [AGENTS.md](AGENTS.md): the rules for coding agents, which [CLAUDE.md](CLAUDE.md) imports
 - [docs/README.md](docs/README.md): the map of the documents
-  - [design.md](docs/design.md), [research.md](docs/research.md), [architecture.md](docs/architecture.md), [scenarios.md](docs/scenarios.md), [plan.md](docs/plan.md), [serving.md](docs/serving.md)
+  - [design.md](docs/design.md), [research.md](docs/research.md), [architecture.md](docs/architecture.md), [scenarios.md](docs/scenarios.md), [plan.md](docs/plan.md), [serving.md](docs/serving.md), [meta-models.md](docs/meta-models.md)
   - [api/README.md](docs/api/README.md): every operation, its conventions, and one file per domain
   - [backend/README.md](docs/backend/README.md): database, commerce, agent, gateway, testing
   - [frontend/README.md](docs/frontend/README.md): the AI layer, the UI library and look, the theme
@@ -202,6 +206,7 @@ For a task, start with the row that matches what you are about to do. Each docum
 | Change what an agent does or says | [agents/README.md](agents/README.md) (definitions and prompts) → [docs/backend/agent.md](docs/backend/agent.md) → [eval/README.md](eval/README.md) |
 | Measure the agent | [eval/README.md](eval/README.md) (task format, sources, how to run) → [docs/backend/testing.md](docs/backend/testing.md) |
 | Run, package, or deploy | [infra/README.md](infra/README.md) (serving architecture, images, Compose, Kubernetes) → [infra/deploy/README.md](infra/deploy/README.md) (the demo server) |
+| See the proof that Meta models did the work | [docs/meta-models.md](docs/meta-models.md) (every run, the call lists, how to check them) |
 | Serve the model | [docs/serving.md](docs/serving.md) (Glimmer's image and flags, speed, the RTX 5090 crash and its fix, scripts to measure again) |
 | Look up a table, column, or term | [docs/backend/schema.generated.md](docs/backend/schema.generated.md) (generated from the migrations), [vocab/acom.jsonld](vocab/acom.jsonld) (every `acom:` term), or the `describe_data` tool |
 | Load or change demo data | [docs/scenarios.md](docs/scenarios.md) → [seed/demo/README.md](seed/demo/README.md) |
@@ -264,25 +269,25 @@ cargo xtask eval --base http://localhost:8080 --set design --tool-set both   # t
 | `IMAGE_MODEL` | Muse Image for the pictures on curated pages through the same API (optional) |
 | `ACOM_HTTP_PORT` | Host port of the gateway (default 8080) |
 
-## TODO
+## What is not done yet
 
-The back end is complete for the showcase: every specified operation is built. What remains is about the AI-native experience inside the store, not about connecting outside services.
+The back end is complete for the showcase: every specified operation is built. These are the gaps we know of, checked against the code on Nov 4. What is finished is in [What we built during the hackathon](#what-we-built-during-the-hackathon).
 
-**Agent quality** (measured by the design set; each item names the task that shows it)
-- [x] Bind later items of a change set to what earlier items produce (`$item[n]`), instead of an invented id: the B1 banner points at `$item[1].promotion_id`, a curated page at the picture drafted before it. Still open: publishing a page in the same change set that creates it (`publish_curation` checks the id before the page exists).
-- [ ] Look up what the person named instead of asking for its id: "markdown on tees" should find the tees category, not ask for `category_id` (`md-end-of-season-markdown`).
-- [ ] Re-run `b2-returns-over-200`: the agent guessed a customer id to message about an order; `send_customer_message` now takes the order alone (Oct 31), which should remove the guess.
-- [ ] Say the exact times and amounts the results hold (an undo deadline of Nov 7 23:59, a banner verified at 09:36) (`mgr-what-needs-me-today`, `mgr-what-changed-this-morning`).
+**Agent quality** (last measured Nov 3, in [the design set's report](eval/results/2026-11-03-glimmer-design-acom.md))
 - [ ] Read a long list to its end, or filter it, before saying "none" or "these ones". Seen on held-out and fresh (answers from the first 100 of 400 products or 412 orders), so a fix has to be checked on the design set and a new held-out set.
-- [x] Run the held-out set and put its numbers in [Results](#results) (Nov 3). Still to do: compare Glimmer with Spark on the same tasks, and fix the runner problems listed in [the Nov 3 judging](eval/results/2026-11-03-glimmer-judged.md#runner-problems-found-here).
+- [ ] Say the exact times and amounts the results hold, such as an undo deadline of Nov 7 23:59 (`mgr-what-needs-me-today`, 0 of 3).
+- [ ] Use the tool a sale needs: for a markdown on tees the agent now looks the category up, but plans `create_promotion` where the task expects `set_sale_prices` (`md-end-of-season-markdown`, 0 of 3).
+- [ ] Draft the refunds when asked to go through the returns: in the runs the change set had no `refund_return` items (`b2-returns-over-200`, 0 of 3). On screen, the *Draft 9 refunds and 3 messages* button does it.
+- [ ] Publish a page in the same change set that creates it (`publish_curation` checks the id before the page exists).
+- [ ] Fill a curated page from all that the search found: the Cozy knits page gets 2 of the 26 knitwear products.
+- [ ] Compare Glimmer with Spark on the same tasks, and fix the runner problems listed in [the Nov 3 judging](eval/results/2026-11-03-glimmer-judged.md#runner-problems-found-here).
 
-**The new domains in the agents and on screen**
-- [x] Give the agents the domains added on Oct 31: `community` is in the catalog agent, `partner` and `integration` in the new marketplace agent.
+**On screen**
 - [ ] The checkout card built from a `prepare_subscription` preview posts to the order endpoint; it should start the subscription (`POST /v1/sales/subscriptions`).
-- [ ] UI blocks and back-office pages for the tools added on Oct 31 (campaigns, community moderation, sellers, channels and imports, subscriptions, receipts, inquiries, remedies). Today they answer in text and tables only (principle 5).
+- [ ] Back-office pages for the tools added on Oct 31 (campaigns, community moderation, sellers, channels and imports, subscriptions, receipts, inquiries, remedies). Today the agents answer with text and tables only (principle 5).
 
 **The system brings more of the work**
-- [ ] Watchers for the new domains, each opening a task with a draft: reported community posts over the threshold, sellers whose grade drops, a scheduled campaign that failed.
+- [ ] Watchers that open a task with a draft when a seller's grade drops or a scheduled campaign fails. Reported community posts are already covered: Ailism Bot proposes hiding them.
 - [ ] Expire gifts nobody accepted and orders never paid. The policies exist; no job applies them yet. It needs a standing approval for a system cancel.
 
 **Spec gaps found while building** (internal; small)
@@ -290,9 +295,6 @@ The back end is complete for the showcase: every specified operation is built. W
 - [ ] A tool that links a product to a seller (today only the seed does).
 - [ ] Endpoints that issue the code for re-authenticating a withdrawal and for sign-in id recovery (the flows accept such codes; nothing issues them yet).
 - [ ] Tier evaluation reads each member's orders one by one; a bulk reader from sales would make an all-member run fast.
-
-**Story**
-- [x] Demo video (3 min).
 
 Out of scope for the showcase: real payment, carrier, channel and messaging providers; a secret store for channel signing secrets; outside agents (the MCP endpoint is a placeholder crate, and the gateway does not yet sign outside clients in); settlement and taxes.
 

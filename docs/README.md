@@ -14,6 +14,7 @@ The map of `docs/`. Each folder's README lists what is under it, so you can walk
 | [scenarios.md](scenarios.md) | The demo store: people, products, policies, each scene with expected results |
 | [plan.md](plan.md) | Scope, milestones, status, open work |
 | [serving.md](serving.md) | Glimmer's image and flags, speed, the RTX 5090 crash and its fix |
+| [meta-models.md](meta-models.md) | How we used Meta models, with every run, the call lists and how to check them |
 
 ## Specifications
 
