@@ -155,6 +155,10 @@ const MODEL_DOWN: &str = "The assistant's model is not answering right now, so I
 const CUT_REPLY: &str = "That was cut off at the length limit. Write it again in two or three \
 short sentences; the blocks on screen show the details.";
 
+/// How many tool and field names, still there after asking again, make a reply a dump of the
+/// results rather than an answer that slipped on one word.
+const DUMPED_NAMES: usize = 2;
+
 /// What the reply model is told when its reply named tools or result fields.
 const SYSTEM_WORDS: &str = "That names tools or result fields the person never sees";
 
@@ -4303,6 +4307,10 @@ impl<'r> Turn<'r> {
                 && checker::system_words(&t, &self.text, &names).len() < named.len()
             {
                 text = t;
+            }
+            // Asked again and still the results' fields: a dump of them, not an answer.
+            if checker::system_words(&text, &self.text, &names).len() >= DUMPED_NAMES {
+                return fallback;
             }
         }
         // Owned copies: the retry below calls the model, which needs `self` mutably.

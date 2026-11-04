@@ -2515,6 +2515,45 @@ async fn a_reply_that_keeps_repeating_the_request_keeps_what_it_says_besides() {
 }
 
 #[tokio::test]
+async fn a_reply_that_stays_a_dump_of_the_results_gives_way_to_the_plain_reply() {
+    let run = |first: &'static str, second: &'static str| async move {
+        let glimmer = Scripted::new(
+            "glimmer",
+            "Muse Glimmer 30B",
+            vec![
+                (
+                    "plan",
+                    json!({"interpretation": [], "about": "self", "reply_plan": "text", "steps": [
+                    {"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
+                    .to_string(),
+                ),
+                ("reply", first.to_owned()),
+                ("reply", second.to_owned()),
+            ],
+        );
+        let rt = runtime(
+            std::slice::from_ref(&glimmer),
+            Arc::new(MemoryLog::default()),
+        );
+        let events = turn(
+            &rt,
+            principal("adm_sj", Surface::Bo),
+            ChatSurface::Bo,
+            say("Which tier has the most members this week?"),
+            Commerce::new(),
+        )
+        .await;
+        message(&events)
+    };
+    let dump = "list_tiers ... member_count 1284 ...";
+    let reply = run(dump, dump).await;
+    assert!(!reply.contains("list_tiers") && !reply.contains("not answering"), "{reply}");
+    // One name left is a slip in an answer, and the answer is still worth more than no answer.
+    let slip = "VIP has the most members, per list_tiers.";
+    assert_eq!(run(slip, slip).await, slip);
+}
+
+#[tokio::test]
 async fn replies_stream_only_where_the_background_check_saw_streaming_work() {
     let plan = || {
         json!({"interpretation": [{"aspect": "who", "text": "VIP members"}], "about": "self",
