@@ -2936,3 +2936,31 @@ fn a_larger_result_loses_its_biggest_list_first() {
     assert_eq!(tight["items"].as_array().map(Vec::len), Some(2));
     assert_eq!(tight["items"][1], json!("… 19 more"));
 }
+
+#[test]
+fn a_title_from_a_request_reads_as_a_title() {
+    // The ids a bot lists for the agent stay out, the operator's words stay in.
+    assert_eq!(
+        title_from_request(
+            "Hide the reported post 'Buy cheap jackets here' on the Style talk board: it is spam. (post_8811)"
+        ),
+        "Hide the reported post 'Buy cheap jackets here' on the Style talk board"
+    );
+    assert_eq!(
+        title_from_request("Draft a reorder of the Light rain parka (prd_rain_parka, sku_12) soon"),
+        "Draft a reorder of the Light rain parka soon"
+    );
+    assert_eq!(
+        title_from_request("Publish col_cozy_knits (the winter one) today"),
+        "Publish col_cozy_knits (the winter one) today"
+    );
+    assert_eq!(title_from_request("Mark down the 19.99 tee"), "Mark down the 19.99 tee");
+    // Too long for a card: it ends on a whole word.
+    let long = title_from_request(
+        "Answer the question about the Packable windbreaker's hood from the product's details and tell them",
+    );
+    assert_eq!(long, "Answer the question about the Packable windbreaker's hood from the product's…");
+    assert!(long.chars().count() <= 80);
+    let wide = title_from_request(&"가나다라 ".repeat(40));
+    assert!(wide.ends_with('…') && wide.chars().count() <= 80, "{wide}");
+}

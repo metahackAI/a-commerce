@@ -18,7 +18,7 @@ import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/Segment
 import {Token} from '@astryxdesign/core/Token';
 
 import {PersonButton} from '@/components/PersonButton';
-import {dateTime, words} from '@/app/bo/_lib/format';
+import {dateTime, withoutIds, words} from '@/app/bo/_lib/format';
 import {entityHref} from '@/app/bo/_lib/links';
 import type {BotDecision, BotEffect, BotFeedback} from '@/app/bo/_lib/types';
 
@@ -332,7 +332,7 @@ export function DecisionCard({decision, compact}: {decision: BotDecision; compac
             <Text type="supporting" color="secondary">
               Asked of the operations agent
             </Text>
-            <Blockquote>{decision.request}</Blockquote>
+            <Blockquote>{withoutIds(decision.request)}</Blockquote>
           </VStack>
         ) : null}
         <Card variant={attention ? 'default' : 'muted'}>

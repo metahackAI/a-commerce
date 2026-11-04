@@ -59,6 +59,40 @@ fn without_echo(text: String, prompt: &str) -> Option<String> {
 const REPLY_MAX_CHARS: usize = 600;
 
 /// The reply's shape: two or three sentences in one field.
+/// A change set's title when the plan gave none: the request's first sentence, without the ids
+/// listed in parentheses for the agent, ending on a whole word.
+fn title_from_request(text: &str) -> String {
+    const MAX: usize = 80;
+    let is_id = |w: &str| {
+        let w = w.trim();
+        w.contains('_') && w.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+    };
+    let mut plain = String::new();
+    let mut rest = text;
+    while let Some(open) = rest.find('(') {
+        let Some(close) = rest[open..].find(')') else { break };
+        let inside = &rest[open + 1..open + close];
+        if inside.split(',').all(is_id) {
+            plain.push_str(rest[..open].trim_end());
+        } else {
+            plain.push_str(&rest[..=open + close]);
+        }
+        rest = &rest[open + close + 1..];
+    }
+    plain.push_str(rest);
+    let plain = plain.trim();
+    let first = plain
+        .find(['.', ':', '?', '!'])
+        .filter(|&i| plain[i + 1..].is_empty() || plain[i + 1..].starts_with(' '))
+        .map_or(plain, |i| &plain[..i]);
+    if first.chars().count() <= MAX {
+        return first.to_owned();
+    }
+    let cut: String = first.chars().take(MAX - 1).collect();
+    let whole = cut.rfind(' ').map_or(cut.as_str(), |i| &cut[..i]);
+    format!("{}…", whole.trim_end_matches([',', ';']))
+}
+
 fn reply_schema() -> Value {
     json!({"type": "object", "additionalProperties": false, "required": ["text"],
            "properties": {"text": {"type": "string", "maxLength": REPLY_MAX_CHARS,
@@ -2582,7 +2616,7 @@ impl<'r> Turn<'r> {
             .title
             .clone()
             .filter(|t| !t.trim().is_empty())
-            .unwrap_or_else(|| self.text.chars().take(80).collect());
+            .unwrap_or_else(|| title_from_request(&self.text));
         let new = NewChangeSet {
             title,
             request_text: vec![self.text.clone()],
@@ -4084,6 +4118,13 @@ impl<'r> Turn<'r> {
             parts.push(format!("{} is saved.", r.tool));
         }
         parts.dedup();
+        // A task's turn that drafted nothing: this line is all the task's card shows, without the
+        // results it points at.
+        if self.request.task_id.is_some() && self.view.is_none() {
+            for part in parts.iter_mut().filter(|p| *p == "Here is what I found.") {
+                *part = "I read the records but need a person to decide how to go on.".into();
+            }
+        }
         parts.extend(self.problems.iter().cloned());
         if parts.is_empty() {
             let read = self.history.iter().any(|r| r.kind == ToolKind::Read);

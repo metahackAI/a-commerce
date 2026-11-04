@@ -17,7 +17,7 @@ import {Button} from '@astryxdesign/core/Button';
 import {Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow} from '@astryxdesign/core/Table';
 
 import type {ApiErrorBody} from '@/lib/api';
-import {actor, count, dateTime, value, words} from '@/app/bo/_lib/format';
+import {actor, count, dateTime, value, withoutIds, words} from '@/app/bo/_lib/format';
 import {entityHref, withParams} from '@/app/bo/_lib/links';
 import type {ActionEntry, ChangeSet, Verification} from '@/app/bo/_lib/types';
 
@@ -111,7 +111,7 @@ export function ChangeSetView({changeSet: cs, latestVersion, verification, histo
         {cs.request?.text?.length ? (
           <VStack gap={2}>
             {cs.request.text.map((t, i) => (
-              <Blockquote key={i}>{t}</Blockquote>
+              <Blockquote key={i}>{withoutIds(t)}</Blockquote>
             ))}
           </VStack>
         ) : (
