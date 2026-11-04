@@ -1,5 +1,7 @@
 # 데이터베이스 (PostgreSQL)
 
+[README](../../README.md) › [docs](../README.md) › [back end](README.md)
+
 A-Commerce의 DB는 **AI가 읽는 DB**입니다. 에이전트(운영 에이전트, 툴 구현을 돕는 코딩 에이전트, 외부 분석 도구)와 사람이 테이블 이름, 컬럼 이름, 주석만 보고 무엇이 무엇인지 알 수 있어야 합니다. 그래서 이름은 schema.org에서 가져오고, 모든 테이블과 컬럼에 schema.org 용어가 적힌 주석을 달고, 규칙은 `cargo xtask check-schema`가 강제합니다.
 
 - 개념 모델(엔티티 ↔ schema.org 타입, API 필드): [../api/data-model.md](../api/data-model.md)
@@ -167,7 +169,7 @@ CREATE POLICY offer_tenant_isolation ON catalog.offer
 
 ## 12. 테이블 목록
 
-마이그레이션 31개가 만드는 테이블과 뷰는 135개, 컬럼은 1,816개이고, 모두 schema.org나 `acom:` 용어로 시작하는 주석이 있습니다(`cargo xtask check-schema`). 컬럼까지는 [schema.generated.md](schema.generated.md)에 있습니다.
+마이그레이션 34개가 만드는 테이블과 뷰는 139개, 컬럼은 1,878개이고, 모두 schema.org나 `acom:` 용어로 시작하는 주석이 있습니다(`cargo xtask check-schema`). 컬럼까지는 [schema.generated.md](schema.generated.md)에 있습니다.
 
 | 스키마.테이블 | 용어 (`@type`/`additionalType`, `-`는 기술 테이블) | 접두 | 비고 |
 |---|---|---|---|

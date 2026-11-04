@@ -1,5 +1,7 @@
 # 어휘: schema.org와 우리 확장
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 A-Commerce의 모든 타입·프로퍼티·값은 schema.org 어휘 위에 있습니다. 이 문서는 **schema.org에 없는 것을 어떻게 표현하는가**의 규칙입니다. 기계가 읽는 정의는 [`vocab/acom.jsonld`](../../vocab/acom.jsonld)이고, `cargo xtask check-schema --write`가 손으로 쓴 [`vocab/terms.json`](../../vocab/terms.json), 마이그레이션 주석, `acom-core` enum에서 생성합니다. DB에 나오는 우리 용어는 모두 이 파일에 정의가 있습니다.
 
 ```

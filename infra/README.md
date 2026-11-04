@@ -1,16 +1,18 @@
 # 인프라와 서빙
 
+[README](../README.md)
+
 A-Commerce의 모든 구성 요소는 컨테이너이고, **어디서 띄우든 운영과 같은 구성**으로 뜹니다. 로컬 Docker Compose, 로컬 Kubernetes(kind), 운영 Kubernetes가 같은 이미지·같은 서비스 경계·같은 헬스 체크·같은 설정 이름을 쓰고, 달라지는 것은 내부 설정(DB 위치, 복제 수, 비밀의 출처, TLS)뿐입니다.
 
 | 폴더 | 내용 |
 |---|---|
 | `infra/docker/` | 이미지: `rust.Dockerfile`(gateway·commerce·agent, 빌드 한 번에 대상별 이미지), `web.Dockerfile` |
 | `infra/compose/` | Docker Compose: `compose.yaml`(운영과 같은 구성), `compose.debug.yaml`(포트 공개), `observability/` |
-| `infra/k8s/` | Kubernetes(Kustomize): `base/`, `components/`, `overlays/{local,production}`, `kind/`. 자세한 것은 [k8s/README.md](k8s/README.md) |
+| [infra/k8s/](k8s/README.md) | Kubernetes(Kustomize): `base/`, `components/`, `overlays/{local,production}`, `kind/`. 자세한 것은 [k8s/README.md](k8s/README.md) |
 | `infra/postgres/` | DB 역할을 만드는 `init.sql`(Compose·Kubernetes 공용)과 로컬 클러스터용 Postgres 컴포넌트 |
 | `infra/scripts/` | `gen-keys.sh`(게이트웨이 서명 키), `kind-up.sh` / `kind-down.sh` |
-| `infra/deploy/` | 데모 서버 배포: main 머지 → GitHub Actions가 deployment를 기록 → 서버의 배포기가 그 sha의 이미지를 서버에서 빌드하고 바뀐 서비스만 재시작. 쓰는 법은 [deploy/README.md](deploy/README.md) |
-| `infra/secrets/` | 로컬 비밀(git 무시). 운영 비밀은 여기 두지 않음 |
+| [infra/deploy/](deploy/README.md) | 데모 서버 배포: main 머지 → GitHub Actions가 deployment를 기록 → 서버의 배포기가 그 sha의 이미지를 서버에서 빌드하고 바뀐 서비스만 재시작. 쓰는 법은 [deploy/README.md](deploy/README.md) |
+| [infra/secrets/](secrets/README.md) | 로컬 비밀(git 무시). 운영 비밀은 여기 두지 않음 |
 
 명령은 저장소 루트의 `Makefile` 하나로 모읍니다(`make help`).
 

@@ -1,5 +1,7 @@
 # AI-native commerce: research (final, Oct 27, 2026)
 
+[README](../README.md) › [docs](README.md)
+
 What AI-native commerce means, who else is building it, and where A-Commerce fits. Most sources are vendor pages, press releases, and secondary coverage; vendor numbers are their own claims, not independent measurements. Items marked *(unverified)* come only from third-party summaries. Captures were taken on Oct 27, 2026 (top of each page, 1440×900) and are kept here for reference; the linked pages are the source of record.
 
 Contents: 1–4 what AI-native commerce is · 5–7 the landscape · 8–10 where we fit · sources.

@@ -1,5 +1,7 @@
 # API 명세 — `messaging` (고객 메시지·템플릿·캠페인·알림)
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 > 계층: `messaging.{resource}.{operation}`. 공통 규약(응답 형식·프리뷰/실행·멱등·헤더)은 [conventions.md](conventions.md)와 [README.md](README.md) §3, 값 목록은 [enums.md](enums.md), 데이터 타입은 [data-model.md](data-model.md), 정책은 [approval.yml](../../policies/approval.yml) · [customer.yml](../../policies/customer.yml)(동의 게이트). 예시 값은 데모 시나리오([../scenarios.md](../scenarios.md) B2)와 같습니다.
 > **설계 축**: ① 고객에게 닿는 발송은 모두 사람 승인 — 프리뷰가 고객이 읽을 그대로의 메시지를 보여주고 사람이 승인(정책 `customer_messages: always_ask`), ② 마케팅 발송은 동의(opt-in) 게이트 — 동의 없는 대상은 서버가 발송 집합에서 뺌, ③ 채널(`email`·`sms`·`push`·`in_app`, [enums.md](enums.md) §3)은 한 계약이고, 바깥 발송(이메일·SMS·푸시)은 설계상 결정적 스텁이라 보낸 것으로 기록만 하고 제공자에게 넘기지 않음, ④ 템플릿 변수는 의미 있는 이름, ⑤ 같은 메시지·캠페인은 두 번 나가지 않음(멱등), ⑥ 보낸 메시지는 되돌릴 수 없음(`change_set.irreversible`).
 

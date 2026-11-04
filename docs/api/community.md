@@ -1,5 +1,7 @@
 # API 명세 — `community` (게시판·글·댓글)
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 > 계층: `community.{resource}.{operation}`. 공통 규약(응답 형식·프리뷰/실행·멱등성·헤더)은 [README.md](README.md) §3과 [conventions.md](conventions.md), 에러는 [errors.md](errors.md), 값 목록은 [enums.md](enums.md), 데이터 타입은 [data-model.md](data-model.md), 정책은 [community.yml](../../policies/community.yml).
 > **설계 축**: ① 고객이 쓰는 콘텐츠(운영 공지는 `customer.faq_notice`가 담당), ② 모더레이션(신고 → 블라인드 → 삭제, 금칙어·스팸), ③ 비밀글은 작성자와 운영자만 열람, ④ 공개 목록의 작성자 이름은 마스킹(`ho****`, `moderation.author_masking`), ⑤ 글은 schema.org `DiscussionForumPosting`, 댓글은 `Comment`, 게시판은 `acom:Board`(subtype of `CreativeWork`).
 > **쓰기**: 쇼퍼가 자기 글·댓글을 쓰고 고치는 것은 승인 없이 프리뷰 후 바로 실행되고 변경셋 밖이므로 `undo: null`입니다(지우기는 `delete_post`·`delete_reply`). 운영자의 블라인드·삭제·게시판 설정은 변경셋에 들어가 `undo`가 변경셋을 가리킵니다.

@@ -1,8 +1,11 @@
 # 프런트엔드 (Next.js)
 
+[README](../../README.md) › [docs](../README.md)
+
 A-Commerce의 웹은 **화면 하나하나가 AI와 함께 움직이는 화면**입니다. 대화 창이 따로 붙은 화면이 아니라, 가격 하나, 체크 한 줄, 장바구니 줄 하나까지 "이것에 대해 묻기", "이것을 이렇게 바꿔 줘"를 받을 수 있고, 에이전트가 화면의 어느 요소를 가리키는지 사람이 볼 수 있습니다. 상태를 바꾸는 사람의 결정(승인, 주문하기, 반품 요청 보내기, 되돌리기)만은 사람이 직접 누릅니다.
 
 - UI 라이브러리와 모양 규칙(Meta Astryx, 테마, 템플릿 우선): [../frontend-ui.md](../frontend-ui.md). 이 문서는 그 위에 얹는 **AI 층**입니다.
+- 테마 `ailism`을 고치는 법: [web/src/theme/README.md](../../web/src/theme/README.md). 코딩 에이전트용 Astryx 안내(`astryx` CLI가 관리): [web/AGENTS.md](../../web/AGENTS.md).
 - 사람 ↔ 에이전트 계약(SSE 이벤트, UI 블록, 버튼 종류): [../api/chat.md](../api/chat.md)
 - 화면 근거: [../../design/](../../design) 시안, 장면: [../scenarios.md](../scenarios.md)
 - 백엔드 접점: 게이트웨이 하나(`/api/*`), [../backend/gateway.md](../backend/gateway.md)

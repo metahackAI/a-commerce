@@ -1,5 +1,7 @@
 # 에이전트 평가 과업 세트
 
+[README](../README.md)
+
 [../docs/backend/testing.md](../docs/backend/testing.md) §3, [../docs/design.md](../docs/design.md) §7의 실험에 쓰는 과업입니다. MD·마케터·운영 담당·스토어 주인이 실제로 에이전트에게 시키는 말을 공개 자료에서 모으고, 데모 스토어의 데이터로 기대 결과를 정했습니다.
 
 ## 1. 무엇을 재는가
@@ -137,7 +139,7 @@ cargo xtask eval --base https://a-commerce.ailism.team --set design \
 | `--out <file>` | 보고서(Markdown)를 이 파일에 씀. 없으면 표준 출력 | 표준 출력 |
 | `--logs <dir>` | 실행마다 답·블록·턴 로그를 `<과업>-<툴 레이어>-<대화 id>.json`으로 남김 | 꺼짐 |
 
-- **결과:** 보고서는 [results/](results)에 `<날짜>-<모델>-<세트>-<툴 레이어>.md`로 커밋합니다. 2026-10-31 설계 세트는 `2026-10-31-glimmer-design-acom.md`와, `--only`로 여섯 과업씩 나눠 돌린 `…-facade-1.md`·`…-facade-2.md`입니다(모든 모델 호출이 Glimmer: 라이브 데모에는 Spark가 설정되지 않음). 요약 숫자는 [../docs/design.md](../docs/design.md) §7에 있습니다. 2026-11-03 최종 측정은 `2026-11-03-glimmer-{heldout,design}-*.md`이고, 러너 점수와 답을 직접 읽은 판정을 [results/2026-11-03-glimmer-judged.md](results/2026-11-03-glimmer-judged.md)에 함께 남겼습니다(러너가 맞은 답을 떨어뜨리고 얼버무린 답을 통과시킨 사례와 고칠 점 포함).
+- **결과:** 보고서는 `results/`에 `<날짜>-<모델>-<세트>-<툴 레이어>.md`로 커밋합니다. 2026-10-31 설계 세트는 [A-Commerce 툴](results/2026-10-31-glimmer-design-acom.md)과, `--only`로 여섯 과업씩 나눠 돌린 [파사드 1](results/2026-10-31-glimmer-design-facade-1.md)·[파사드 2](results/2026-10-31-glimmer-design-facade-2.md)입니다(모든 모델 호출이 Glimmer: 라이브 데모에는 Spark가 설정되지 않음). 요약 숫자는 [../docs/design.md](../docs/design.md) §7에 있습니다. 2026-11-03 최종 측정은 held-out의 [A-Commerce 툴](results/2026-11-03-glimmer-heldout-acom.md)·[파사드](results/2026-11-03-glimmer-heldout-facade.md)·[a2api](results/2026-11-03-glimmer-heldout-a2api.md)와 설계 세트의 [A-Commerce 툴](results/2026-11-03-glimmer-design-acom.md)·[파사드](results/2026-11-03-glimmer-design-facade.md)이고, 러너 점수와 답을 직접 읽은 판정을 [results/2026-11-03-glimmer-judged.md](results/2026-11-03-glimmer-judged.md)에 함께 남겼습니다(러너가 맞은 답을 떨어뜨리고 얼버무린 답을 통과시킨 사례와 고칠 점 포함).
 - 과업마다 `adm_admin`으로 데모 시계를 과업의 시각(Fri Nov 6 11:00)에 맞추고, `persona`로 로그인해 `turns`를 한 대화에서 말합니다. 그다음 대화의 턴 로그(`GET /api/chat/{surface}/conversations/{id}?log=true`)에서 툴 호출과 모델 호출을 읽습니다.
 - 모델이 두 번 연속 답하지 않으면(런타임의 "The assistant's model is not answering right now") 멈추고 보고서를 쓰지 않습니다. 그 실행은 에이전트가 아니라 장애를 잰 것이기 때문입니다.
 - 완료 조건(셋 다 맞아야 함):

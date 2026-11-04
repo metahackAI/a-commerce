@@ -1,5 +1,7 @@
 # API 명세 — `merchandising` (카테고리·진열 슬롯·배너·팝업·기획전·캐시)
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 > 계층: `merchandising.{resource}.{operation}`. 공통 형식(읽기 봉투, 쓰기의 프리뷰 → `preview_id` 실행, 시간·금액·id)은 [conventions.md](conventions.md), 에러 코드는 [errors.md](errors.md), 상태 값은 [enums.md](enums.md), 데이터 타입은 [data-model.md](data-model.md), 정책은 [merchandising.yml](../../policies/merchandising.yml)·[approval.yml](../../policies/approval.yml). 예시 값은 데모 스토어([../scenarios.md](../scenarios.md))입니다.
 >
 > **설계 축**: ① 표준 카테고리(내부 분류)와 전시 카테고리(쇼퍼에게 보이는 트리)를 나누고 `acom:CategoryMapping`으로 N:M 연결. ② 노출 여부는 배치로 켜고 끄지 않고 `valid_from`·`valid_through`로 그때그때 계산. 시각 비교는 툴 안에서만 하고 에이전트가 직접 하지 않음. ③ 노출 = 기간 ∧ 재고 ∧ 판매 가능 상태. ④ 쇼퍼에게 닿는 공개(배너 예약, 슬롯 예약, 기획전 공개, 노출 중인 배너·팝업 수정)는 변경셋 승인. ⑤ 지금 스토어에는 전시 캐시가 없어(페이지가 물을 때마다 읽음) 전시 변경은 바로 반영됨. `invalidate_display_cache`는 비울 키를 계산해 기록하는 결정적 대역([cache](#cache)).

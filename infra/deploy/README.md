@@ -1,5 +1,7 @@
 # 데모 서버 배포
 
+[README](../../README.md) › [infra](../README.md)
+
 데모 주소: **https://a-commerce.ailism.team**
 
 main에 머지하면 자동으로 배포됩니다. 다시 배포하거나 되돌릴 때는 Actions 탭의 **deploy → Run workflow** 버튼을 씁니다. 서버에 들어갈 필요는 없습니다.

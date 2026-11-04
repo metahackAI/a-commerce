@@ -1,11 +1,23 @@
 # Instructions for coding agents
 
-Read `docs/design.md` before writing code. It defines the tool design rules, domain scope, harness, and UI protocol. Then read `docs/architecture.md` (services and trust boundaries), `docs/backend/` (how the Rust code is organized), and `docs/api/conventions.md` (wire formats).
+[README](README.md)
+
+[CLAUDE.md](CLAUDE.md) imports this file. All documents hang from [README.md](README.md): its [How to read the docs](README.md#how-to-read-the-docs) says what to read for your task, and [docs/README.md](docs/README.md) is the map.
+
+Read [docs/design.md](docs/design.md) before writing code. It defines the tool design rules, domain scope, harness, and UI protocol. Then read [docs/architecture.md](docs/architecture.md) (services and trust boundaries), [docs/backend/](docs/backend/README.md) (how the Rust code is organized), and [docs/api/conventions.md](docs/api/conventions.md) (wire formats).
 
 ## Hackathon rules that affect code
 
 - Everything in this repository must be written during the hackathon (Oct 27 – Nov 4, 2026). Do not paste code from other projects.
 - The repository is public. Never commit secrets (`META_API_KEY` and others live in `.env`, which is git-ignored).
+
+## Documents
+
+Rules: [docs/README.md](docs/README.md#how-these-files-link).
+
+- A path to another document is a link, not plain text.
+- A new markdown file goes into its folder's README and gets the way up under its title, in the same change.
+- Never add links or headers to the prompts in [agents/](agents/README.md): they are read into the model's prompt as written.
 
 ## Reference material
 
@@ -13,7 +25,7 @@ Team members may have reference material about an existing commerce platform on 
 
 - Do not copy code, SQL, table or column names, API paths, identifiers, sample data, or document text.
 - Do not mention the product, its customers, or its internal names in code, comments, commits, or docs.
-- Re-express each business rule in our own words and our own names, following `docs/design.md`.
+- Re-express each business rule in our own words and our own names, following [docs/design.md](docs/design.md).
 
 ## Tool checklist (every new tool)
 
@@ -27,14 +39,14 @@ Team members may have reference material about an existing commerce platform on 
 
 ## Back end (Rust)
 
-The whole server side is one Cargo workspace: `crates/` (libraries), `services/` (gateway, commerce, agent), `xtask/`. Details: `docs/backend/README.md`.
+The whole server side is one Cargo workspace: `crates/` (libraries), `services/` (gateway, commerce, agent), `xtask/`. Details: [docs/backend/README.md](docs/backend/README.md).
 
-- An operation exists in `docs/api/` first. Its tool name, address, kind, and REST path in code must match the spec: the registry test `every_operation_matches_its_spec` (`cargo test -p acom-registry`) compares the code with the spec, and `cargo xtask check-docs` checks that the index in `docs/api/README.md` §4 and the domain files agree.
+- An operation exists in [docs/api/](docs/api/README.md) first. Its tool name, address, kind, and REST path in code must match the spec: the registry test `every_operation_matches_its_spec` (`cargo test -p acom-registry`) compares the code with the spec, and `cargo xtask check-docs` checks that the index in [docs/api/README.md](docs/api/README.md) §4 and the domain files agree.
 - One operation is one type implementing `ReadOp` or `WriteOp` (`acom-contract`), in its domain crate, with at least one contract test.
-- The folders follow the API hierarchy: `domain.resource.operation` lives in `crates/domains/{domain}/src/{resource}/{tool}.rs` (one file per operation, one folder per resource; `docs/backend/README.md` §2.2). `cargo xtask check-layout` checks it; `cargo xtask check-coverage` checks that every specified tool and person-only endpoint is built.
+- The folders follow the API hierarchy: `domain.resource.operation` lives in `crates/domains/{domain}/src/{resource}/{tool}.rs` (one file per operation, one folder per resource; [docs/backend/README.md](docs/backend/README.md) §2.2). `cargo xtask check-layout` checks it; `cargo xtask check-coverage` checks that every specified tool and person-only endpoint is built.
 - Input types use `#[serde(deny_unknown_fields)]`, word enums, a doc comment on every field, and no data-carrying enums (they become `oneOf`; use a `mode` word field instead); the registry refuses schemas that are not closed.
-- Money is `acom_core::Money`, never a float. Time comes from the `Clock`, never `Utc::now()`. Ids use the prefixes in `docs/api/conventions.md` §9; state words come from `docs/api/enums.md`; error codes and classes from `docs/api/errors.md`.
-- Business numbers come from `policies/*.yml` through `acom-policy`, never from constants in code or prompts.
+- Money is `acom_core::Money`, never a float. Time comes from the `Clock`, never `Utc::now()`. Ids use the prefixes in [docs/api/conventions.md](docs/api/conventions.md) §9; state words come from [docs/api/enums.md](docs/api/enums.md); error codes and classes from [docs/api/errors.md](docs/api/errors.md).
+- Business numbers come from [policies/*.yml](policies/README.md) through `acom-policy`, never from constants in code or prompts.
 - `core`, `contract`, and `policy` do no I/O. The agent crate never depends on a domain crate.
 - A domain reads another only through that domain's `service/for_<caller>.rs`, never its tables. Where a direct dependency would make a cycle or tie two peers together, the reader is handed over at start-up instead: `acom-registry::build()` installs promotion's order history (read from sales), messaging's segment members (from promotion), and integration's seller status (from partner); fulfillment installs its delivery, claim, and area (shipping-zone) readers into `acom_sales::service::providers`.
 - Scheduled runs (`promotion.start`, `loyalty.expire`, `subscription.renew`, …) are booked with `acom_changeset::jobs::book`, which is idempotent by job id. A domain never inserts into `platform.job` itself.
@@ -44,22 +56,22 @@ The whole server side is one Cargo workspace: `crates/` (libraries), `services/`
 
 ## Database
 
-Rules: `docs/backend/database.md`.
+Rules: [docs/backend/database.md](docs/backend/database.md).
 
 - Tables are schema.org types and columns are schema.org properties, in snake_case. Only concepts schema.org lacks get our own `acom:` names.
 - Every table and column gets a `COMMENT` that starts with its term (`schema:…`, `acom:…`, or `-` for technical columns) followed by one English sentence.
-- The primary key is the prefixed text id the API uses. Status columns store words under a `CHECK` list taken from `docs/api/enums.md`.
+- The primary key is the prefixed text id the API uses. Status columns store words under a `CHECK` list taken from [docs/api/enums.md](docs/api/enums.md).
 - Money is `price` + `price_currency` or `*_value` + `*_currency`. Quantities are `*_value` + `*_unit_text`. No abbreviations.
 - Every store-scoped table has `tenant_id` and a row-level security policy.
 - Run `cargo xtask check-schema --write` after changing a migration and commit the generated dictionary.
 
 ## Front end (Next.js)
 
-Rules: `docs/frontend-ui.md` (UI library and look) and `docs/frontend/README.md` (AI layer).
+Rules: [docs/frontend-ui.md](docs/frontend-ui.md) (UI library and look) and [docs/frontend/README.md](docs/frontend/README.md) (AI layer).
 
-- Components come from Meta Astryx (`@astryxdesign/*`). Read `docs/frontend-ui.md` first. Look up components and templates with `npm run astryx -- search "<query>"` before writing your own.
-- One UI block from `docs/api/chat.md` §3 is one component, built from Astryx parts. The look lives in our theme (CSS custom properties); no gradients, glows, decorative shadows, colored side bars, or sparkle icons.
-- Data types are written by hand from the specs in `docs/api/`: the chat contract in `web/src/ai/types.ts`, block data next to the blocks (`web/src/components/blocks/`), and page responses in `web/src/app/bo/_lib/types.ts` and `web/src/app/(storefront)/_lib/types.ts`. No types are generated from Rust yet.
+- Components come from Meta Astryx (`@astryxdesign/*`). Read [docs/frontend-ui.md](docs/frontend-ui.md) first. Look up components and templates with `npm run astryx -- search "<query>"` before writing your own.
+- One UI block from [docs/api/chat.md](docs/api/chat.md) §3 is one component, built from Astryx parts. The look lives in our theme (CSS custom properties); no gradients, glows, decorative shadows, colored side bars, or sparkle icons.
+- Data types are written by hand from the specs in [docs/api/](docs/api/README.md): the chat contract in `web/src/ai/types.ts`, block data next to the blocks (`web/src/components/blocks/`), and page responses in `web/src/app/bo/_lib/types.ts` and `web/src/app/(storefront)/_lib/types.ts`. No types are generated from Rust yet.
 - Every meaningful element (row, price, check, chip, card, input) calls `useAiTarget` so people can ask about it and the agent can point at it.
 - Elements that the agent may change also show the block's `suggested_intents`.
 - State changes made by a person (approve, place order, send a return request, undo) go through `PersonButton` only. They are never reachable from `ui.command` or page tools.
@@ -67,10 +79,10 @@ Rules: `docs/frontend-ui.md` (UI library and look) and `docs/frontend/README.md`
 
 ## Infrastructure
 
-Serving architecture: `infra/README.md`. Commands: `make help`.
+Serving architecture: [infra/README.md](infra/README.md). Commands: `make help`.
 
 - Every component is a container, and every environment runs the same images and topology; only configuration differs. Don't add a code path that runs only locally; put local conveniences in configuration (`.env`, overlays).
-- Configuration comes from environment variables, and secrets come from files or Kubernetes Secrets. Names are the same everywhere (`infra/README.md` §5). Never commit secrets: `infra/secrets/` and `infra/k8s/overlays/local/secrets/` are git-ignored.
+- Configuration comes from environment variables, and secrets come from files or Kubernetes Secrets. Names are the same everywhere ([infra/README.md](infra/README.md) §5). Never commit secrets: [infra/secrets/](infra/secrets/README.md) and `infra/k8s/overlays/local/secrets/` are git-ignored.
 - New Rust services use `acom-server`: JSON logs, `/healthz`, `/readyz`, `/metrics`, request ids, graceful shutdown, and the `healthcheck` subcommand.
 - Images run as non-root with a read-only root file system. Write only to declared temporary volumes.
 - Integration checks (bringing the stack up) run on request. Always run `make check-infra` after changing Compose or Kubernetes files.

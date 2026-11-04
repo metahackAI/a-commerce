@@ -1,5 +1,7 @@
 # Demo seed: Northwind Apparel
 
+[README](../../README.md)
+
 Named, static data for the demo store in [docs/scenarios.md](../../docs/scenarios.md). The files hold
 every row a scene names. The generator ([generate.yml](generate.yml)) adds the bulk rows (more products,
 members and sales history) under fixed counts and a fixed random seed.

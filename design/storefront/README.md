@@ -1,5 +1,7 @@
 # Storefront (FO): plan and mockups
 
+[README](../../README.md) › [design](../README.md)
+
 ![Storefront overview](overview.png)
 
 ## Goal

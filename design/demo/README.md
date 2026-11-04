@@ -1,5 +1,7 @@
 # Demo video storyboard (Nov 1)
 
+[README](../../README.md) › [design](../README.md)
+
 ![Storyboard overview](overview.png)
 
 15 key frames for the 2:50 submission video, drawn as static HTML with the running app's look: Astryx neutral theme, the Ailism red, Pretendard, Heroicons. Open `storyboard.html` in a browser: under each frame are the voiceover, what exists and what to build, and where each new element comes from. `frames/` has the 1920×1080 PNGs.

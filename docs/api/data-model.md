@@ -1,5 +1,7 @@
 # 데이터 모델 (schema.org 우선)
 
+[README](../../README.md) › [docs](../README.md) › [API](README.md)
+
 > **원칙: 모든 엔티티와 속성의 이름은 schema.org를 먼저 따릅니다.** schema.org에 있으면 그 이름을 그대로 쓰고, 없을 때만 `acom:` 네임스페이스로 확장합니다. 설계 배경은 [../architecture.md](../architecture.md) §5, 데모 데이터는 [../scenarios.md](../scenarios.md)입니다.
 > 이 문서가 데이터의 기준 모델입니다. 도메인 API의 입력·출력([README.md](README.md))과 Rust 타입(`acom-core`, `acom-contract`, 도메인 크레이트, [../backend/README.md](../backend/README.md) §2), 그리고 그 타입에서 생성하는 JSON Schema·OpenAPI는 여기서 나옵니다. 상태·종류·사유의 값 목록은 [enums.md](enums.md)가 단일 출처이고 이 문서는 그것을 가리키기만 합니다.
 

@@ -1,5 +1,7 @@
 # A-Commerce 백엔드 (Rust)
 
+[README](../../README.md) › [docs](../README.md)
+
 A-Commerce의 서버 측은 **전부 Rust**로 만듭니다. 게이트웨이, 커머스 백엔드(툴 레이어·정책 엔진·변경셋·저장소), 에이전트 런타임(하네스), 평가 러너까지 한 Cargo 워크스페이스에 있습니다. 프런트엔드는 Next.js이고 게이트웨이를 거쳐 이 워크스페이스의 REST와 채팅 API를 부릅니다.
 
 이 폴더는 **백엔드 구현 설계**입니다. 무엇을 만드는지(오퍼레이션·입출력·정책)는 [../api/](../api/README.md), 왜 이렇게 만드는지는 [../design.md](../design.md)와 [../architecture.md](../architecture.md), 웹은 [../frontend/](../frontend/README.md)에 있습니다.
@@ -162,7 +164,7 @@ crates/domains/catalog/src/
 ```
 
 - 오퍼레이션의 `OpMeta`는 `crates/domains/{domain}/src/{resource}/{tool}.rs`에 하나만 있습니다. 사람 전용 엔드포인트도 같습니다(`sales.gift_order.accept` → `sales/src/gift_order/accept_gift_order.rs`).
-- `cargo xtask check-layout [domain…]`이 등록된 오퍼레이션마다 어디 있고 어디에 있어야 하는지 대조하고("layout follows domain/resource/tool"), `cargo xtask check-coverage [domain…]`이 명세의 툴 291개와 사람 전용 엔드포인트 18개가 모두 만들어졌는지 봅니다("every specified operation is built"). 변경셋의 승인·거절·되돌리기 세 엔드포인트는 레지스트리가 아니라 `acom-http`에 있습니다. 둘 다 CI 게이트입니다.
+- `cargo xtask check-layout [domain…]`이 등록된 오퍼레이션마다 어디 있고 어디에 있어야 하는지 대조하고("layout follows domain/resource/tool"), `cargo xtask check-coverage [domain…]`이 명세의 툴 298개와 사람 전용 엔드포인트 23개가 모두 만들어졌는지 봅니다("every specified operation is built"). 변경셋의 승인·거절·되돌리기 세 엔드포인트는 레지스트리가 아니라 `acom-http`에 있습니다. 둘 다 CI 게이트입니다.
 - 다른 도메인의 기능이 필요하면 그 도메인의 `service/for_{내 도메인}.rs`에 함수를 더합니다(테이블을 직접 읽지 않음).
 
 ---

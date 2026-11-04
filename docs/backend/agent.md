@@ -1,5 +1,7 @@
 # agent 서비스 (에이전트 런타임)
 
+[README](../../README.md) › [docs](../README.md) › [back end](README.md)
+
 사람의 말 한 마디를 툴 호출로 바꾸고, 결과를 UI 블록으로 돌려주는 런타임입니다. [../design.md](../design.md) §5(하네스)와 §6(UI 프로토콜)을 Rust로 구현합니다. 커머스 규칙은 하나도 갖지 않습니다. 규칙은 `commerce`가 강제하고, 에이전트는 그 결과(체크·에러·승인 필요)를 사람에게 보여 줍니다.
 
 ```
@@ -226,7 +228,7 @@ route_when_said: [weekend sale, coupon, banner, needs me]   # 모델 없이 이 
 
 ### 10.1 Ailism Bot의 분석
 
-Ailism Bot([../api/platform.md](../api/platform.md#bot))의 한 주기는 턴이 아니라 `acom-agent`의 `bot::analyze`입니다(agent 서비스 `POST /bot/analyze`, 게이트웨이만 부름). `get_bot_status`로 설정을 읽고, 켜진 영역마다 정해진 읽기 툴을 정해진 인자로 부릅니다(가격: `search_products` 가격순·`get_policy price_floor`·진행 중 프로모션, 재고: 재고 적은 순, 프로모션: 다음 7일 프로모션·재고 많은 순·어제 매출 변화, 머천다이징: 메인 슬롯·컬렉션, 상품 정보: 최신 상품, 반품: 기다리는 요청, 문의·리뷰: 답 없는 문의·낮은 리뷰, 커뮤니티: 게시판마다 신고된 글). 이상 신호는 규칙으로 뽑고(원가 아래 가격, 품절 사이즈, 어제 매출 감소, 사진 없는 상품, 기다리는 반품·문의, 신고된 글), 열린 할 일·열린 피드백·최근 결정과 함께 `bot.model`에 `prompts/bot.md`로 보고서를 받습니다(가이드 디코딩, 제안 수는 `bot.max_proposals_per_cycle` 이하, 두 번까지 시도). 근거(`evidence`) 가운데 스냅샷에 없는 숫자가 든 줄은 버립니다. 쓰기 툴은 부르지 않고, 제안을 거르고 할 일로 여는 것은 commerce가 합니다.
+Ailism Bot([../api/platform.md](../api/platform.md#bot))의 한 주기는 턴이 아니라 `acom-agent`의 `bot::analyze`입니다(agent 서비스 `POST /bot/analyze`, 게이트웨이만 부름). `get_bot_status`로 설정을 읽고, 켜진 영역마다 정해진 읽기 툴을 정해진 인자로 부릅니다(가격: `search_products` 가격순·`get_policy price_floor`·진행 중 프로모션, 재고: 재고 적은 순, 프로모션: 다음 7일 프로모션·재고 많은 순·어제 매출 변화, 머천다이징: 메인 슬롯·컬렉션, 상품 정보: 최신 상품, 반품: 기다리는 요청, 문의·리뷰: 답 없는 문의·낮은 리뷰, 커뮤니티: 게시판마다 신고된 글). 이상 신호는 규칙으로 뽑고(원가 아래 가격, 품절 사이즈, 어제 매출 감소, 사진 없는 상품, 기다리는 반품·문의, 신고된 글), 열린 할 일·열린 피드백·최근 결정과 함께 `bot.model`에 [prompts/bot.md](../../agents/prompts/bot.md)로 보고서를 받습니다(가이드 디코딩, 제안 수는 `bot.max_proposals_per_cycle` 이하, 두 번까지 시도). 근거(`evidence`) 가운데 스냅샷에 없는 숫자가 든 줄은 버립니다. 쓰기 툴은 부르지 않고, 제안을 거르고 할 일로 여는 것은 commerce가 합니다.
 
 ---
 
