@@ -418,9 +418,14 @@ pub struct Bound {
 }
 
 /// A value the plan wrote as a reference to a step it uses (`uses.suggest.lines`,
-/// `suggest.lines`, or just `uses.suggest` for the same-named field): that result's value.
+/// `suggest.lines`, or just `uses.suggest` for the same-named field), also written as a template
+/// (`{{suggest.lines}}`): that result's value.
 fn referenced(v: &Value, field: &str, used: &[&StepRecord]) -> Option<(String, Value)> {
     let s = v.as_str()?.trim();
+    let s = s
+        .trim_start_matches(['$', '{'])
+        .trim_end_matches('}')
+        .trim();
     let s = s
         .strip_prefix("uses.")
         .or_else(|| s.strip_prefix("uses:"))
@@ -1508,6 +1513,39 @@ mod tests {
             b.notes.iter().any(|n| n == "query: empty, left out"),
             "{:?}",
             b.notes
+        );
+    }
+
+    #[test]
+    fn a_reference_to_a_used_step_can_be_written_as_a_template() {
+        let m = manifest();
+        let lines = json!([{"variant_id": "var_a", "order_quantity": 3}]);
+        let mut read = record("suggest", get(&m, "search_products"), json!({}));
+        read.output = Some(json!({"lines": lines, "cover": {"days": 14}}));
+        for written in [
+            "suggest.lines",
+            "uses.suggest.lines",
+            "{{suggest.lines}}",
+            "{{ suggest.lines }}",
+            "{suggest.lines}",
+            "${suggest.lines}",
+        ] {
+            let found = referenced(&json!(written), "lines", &[&read]);
+            assert_eq!(
+                found,
+                Some(("suggest".to_owned(), lines.clone())),
+                "{written}"
+            );
+        }
+        assert_eq!(
+            referenced(&json!("{{suggest.cover.days}}"), "x", &[&read]).map(|(_, v)| v),
+            Some(json!(14))
+        );
+        // Nothing to take: a field the result does not have, a step the plan does not use.
+        assert_eq!(referenced(&json!("{{suggest.total}}"), "x", &[&read]), None);
+        assert_eq!(
+            referenced(&json!("{{other.lines}}"), "lines", &[&read]),
+            None
         );
     }
 
