@@ -99,7 +99,7 @@ Method: [eval/README.md](eval/README.md).
 | **Muse Voice Transcribe** | Meta Model API | The composer's microphone: speech becomes the draft message, with the names on the screen (products, sizes) as spelling hints ([docs/api/chat.md](docs/api/chat.md) §4); used when `META_API_KEY` and `VOICE_MODEL` are set. |
 | **Muse Image** | Meta Model API | The photos of all 1,009 demo products, one for each color (2,051 files), made offline with each response id kept beside its photo ([seed/demo/catalog_content.yml](seed/demo/catalog_content.yml), [seed/demo/03_catalog.yml](seed/demo/03_catalog.yml)). In the product: `generate_page_image` draws the picture across the top of a curated page at preview, so the person approving sees it; shoppers see it only after approval ([docs/api/catalog.md](docs/api/catalog.md) page_image). Used when `META_API_KEY` and `IMAGE_MODEL` are set; otherwise a placeholder that says so. |
 
-**The proof is in [docs/meta-models.md](docs/meta-models.md).** Each of the 2,051 product photos carries the id of the Muse Image response that made it, and those ids match the seed and a list of all 2,128 calls ($20.94). The 6,390 Glimmer calls that wrote the store's text are listed the same way.
+**The proof is in [docs/meta-models.md](docs/meta-models.md).** Each of the 2,051 product photos carries the id of the Muse Image response that made it, and those ids match the seed and a list of all 2,128 calls ($20.94). The 6,390 Glimmer calls that wrote the store's text are listed too; Glimmer runs on our own GPU, so that list is our own record.
 
 ![The Cozy knits page in the demo video, with the banner Muse Image drew.](docs/img/evidence-page-image-live.jpg)
 

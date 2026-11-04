@@ -2,12 +2,15 @@
 
 [README](../README.md) › [docs](README.md)
 
-Every number here comes from our own call logs or from files in this repository, and the commands below can be run on a checkout. Response ids can only be confirmed by Meta; what a reader can check is that they are consistent across the photos, the seed and the call lists.
+Every number here comes from our own call logs or from files in this repository, and the commands below can be run on a checkout. How far a reader can check them differs by model:
+
+- Muse Image runs on Meta's API, so only Meta can confirm its response ids. A reader can check that they agree across the photos, the seed and the call list.
+- Muse Glimmer runs on our own GPU, so its ids come from our own server. Its call list is our own record, which no one outside can confirm.
 
 | Model | What it did | How much | Proof |
 |---|---|---|---|
 | **Muse Image** | The photos of all 1,009 demo products, one for each color; the picture at the top of a curated page, at preview | 2,094 images made in 2,128 recorded calls, 2,051 photos in the store | Each photo names its API response; [the list of every call](evidence/muse-image-calls.csv); screenshots |
-| **Muse Glimmer 30B** | Every agent step on the live demo; offline, the copy of 991 products and the text of 4,140 reviews | 390 evaluation runs on Nov 3; 6,390 content calls, 4.1 million tokens | [Evaluation reports](../eval/results/2026-11-03-glimmer-judged.md); [the list of every content call](evidence/glimmer-content-calls.csv); [how we serve it](serving.md) |
+| **Muse Glimmer 30B** | Every agent step on the live demo; offline, the copy of 991 products and the text of 4,140 reviews | 390 evaluation runs on Nov 3; 6,390 content calls, 4.1 million tokens | [Evaluation reports](../eval/results/2026-11-03-glimmer-judged.md); [the list of every content call](evidence/glimmer-content-calls.csv), our own record; [how we serve it](serving.md) |
 | **Muse Voice Transcribe** | The composer's microphone | Shown live in the demo video, with a test voice | The code and a screenshot; no call log is kept |
 | **Muse Spark** | Wired as planner and fallback, off on the live demo | No result here comes from it | [agents/models.yml](../agents/models.yml) |
 
@@ -57,7 +60,7 @@ Image search and web search are off, so the pictures are drawn from the prompt a
 
 ### Every run
 
-Times are in UTC. Cost is what our tool recorded at $0.01 an image.
+Run names carry Korean time (UTC+9); the times in the call lists are UTC. Cost is what our tool recorded at $0.01 an image.
 
 | Run | What it made | Images | Refused | Cost |
 |---|---|---|---|---|
@@ -93,6 +96,14 @@ SELECT model, count(*) FROM agent.model_call GROUP BY model;
 ```
 
 On Nov 3 every model call of the 390 runs in [Results](../README.md#results) went to it: [the judging](../eval/results/2026-11-03-glimmer-judged.md), and the reports for held-out on [A-Commerce tools](../eval/results/2026-11-03-glimmer-heldout-acom.md), [the facade](../eval/results/2026-11-03-glimmer-heldout-facade.md) and [a2api](../eval/results/2026-11-03-glimmer-heldout-a2api.md).
+
+### Keeping it running
+
+Because we serve it ourselves, keeping it up was our work. From Oct 31 to Nov 3 the server died 42 times in 61 hours of team use, with the same misaligned-address error in vLLM and in the kernel log.
+
+We changed one thing at a time under the same load. With stock vLLM 0.28.0 it crashed after 14 minutes. With cuDNN 9.27 in place of the 9.20 it ships, and nothing else changed, it answered 10,654 requests in 40 minutes with no crash, at 72 tokens/s. The demo has run that image since Nov 3.
+
+The fix is NVIDIA's. Our part was finding which fix applies and measuring that it holds. Each setting ran once, so this is strong evidence, not proof. [docs/serving.md](serving.md) has every run, the limits, why each flag is there, and the scripts to measure it again.
 
 ### The store's text, offline
 
