@@ -100,7 +100,7 @@ Method: [eval/README.md](eval/README.md).
 | **Muse Voice Transcribe** | Meta Model API | The composer's microphone: speech becomes the draft message, with the names on the screen (products, sizes) as spelling hints ([docs/api/chat.md](docs/api/chat.md) §4); used when `META_API_KEY` and `VOICE_MODEL` are set. |
 | **Muse Image** | Meta Model API | The photos of all 1,009 demo products, one for each color (2,051 files), made offline with each response id kept beside its photo ([seed/demo/catalog_content.yml](seed/demo/catalog_content.yml), [seed/demo/03_catalog.yml](seed/demo/03_catalog.yml)). In the product: `generate_page_image` draws the picture across the top of a curated page at preview, so the person approving sees it; shoppers see it only after approval ([docs/api/catalog.md](docs/api/catalog.md) page_image). Used when `META_API_KEY` and `IMAGE_MODEL` are set; otherwise a placeholder that says so. |
 
-**The proof is in [docs/meta-models.md](docs/meta-models.md).** Each of the 2,051 product photos carries the id of the Muse Image response that made it, and those ids match the seed and a list of the 2,128 offline calls behind them ($20.94). The 6,390 Glimmer calls that wrote the store's text are listed too; Glimmer runs on our own GPU, so that list is our own record.
+**The proof is in [docs/meta-models.md](docs/meta-models.md).** Each of the 2,051 product photos carries the id of the Muse Image response that made it, and those ids match the seed and a list of the 2,128 offline calls behind them. The 6,390 Glimmer calls that wrote the store's text are listed too; Glimmer runs on our own GPU, so that list is our own record.
 
 ![The Cozy knits page in the demo video, with the banner Muse Image drew.](docs/img/evidence-page-image-live.jpg)
 
@@ -296,6 +296,9 @@ The back end is complete for the showcase: every specified operation is built. T
 - [ ] A tool that links a product to a seller (today only the seed does).
 - [ ] Endpoints that issue the code for re-authenticating a withdrawal and for sign-in id recovery (the flows accept such codes; nothing issues them yet).
 - [ ] Tier evaluation reads each member's orders one by one; a bulk reader from sales would make an all-member run fast.
+
+**Story**
+- [x] [Demo video (3 min)](https://youtu.be/KhHaOeO0g3s).
 
 Out of scope for the showcase: real payment, carrier, channel and messaging providers; a secret store for channel signing secrets; outside agents (the MCP endpoint is a placeholder crate, and the gateway does not yet sign outside clients in); settlement and taxes.
 
