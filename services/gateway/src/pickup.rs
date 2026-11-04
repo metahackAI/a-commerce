@@ -37,6 +37,7 @@ pub fn spawn(gw: Arc<Gateway>) {
     let (cycles, cycles_rx) = mpsc::unbounded_channel::<String>();
     tokio::spawn(work(gw.clone(), rx));
     tokio::spawn(work_cycles(gw.clone(), cycles_rx));
+    tokio::spawn(sweep(gw.clone(), tx.clone(), cycles.clone()));
     tokio::spawn(async move {
         let http = reqwest::Client::new();
         loop {
@@ -46,6 +47,77 @@ pub fn spawn(gw: Arc<Gateway>) {
             tokio::time::sleep(RECONNECT).await;
         }
     });
+}
+
+/// How often the gateway looks for bot work no event brought (it was not listening yet).
+const SWEEP: Duration = Duration::from_secs(60);
+
+/// Ailism Bot's work that came while the gateway was not following the events (a deploy, a
+/// restart, the demo store loaded again before it reconnected): cycles still observing and the
+/// bot's tasks nobody took. At start and every [`SWEEP`]. The workers check again before they
+/// act, so what an event also brought is done once.
+async fn sweep(
+    gw: Arc<Gateway>,
+    tasks: mpsc::UnboundedSender<String>,
+    cycles: mpsc::UnboundedSender<String>,
+) {
+    let http = reqwest::Client::new();
+    loop {
+        if let Err(e) = sweep_once(&gw, &http, &tasks, &cycles).await {
+            tracing::warn!(error = %e, "ailism bot: sweep");
+        }
+        tokio::time::sleep(SWEEP).await;
+    }
+}
+
+async fn sweep_once(
+    gw: &Gateway,
+    http: &reqwest::Client,
+    tasks: &mpsc::UnboundedSender<String>,
+    cycles: &mpsc::UnboundedSender<String>,
+) -> Result<(), String> {
+    let token = system_token(gw, "req_bot_sweep")?;
+    let open = commerce_get(gw, http, &token, "/v1/platform/bot/cycles?limit=5").await?;
+    for id in observing(&open) {
+        let _ = cycles.send(id);
+    }
+    let waiting = commerce_get(
+        gw,
+        http,
+        &token,
+        "/v1/platform/tasks?state=needs_you&origin=agent_noticed&limit=50",
+    )
+    .await?;
+    for id in untaken_bot_tasks(&waiting) {
+        let _ = tasks.send(id);
+    }
+    Ok(())
+}
+
+/// The cycles of a `list_bot_cycles` page still waiting for their analysis.
+fn observing(page: &Value) -> Vec<String> {
+    page["items"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|c| c["state"] == "observing")
+        .filter_map(|c| c["id"].as_str().map(str::to_owned))
+        .collect()
+}
+
+/// The bot's tasks of a `list_tasks` page that no agent took yet: no change set, no conversation.
+fn untaken_bot_tasks(page: &Value) -> Vec<String> {
+    page["items"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|t| {
+            t["watcher"] == "ailism_bot"
+                && t["change_set_id"].is_null()
+                && t["conversation_id"].is_null()
+        })
+        .filter_map(|t| t["id"].as_str().map(str::to_owned))
+        .collect()
 }
 
 /// A token for the gateway's own reads in commerce.
@@ -137,6 +209,17 @@ async fn work_cycles(gw: Arc<Gateway>, mut rx: mpsc::UnboundedReceiver<String>) 
 async fn run_cycle(gw: &Gateway, http: &reqwest::Client, cycle: &str) -> Result<String, String> {
     let request_id = format!("req_bot_{cycle}");
     let system = system_token_as(gw, &request_id, BOT_SUBJECT)?;
+    // An event and the sweep can both bring a cycle: only one still observing is analysed.
+    let this = commerce_get(
+        gw,
+        http,
+        &system,
+        &format!("/v1/platform/bot/cycles/{cycle}"),
+    )
+    .await?;
+    if this["state"] != "observing" {
+        return Ok(format!("already {}", this["state"].as_str().unwrap_or("?")));
+    }
     let status = commerce_get(gw, http, &system, "/v1/platform/bot").await?;
     let analysed = match status["acts_as"].as_str() {
         None => Err(
@@ -298,8 +381,10 @@ async fn pick_up(gw: &Gateway, http: &reqwest::Client, task: &str) -> Result<Str
     };
     let open = matches!(t["state"].as_str(), Some("needs_you" | "working"));
     let drafted = !t["related"]["change_set_id"].is_null();
+    // A turn already ran for it (it drafted nothing and the task waits for a person).
+    let worked = !t["related"]["conversation_id"].is_null();
     let request = t["request"].as_str().map(str::trim).unwrap_or_default();
-    if !open || drafted || request.is_empty() {
+    if !open || drafted || worked || request.is_empty() {
         return Ok("nothing to do".into());
     }
 
@@ -434,6 +519,18 @@ mod tests {
             r#"{"task_id": "task_2", "state": "working", "created": true, "origin": "automation"}"#;
         assert_eq!(new_agent_task("task.updated", automation), None);
         assert_eq!(new_agent_task("change_set.updated", new), None);
+    }
+
+    #[test]
+    fn the_sweep_finds_cycles_still_observing_and_bot_tasks_nobody_took() {
+        let cycles = json!({"items": [{"id": "bcy_1", "state": "observing"}, {"id": "bcy_0", "state": "done"}]});
+        assert_eq!(observing(&cycles), ["bcy_1"]);
+        let tasks = json!({"items": [
+            {"id": "task_bot_1", "watcher": "ailism_bot", "change_set_id": null, "conversation_id": null},
+            {"id": "task_bot_2", "watcher": "ailism_bot", "change_set_id": "cs_1", "conversation_id": "conv_1"},
+            {"id": "task_bot_3", "watcher": "ailism_bot", "change_set_id": null, "conversation_id": "conv_2"},
+            {"id": "task_linen", "watcher": "stock_out_forecast", "change_set_id": null, "conversation_id": null}]});
+        assert_eq!(untaken_bot_tasks(&tasks), ["task_bot_1"]);
     }
 
     #[test]
