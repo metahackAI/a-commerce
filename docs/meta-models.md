@@ -9,7 +9,7 @@ Every number here comes from our own call logs or from files in this repository,
 
 | Model | What it did | How much | Proof |
 |---|---|---|---|
-| **Muse Image** | The photos of all 1,009 demo products, one for each color; the picture at the top of a curated page, at preview | 2,094 images made in 2,128 recorded calls, 2,051 photos in the store | Each photo names its API response; [the list of every call](evidence/muse-image-calls.csv); screenshots |
+| **Muse Image** | The photos of all 1,009 demo products, one for each color; the picture at the top of a curated page, at preview | 2,094 images made in 2,128 recorded calls, 2,051 photos in the store | Each photo names its API response; [the list of every offline call](evidence/muse-image-calls.csv); screenshots of the live calls |
 | **Muse Glimmer 30B** | Every agent step on the live demo; offline, the copy of 991 products and the text of 4,140 reviews | 390 evaluation runs on Nov 3; 6,390 content calls, 4.1 million tokens | [Evaluation reports](../eval/results/2026-11-03-glimmer-judged.md); [the list of every content call](evidence/glimmer-content-calls.csv), our own record; [how we serve it](serving.md) |
 | **Muse Voice Transcribe** | The composer's microphone | Shown live in the demo video, with a test voice | The code and a screenshot; no call log is kept |
 | **Muse Spark** | Wired as planner and fallback, off on the live demo | No result here comes from it | [agents/models.yml](../agents/models.yml) |
@@ -79,7 +79,7 @@ Run names carry Korean time (UTC+9); the times in the call lists are UTC. Cost i
 
 ### In the product
 
-`generate_page_image` ([code](../crates/domains/catalog/src/page_image/generate_page_image.rs)) draws the picture at preview, so the person approving sees it first, and marks it as generated. Without `META_API_KEY` and `IMAGE_MODEL` it makes a placeholder that says so. From the demo video:
+`generate_page_image` ([code](../crates/domains/catalog/src/page_image/generate_page_image.rs)) draws the picture at preview, so the person approving sees it first, and marks it as generated. Without `META_API_KEY` and `IMAGE_MODEL` it makes a placeholder that says so. These live calls are not in the call list, which covers the offline runs above; the screenshots are their only record here. From the demo video:
 
 ![The change set shows the picture with Generator: muse-image-1.0 and AI generated: Yes, before anyone approves.](img/evidence-page-image-preview.jpg)
 
