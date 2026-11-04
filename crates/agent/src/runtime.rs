@@ -63,23 +63,7 @@ const REPLY_MAX_CHARS: usize = 600;
 /// listed in parentheses for the agent, ending on a whole word.
 fn title_from_request(text: &str) -> String {
     const MAX: usize = 80;
-    let is_id = |w: &str| {
-        let w = w.trim();
-        w.contains('_') && w.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
-    };
-    let mut plain = String::new();
-    let mut rest = text;
-    while let Some(open) = rest.find('(') {
-        let Some(close) = rest[open..].find(')') else { break };
-        let inside = &rest[open + 1..open + close];
-        if inside.split(',').all(is_id) {
-            plain.push_str(rest[..open].trim_end());
-        } else {
-            plain.push_str(&rest[..=open + close]);
-        }
-        rest = &rest[open + close + 1..];
-    }
-    plain.push_str(rest);
+    let plain = checker::without_id_lists(text);
     let plain = plain.trim();
     let first = plain
         .find(['.', ':', '?', '!'])
@@ -4355,6 +4339,11 @@ impl<'r> Turn<'r> {
         );
         owned.push(facts);
         let sources: Vec<&Value> = owned.iter().collect();
+        // Someone's words from the results (a shopper's question, a post) say nothing of what was
+        // done with them.
+        if checker::only_quotes(&text, &sources) {
+            return fallback;
+        }
         let asked = self.text.clone();
         let mut unsupported = checker::unsupported_numbers(&text, &sources, &[&asked]);
         // One more try, naming the numbers no result holds (a sum the model did itself, a

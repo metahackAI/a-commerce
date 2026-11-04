@@ -2547,7 +2547,10 @@ async fn a_reply_that_stays_a_dump_of_the_results_gives_way_to_the_plain_reply()
     };
     let dump = "list_tiers ... member_count 1284 ...";
     let reply = run(dump, dump).await;
-    assert!(!reply.contains("list_tiers") && !reply.contains("not answering"), "{reply}");
+    assert!(
+        !reply.contains("list_tiers") && !reply.contains("not answering"),
+        "{reply}"
+    );
     // One name left is a slip in an answer, and the answer is still worth more than no answer.
     let slip = "VIP has the most members, per list_tiers.";
     assert_eq!(run(slip, slip).await, slip);
@@ -3039,12 +3042,18 @@ fn a_title_from_a_request_reads_as_a_title() {
         title_from_request("Publish col_cozy_knits (the winter one) today"),
         "Publish col_cozy_knits (the winter one) today"
     );
-    assert_eq!(title_from_request("Mark down the 19.99 tee"), "Mark down the 19.99 tee");
+    assert_eq!(
+        title_from_request("Mark down the 19.99 tee"),
+        "Mark down the 19.99 tee"
+    );
     // Too long for a card: it ends on a whole word.
     let long = title_from_request(
         "Answer the question about the Packable windbreaker's hood from the product's details and tell them",
     );
-    assert_eq!(long, "Answer the question about the Packable windbreaker's hood from the product's…");
+    assert_eq!(
+        long,
+        "Answer the question about the Packable windbreaker's hood from the product's…"
+    );
     assert!(long.chars().count() <= 80);
     let wide = title_from_request(&"가나다라 ".repeat(40));
     assert!(wide.ends_with('…') && wide.chars().count() <= 80, "{wide}");
