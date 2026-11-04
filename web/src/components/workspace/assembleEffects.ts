@@ -72,6 +72,22 @@ export function fillTextIn(piece: HTMLElement, delay: number): void {
   }
 }
 
+/**
+ * The muted color as a canvas can use it. The token's own text may be a form a canvas does not parse,
+ * and a canvas ignores what it cannot parse and stays black, so it is read as the browser resolved it,
+ * and anything else keeps the light fallback.
+ */
+function blankColor(parent: HTMLElement, ctx: CanvasRenderingContext2D): string {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'display:none;background-color:var(--color-background-muted);';
+  parent.appendChild(probe);
+  const resolved = getComputedStyle(probe).backgroundColor;
+  probe.remove();
+  ctx.fillStyle = '#ececec';
+  if (resolved && resolved !== 'transparent' && resolved !== 'rgba(0, 0, 0, 0)') ctx.fillStyle = resolved;
+  return String(ctx.fillStyle);
+}
+
 /** The picture in `cols` by `rows` cells, cropped as `object-fit: cover` crops it. */
 function mosaicLayer(img: HTMLImageElement, cols: number, rows: number, width: number, height: number): HTMLCanvasElement {
   const layer = document.createElement('canvas');
@@ -104,7 +120,7 @@ export function mosaicIn(img: HTMLImageElement, delay: number): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   ctx.imageSmoothingEnabled = false;
-  const blank = getComputedStyle(document.documentElement).getPropertyValue('--color-background-muted').trim() || '#ececec';
+  const blank = blankColor(parent, ctx);
   ctx.fillStyle = blank;
   ctx.fillRect(0, 0, width, height);
   parent.appendChild(canvas);
