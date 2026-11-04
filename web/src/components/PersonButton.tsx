@@ -31,7 +31,7 @@ export interface PersonButtonProps {
    */
   onError?: (error: ApiErrorBody, status: number) => boolean | void;
   /** `secondary` for a decision that isn't the main one on the page (Reject next to Approve). */
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'ghost';
   /** `sm` beside other small buttons, as in a table row. */
   size?: 'sm' | 'md';
   isDisabled?: boolean;
@@ -83,7 +83,7 @@ export function PersonButton({action, onDone, onError, variant = 'primary', size
         title={action.label}
         description={error ?? action.confirm}
         actionLabel={action.label}
-        actionVariant={variant === 'secondary' ? 'secondary' : 'primary'}
+        actionVariant={variant === 'primary' ? 'primary' : 'secondary'}
         isActionLoading={isSending}
         onAction={send}
       />

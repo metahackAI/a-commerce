@@ -4,16 +4,15 @@
 // working, done. Each row is an AI target; its change set shows how far it got. Dismiss and undo
 // are a person's decisions and go through PersonButton.
 
-import {Fragment} from 'react';
 import {useRouter} from 'next/navigation';
-import {HStack, VStack} from '@astryxdesign/core/Layout';
+import {Card} from '@astryxdesign/core/Card';
+import {HStack, StackItem, VStack} from '@astryxdesign/core/Layout';
 import {Text} from '@astryxdesign/core/Text';
 import {Link} from '@astryxdesign/core/Link';
 import {Button} from '@astryxdesign/core/Button';
 import {StatusDot} from '@astryxdesign/core/StatusDot';
 import {EmptyState} from '@astryxdesign/core/EmptyState';
-import {Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow} from '@astryxdesign/core/Table';
-import {VisuallyHidden} from '@astryxdesign/core/VisuallyHidden';
+import {Table, TableBody, TableCell} from '@astryxdesign/core/Table';
 import {useMediaQuery} from '@astryxdesign/core/hooks';
 
 import {PersonButton} from '@/components/PersonButton';
@@ -23,12 +22,12 @@ import type {ChangeSet, TaskState, TaskSummary} from '@/app/bo/_lib/types';
 import {useBoSession} from './BoSession';
 import {StateToken} from './StateToken';
 import type {IntentsFor as IntentsLookup} from './ChangeParts';
-import {AskHeaderCell, TargetBlock, TargetRow} from './targets';
+import {TargetBlock, TargetRow} from './targets';
 
-export const TASK_GROUPS: {state: TaskState; title: string; empty: string}[] = [
-  {state: 'needs_you', title: 'Needs your decision', empty: 'Nothing is waiting for you.'},
-  {state: 'working', title: 'Agent is working', empty: 'The agent is not working on anything right now.'},
-  {state: 'done', title: 'Done', empty: 'Nothing finished yet.'},
+export const TASK_GROUPS: {state: TaskState; title: string; hint?: string; empty: string}[] = [
+  {state: 'needs_you', title: 'Needs your decision', hint: 'Nothing changes in the store until you approve.', empty: 'Nothing is waiting for you.'},
+  {state: 'working', title: 'Agent is working', hint: 'It comes back here when it needs you.', empty: 'The agent is not working on anything right now.'},
+  {state: 'done', title: 'Done', hint: 'What went live, and what can still be undone.', empty: 'Nothing finished yet.'},
   {state: 'dismissed', title: 'Dismissed', empty: 'Nothing dismissed.'},
 ];
 
@@ -61,13 +60,16 @@ function watcherLine(task: TaskSummary): string | null {
   return `Watcher ${words(task.watcher)} checked again ${dateTime(task.updated_at)}`;
 }
 
-/** The line about a task's change set: its state and how its checks went. */
-function changeSetLine(cs: Pick<ChangeSet, 'number' | 'state' | 'version' | 'checks_summary'> | undefined) {
+/**
+ * The line about a task's change set: its state and how its checks went. Under "Needs your
+ * decision" that it is waiting for approval goes without saying.
+ */
+function changeSetLine(cs: Pick<ChangeSet, 'number' | 'state' | 'version' | 'checks_summary'> | undefined, group: TaskState) {
   if (!cs) return null;
   const checks = cs.checks_summary;
   return (
     <HStack gap={3} vAlign="center" wrap="wrap">
-      <StateToken state={cs.state} />
+      {group === 'needs_you' && cs.state === 'waiting_for_approval' ? null : <StateToken state={cs.state} />}
       {checks && checks.total > 0 ? (
         <StateToken
           state={checks.failed > 0 ? 'failed' : 'passed'}
@@ -84,6 +86,9 @@ export interface TaskTableProps {
   blockId?: string;
   intentsFor?: IntentsLookup;
 }
+
+/** The buttons' column, as wide in every group so the columns line up from one to the next. */
+const ACTIONS = {width: 190, minWidth: 190, maxWidth: 'none'} as const;
 
 /** Below this width the inbox stacks each task in one column: a phone has no room for three. */
 const NARROW = '(max-width: 640px)';
@@ -113,7 +118,7 @@ function TaskRow({
   const what = (
     <VStack gap={0.5}>
       <Link href={`/bo/tasks/${encodeURIComponent(task.id)}`} color="primary">
-        {task.title}
+        <Text weight="semibold">{task.title}</Text>
       </Link>
       <Text type="supporting" color="secondary">
         {`${task.watcher === 'ailism_bot' ? 'Ailism Bot proposed' : (ORIGIN[task.origin] ?? words(task.origin))} · ${dateTime(task.at)}${task.tag ? ` · ${words(task.tag)}` : ''}`}
@@ -128,13 +133,13 @@ function TaskRow({
           {watched}
         </Text>
       ) : null}
-      {changeSetLine(cs)}
+      {changeSetLine(cs, task.state)}
     </VStack>
   );
   const actions = (
     <HStack gap={1} hAlign={isNarrow ? 'start' : 'end'} wrap="wrap">
       {review ? (
-        <Button label="Review" size="sm" href={`/bo/change-sets/${encodeURIComponent(task.change_set_id ?? '')}`} />
+        <Button label="Review" size="sm" variant="primary" href={`/bo/change-sets/${encodeURIComponent(task.change_set_id ?? '')}`} />
       ) : task.change_set_id ? (
         <Button label="Change set" size="sm" variant="ghost" href={`/bo/change-sets/${encodeURIComponent(task.change_set_id)}`} />
       ) : (
@@ -161,7 +166,7 @@ function TaskRow({
             path: `/v1/platform/tasks/${encodeURIComponent(task.id)}/dismiss`,
             confirm: `Dismiss “${task.title}”? A linked change set that is still waiting is rejected too. If the same thing happens again, a new task appears.`,
           }}
-          variant="secondary"
+          variant="ghost"
           size="sm"
           onDone={() => router.refresh()}
         />
@@ -189,22 +194,20 @@ function TaskRow({
         </TableCell>
       ) : (
         <>
-          <TableCell>{what}</TableCell>
+          <TableCell style={{width: '44%'}}>{what}</TableCell>
           <TableCell>{where}</TableCell>
-          <TableCell style={{maxWidth: 'none'}}>{actions}</TableCell>
+          <TableCell style={ACTIONS}>{actions}</TableCell>
         </>
       )}
     </TargetRow>
   );
 }
 
-/** Shrink a column to its content (the buttons), so the text columns get the width. */
-const FIT = {width: '1%'} as const;
-
 /**
- * Tasks in their groups, as one table so the columns line up from group to group: each group is
- * a row with its name and count, then its tasks (as Linear groups a list by status). The group
- * says the tasks' state, so the rows don't repeat it.
+ * Tasks in their groups, each group its own card so what needs a person stands apart from what the
+ * agent is doing and what is finished: a dot, the group's name and count, what it means, then its
+ * tasks. The group says the tasks' state, so the rows don't repeat it. Finished work sits on a muted
+ * card, the quietest thing on the page.
  */
 export function TaskGroups({
   tasks,
@@ -218,62 +221,52 @@ export function TaskGroups({
     return <EmptyState title="No tasks" description="Tasks appear when you ask the agent for something, or when it notices something that needs you." />;
   }
   return (
-    <Table density="compact" verticalAlign="top" hasHover>
-      <TableHeader>
-        <TableRow isHeaderRow>
-          {isNarrow ? (
-            <TableHeaderCell>Task</TableHeaderCell>
-          ) : (
-            <>
-              <TableHeaderCell style={{width: '50%'}}>Task</TableHeaderCell>
-              <TableHeaderCell style={{width: '50%'}}>Where it is</TableHeaderCell>
-              <TableHeaderCell style={FIT}>
-                <VisuallyHidden>Actions</VisuallyHidden>
-              </TableHeaderCell>
-            </>
-          )}
-          <AskHeaderCell />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {TASK_GROUPS.filter(g => states.includes(g.state)).map(g => {
-          const group = tasks.filter(t => t.state === g.state);
-          return (
-            <Fragment key={g.state}>
-              <TableRow>
-                <TableCell colSpan={isNarrow ? 2 : 4}>
-                  <VStack gap={0.5} paddingBlockStart={2}>
-                    <HStack gap={2} vAlign="center">
-                      <Text type="label" weight="semibold">
-                        {g.title}
-                      </Text>
-                      <Text type="supporting" color="secondary">
-                        {group.length}
-                      </Text>
-                    </HStack>
-                    {group.length === 0 ? (
-                      <Text type="supporting" color="secondary">
-                        {g.empty}
-                      </Text>
-                    ) : null}
-                  </VStack>
-                </TableCell>
-              </TableRow>
-              {group.map(t => (
-                <TaskRow
-                  key={t.id}
-                  task={t}
-                  cs={t.change_set_id ? changeSets[t.change_set_id] : undefined}
-                  blockId={blockId}
-                  intents={intentsFor?.('task_item', t.id)}
-                  isNarrow={isNarrow}
-                />
-              ))}
-            </Fragment>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <VStack gap={4}>
+      {TASK_GROUPS.filter(g => states.includes(g.state)).map(g => {
+        const group = tasks.filter(t => t.state === g.state);
+        return (
+          <Card key={g.state} variant={g.state === 'needs_you' || g.state === 'working' ? 'default' : 'muted'}>
+            <VStack gap={3}>
+              <HStack gap={2} vAlign="center" wrap="wrap">
+                {dot(g.state)}
+                <Text type="large" weight="semibold">
+                  {g.title}
+                </Text>
+                <Text type="supporting" color="secondary" hasTabularNumbers>
+                  {group.length}
+                </Text>
+                <StackItem size="fill" />
+                {g.hint && group.length > 0 && !isNarrow ? (
+                  <Text type="supporting" color="secondary">
+                    {g.hint}
+                  </Text>
+                ) : null}
+              </HStack>
+              {group.length === 0 ? (
+                <Text type="supporting" color="secondary">
+                  {g.empty}
+                </Text>
+              ) : (
+                <Table aria-label={g.title} verticalAlign="top" hasHover>
+                  <TableBody>
+                    {group.map(t => (
+                      <TaskRow
+                        key={t.id}
+                        task={t}
+                        cs={t.change_set_id ? changeSets[t.change_set_id] : undefined}
+                        blockId={blockId}
+                        intents={intentsFor?.('task_item', t.id)}
+                        isNarrow={isNarrow}
+                      />
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </VStack>
+          </Card>
+        );
+      })}
+    </VStack>
   );
 }
 
