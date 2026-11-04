@@ -149,12 +149,16 @@ function valueText(p: AdditionalProperty): string {
   return '';
 }
 
+const FEED_ONLY = new Set(['google_product_category', 'product_type']);
+
 export function ProductFacts({productId, facts}: {productId: string; facts: AdditionalProperty[]}) {
   const target = useAiTarget({kind: 'product_facts', label: 'Product details', ids: {product_id: productId}, term: 'schema:PropertyValue'});
+  // What a shopper reads: no feed-only classifications, no fact without a value.
+  const shown = facts.filter(f => !FEED_ONLY.has(f.name) && valueText(f));
   return (
     <VStack ref={target.ref} {...target.props}>
       <MetadataList>
-        {facts.map(f => (
+        {shown.map(f => (
           <MetadataListItem key={`${f.name}:${f.size ?? ''}`} label={words(f.name)}>
             {valueText(f)}
           </MetadataListItem>
