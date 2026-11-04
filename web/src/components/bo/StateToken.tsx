@@ -13,6 +13,7 @@ type TokenColor = 'default' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | '
 
 const GREEN = new Set([
   'live',
+  'opened',
   'completed',
   'delivered',
   'done',

@@ -9,7 +9,10 @@ import {useRouter} from 'next/navigation';
 import {HStack, StackItem, VStack} from '@astryxdesign/core/Layout';
 import {Text} from '@astryxdesign/core/Text';
 import {Link} from '@astryxdesign/core/Link';
+import {Blockquote} from '@astryxdesign/core/Blockquote';
 import {Button} from '@astryxdesign/core/Button';
+import {Card} from '@astryxdesign/core/Card';
+import {Spinner} from '@astryxdesign/core/Spinner';
 import {TextArea} from '@astryxdesign/core/TextArea';
 import {SegmentedControl, SegmentedControlItem} from '@astryxdesign/core/SegmentedControl';
 import {Token} from '@astryxdesign/core/Token';
@@ -245,13 +248,38 @@ function AskAgain({decision, onClose}: {decision: BotDecision; onClose: () => vo
 }
 
 /** One decision: what and why, where its change is, and what a person can do with it. */
+/** Where a decision's change is now, in a sentence, and what to press next. */
+function nextStep(d: BotDecision): {text: string; label?: string; href?: string} {
+  const cs = d.change_set_number ? `#${d.change_set_number}` : '';
+  const csHref = entityHref(d.change_set_id) ?? undefined;
+  const task = `/bo/tasks/${encodeURIComponent(d.task_id)}`;
+  switch (d.state) {
+    case 'waiting':
+      return {text: `Change set ${cs} is waiting for your approval.`, label: `Review ${cs}`, href: csHref};
+    case 'needs_you':
+      return {text: d.summary ?? 'The agent could not draft it; it waits for you.', label: 'Open the task', href: task};
+    case 'drafting':
+      return {text: 'The operations agent is drafting it.'};
+    case 'running':
+      return {text: `Change set ${cs} is running.`, label: `Change set ${cs}`, href: csHref};
+    case 'live':
+      return {text: `Change set ${cs} ran.`, label: `Change set ${cs}`, href: csHref};
+    case 'rejected':
+      return {text: d.summary ?? `Change set ${cs} was rejected.`, label: csHref ? `Change set ${cs}` : undefined, href: csHref};
+    default:
+      return {text: d.summary ?? STATE_LABEL[d.state] ?? words(d.state)};
+  }
+}
+
+/** One decision: what and why, where its change is, and what a person can do with it. */
 export function DecisionCard({decision, compact}: {decision: BotDecision; compact?: boolean}) {
   const session = useBoSession();
   const [open, setOpen] = useState<'again' | 'feedback' | null>(null);
   const effect = effectText(decision.expected_effect);
-  const csHref = entityHref(decision.change_set_id);
   const canAsk = canUseBot(session?.scopes) && !['running', 'live'].includes(decision.state);
   const feedback = Array.isArray(decision.feedback) ? decision.feedback : [];
+  const next = nextStep(decision);
+  const attention = decision.state === 'waiting' || decision.state === 'needs_you';
   return (
     <TargetCard
       target={{
@@ -271,74 +299,68 @@ export function DecisionCard({decision, compact}: {decision: BotDecision; compac
             <RiskToken risk={decision.risk} />
             <Text type="supporting" color="secondary">
               {dateTime(decision.at)}
-              {decision.revises ? ` · asked again from ${decision.revises}` : ''}
             </Text>
+            <Link href={`/bo/bot/history/${encodeURIComponent(decision.cycle_id)}`}>
+              <Text type="supporting">from its cycle</Text>
+            </Link>
+            {decision.revises ? (
+              <Text type="supporting" color="secondary">
+                · asked again
+              </Text>
+            ) : null}
           </HStack>
         </>
       }>
-      <VStack gap={2}>
+      <VStack gap={3}>
         <Text>{decision.reason}</Text>
-        {!compact && decision.evidence.length > 0 ? (
+        {!compact && (decision.evidence.length > 0 || effect) ? (
           <VStack gap={1}>
             {decision.evidence.map(e => (
               <Text key={e} type="supporting" color="secondary">
                 · {e}
               </Text>
             ))}
+            {effect ? (
+              <Text type="supporting" color="secondary">
+                Expected: {effect}
+              </Text>
+            ) : null}
           </VStack>
         ) : null}
-        {effect ? (
-          <Text type="supporting" color="secondary">
-            Expected: {effect}
-          </Text>
-        ) : null}
         {!compact ? (
-          <Text type="supporting" color="secondary">
-            Asked of the agent: “{decision.request}”
-          </Text>
+          <VStack gap={1}>
+            <Text type="supporting" color="secondary">
+              Asked of the operations agent
+            </Text>
+            <Blockquote>{decision.request}</Blockquote>
+          </VStack>
         ) : null}
-        {decision.summary ? (
-          <Text type="supporting" color="secondary">
-            {decision.summary}
-          </Text>
-        ) : null}
-        {!compact && decision.about.length > 0 ? (
-          <HStack gap={2} wrap="wrap">
-            {decision.about.map(a => {
-              const href = entityHref(a.id);
-              return href ? (
-                <Link key={a.id} href={href}>
-                  {a.id}
-                </Link>
-              ) : (
-                <Text key={a.id} type="supporting">
-                  {a.id}
-                </Text>
-              );
-            })}
+        <Card variant={attention ? 'default' : 'muted'}>
+          <HStack gap={3} vAlign="center" wrap="wrap">
+            <StackItem size="fill">
+              <HStack gap={2} vAlign="center">
+                {decision.state === 'drafting' ? <Spinner size="sm" /> : null}
+                <Text weight={attention ? 'semibold' : undefined}>{next.text}</Text>
+              </HStack>
+            </StackItem>
+            {next.label && next.href ? (
+              <Button label={next.label} size="sm" variant={attention ? 'primary' : 'secondary'} href={next.href} />
+            ) : null}
           </HStack>
-        ) : null}
+        </Card>
         {feedback.length > 0 ? <FeedbackList items={feedback} /> : null}
         <HStack gap={2} wrap="wrap" vAlign="center">
-          {csHref ? (
-            <Button
-              label={decision.state === 'waiting' ? `Review #${decision.change_set_number ?? ''}` : `Change set #${decision.change_set_number ?? ''}`}
-              size="sm"
-              variant={decision.state === 'waiting' ? 'primary' : 'secondary'}
-              href={csHref}
-            />
+          {decision.state !== 'needs_you' ? (
+            <Button label="Task" size="sm" variant="ghost" href={`/bo/tasks/${encodeURIComponent(decision.task_id)}`} />
           ) : null}
-          <Button label="Task" size="sm" variant="ghost" href={`/bo/tasks/${encodeURIComponent(decision.task_id)}`} />
           {canAsk ? <Button label="Ask again" size="sm" variant="ghost" onClick={() => setOpen(open === 'again' ? null : 'again')} /> : null}
           {canUseBot(session?.scopes) ? (
             <Button label="Feedback" size="sm" variant="ghost" onClick={() => setOpen(open === 'feedback' ? null : 'feedback')} />
           ) : null}
           {typeof decision.feedback === 'number' && decision.feedback > 0 ? (
-            <StackItem>
-              <Text type="supporting" color="secondary">
-                {decision.feedback} feedback
-              </Text>
-            </StackItem>
+            <Text type="supporting" color="secondary">
+              {decision.feedback} feedback
+            </Text>
           ) : null}
         </HStack>
         {open === 'again' ? <AskAgain decision={decision} onClose={() => setOpen(null)} /> : null}
