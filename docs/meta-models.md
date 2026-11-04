@@ -18,7 +18,7 @@ Every number here comes from our own call logs or from files in this repository,
 
 ### Every photo names the response that made it
 
-Each file carries the model and the response id in its metadata, and the mark for AI-generated media (IPTC `trainedAlgorithmicMedia`).
+The files Meta returned carry the mark for AI-generated media (IPTC `trainedAlgorithmicMedia`), with no signed manifest such as C2PA. When our tool resized them, it wrote that mark again and added a credit line with the model and the response id. So the credit line is our own note of an id Meta issued.
 
 ```bash
 grep -ao 'Generated with Muse Image[^"]*' web/public/media/products/prd_windbreaker-7f4a8e8c.webp
@@ -76,6 +76,18 @@ Run names carry Korean time (UTC+9); the times in the call lists are UTC. Cost i
 | **Total: 2,128 calls, Oct 31 to Nov 4** | | **2,094** | **28** | **$20.94** |
 
 2,051 of the 2,094 images are in the store. The others are pilots, checks and photos that were redone.
+
+### What ties the calls to our account
+
+The calls ran on our team's API key. The public lists leave the account out on purpose, and the API cannot show it either: we sent `store: false`, so looking up one of these responses answers `response_not_found`.
+
+The full logs do show it. With every image, Meta returned an `image_generation_call` id that holds the account's app id, the model and the time it was made, followed by what looks like a signature. Across all 2,094 images:
+
+- There is one app id and one model, `muse-image-1.0`.
+- They were made from Oct 31 11:44 UTC to Nov 4 05:05 UTC.
+- Each belongs to a response in the public list.
+
+These ids stay out of this repository because they name the account. We can show them to the organizers on request, and Meta is the one who can check them.
 
 ### In the product
 
