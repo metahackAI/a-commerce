@@ -3282,26 +3282,34 @@ impl<'r> Turn<'r> {
         if pointed.is_some() && (planned || self.text.to_lowercase().contains("tell me more")) {
             return pointed;
         }
-        // Several products read one by one, or compared: the answer is about them all.
-        let mut read: Vec<String> = self
+        let read: Vec<&Value> = self
             .history
             .iter()
             .filter(|r| r.tool == "get_product")
-            .filter_map(|r| shop::product_detail_id(r.output.as_ref()?))
+            .filter_map(|r| r.output.as_ref())
             .collect();
-        read.dedup();
-        if !planned && (read.len() > 1 || self.history.iter().any(|r| r.tool == "compare_products"))
-        {
+        let found = self
+            .last_output(|r| r.tool == "search_products")
+            .and_then(|r| r.output.as_ref())
+            .map(shop::items_of)
+            .unwrap_or_default();
+        if planned {
+            // Search ranks by likeness, so its first hit need not be the product they named.
+            let read_or_found = found.iter().chain(read.iter().copied());
+            if let Some(id) = shop::product_named(read_or_found, &self.text) {
+                return Some(id);
+            }
+        } else if read.len() > 1 || self.history.iter().any(|r| r.tool == "compare_products") {
+            // Several products read one by one, or compared: the answer is about them all.
             return None;
         }
-        if let Some(id) = read.pop() {
-            return Some(id);
+        if let Some(last) = read.last() {
+            return shop::product_detail_id(last);
         }
-        let found = self.last_output(|r| r.tool == "search_products")?;
-        let items = shop::items_of(found.output.as_ref()?);
-        (planned || items.len() == 1)
-            .then(|| items.first().and_then(shop::product_detail_id))
-            .flatten()
+        match found.as_slice() {
+            [only] => shop::product_detail_id(only),
+            _ => None,
+        }
     }
 
     /// Everything the shopper would want to know about the one product the turn is about, for the
