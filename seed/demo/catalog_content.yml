@@ -10,7 +10,7 @@
 # Photos (image, images by color) are drawn by Muse Image (muse-image-1.0, Meta Model API) from the
 # same facts, and checked before they go in; image_provenance names the run and the API response of each.
 # Reviews: generated store data, not from real shoppers. Shape by rule, text by Muse Glimmer from each
-# product's facts (notes/tools/product_reviews.py, run 20261104-120737-full); the rows are columns of catalog.review.
+# product's facts (notes/tools/product_reviews.py, runs 20261104-120737-full, 20261104-155125-rain-layers); the rows are columns of catalog.review.
 version: 1
 products:
 - id: prd_accessories_01
@@ -84409,3 +84409,274 @@ reviews:
   fit_vote: true_to_size
   keywords: []
   date_published: '2026-02-04'
+- id: rev_windbreaker_01
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_s_navy
+  author_id: cus_m010896
+  author_name: Mi**
+  order_id: ord_26901
+  rating_value: 5
+  review_body: The windbreaker cuts the breeze on the boardwalk without weighing me down. I can move with it and stay comfortable
+    when the air picks up.
+  fit_vote: true_to_size
+  keywords: [blocks wind]
+  date_published: '2026-11-05'
+- id: rev_windbreaker_02
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_l_navy
+  author_id: cus_m013034
+  author_name: Di***
+  order_id: ord_22538
+  rating_value: 5
+  review_body: It slides into a day bag for trips and is ready the second I need a wind layer.
+  fit_vote: true_to_size
+  author_height_value: 187.0
+  author_height_unit_text: cm
+  keywords: [travel]
+  date_published: '2026-10-21'
+- id: rev_windbreaker_03
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_xs_navy
+  author_id: cus_m008664
+  author_name: Sk****
+  order_id: ord_22600
+  rating_value: 5
+  review_body: I slip it on for quick walks and it disappears into its own pocket. It makes travel easy.
+  fit_vote: true_to_size
+  author_height_value: 163.0
+  author_height_unit_text: cm
+  keywords: [packable]
+  date_published: '2026-10-28'
+- id: rev_windbreaker_04
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_xl_olive
+  author_id: cus_m009163
+  author_name: Qu***
+  order_id: ord_26143
+  rating_value: 5
+  review_body: Light rain beads and runs off while I’m walking to the train. The fabric handles a drizzle fine for a wind
+    layer.
+  fit_vote: true_to_size
+  author_height_value: 181.0
+  author_height_unit_text: cm
+  keywords: [handles light rain]
+  date_published: '2026-11-01'
+- id: rev_windbreaker_05
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_m_black
+  author_id: cus_m001153
+  author_name: Mo****
+  order_id: ord_23679
+  rating_value: 5
+  review_body: The fit is true to size and easy to layer over a tee. It sits clean at the waist and feels right for daily
+    wear.
+  fit_vote: true_to_size
+  author_height_value: 174.0
+  author_height_unit_text: cm
+  keywords: [true to size]
+  date_published: '2026-10-22'
+- id: rev_windbreaker_06
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_l_olive
+  author_id: cus_m007549
+  author_name: Qu***
+  order_id: ord_23724
+  rating_value: 5
+  review_body: I like that it’s made from recycled nylon and still feels smooth against the skin.
+  fit_vote: true_to_size
+  author_height_value: 185.0
+  author_height_unit_text: cm
+  keywords: []
+  date_published: '2026-10-24'
+- id: rev_windbreaker_07
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_xs_slate
+  author_id: cus_m002338
+  author_name: Mi**
+  order_id: ord_21545
+  rating_value: 4
+  review_body: It feels almost weightless on my shoulders during the day.
+  fit_vote: true_to_size
+  author_height_value: 153.0
+  author_height_unit_text: cm
+  keywords: [lightweight]
+  date_published: '2026-10-31'
+- id: rev_windbreaker_08
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_s_sand
+  author_id: cus_m002399
+  author_name: Ro***
+  order_id: ord_24542
+  rating_value: 5
+  review_body: True to size with room for a light top underneath. The cut looks neat without pulling at the sides.
+  fit_vote: true_to_size
+  author_height_value: 166.0
+  author_height_unit_text: cm
+  keywords: [true to size]
+  date_published: '2026-11-03'
+- id: rev_windbreaker_09
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_xl_black
+  author_id: cus_m000933
+  author_name: Yu***
+  order_id: ord_23532
+  rating_value: 5
+  review_body: A gusty afternoon on the pier was much more comfortable with this on. It blocks wind well and lets me keep
+    moving.
+  fit_vote: true_to_size
+  keywords: [blocks wind]
+  date_published: '2026-10-21'
+- id: rev_windbreaker_10
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_m_navy
+  author_id: cus_m005025
+  author_name: Pa****
+  order_id: ord_22470
+  rating_value: 3
+  review_body: It’s handy on trips, though it looks plainer than I hoped for photos.
+  fit_vote: true_to_size
+  author_height_value: 172.0
+  author_height_unit_text: cm
+  keywords: [travel]
+  date_published: '2026-10-24'
+- id: rev_windbreaker_11
+  product_group_id: prd_windbreaker
+  product_id: var_windbreaker_l_slate
+  author_id: cus_m003985
+  author_name: Ro***
+  order_id: ord_24597
+  rating_value: 5
+  review_body: This windbreaker fits a little snug through the shoulders. I’ll size up next time for a looser everyday feel.
+  fit_vote: runs_small
+  author_height_value: 185.0
+  author_height_unit_text: cm
+  keywords: [runs a bit small]
+  date_published: '2026-10-28'
+- id: rev_rain_parka_01
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_l_stone
+  author_id: cus_m000778
+  author_name: Ch***
+  order_id: ord_23380
+  rating_value: 5
+  review_body: Rainy walks feel easy with this parka on. It stays light and keeps me dry without fuss.
+  fit_vote: true_to_size
+  keywords: [keeps rain out]
+  date_published: '2026-10-21'
+- id: rev_rain_parka_02
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_m_stone
+  author_id: cus_m004880
+  author_name: Mi**
+  order_id: ord_24771
+  rating_value: 5
+  review_body: The fit runs a bit small, so I sized up and it sits right now.
+  fit_vote: runs_small
+  author_height_value: 179.0
+  author_height_unit_text: cm
+  keywords: [runs a bit small]
+  date_published: '2026-10-29'
+- id: rev_rain_parka_03
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_s_stone
+  author_id: cus_m003928
+  author_name: Yu***
+  order_id: ord_25189
+  rating_value: 5
+  review_body: I stayed dry even with steady rain. The parka kept water out where it counts.
+  fit_vote: true_to_size
+  author_height_value: 167.0
+  author_height_unit_text: cm
+  keywords: [keeps rain out]
+  date_published: '2026-11-03'
+- id: rev_rain_parka_04
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_l_stone
+  author_id: cus_m011069
+  author_name: Em***
+  order_id: ord_24824
+  rating_value: 5
+  review_body: Rolling it into its own hood is handy when I’m out. It packs away small and comes back on fast.
+  fit_vote: true_to_size
+  author_height_value: 173.0
+  author_height_unit_text: cm
+  keywords: [rolls into hood]
+  date_published: '2026-11-01'
+- id: rev_rain_parka_05
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_m_stone
+  author_id: cus_m004375
+  author_name: Fi****
+  order_id: ord_21769
+  rating_value: 5
+  review_body: The stone parka feels light and the fit runs a bit small so I went up a step. It looks clean on and handles
+    drizzle well.
+  fit_vote: runs_small
+  author_height_value: 167.0
+  author_height_unit_text: cm
+  keywords: [runs a bit small]
+  date_published: '2026-10-27'
+- id: rev_rain_parka_06
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_l_stone
+  author_id: cus_m010921
+  author_name: Ke*****
+  order_id: ord_24896
+  rating_value: 2
+  review_body: It feels very light for a rain jacket, almost too thin for my taste. I wanted a bit more substance on cool
+    days.
+  fit_vote: true_to_size
+  keywords: []
+  date_published: '2026-11-02'
+- id: rev_rain_parka_07
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_m_stone
+  author_id: cus_m007668
+  author_name: Bl***
+  order_id: ord_21664
+  rating_value: 5
+  review_body: The nylon with its waterproof coating feels smooth and sheds rain nicely.
+  fit_vote: true_to_size
+  author_height_value: 178.0
+  author_height_unit_text: cm
+  keywords: []
+  date_published: '2026-10-27'
+- id: rev_rain_parka_08
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_l_stone
+  author_id: cus_m013298
+  author_name: Lo***
+  order_id: ord_23282
+  rating_value: 4
+  review_body: It works fine for rainy days around town. The stone color looks clean and simple.
+  fit_vote: true_to_size
+  author_height_value: 184.0
+  author_height_unit_text: cm
+  keywords: [keeps rain out]
+  date_published: '2026-10-23'
+- id: rev_rain_parka_09
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_m_stone
+  author_id: cus_m001889
+  author_name: Fi****
+  order_id: ord_24933
+  rating_value: 5
+  review_body: It runs a bit small, so check the fit before ordering.
+  fit_vote: runs_small
+  author_height_value: 173.0
+  author_height_unit_text: cm
+  keywords: [runs a bit small]
+  date_published: '2026-10-30'
+- id: rev_rain_parka_10
+  product_group_id: prd_rain_parka
+  product_id: var_rain_parka_l_stone
+  author_id: cus_m002118
+  author_name: Lo***
+  order_id: ord_21649
+  rating_value: 5
+  review_body: Rain didn’t soak through during my commute. The parka kept me dry and I stayed comfortable.
+  fit_vote: true_to_size
+  author_height_value: 178.0
+  author_height_unit_text: cm
+  keywords: [keeps rain out]
+  date_published: '2026-10-18'
