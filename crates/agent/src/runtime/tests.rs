@@ -2910,6 +2910,52 @@ async fn a_turn_for_a_task_drafts_its_change_set_for_that_task() {
     );
 }
 
+#[tokio::test]
+async fn a_task_whose_plan_only_read_plans_again_for_the_write() {
+    let glimmer = Scripted::new(
+        "glimmer",
+        "Muse Glimmer 30B",
+        vec![
+            (
+                "route",
+                json!({"agent": "promotion", "confidence": 0.93}).to_string(),
+            ),
+            (
+                "plan",
+                json!({"interpretation": [], "about": "self", "reply_plan": "text", "steps": [
+                {"id": "s1", "tool": "list_tiers", "args": {}, "uses": []}]})
+                .to_string(),
+            ),
+            ("plan", b1_plan()),
+            ("reply", "I drafted change set #1042.".into()),
+        ],
+    );
+    let rt = runtime(
+        std::slice::from_ref(&glimmer),
+        Arc::new(MemoryLog::default()),
+    );
+    let commerce = Commerce::new();
+    let request = TurnRequest {
+        task_id: Some("task_vip_weekend".into()),
+        ..say(B1)
+    };
+    turn(
+        &rt,
+        principal("adm_sj", Surface::Bo),
+        ChatSurface::Bo,
+        request,
+        commerce.clone(),
+    )
+    .await;
+    assert!(
+        commerce
+            .calls()
+            .contains(&"create_change_set VIP weekend for task_vip_weekend".to_owned()),
+        "{:?}",
+        commerce.calls()
+    );
+}
+
 #[test]
 fn a_task_id_must_look_like_one() {
     for bad in ["cs_1042", "task_", "task_A1", "task_1; drop"] {

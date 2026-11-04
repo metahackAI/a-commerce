@@ -155,6 +155,10 @@ const MODEL_DOWN: &str = "The assistant's model is not answering right now, so I
 const CUT_REPLY: &str = "That was cut off at the length limit. Write it again in two or three \
 short sentences; the blocks on screen show the details.";
 
+/// What the planner is told when a task's plan only read.
+const TASK_ONLY_READ: &str = "That plan only read. This task asks for a change: with what the \
+reads found, plan the write that makes it. A person still approves it.";
+
 /// How many tool and field names, still there after asking again, make a reply a dump of the
 /// results rather than an answer that slipped on one word.
 const DUMPED_NAMES: usize = 2;
@@ -1970,9 +1974,22 @@ impl<'r> Turn<'r> {
     // ---- 4. run --------------------------------------------------------------------------
 
     async fn execute_with_revisions(&mut self, mut plan: Plan) {
+        let mut asked_to_write = false;
         loop {
             self.plan = Some(plan.clone());
             match self.execute(&plan).await {
+                // A picked-up task asks for a change, and a plan that stopped at reading leaves it
+                // undone: once, plan again with what the reads found.
+                Flow::Done if !asked_to_write && self.task_stopped_at_reading() => {
+                    asked_to_write = true;
+                    match self.revise(TASK_ONLY_READ.into()).await {
+                        Ok(p) => plan = p,
+                        Err(Stop(why)) => {
+                            self.note_problem(why);
+                            return;
+                        }
+                    }
+                }
                 Flow::Done => return,
                 Flow::Stop(why) => {
                     self.note_problem(why);
@@ -2000,6 +2017,17 @@ impl<'r> Turn<'r> {
                 }
             }
         }
+    }
+
+    /// A task's turn that read and drafted nothing, where the reads did not already say there is
+    /// nothing to do.
+    fn task_stopped_at_reading(&self) -> bool {
+        self.request.task_id.is_some()
+            && self.draft.is_none()
+            && self.view.is_none()
+            && self.skipped.is_empty()
+            && !self.history.is_empty()
+            && self.history.iter().all(|r| r.kind == ToolKind::Read)
     }
 
     fn repair_env(&self) -> RepairEnv {
