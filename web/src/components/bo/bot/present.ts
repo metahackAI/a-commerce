@@ -132,6 +132,7 @@ export function recordFacts(result: unknown, most = 6): string[] {
 export function took(from: string, to: string | null): string | null {
   if (!to) return null;
   const s = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 1000);
-  if (!Number.isFinite(s) || s < 0) return null;
+  // The demo clock stands still while a cycle runs: no time passed on it.
+  if (!Number.isFinite(s) || s <= 0) return null;
   return s < 90 ? `${s} s` : `${Math.round(s / 60)} min`;
 }

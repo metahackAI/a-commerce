@@ -122,7 +122,7 @@ function ReadLine({read}: {read: Read}) {
           )}
         </HStack>
       }>
-      <VStack gap={2} paddingBlock={2}>
+      <VStack gap={2} paddingBlock={2} paddingInline={3}>
         <Text type="supporting" color="secondary">
           {read.tool}
           {argsText(read.args) ? ` · ${argsText(read.args)}` : ''}
@@ -197,7 +197,11 @@ export function BotCycleView({cycle}: {cycle: BotCycle}) {
       ) : null}
 
       <Grid columns={{minWidth: 170}} gap={3}>
-        <Stat label="Proposals opened" value={`${opened} of ${proposals.length}`} note={proposals.length > opened ? `${proposals.length - opened} not opened, see why below` : 'each became a task'} />
+        <Stat
+          label="Proposals opened"
+          value={`${opened} of ${proposals.length}`}
+          note={proposals.length === 0 ? 'nothing new to propose' : proposals.length > opened ? `${proposals.length - opened} not opened, see why below` : 'each became a task'}
+        />
         <Stat label="Warning signs" value={count(cycle.anomalies.length)} note="found by rule" />
         <Stat label="Findings" value={count(findings.length)} note="what stood out" />
         <Stat label="Store reads" value={count(u.reads ?? reads.length)} note={failedReads ? `${failedReads} could not be read` : 'read tools only'} />
