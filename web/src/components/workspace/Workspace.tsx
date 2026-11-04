@@ -102,6 +102,8 @@ const WORKSPACE_CSS = `
    is on its own: a button that shows on hover stays hidden. */
 @keyframes acom-part { from { opacity: 0; transform: translateY(10px) scale(.98); } }
 [data-acom-part] { animation: acom-part 280ms cubic-bezier(.2,.8,.2,1) var(--acom-part-delay, 0ms) backwards; }
+/* Text not filled in yet (assembleEffects): it holds its place, so lines never rewrap. */
+::highlight(acom-unfilled) { color: transparent; }
 .acom-ws { position: relative; display: flex; width: 100%; height: 100%; min-height: 0; overflow: hidden; background: var(--color-background-body); }
 .acom-ws-chat { display: flex; flex-direction: column; min-width: 0; min-height: 0; flex: 1 1 100%; background: var(--color-background-card);
   transition: flex-basis 560ms cubic-bezier(.2,.7,.2,1), flex-grow 560ms cubic-bezier(.2,.7,.2,1); }
