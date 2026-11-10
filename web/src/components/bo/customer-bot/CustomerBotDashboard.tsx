@@ -103,7 +103,7 @@ export function CustomerBotDashboard({
       }
       toolbar={<CustomerBotTabs value="dashboard" />}>
       <Grid columns={{minWidth: 160}} gap={3}>
-        <Tile label="Sessions" value={count(t.sessions)} note={t.failed_sessions ? `${count(t.failed_sessions)} stopped early` : `in ${count(t.runs)} runs`} />
+        <Tile label="Sessions" value={count(t.sessions)} note={t.failed_sessions ? `${count(t.failed_sessions)} stopped early` : `in ${count(t.runs)} run${t.runs === 1 ? '' : 's'}`} />
         <Tile label="Orders placed" value={count(t.orders)} note={`${money(t.spent)} spent`} />
         <Tile label="Reviews written" value={count(t.reviews)} note="for delivered items" />
         <Tile label="Chats" value={count(t.chat_turns)} note="turns with the assistant" />
