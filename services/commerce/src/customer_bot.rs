@@ -82,8 +82,11 @@ async fn next_run(tx: &mut TxCx) -> Result<Value, ToolError> {
         return Ok(json!({"run": null}));
     };
     let workers = run.workers.max(1) as usize;
-    // Which sessions sign up: an even spread by the percentage, never all of them by chance.
-    let created = (workers * run.new_account_percent as usize + 50) / 100;
+    // Each session signs up with the run's chance, drawn from the run's own random id, so a
+    // small run still brings a new member now and then.
+    let created = (0..workers)
+        .filter(|i| roll(&format!("{}:{i}", run.id)) < run.new_account_percent)
+        .count();
     let mut never = run.never_shop_as.clone();
     never.extend(acom_platform::customer_bot_record::members_shopping_now(tx).await?);
     let members = acom_customer::shopper_bot::pick_members(tx, workers - created, &never).await?;
@@ -96,6 +99,14 @@ async fn next_run(tx: &mut TxCx) -> Result<Value, ToolError> {
         json!({"run": {"id": run.id, "trigger": run.trigger, "workers": run.workers,
                       "settings": run.settings, "sessions": sessions}}),
     )
+}
+
+/// A number from 0 to 99 for a text: the same each time for the same text.
+fn roll(seed: &str) -> u32 {
+    let h = seed.bytes().fold(1_469_598_103_934_665_603_u64, |h, b| {
+        (h ^ u64::from(b)).wrapping_mul(1_099_511_628_211)
+    });
+    u32::try_from(h % 100).unwrap_or(0)
 }
 
 pub fn routes(api: Arc<acom_http::Api>) -> Router {
@@ -195,4 +206,15 @@ pub fn routes(api: Arc<acom_http::Api>) -> Router {
             ),
         )
         .with_state(api)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn about_the_percentage_of_sessions_sign_up() {
+        let n = (0..1000)
+            .filter(|i| super::roll(&format!("cbr_test:{i}")) < 20)
+            .count();
+        assert!((150..=250).contains(&n), "{n} of 1000");
+    }
 }

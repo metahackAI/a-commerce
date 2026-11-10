@@ -570,7 +570,7 @@ Ailism Customer Bot(`acom:CustomerBot`)은 데모 스토어를 **실제로 운�
 **한 번의 실행(`acom:CustomerBotRun`, id `cbr_…`).**
 
 1. **시작.** 게이트웨이의 작업자가 30초마다 내부 [`POST /v1/platform/customer-bot/runs/next`](#내부-엔드포인트)로 할 일을 묻습니다. 사람이 [`run_customer_bot`](#사람-전용-post-v1platformcustomer-botruns)으로 줄 세운 실행(`queued`)이 먼저이고, 없으면 `customer_bot.mode`가 `on`이고 마지막 실행이 시작된 뒤 `customer_bot.every_minutes`(기본 10분)가 **실제 시간으로** 지났을 때 예약 실행을 엽니다(데모 시계가 멈춰 있어도 돕니다). 한 번에 한 실행만 일합니다. `running`인데 세션들이 8분 동안 아무 단계도 남기지 않은 실행은 작업자가 사라진 것(배포로 게이트웨이가 다시 시작됨)으로 보고 `failed`로 닫습니다. 이벤트 `customer_bot.run.updated {run_id, state}`.
-2. **세션 열기.** 실행마다 `customer_bot.workers`(기본 2)개의 세션(`acom:CustomerBotSession`, id `cbs_…`)이 열립니다. `new_account_percent`(기본 20)만큼은 **새 계정**으로 가입하고, 나머지는 활성 개인 회원 가운데 배송지가 있는 회원을 무작위로 고릅니다. 장면의 인물(`customer_bot.never_shop_as`)과 지금 다른 세션이 쓰는 회원은 고르지 않습니다. 고를 회원이 모자라면 남은 세션은 가입합니다.
+2. **세션 열기.** 실행마다 `customer_bot.workers`(기본 2)개의 세션(`acom:CustomerBotSession`, id `cbs_…`)이 열립니다. 세션마다 `new_account_percent`(기본 20)의 확률로 **새 계정**으로 가입하고, 나머지는 활성 개인 회원 가운데 배송지가 있는 회원을 무작위로 고릅니다. 장면의 인물(`customer_bot.never_shop_as`)과 지금 다른 세션이 쓰는 회원은 고르지 않습니다. 고를 회원이 모자라면 남은 세션은 가입합니다.
 3. **쇼핑(게이트웨이, 세션마다 동시에).** 작업자는 게이트웨이 자신의 입구로 브라우저처럼 요청합니다. 쇼퍼의 요청에는 그 회원의 세션 쿠키만 실리므로 회원 본인의 스코프로 움직이고, 액션 로그에도 회원의 행동으로 남습니다.
    1. **가입**(새 계정): 쇼퍼 모델이 이름·이메일·미국 주소를 지어내고, 내부 `POST /v1/platform/customer-bot/accounts`가 회원을 만듭니다(가입이 만드는 사람·입문 등급·필수 동의에 집 주소와 저장 카드까지. 본인 확인 코드는 봇이 받을 수신함이 없어 건너뜀).
    2. **로그인**: `POST /api/auth/demo-login {persona: cus_…}`.
