@@ -570,14 +570,14 @@ Ailism Customer Bot(`acom:CustomerBot`)은 데모 스토어를 **실제로 운�
 **한 번의 실행(`acom:CustomerBotRun`, id `cbr_…`).**
 
 1. **시작.** 게이트웨이의 작업자가 30초마다 내부 [`POST /v1/platform/customer-bot/runs/next`](#내부-엔드포인트)로 할 일을 묻습니다. 사람이 [`run_customer_bot`](#사람-전용-post-v1platformcustomer-botruns)으로 줄 세운 실행(`queued`)이 먼저이고, 없으면 `customer_bot.mode`가 `on`이고 마지막 실행이 시작된 뒤 `customer_bot.every_minutes`(기본 10분)가 **실제 시간으로** 지났을 때 예약 실행을 엽니다(데모 시계가 멈춰 있어도 돕니다). 한 번에 한 실행만 일합니다. `running`인데 세션들이 8분 동안 아무 단계도 남기지 않은 실행은 작업자가 사라진 것(배포로 게이트웨이가 다시 시작됨)으로 보고 `failed`로 닫습니다. 이벤트 `customer_bot.run.updated {run_id, state}`.
-2. **세션 열기.** 실행마다 `customer_bot.workers`(기본 2)개의 세션(`acom:CustomerBotSession`, id `cbs_…`)이 열립니다. `new_account_percent`(기본 20)만큼은 **새 계정**으로 가입하고, 나머지는 활성 개인 회원 가운데 배송지가 있는 회원을 무작위로 고릅니다. 장면의 인물(`customer_bot.never_shop_as`)과 지금 다른 세션이 쓰는 회원은 고르지 않습니다. 고를 회원이 모자라면 남은 세션은 가입합니다.
+2. **세션 열기.** 실행마다 `customer_bot.workers`(기본 2)개의 세션(`acom:CustomerBotSession`, id `cbs_…`)이 열립니다. 세션마다 `new_account_percent`(기본 20)의 확률로 **새 계정**으로 가입하고, 나머지는 활성 개인 회원 가운데 배송지가 있는 회원을 무작위로 고릅니다. 장면의 인물(`customer_bot.never_shop_as`)과 지금 다른 세션이 쓰는 회원은 고르지 않습니다. 고를 회원이 모자라면 남은 세션은 가입합니다.
 3. **쇼핑(게이트웨이, 세션마다 동시에).** 작업자는 게이트웨이 자신의 입구로 브라우저처럼 요청합니다. 쇼퍼의 요청에는 그 회원의 세션 쿠키만 실리므로 회원 본인의 스코프로 움직이고, 액션 로그에도 회원의 행동으로 남습니다.
    1. **가입**(새 계정): 쇼퍼 모델이 이름·이메일·미국 주소를 지어내고, 내부 `POST /v1/platform/customer-bot/accounts`가 회원을 만듭니다(가입이 만드는 사람·입문 등급·필수 동의에 집 주소와 저장 카드까지. 본인 확인 코드는 봇이 받을 수신함이 없어 건너뜀).
    2. **로그인**: `POST /api/auth/demo-login {persona: cus_…}`.
    3. **첫 페이지**: `GET /`(스토어프론트 HTML).
    4. **페르소나**: 회원의 주문(`/v1/sales/orders/mine`과 주문 몇 건)과 프로필(`/v1/customer/people/me`)을 읽고, 페르소나(`acom:ShopperPersona`, id `spn_…`)가 **없으면** 쇼퍼 모델이 그 이력에 맞춰 만듭니다: 나이대, 사는 곳, 하는 일, 스타일, 색, 사이즈, 한 번 주문의 예산, 사는 분류, 쇼핑 성향(`decisive`·`browser`·`bargain_hunter`·`researcher`·`gift_giver`), 말투, 관심사, 한 줄 설명. 이름은 넣지 않습니다(운영자에게는 가려 보이는 정보). 만든 뒤 쇼핑 도우미에게 사이즈와 좋아하는 색을 기억해 달라고 말합니다. 페르소나가 **있으면** 이 단계를 건너뜁니다.
    5. **리뷰**: 배송 완료됐고 아직 리뷰하지 않은 품목에 `customer_bot.reviews_per_session`(기본 2)개까지, 페르소나의 말로 `create_review`(프리뷰 뒤 실행)를 씁니다.
-   6. **대화와 주문**: 쇼퍼 모델이 매번 다음 행동을 고릅니다: `say`(도우미에게 보낼 말: 찾기, 묻기, 비교, 사이즈, 담기, 결제), `place_order`(화면의 확인 카드에서 사람 전용 `POST /v1/sales/orders {preview_id}`를 누름. 합계가 예산 안일 때만), `leave`. 많아야 `customer_bot.max_actions`(기본 8)번이고, 둘러보기만 하고 나가는 것도 자연스러운 결과입니다. 모델이 답하지 못하면 짧은 기본 계획(찾기 → 담기 → 결제 → 주문)이 이어받고 그 사실이 단계에 남습니다.
+   6. **대화와 주문**: 쇼퍼 모델이 매번 다음 행동을 고릅니다: `say`(도우미에게 보낼 말: 찾기, 묻기, 비교, 사이즈, 담기, 결제), `place_order`(화면의 확인 카드에서 사람 전용 `POST /v1/sales/orders {preview_id}`를 누름. 합계가 예산 안일 때만), `leave`. 많아야 `customer_bot.max_actions`(기본 12)번이고(마지막 행동에 확인 카드가 나오면 주문할지 한 번 더 정합니다), 둘러보기만 하고 나가는 것도 자연스러운 결과입니다. 모델이 답하지 못하면 짧은 기본 계획(찾기 → 담기 → 결제 → 주문)이 이어받고 그 사실이 단계에 남습니다.
    7. **로그아웃**: `POST /api/auth/logout`.
 4. **기록.** 모든 단계(`acom:CustomerBotStep`)는 일어나는 즉시 내부 [`POST …/sessions/{customer_bot_session_id}/steps`](#내부-엔드포인트)로 남습니다: 종류(`sign_up`·`sign_in`·`persona`·`visit`·`read`·`think`·`chat`·`press`·`review`·`sign_out`), 결과(`ok`·`failed`·`skipped`), 한 줄 제목, 보낸 요청(`{method, path, body}`)과 받은 응답(`{status, body}`, 줄여서), 자세한 내용(채팅이면 도우미의 답·보인 블록·돈 툴·기억, 결정이면 행동·이유·목표·모델 사용량), 걸린 시간. 세션이 끝나면 `…/finish`로 결과(`outcome`)를 남기고, 실행은 마지막 세션과 함께 끝나며(`done`; 모든 세션이 실패하면 `failed`) 세션들의 합계(`summary`)를 가집니다.
 
@@ -592,7 +592,7 @@ Ailism Customer Bot(`acom:CustomerBot`)은 데모 스토어를 **실제로 운�
 - 입력: 없음
 - 출력:
   ```jsonc
-  {"settings": {"mode": "on", "every_minutes": 10, "workers": 2, "new_account_percent": 20, "max_actions": 8,
+  {"settings": {"mode": "on", "every_minutes": 10, "workers": 2, "new_account_percent": 20, "max_actions": 12,
                 "reviews_per_session": 2, "model": "glimmer", "never_shop_as": ["cus_jamie", "…"]},
    "working": null,
    "last_run": {"id": "cbr_01jcb0", "trigger": "schedule", "requested_by": null, "state": "done", "workers": 2,
@@ -734,7 +734,7 @@ Ailism Customer Bot(`acom:CustomerBot`)은 데모 스토어를 **실제로 운�
 
 #### 사람 전용 `PUT /v1/platform/customer-bot/settings`
 - 스코프: `human:bot`.
-- 본문: 바꿀 것만. `{"mode": "on", "every_minutes": 10, "workers": 2, "new_account_percent": 20, "max_actions": 8, "reviews_per_session": 2, "model": "glimmer"}`. 범위: `every_minutes` 5–1440, `workers` 1–10, `new_account_percent` 0–100, `max_actions` 1–20, `reviews_per_session` 0–5.
+- 본문: 바꿀 것만. `{"mode": "on", "every_minutes": 10, "workers": 2, "new_account_percent": 20, "max_actions": 12, "reviews_per_session": 2, "model": "glimmer"}`. 범위: `every_minutes` 5–1440, `workers` 1–10, `new_account_percent` 0–100, `max_actions` 1–20, `reviews_per_session` 0–5.
 - 응답: `{"ok": true, "settings": {…}, "changed": ["workers"]}` — `get_customer_bot_status`의 `settings`. 스토어의 `platform` 정책 덮어쓰기에 `customer_bot`을 합쳐 씁니다. 액션 로그에 바꾼 키가 남습니다.
 - 에러: `invalid_input`(값이 범위 밖) → `null`
 - 멱등성: 같은 본문이면 같은 결과.
