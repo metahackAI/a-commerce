@@ -945,6 +945,11 @@ async fn visit(
         let mut next = next;
         // Ready to buy with no checkout card on screen: a person first asks to check out, and
         // the card with Place order comes back.
+        // The order is placed: what is left of the visit is leaving, not pressing again.
+        if next["action"] == "place_order" && placed {
+            next["action"] = json!("leave");
+            next["reason"] = json!("The order is placed; the visit is over.");
+        }
         if next["action"] == "place_order" && checkout.is_none() && !placed {
             next["action"] = json!("say");
             next["message"] = json!("I'd like to check out now.");
