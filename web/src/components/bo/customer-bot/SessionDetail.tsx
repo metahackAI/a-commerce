@@ -132,7 +132,7 @@ function ThinkDetail({step}: {step: CustomerBotStep}) {
   const d = step.detail;
   return (
     <VStack gap={1}>
-      {str(d.message) ? <Text>{`“${str(d.message)}”`}</Text> : null}
+      {d.action === 'say' && str(d.message) ? <Text>{`“${str(d.message)}”`}</Text> : null}
       {str(d.reason) ? (
         <Text type="supporting" color="secondary">
           {`Why: ${str(d.reason)}`}
