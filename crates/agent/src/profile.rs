@@ -217,6 +217,8 @@ pub struct PromptFiles {
     pub reply: String,
     /// Ailism Bot's analysis (docs/api/platform.md#bot).
     pub bot: String,
+    /// Ailism Customer Bot's shopper (docs/api/platform.md#customer_bot).
+    pub customer_bot: String,
 }
 
 /// The shared prompts, read from the files `runtime.yml` names.
@@ -227,6 +229,7 @@ pub struct Prompts {
     pub arguments: String,
     pub reply: String,
     pub bot: String,
+    pub customer_bot: String,
 }
 
 /// Everything in `agents/`.
@@ -276,6 +279,7 @@ impl Profiles {
             arguments: read(&runtime.prompts.arguments)?,
             reply: read(&runtime.prompts.reply)?,
             bot: read(&runtime.prompts.bot)?,
+            customer_bot: read(&runtime.prompts.customer_bot)?,
         };
         let mut agents = Vec::new();
         for (name, text) in yaml {

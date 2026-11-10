@@ -58,6 +58,7 @@ pub fn routes(app: Arc<App>) -> Router {
         .route("/chat/{surface}/conversations", get(conversations))
         .route("/chat/{surface}/streaming", get(streaming))
         .route("/bot/analyze", post(bot_analyze))
+        .route("/customer-bot/think", post(customer_bot_think))
         .route(
             "/chat/{surface}/conversations/{conversation_id}",
             get(conversation),
@@ -212,6 +213,57 @@ async fn bot_analyze(State(app): State<Arc<App>>, headers: HeaderMap) -> Respons
     }
     .await;
     match started {
+        Ok(v) => Json(v).into_response(),
+        Err(e) => error(&e),
+    }
+}
+
+/// The system subject of Ailism Customer Bot's workers in the gateway.
+const CUSTOMER_BOT: &str = "sys_customer_bot";
+
+/// `POST /customer-bot/think`: one decision of a shopper Ailism Customer Bot plays
+/// (docs/api/platform.md#customer_bot): `{task, model, input}` → `{output, usage}`. Only the
+/// gateway's workers call it, with their system token; it calls no tool.
+async fn customer_bot_think(
+    State(app): State<Arc<App>>,
+    headers: HeaderMap,
+    Json(body): Json<Value>,
+) -> Response {
+    let answered = async {
+        let verifier = app
+            .verifier
+            .as_ref()
+            .ok_or_else(|| unavailable("ACOM_GATEWAY_PUBLIC_KEY_FILE is not set"))?;
+        let token = headers
+            .get(header::AUTHORIZATION)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.strip_prefix("Bearer "))
+            .ok_or_else(|| {
+                ToolError::new(ErrorCode::UNAUTHENTICATED, "Sign in to continue.")
+                    .detail(json!({"reason": "not_signed_in"}))
+            })?;
+        let principal = verifier
+            .verify(token)
+            .map_err(|_| {
+                ToolError::new(ErrorCode::UNAUTHENTICATED, "Sign in to continue.")
+                    .detail(json!({"reason": "invalid_signature"}))
+            })?
+            .principal();
+        if principal.kind != ActorKind::System || principal.subject != CUSTOMER_BOT {
+            return Err(ToolError::new(
+                ErrorCode::FORBIDDEN,
+                "Only Ailism Customer Bot's workers ask here.",
+            )
+            .detail(json!({"reason": "kind"})));
+        }
+        let runtime = app
+            .runtime
+            .clone()
+            .ok_or_else(|| unavailable("the agent definitions did not load (see /readyz)"))?;
+        acom_agent::customer_bot::think(&runtime, &body).await
+    }
+    .await;
+    match answered {
         Ok(v) => Json(v).into_response(),
         Err(e) => error(&e),
     }

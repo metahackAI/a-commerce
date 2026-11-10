@@ -11474,6 +11474,404 @@
   },
   {
     "schema": "platform",
+    "table": "customer_bot_run",
+    "kind": "table",
+    "term": "acom:CustomerBotRun",
+    "description": "one round of Ailism Customer Bot: its workers each shop once as a member. id prefix cbr_.",
+    "id_prefix": "cbr",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix cbr_; the same value the API, logs and events use."
+      },
+      {
+        "name": "bot_trigger",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:botTrigger",
+        "description": "what started the run: its schedule or a person. values: bot_trigger",
+        "values": [
+          "schedule",
+          "manual"
+        ],
+        "values_list": "bot_trigger"
+      },
+      {
+        "name": "requested_by",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:requestedBy",
+        "description": "the operator who ran it now (adm_ id); NULL for a scheduled run."
+      },
+      {
+        "name": "run_state",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:customerBotRunState",
+        "description": "queued until the gateway takes it, running while its sessions shop, then done or failed. values: customer_bot_run_state",
+        "values": [
+          "queued",
+          "running",
+          "done",
+          "failed"
+        ],
+        "values_list": "customer_bot_run_state"
+      },
+      {
+        "name": "workers",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:workers",
+        "description": "how many sessions shop at the same time in this run."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the run opened, in store time (API at)."
+      },
+      {
+        "name": "end_time",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:endTime",
+        "description": "when its last session ended, in store time."
+      },
+      {
+        "name": "summary",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:summary",
+        "description": "what its sessions did together: {sessions, done, failed, accounts_created, personas_built, chat_turns, orders, spent, reviews}."
+      },
+      {
+        "name": "error",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:error",
+        "description": "why the run failed; NULL otherwise."
+      },
+      {
+        "name": "claimed_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "-",
+        "description": "when the gateway took the run, by the server's clock (the schedule follows real minutes)."
+      },
+      {
+        "name": "finished_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "-",
+        "description": "when the run ended, by the server's clock."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "row creation time, by the server's clock; the schedule counts from it."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "last update time."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change."
+      }
+    ]
+  },
+  {
+    "schema": "platform",
+    "table": "customer_bot_session",
+    "kind": "table",
+    "term": "acom:CustomerBotSession",
+    "description": "one shopping visit a worker made as one member, start to sign-out. id prefix cbs_.",
+    "id_prefix": "cbs",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix cbs_; the same value the API, logs and events use."
+      },
+      {
+        "name": "run_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:customerBotRun",
+        "description": "the run the session belongs to (cbr_ id).",
+        "references": "platform.customer_bot_run"
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": true,
+        "term": "schema:customer",
+        "description": "the member the session shopped as (cus_ id); NULL until a new account exists."
+      },
+      {
+        "name": "account_origin",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:accountOrigin",
+        "description": "an existing member or an account the session signed up. values: customer_bot_account_origin",
+        "values": [
+          "existing",
+          "created"
+        ],
+        "values_list": "customer_bot_account_origin"
+      },
+      {
+        "name": "session_state",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:customerBotSessionState",
+        "description": "running, then done or failed. values: customer_bot_session_state",
+        "values": [
+          "running",
+          "done",
+          "failed"
+        ],
+        "values_list": "customer_bot_session_state"
+      },
+      {
+        "name": "persona_built",
+        "type": "boolean",
+        "nullable": false,
+        "term": "acom:personaBuilt",
+        "description": "whether this session made the member's persona before shopping."
+      },
+      {
+        "name": "goal",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:goal",
+        "description": "what the shopper came for this time, in its own words."
+      },
+      {
+        "name": "outcome",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:outcome",
+        "description": "what the session did: {chat_turns, orders[{order_id, total}], spent, reviews, memories, tools[]}."
+      },
+      {
+        "name": "conversation_ids",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:conversation",
+        "description": "the storefront conversations it had (conv_ ids)."
+      },
+      {
+        "name": "error",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:error",
+        "description": "why the session stopped early; NULL otherwise."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when the session started, in store time."
+      },
+      {
+        "name": "end_time",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "schema:endTime",
+        "description": "when it ended, in store time."
+      },
+      {
+        "name": "finished_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "-",
+        "description": "when it ended, by the server's clock."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "row creation time, by the server's clock."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "last update time."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change."
+      }
+    ]
+  },
+  {
+    "schema": "platform",
+    "table": "customer_bot_step",
+    "kind": "table",
+    "term": "acom:CustomerBotStep",
+    "description": "one thing a session did, in order: a request it sent, a message it wrote, a decision it took. Kept whole and never changed.",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "session_id",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:customerBotSession",
+        "description": "the session (cbs_ id).",
+        "references": "platform.customer_bot_session"
+      },
+      {
+        "name": "position",
+        "type": "integer",
+        "nullable": false,
+        "term": "schema:position",
+        "description": "the step's place in the session, from 1."
+      },
+      {
+        "name": "step_kind",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:customerBotStepKind",
+        "description": "what kind of action it was. values: customer_bot_step_kind",
+        "values": [
+          "sign_up",
+          "sign_in",
+          "persona",
+          "visit",
+          "read",
+          "think",
+          "chat",
+          "press",
+          "review",
+          "sign_out"
+        ],
+        "values_list": "customer_bot_step_kind"
+      },
+      {
+        "name": "step_status",
+        "type": "text",
+        "nullable": false,
+        "term": "acom:customerBotStepStatus",
+        "description": "whether it worked. values: customer_bot_step_status",
+        "values": [
+          "ok",
+          "failed",
+          "skipped"
+        ],
+        "values_list": "customer_bot_step_status"
+      },
+      {
+        "name": "title",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:name",
+        "description": "one sentence saying what it did."
+      },
+      {
+        "name": "request",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "acom:request",
+        "description": "what it sent: {method, path, body} for a request, {message} for a chat turn."
+      },
+      {
+        "name": "response",
+        "type": "jsonb",
+        "nullable": true,
+        "term": "acom:response",
+        "description": "what came back, shortened: {status, body}."
+      },
+      {
+        "name": "detail",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:detail",
+        "description": "the rest worth keeping: the reply and blocks of a chat turn, the reason for a decision, the model's usage."
+      },
+      {
+        "name": "duration_ms",
+        "type": "integer",
+        "nullable": false,
+        "term": "schema:duration",
+        "description": "how long it took, in milliseconds."
+      },
+      {
+        "name": "start_time",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "schema:startTime",
+        "description": "when it happened, in store time."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "row creation time, by the server's clock."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "last update time."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change."
+      }
+    ]
+  },
+  {
+    "schema": "platform",
     "table": "demo_clock",
     "kind": "table",
     "term": "-",
@@ -12540,6 +12938,95 @@
         "term": "-",
         "description": "the session its refresh token was exchanged for; a refresh token that comes back after that is reuse and ends every session of the client.",
         "references": "platform.session"
+      }
+    ]
+  },
+  {
+    "schema": "platform",
+    "table": "shopper_persona",
+    "kind": "table",
+    "term": "acom:ShopperPersona",
+    "description": "who a member is when Ailism Customer Bot shops as them: style, sizes, budget, habits and voice. One per member. id prefix spn_.",
+    "id_prefix": "spn",
+    "columns": [
+      {
+        "name": "tenant_id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "store (tenant) that owns this row; row-level security key.",
+        "references": "platform.online_store"
+      },
+      {
+        "name": "id",
+        "type": "text",
+        "nullable": false,
+        "term": "-",
+        "description": "id with prefix spn_; the same value the API, logs and events use."
+      },
+      {
+        "name": "customer_id",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:customer",
+        "description": "the member (cus_ id)."
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "nullable": false,
+        "term": "schema:description",
+        "description": "the persona in one line."
+      },
+      {
+        "name": "persona",
+        "type": "jsonb",
+        "nullable": false,
+        "term": "acom:persona",
+        "description": "the persona: {age_range, location, occupation, style[], colors[], sizes{}, budget{}, categories[], shopping_style, voice, interests[]}."
+      },
+      {
+        "name": "built_by_session_id",
+        "type": "text",
+        "nullable": true,
+        "term": "acom:customerBotSession",
+        "description": "the session that made it (cbs_ id).",
+        "references": "platform.customer_bot_session"
+      },
+      {
+        "name": "session_count",
+        "type": "integer",
+        "nullable": false,
+        "term": "acom:sessionCount",
+        "description": "how many sessions have shopped as this persona."
+      },
+      {
+        "name": "last_session_at",
+        "type": "timestamptz",
+        "nullable": true,
+        "term": "-",
+        "description": "when a session last shopped as it, by the server's clock."
+      },
+      {
+        "name": "created_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "row creation time, by the server's clock."
+      },
+      {
+        "name": "updated_at",
+        "type": "timestamptz",
+        "nullable": false,
+        "term": "-",
+        "description": "last update time."
+      },
+      {
+        "name": "version",
+        "type": "integer",
+        "nullable": false,
+        "term": "-",
+        "description": "row version, +1 on every change."
       }
     ]
   },

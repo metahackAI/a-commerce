@@ -92,7 +92,7 @@ An operation `domain.resource.operation` lives in `crates/domains/{domain}/src/{
 
 ## 3. API design: one hierarchy
 
-A flat list of 298 tools is as hard for a model as 2,000 endpoints. A-Commerce organizes every operation in a four-level hierarchy, and the harness uses that hierarchy to narrow down what a model sees.
+A flat list of 304 tools is as hard for a model as 2,000 endpoints. A-Commerce organizes every operation in a four-level hierarchy, and the harness uses that hierarchy to narrow down what a model sees.
 
 ### 3.1 Addressing
 
@@ -129,7 +129,7 @@ Each operation has three names generated from one definition:
 | | `partner` | Organization (seller), contract, grade | `onboard_seller`, `get_seller` |
 | | `integration` | external channels, bulk import, carrier and payment events | `import_products`, `receive_carrier_event` |
 
-Every domain is built: 298 tools (138 reads, 119 writes, 41 writes that move money or reach customers) plus 23 person-only endpoints. `cargo xtask check-coverage` holds the registry to the whole specification, and the index is [api/README.md](api/README.md) §4. Payment providers, bank deposits, tax receipts, carriers, outside sales channels, email/SMS/push delivery, business-registry checks, payouts, and image and copy generation sit outside the store; their adapters are deterministic stubs that say so in their output.
+Every domain is built: 304 tools (144 reads, 119 writes, 41 writes that move money or reach customers) plus 25 person-only endpoints. `cargo xtask check-coverage` holds the registry to the whole specification, and the index is [api/README.md](api/README.md) §4. Payment providers, bank deposits, tax receipts, carriers, outside sales channels, email/SMS/push delivery, business-registry checks, payouts, and image and copy generation sit outside the store; their adapters are deterministic stubs that say so in their output.
 
 ### 3.3 Three kinds of operations
 
@@ -475,7 +475,7 @@ The stack is the same from the first commit; what grows is the scope.
 |---|---|---|
 | Server side | Rust: gateway, commerce, agent | Same services, split further only where load says so |
 | Storage | PostgreSQL + pgvector (search ranks by full text) | Same, plus embeddings, read replicas, a cache, or a search cluster |
-| Operations | 298 tools in 13 domains and 23 person-only endpoints, all built | Dedicated UI blocks and back-office pages for the tools added on Oct 31; MCP for outside agents |
+| Operations | 304 tools in 13 domains and 25 person-only endpoints, all built | Dedicated UI blocks and back-office pages for the tools added on Oct 31; MCP for outside agents |
 | Agents | Promotion, orders, catalog, insights, shopper | A specialist per area, including community, partners, and integrations (§6.3) |
 | Stores | One demo store on a demo clock | Many stores on one deployment (row-level security is on from the start) |
 | Outside services | Deterministic stubs that say so: payments, deposits, tax receipts, carriers, outside channels, email/SMS/push, registry checks, payouts, image and copy generation | Real providers behind the same adapters |

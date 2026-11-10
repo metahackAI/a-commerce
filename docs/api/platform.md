@@ -6,7 +6,7 @@
 >
 > **설계 축**: ① 사람의 로그인·세션은 게이트웨이가 하고, 서비스는 게이트웨이가 서명한 내부 토큰만 받습니다. 스토어(테넌트)는 토큰의 `tenant` 클레임 하나로 정해집니다. ② enum은 숫자·문자 코드 대신 의미 있는 단어로 주고, 각 값의 뜻과 허용 전이를 함께 노출(목록의 출처는 enums.md). ③ 정책은 데이터로, 값마다 사람이 읽는 표기와 함께. ④ 쓰기 프리뷰는 변경셋으로 묶이고, 승인·거절·되돌리기는 사람만 누르는 엔드포인트. ⑤ 운영자 홈의 할 일은 감시 작업(watcher)과 대화에서 생기고, 무시는 사람만. ⑥ 모든 툴 호출·프리뷰·승인·실행은 schema.org `Action`으로 액션 로그에 남음.
 
-리소스: [policy](#policy) · [change_set](#change_set) · [task](#task) · [action_log](#action_log) · [schema](#schema) · [enum](#enum) · [auth](#auth) · [tenant](#tenant) · [role](#role) · [menu](#menu) · [admin_user](#admin_user) · [org](#org) · [api_key](#api_key) · [예약 작업](#예약-작업) · [데모 시계](#데모-시계) · [내부 엔드포인트](#내부-엔드포인트)
+리소스: [policy](#policy) · [change_set](#change_set) · [task](#task) · [bot](#bot) · [customer_bot](#customer_bot) · [action_log](#action_log) · [schema](#schema) · [enum](#enum) · [auth](#auth) · [tenant](#tenant) · [role](#role) · [menu](#menu) · [admin_user](#admin_user) · [org](#org) · [api_key](#api_key) · [예약 작업](#예약-작업) · [데모 시계](#데모-시계) · [내부 엔드포인트](#내부-엔드포인트)
 
 ---
 
@@ -563,6 +563,184 @@ Ailism Bot(`acom:Bot`)은 백오피스를 맡는 관리자 AI입니다. 사람�
 
 ---
 
+## customer_bot
+
+Ailism Customer Bot(`acom:CustomerBot`)은 데모 스토어를 **실제로 운영되는 가게처럼** 움직이게 하는 가상 쇼퍼들입니다. 정해진 주기마다 여러 세션이 동시에 회원 하나씩으로 스토어프론트에 들어와, 사람이 브라우저로 하는 그대로 채팅으로 찾고 묻고 담고 주문하고, 받은 상품에 리뷰를 씁니다. 그렇게 쌓인 주문·리뷰·문의·대화를 [Ailism Bot](#bot)과 운영자가 다시 읽습니다. **데모 모드에서만** 돕니다(게이트웨이의 데모 로그인으로 회원이 되기 때문).
+
+**한 번의 실행(`acom:CustomerBotRun`, id `cbr_…`).**
+
+1. **시작.** 게이트웨이의 작업자가 30초마다 내부 [`POST /v1/platform/customer-bot/runs/next`](#내부-엔드포인트)로 할 일을 묻습니다. 사람이 [`run_customer_bot`](#사람-전용-post-v1platformcustomer-botruns)으로 줄 세운 실행(`queued`)이 먼저이고, 없으면 `customer_bot.mode`가 `on`이고 마지막 실행이 시작된 뒤 `customer_bot.every_minutes`(기본 10분)가 **실제 시간으로** 지났을 때 예약 실행을 엽니다(데모 시계가 멈춰 있어도 돕니다). 한 번에 한 실행만 일합니다. `running`인 채 45분이 지난 실행은 작업자가 사라진 것으로 보고 `failed`로 닫습니다. 이벤트 `customer_bot.run.updated {run_id, state}`.
+2. **세션 열기.** 실행마다 `customer_bot.workers`(기본 2)개의 세션(`acom:CustomerBotSession`, id `cbs_…`)이 열립니다. `new_account_percent`(기본 20)만큼은 **새 계정**으로 가입하고, 나머지는 활성 개인 회원 가운데 배송지가 있는 회원을 무작위로 고릅니다. 장면의 인물(`customer_bot.never_shop_as`)과 지금 다른 세션이 쓰는 회원은 고르지 않습니다. 고를 회원이 모자라면 남은 세션은 가입합니다.
+3. **쇼핑(게이트웨이, 세션마다 동시에).** 작업자는 게이트웨이 자신의 입구로 브라우저처럼 요청합니다. 쇼퍼의 요청에는 그 회원의 세션 쿠키만 실리므로 회원 본인의 스코프로 움직이고, 액션 로그에도 회원의 행동으로 남습니다.
+   1. **가입**(새 계정): 쇼퍼 모델이 이름·이메일·미국 주소를 지어내고, 내부 `POST /v1/platform/customer-bot/accounts`가 회원을 만듭니다(가입이 만드는 사람·입문 등급·필수 동의에 집 주소와 저장 카드까지. 본인 확인 코드는 봇이 받을 수신함이 없어 건너뜀).
+   2. **로그인**: `POST /api/auth/demo-login {persona: cus_…}`.
+   3. **첫 페이지**: `GET /`(스토어프론트 HTML).
+   4. **페르소나**: 회원의 주문(`/v1/sales/orders/mine`과 주문 몇 건)과 프로필(`/v1/customer/people/me`)을 읽고, 페르소나(`acom:ShopperPersona`, id `spn_…`)가 **없으면** 쇼퍼 모델이 그 이력에 맞춰 만듭니다: 나이대, 사는 곳, 하는 일, 스타일, 색, 사이즈, 한 번 주문의 예산, 사는 분류, 쇼핑 성향(`decisive`·`browser`·`bargain_hunter`·`researcher`·`gift_giver`), 말투, 관심사, 한 줄 설명. 이름은 넣지 않습니다(운영자에게는 가려 보이는 정보). 만든 뒤 쇼핑 도우미에게 사이즈와 좋아하는 색을 기억해 달라고 말합니다. 페르소나가 **있으면** 이 단계를 건너뜁니다.
+   5. **리뷰**: 배송 완료됐고 아직 리뷰하지 않은 품목에 `customer_bot.reviews_per_session`(기본 2)개까지, 페르소나의 말로 `create_review`(프리뷰 뒤 실행)를 씁니다.
+   6. **대화와 주문**: 쇼퍼 모델이 매번 다음 행동을 고릅니다: `say`(도우미에게 보낼 말: 찾기, 묻기, 비교, 사이즈, 담기, 결제), `place_order`(화면의 확인 카드에서 사람 전용 `POST /v1/sales/orders {preview_id}`를 누름. 합계가 예산 안일 때만), `leave`. 많아야 `customer_bot.max_actions`(기본 8)번이고, 둘러보기만 하고 나가는 것도 자연스러운 결과입니다. 모델이 답하지 못하면 짧은 기본 계획(찾기 → 담기 → 결제 → 주문)이 이어받고 그 사실이 단계에 남습니다.
+   7. **로그아웃**: `POST /api/auth/logout`.
+4. **기록.** 모든 단계(`acom:CustomerBotStep`)는 일어나는 즉시 내부 [`POST …/sessions/{customer_bot_session_id}/steps`](#내부-엔드포인트)로 남습니다: 종류(`sign_up`·`sign_in`·`persona`·`visit`·`read`·`think`·`chat`·`press`·`review`·`sign_out`), 결과(`ok`·`failed`·`skipped`), 한 줄 제목, 보낸 요청(`{method, path, body}`)과 받은 응답(`{status, body}`, 줄여서), 자세한 내용(채팅이면 도우미의 답·보인 블록·돈 툴·기억, 결정이면 행동·이유·목표·모델 사용량), 걸린 시간. 세션이 끝나면 `…/finish`로 결과(`outcome`)를 남기고, 실행은 마지막 세션과 함께 끝나며(`done`; 모든 세션이 실패하면 `failed`) 세션들의 합계(`summary`)를 가집니다.
+
+봇은 스토어를 직접 바꾸지 않습니다: 주문·리뷰·기억은 모두 회원의 요청으로 스토어의 규칙(재고, 가격 하한, 리뷰 자격, 결제 확인)을 그대로 거칩니다. 시각은 둘입니다: `at`·`end_time`은 스토어 시각(데모 시계), `started`·`finished`·`recorded`는 서버의 실제 시각입니다. 데모 시계가 멈춰 있으면 스토어 시각은 모두 같으므로, 주기와 순서는 실제 시각으로 봅니다.
+
+설정은 [platform.yml](../../policies/platform.yml) `customer_bot`에 있고, 설정 화면은 사람 전용 [`PUT /v1/platform/customer-bot/settings`](#사람-전용-put-v1platformcustomer-botsettings)로 스토어의 정책 덮어쓰기를 고칩니다.
+
+### `get_customer_bot_status` — Kind: R
+- 논리 주소 · REST: `platform.customer_bot.get` · `GET /v1/platform/customer-bot`
+- 요약: Ailism Customer Bot의 지금: 설정, 일하는 실행, 마지막 실행, 다음 실행, 지금까지 한 일.
+- consumes → produces: → `customer_bot_run_id`
+- 입력: 없음
+- 출력:
+  ```jsonc
+  {"settings": {"mode": "on", "every_minutes": 10, "workers": 2, "new_account_percent": 20, "max_actions": 8,
+                "reviews_per_session": 2, "model": "glimmer", "never_shop_as": ["cus_jamie", "…"]},
+   "working": null,
+   "last_run": {"id": "cbr_01jcb0", "trigger": "schedule", "requested_by": null, "state": "done", "workers": 2,
+                "at": "2026-11-06T11:00:00-05:00", "end_time": "2026-11-06T11:00:00-05:00",
+                "started": "2026-11-10T09:40:02-05:00", "finished": "2026-11-10T09:44:51-05:00", "sessions": 2,
+                "summary": {"sessions": 2, "done": 2, "failed": 0, "accounts_created": 1, "personas_built": 1,
+                            "chat_turns": 9, "orders": 1, "reviews": 2, "memories": 1, "cart_adds": 1,
+                            "spent": {"value": 95.40, "currency": "USD"}}, "error": null},
+   "next_run_at": "2026-11-10T09:50:02-05:00", "next_run_in_seconds": 312,
+   "totals": {"runs": 14, "sessions": 28, "failed_sessions": 1, "accounts_created": 5, "personas": 19,
+              "chat_turns": 140, "orders": 11, "reviews": 23, "spent": {"value": 1204.30, "currency": "USD"}}}
+  ```
+  `next_run_at`·`next_run_in_seconds`는 꺼져 있으면 `null`. 시각은 서버의 실제 시각을 스토어 시간대로 쓴 것입니다.
+- 프리뷰: 해당 없음(읽기)
+- 정책: [platform.yml](../../policies/platform.yml) `customer_bot`
+- 에러: 없음
+- 멱등성: 읽기(부작용 없음)
+
+### `list_customer_bot_runs` — Kind: R
+- 논리 주소 · REST: `platform.customer_bot.list_runs` · `GET /v1/platform/customer-bot/runs`
+- 요약: Ailism Customer Bot의 실행, 최근 것부터.
+- consumes → produces: → `customer_bot_run_id[]`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명 | 예 |
+  |---|---|:--:|---|---|
+  | `limit` | Integer, 1–100 | | 기본 20 | `20` |
+  | `cursor` | Text | | 이전 응답의 `next_cursor` | |
+- 출력: `{"items": [get_customer_bot_status의 last_run과 같은 항목], "total": 14}`
+- 프리뷰: 해당 없음(읽기)
+- 정책: 없음
+- 에러: `invalid_filter` → `list_customer_bot_runs`
+- 멱등성: 읽기(부작용 없음)
+
+### `get_customer_bot_run` — Kind: R
+- 논리 주소 · REST: `platform.customer_bot.get_run` · `GET /v1/platform/customer-bot/runs/{customer_bot_run_id}`
+- 요약: 실행 하나와 그 세션들.
+- consumes → produces: `customer_bot_run_id` → `customer_bot_session_id[]`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명 | 예 |
+  |---|---|:--:|---|---|
+  | `customer_bot_run_id` | Text, `^cbr_[a-z0-9_]+$` | ✓ | 실행 id | `"cbr_01jcb0"` |
+- 출력: 목록의 항목에 `sessions[]`(`list_customer_bot_sessions`의 항목)이 붙습니다.
+- 프리뷰: 해당 없음(읽기)
+- 정책: 없음
+- 에러: `customer_bot_run_not_found`(class `not_found`) → `list_customer_bot_runs`
+- 멱등성: 읽기(부작용 없음)
+
+### `list_customer_bot_sessions` — Kind: R
+- 논리 주소 · REST: `platform.customer_bot.list_sessions` · `GET /v1/platform/customer-bot/sessions?customer_id=cus_m000042`
+- 요약: 쇼핑 세션, 최근 것부터. 실행·회원·상태로 거릅니다.
+- consumes → produces: → `customer_bot_session_id[]`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명 | 예 |
+  |---|---|:--:|---|---|
+  | `customer_bot_run_id` | Text, `^cbr_[a-z0-9_]+$` | | 이 실행의 세션만 | |
+  | `customer_id` | Text, `^cus_[a-z0-9_]+$` | | 이 회원으로 쇼핑한 세션만 | `"cus_m000042"` |
+  | `state` | enum | | [enums.md](enums.md) §1.14 `customer_bot_session_state` | `"done"` |
+  | `limit` | Integer, 1–100 | | 기본 20 | `20` |
+  | `cursor` | Text | | 이전 응답의 `next_cursor` | |
+- 출력:
+  ```jsonc
+  {"items": [{"id": "cbs_01jcb1", "run_id": "cbr_01jcb0", "customer_id": "cus_m000042", "account": "existing",
+              "state": "done", "persona_built": false,
+              "persona": "Commuter in Boston who buys navy workwear shirts, size M, about $80 an order.",
+              "goal": "A light rain jacket for spring trips, under $120",
+              "outcome": {"chat_turns": 5, "orders": 1, "order_ids": [{"order_id": "ord_29013", "total": "$95.40"}],
+                          "spent": {"value": 95.40, "currency": "USD"}, "reviews": 1, "memories": 0, "cart_adds": 1,
+                          "tools": ["add_to_cart", "prepare_order", "search_products"], "fallbacks": 0},
+              "conversation_ids": ["conv_01jcb2"], "error": null, "steps": 14,
+              "at": "2026-11-06T11:00:00-05:00", "end_time": "2026-11-06T11:00:00-05:00",
+              "started": "2026-11-10T09:40:02-05:00", "finished": "2026-11-10T09:44:51-05:00"}],
+   "total": 28}
+  ```
+- 프리뷰: 해당 없음(읽기)
+- 정책: 없음
+- 에러: `invalid_filter` → `list_customer_bot_sessions`
+- 멱등성: 읽기(부작용 없음)
+
+### `get_customer_bot_session` — Kind: R
+- 논리 주소 · REST: `platform.customer_bot.get_session` · `GET /v1/platform/customer-bot/sessions/{customer_bot_session_id}`
+- 요약: 세션 하나의 전부: 쇼핑한 회원과 페르소나, 그리고 한 일 전부를 순서대로.
+- consumes → produces: `customer_bot_session_id` → `customer_id`, `order_id[]`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명 | 예 |
+  |---|---|:--:|---|---|
+  | `customer_bot_session_id` | Text, `^cbs_[a-z0-9_]+$` | ✓ | 세션 id | `"cbs_01jcb1"` |
+- 출력: 목록의 항목에서 `persona`가 `list_shopper_personas`의 항목(없으면 `null`)이 되고, `steps[]`가 붙습니다.
+  ```jsonc
+  {"steps": [{"position": 1, "kind": "sign_in", "status": "ok", "title": "Signed in as cus_m000042",
+              "request": {"method": "POST", "path": "/api/auth/demo-login", "body": {"persona": "cus_m000042"}},
+              "response": {"status": 200, "body": {"ok": true, "…": "…"}}, "detail": {}, "ms": 41,
+              "at": "2026-11-06T11:00:00-05:00", "recorded": "2026-11-10T09:40:03-05:00"},
+             {"position": 6, "kind": "chat", "status": "ok", "title": "Asked: any light rain jackets under $120?",
+              "request": {"method": "POST", "path": "/api/chat/fo/turns", "body": {"message": "any light rain jackets under $120?", "conversation_id": null}},
+              "response": {"status": 200},
+              "detail": {"reply": "Here are three light rain jackets…", "blocks": [{"ui": "product_list", "title": "3 of 12 shown", "products": [{"product_id": "prd_rain_parka", "name": "Light rain parka", "price": "$118.00"}]}],
+                         "tools": ["search_products"], "memories": [], "usage": {"model_calls": 3}, "conversation_id": "conv_01jcb2", "error": null},
+              "ms": 9120, "at": "…", "recorded": "…"}]}
+  ```
+- 프리뷰: 해당 없음(읽기)
+- 정책: 없음
+- 에러: `customer_bot_session_not_found`(class `not_found`) → `list_customer_bot_sessions`
+- 멱등성: 읽기(부작용 없음)
+
+### `list_shopper_personas` — Kind: R
+- 논리 주소 · REST: `platform.customer_bot.list_personas` · `GET /v1/platform/customer-bot/personas`
+- 요약: 봇이 쇼핑할 때 쓰는 페르소나(회원마다 하나), 최근에 쓴 것부터.
+- consumes → produces: → `customer_id[]`
+- 입력:
+  | 필드 | 타입 | 필수 | 설명 | 예 |
+  |---|---|:--:|---|---|
+  | `customer_id` | Text, `^cus_[a-z0-9_]+$` | | 이 회원의 페르소나만 | `"cus_m000042"` |
+  | `limit` | Integer, 1–100 | | 기본 20 | `20` |
+  | `cursor` | Text | | 이전 응답의 `next_cursor` | |
+- 출력:
+  ```jsonc
+  {"items": [{"id": "spn_01jcb3", "customer_id": "cus_m000042",
+              "description": "Commuter in Boston who buys navy workwear shirts, size M, about $80 an order.",
+              "persona": {"age_range": "30-39", "location": "Boston, MA", "occupation": "project manager",
+                          "style": ["workwear", "minimal"], "colors": ["navy", "olive"],
+                          "sizes": {"top": "M", "bottom": "32", "shoes": "10"}, "budget_per_order": 80,
+                          "categories": ["shirts", "outerwear"], "shopping_style": "decisive", "chattiness": "brief",
+                          "voice": "short and direct", "interests": ["cycling"]},
+              "built_by_session_id": "cbs_01jcb1", "sessions": 3,
+              "last_session": "2026-11-10T09:44:51-05:00", "created": "2026-11-10T09:12:20-05:00"}],
+   "total": 19}
+  ```
+- 프리뷰: 해당 없음(읽기)
+- 정책: 없음
+- 에러: `invalid_filter` → `list_shopper_personas`
+- 멱등성: 읽기(부작용 없음)
+
+#### 사람 전용 `POST /v1/platform/customer-bot/runs`
+- 스코프: `human:bot`. 툴이 아니며 운영자가 Ailism Customer Bot 화면의 "Run now"로만 누릅니다.
+- 본문: `{}`
+- 응답: `{"ok": true, "id": "cbr_01jcb9", "state": "queued", "created": true}` — 실행을 줄 세우고 `customer_bot.run.updated`를 보냅니다. 게이트웨이가 30초 안에 가져가 세션을 엽니다. 줄 서 있거나 일하는 실행이 있으면 그것을 돌려줍니다(`created: false`). `mode`가 `off`여도 됩니다.
+- 에러: 없음
+- 멱등성: 일하는 실행이 있으면 그 실행.
+
+#### 사람 전용 `PUT /v1/platform/customer-bot/settings`
+- 스코프: `human:bot`.
+- 본문: 바꿀 것만. `{"mode": "on", "every_minutes": 10, "workers": 2, "new_account_percent": 20, "max_actions": 8, "reviews_per_session": 2, "model": "glimmer"}`. 범위: `every_minutes` 5–1440, `workers` 1–10, `new_account_percent` 0–100, `max_actions` 1–20, `reviews_per_session` 0–5.
+- 응답: `{"ok": true, "settings": {…}, "changed": ["workers"]}` — `get_customer_bot_status`의 `settings`. 스토어의 `platform` 정책 덮어쓰기에 `customer_bot`을 합쳐 씁니다. 액션 로그에 바꾼 키가 남습니다.
+- 에러: `invalid_input`(값이 범위 밖) → `null`
+- 멱등성: 같은 본문이면 같은 결과.
+
+---
+
 ## action_log
 
 > 액션 로그의 항목은 schema.org `Action`입니다(`UpdateAction`, `CreateAction`, `ScheduleAction`, `AssessAction`, `AuthorizeAction` …).
@@ -1026,6 +1204,11 @@ Ailism Bot(`acom:Bot`)은 백오피스를 맡는 관리자 AI입니다. 사람�
 |---|---|---|
 | `GET /v1/platform/store` | 토큰만 | 요청 문맥의 스토어: `{store_id, currency, time_zone, now}`. `now`는 데모 모드면 데모 시계. agent 서비스가 턴마다 스토어 시각·통화를 여기서 받습니다(commerce 테이블을 직접 읽지 않음) |
 | `GET /v1/platform/previews/{preview_id}` | `changeset:draft` 또는 `tools:read:platform` | 저장된 프리뷰 하나: `{preview_id, operation, input, changes[], checks[], needs_approval, approval_reason, expires_at, state, change_set_id, policy_version, created_at}`. `state`는 [enums.md](enums.md) §1.9. 런타임이 실행 전 확인하거나 화면이 프리뷰를 다시 그릴 때 |
-| `GET /v1/platform/events` (SSE) | `tools:read:platform` | 스토어의 진행 이벤트: `change_set.updated {change_set_id, version, state}`, `task.updated {task_id, state, change_set_id?, created?, origin?}`(`created: true`와 `origin`은 감시 작업이나 Ailism Bot이 할 일을 새로 만들 때만), `job.updated {job_id, kind, state, run_at}`([예약 작업](#예약-작업)), `bot.cycle.updated {cycle_id, state, trigger}`([bot](#bot)). 각 이벤트는 `id:`(스토어 안 순번)를 가지며 `Last-Event-ID`로 이어 받음. 백오피스 화면이 구독해 읽기를 다시 하고, 게이트웨이가 구독해 감시 작업이 연 할 일을 에이전트에게 넘김([task](#task)). 채팅 스트림([chat.md](chat.md) §2)으로는 흘리지 않음 |
+| `GET /v1/platform/events` (SSE) | `tools:read:platform` | 스토어의 진행 이벤트: `change_set.updated {change_set_id, version, state}`, `task.updated {task_id, state, change_set_id?, created?, origin?}`(`created: true`와 `origin`은 감시 작업이나 Ailism Bot이 할 일을 새로 만들 때만), `job.updated {job_id, kind, state, run_at}`([예약 작업](#예약-작업)), `bot.cycle.updated {cycle_id, state, trigger}`, `customer_bot.run.updated {run_id, state}`(Ailism Customer Bot의 실행이 줄 서거나 일하거나 끝남)([bot](#bot)). 각 이벤트는 `id:`(스토어 안 순번)를 가지며 `Last-Event-ID`로 이어 받음. 백오피스 화면이 구독해 읽기를 다시 하고, 게이트웨이가 구독해 감시 작업이 연 할 일을 에이전트에게 넘김([task](#task)). 채팅 스트림([chat.md](chat.md) §2)으로는 흘리지 않음 |
 | `POST /v1/platform/bot/cycles/{bot_cycle_id}/report` | 시스템 주체(`actor_kind: system`)만 | Ailism Bot 주기의 끝([bot](#bot) 4–5): 본문 `{state: done \| failed, snapshot, anomalies[], report{summary, findings[], proposals[]}, usage, error?}`. `observing`인 주기만 받고(아니면 `invalid_state`), 제안을 걸러 결정과 할 일을 열고 `{cycle_id, state, opened[{decision_id, task_id}], skipped[{title, why}]}`를 돌려줌. 게이트웨이만 부름 |
+| `POST /v1/platform/customer-bot/runs/next` | 시스템 주체 `sys_customer_bot`만, 데모 모드만 | Ailism Customer Bot의 다음 실행([customer_bot](#customer_bot) 1–2): 일하는 실행이 없을 때 줄 선 실행이나 때가 된 예약 실행을 `running`으로 가져가고 세션을 엽니다. `{"run": {id, trigger, workers, settings, sessions[{id, customer_id, account, persona}]}}`, 할 일이 없으면 `{"run": null}` |
+| `POST /v1/platform/customer-bot/accounts` | 〃 | 가입하는 세션의 새 회원: 본문 `{name, email, telephone?, address{street_address, address_locality, address_region, postal_code}}` → `{ok, id, address_id, tier_id}`. 이메일이 이미 쓰이면 `duplicate_member` |
+| `POST /v1/platform/customer-bot/sessions/{customer_bot_session_id}/steps` | 〃 | 세션의 단계를 순서대로 덧붙임: 본문 `{steps[{kind, status, title, request?, response?, detail?, ms?}], customer_id?, conversation_id?, goal?}`(한 번에 50개까지, 큰 값은 잘라 둠). 끝난 세션이면 `invalid_state` |
+| `PUT /v1/platform/customer-bot/personas/{customer_id}` | 〃 | 회원의 페르소나 저장: 본문 `{description, persona, session_id?}`. 회원마다 하나이고, 다시 저장하면 내용만 바뀝니다 |
+| `POST /v1/platform/customer-bot/sessions/{customer_bot_session_id}/finish` | 〃 | 세션의 끝: 본문 `{state: done \| failed, outcome, error?}`. 실행의 마지막 세션이면 실행을 `summary`와 함께 닫고 `customer_bot.run.updated`를 보냅니다 |
 | `POST /v1/platform/tasks/{task_id}/pickup-ended` | 시스템 주체(`actor_kind: system`)만 | 게이트웨이가 넘긴 할 일의 턴이 변경셋 없이 끝남(읽기만 했거나 쓰기가 실패): 본문 `{conversation_id, reply}`. 열린 할 일이고 변경셋이 없으면 대화를 붙이고 `needs_you`로, `summary`는 "The agent did not draft a change: {답의 앞 300자}". 아니면 그대로 `{task_id, noted: false}`. Ailism Bot 결정은 이 할 일에서 `needs_you`로 보임 |

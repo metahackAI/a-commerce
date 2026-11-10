@@ -474,6 +474,41 @@ word_enum! {
 }
 
 word_enum! {
+    /// acom:customerBotMode, whether Ailism Customer Bot shops on its schedule.
+    CustomerBotMode = "customer_bot_mode" { Off = "off", On = "on" }
+}
+
+word_enum! {
+    /// acom:customerBotRunState of one Ailism Customer Bot run.
+    CustomerBotRunState = "customer_bot_run_state" {
+        Queued = "queued", Running = "running", Done = "done", Failed = "failed",
+    }
+}
+
+word_enum! {
+    /// acom:customerBotSessionState of one shopping session.
+    CustomerBotSessionState = "customer_bot_session_state" { Running = "running", Done = "done", Failed = "failed" }
+}
+
+word_enum! {
+    /// acom:accountOrigin, whose account a session shopped with.
+    CustomerBotAccountOrigin = "customer_bot_account_origin" { Existing = "existing", Created = "created" }
+}
+
+word_enum! {
+    /// acom:customerBotStepKind, what one step of a session was.
+    CustomerBotStepKind = "customer_bot_step_kind" {
+        SignUp = "sign_up", SignIn = "sign_in", Persona = "persona", Visit = "visit", Read = "read",
+        Think = "think", Chat = "chat", Press = "press", Review = "review", SignOut = "sign_out",
+    }
+}
+
+word_enum! {
+    /// acom:customerBotStepStatus, whether a step worked.
+    CustomerBotStepStatus = "customer_bot_step_status" { Ok = "ok", Failed = "failed", Skipped = "skipped" }
+}
+
+word_enum! {
     /// acom:botRisk the bot gives a proposal.
     BotRisk = "bot_risk" { Low = "low", Medium = "medium", High = "high" }
 }
@@ -855,6 +890,18 @@ pub const LISTS: &[(&str, &[&str])] = &[
     (TaskState::LIST, TaskState::WORDS),
     (TaskOrigin::LIST, TaskOrigin::WORDS),
     (BotMode::LIST, BotMode::WORDS),
+    (CustomerBotMode::LIST, CustomerBotMode::WORDS),
+    (CustomerBotRunState::LIST, CustomerBotRunState::WORDS),
+    (
+        CustomerBotSessionState::LIST,
+        CustomerBotSessionState::WORDS,
+    ),
+    (
+        CustomerBotAccountOrigin::LIST,
+        CustomerBotAccountOrigin::WORDS,
+    ),
+    (CustomerBotStepKind::LIST, CustomerBotStepKind::WORDS),
+    (CustomerBotStepStatus::LIST, CustomerBotStepStatus::WORDS),
     (BotArea::LIST, BotArea::WORDS),
     (BotCycleState::LIST, BotCycleState::WORDS),
     (BotTrigger::LIST, BotTrigger::WORDS),

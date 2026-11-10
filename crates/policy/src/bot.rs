@@ -85,6 +85,55 @@ impl PolicySet {
     }
 }
 
+/// Whether Ailism Customer Bot shops on its schedule.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CustomerBotMode {
+    /// No scheduled run; a person can still run it now.
+    Off,
+    /// A run every `every_minutes`.
+    On,
+}
+
+/// `platform.yml customer_bot`: the shoppers that keep a demo store busy
+/// (`docs/api/platform.md#customer_bot`).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct CustomerBot {
+    pub mode: CustomerBotMode,
+    /// Real minutes between scheduled runs.
+    pub every_minutes: u32,
+    /// Sessions that shop at the same time in one run.
+    pub workers: u32,
+    /// Share of sessions, in percent, that sign up a new account first.
+    pub new_account_percent: u32,
+    /// The most actions (chat turns, orders, reviews) one session takes.
+    pub max_actions: u32,
+    /// The most reviews one session writes for delivered items.
+    pub reviews_per_session: u32,
+    /// The model's alias in `agents/models.yml`.
+    pub model: String,
+    /// Members the bot never shops as (the demo scenes' cast).
+    pub never_shop_as: Vec<String>,
+}
+
+impl PolicySet {
+    /// `platform.yml customer_bot`, typed.
+    pub fn customer_bot(&self) -> Result<CustomerBot, PolicyError> {
+        let v = self
+            .raw("platform")
+            .and_then(|p| p.get("customer_bot"))
+            .ok_or_else(|| PolicyError::Schema {
+                file: "platform".to_owned(),
+                message: "`customer_bot` is missing".to_owned(),
+            })?;
+        serde_json::from_value(v.clone()).map_err(|e| PolicyError::Schema {
+            file: "platform".to_owned(),
+            message: format!("customer_bot: {e}"),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::tests::defaults;
@@ -113,5 +162,14 @@ mod tests {
         assert!(!b.areas.is_on("community"));
         assert!(b.areas.is_on("pricing"));
         assert_eq!(b.max_proposals_per_cycle, 3);
+    }
+
+    #[test]
+    fn the_default_customer_bot_shops_every_ten_minutes_with_two_workers() {
+        let c = defaults().customer_bot().unwrap();
+        assert_eq!(c.mode, super::CustomerBotMode::On);
+        assert_eq!((c.every_minutes, c.workers), (10, 2));
+        assert_eq!(c.new_account_percent, 20);
+        assert!(c.never_shop_as.iter().any(|m| m == "cus_jamie"));
     }
 }

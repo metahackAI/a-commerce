@@ -216,6 +216,33 @@
       "rdfs:comment": "A discount a shopper can apply to an order, identified by schema:discountCode. Used as additionalType on an Offer. It records a benefit on the order; it does not add a second discount on top of a member price."
     },
     {
+      "@id": "acom:CustomerBotRun",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CustomerBotRun",
+      "rdfs:subClassOf": {
+        "@id": "schema:Thing"
+      },
+      "rdfs:comment": "one round of Ailism Customer Bot: its workers each shop once as a member. id prefix cbr_."
+    },
+    {
+      "@id": "acom:CustomerBotSession",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CustomerBotSession",
+      "rdfs:subClassOf": {
+        "@id": "schema:Thing"
+      },
+      "rdfs:comment": "one shopping visit a worker made as one member, start to sign-out. id prefix cbs_."
+    },
+    {
+      "@id": "acom:CustomerBotStep",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CustomerBotStep",
+      "rdfs:subClassOf": {
+        "@id": "schema:Thing"
+      },
+      "rdfs:comment": "one thing a session did, in order: a request it sent, a message it wrote, a decision it took. Kept whole and never changed."
+    },
+    {
       "@id": "acom:CustomerInquiry",
       "@type": "rdfs:Class",
       "rdfs:label": "CustomerInquiry",
@@ -558,6 +585,15 @@
       "rdfs:comment": "a delivery area with its shipping rate, free-shipping minimum, surcharge and transit days. id prefix zone_."
     },
     {
+      "@id": "acom:ShopperPersona",
+      "@type": "rdfs:Class",
+      "rdfs:label": "ShopperPersona",
+      "rdfs:subClassOf": {
+        "@id": "schema:Thing"
+      },
+      "rdfs:comment": "who a member is when Ailism Customer Bot shops as them: style, sizes, budget, habits and voice. One per member. id prefix spn_."
+    },
+    {
       "@id": "acom:StockOut",
       "@type": "rdfs:Class",
       "rdfs:label": "StockOut",
@@ -662,6 +698,22 @@
         }
       ],
       "rdfs:comment": "when the recipient accepted and gave the address; NULL until then."
+    },
+    {
+      "@id": "acom:accountOrigin",
+      "@type": "rdf:Property",
+      "rdfs:label": "accountOrigin",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotSession"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:CustomerBotAccountOrigin"
+        }
+      ],
+      "rdfs:comment": "an existing member or an account the session signed up. values: customer_bot_account_origin"
     },
     {
       "@id": "acom:actionType",
@@ -1401,6 +1453,9 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:BotCycle"
+        },
+        {
+          "@id": "acom:CustomerBotRun"
         }
       ],
       "schema:rangeIncludes": [
@@ -1408,7 +1463,7 @@
           "@id": "acom:BotTrigger"
         }
       ],
-      "rdfs:comment": "what started the cycle: its schedule or a person. values: bot_trigger"
+      "rdfs:comment": "what started the run: its schedule or a person. values: bot_trigger"
     },
     {
       "@id": "acom:broader",
@@ -2208,6 +2263,22 @@
       "rdfs:comment": "screen elements the person pointed at: [{element_ref, ids}]."
     },
     {
+      "@id": "acom:conversation",
+      "@type": "rdf:Property",
+      "rdfs:label": "conversation",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotSession"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "the storefront conversations it had (conv_ ids)."
+    },
+    {
       "@id": "acom:conversationId",
       "@type": "rdf:Property",
       "rdfs:label": "conversationId",
@@ -2349,6 +2420,105 @@
         }
       ],
       "rdfs:comment": "button text, up to 24 characters."
+    },
+    {
+      "@id": "acom:customerBotRun",
+      "@type": "rdf:Property",
+      "rdfs:label": "customerBotRun",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotSession"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:CustomerBotRun"
+        }
+      ],
+      "rdfs:comment": "the run the session belongs to (cbr_ id)."
+    },
+    {
+      "@id": "acom:customerBotRunState",
+      "@type": "rdf:Property",
+      "rdfs:label": "customerBotRunState",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotRun"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:CustomerBotRunState"
+        }
+      ],
+      "rdfs:comment": "queued until the gateway takes it, running while its sessions shop, then done or failed. values: customer_bot_run_state"
+    },
+    {
+      "@id": "acom:customerBotSession",
+      "@type": "rdf:Property",
+      "rdfs:label": "customerBotSession",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotStep"
+        },
+        {
+          "@id": "acom:ShopperPersona"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:CustomerBotSession"
+        }
+      ],
+      "rdfs:comment": "the session (cbs_ id)."
+    },
+    {
+      "@id": "acom:customerBotSessionState",
+      "@type": "rdf:Property",
+      "rdfs:label": "customerBotSessionState",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotSession"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:CustomerBotSessionState"
+        }
+      ],
+      "rdfs:comment": "running, then done or failed. values: customer_bot_session_state"
+    },
+    {
+      "@id": "acom:customerBotStepKind",
+      "@type": "rdf:Property",
+      "rdfs:label": "customerBotStepKind",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotStep"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:CustomerBotStepKind"
+        }
+      ],
+      "rdfs:comment": "what kind of action it was. values: customer_bot_step_kind"
+    },
+    {
+      "@id": "acom:customerBotStepStatus",
+      "@type": "rdf:Property",
+      "rdfs:label": "customerBotStepStatus",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotStep"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "acom:CustomerBotStepStatus"
+        }
+      ],
+      "rdfs:comment": "whether it worked. values: customer_bot_step_status"
     },
     {
       "@id": "acom:dataRetention",
@@ -2560,6 +2730,22 @@
         }
       ],
       "rdfs:comment": "the email or phone number the code or link goes to; NULL for registry lookups."
+    },
+    {
+      "@id": "acom:detail",
+      "@type": "rdf:Property",
+      "rdfs:label": "detail",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotStep"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "the rest worth keeping: the reply and blocks of a chat turn, the reason for a decision, the model's usage."
     },
     {
       "@id": "acom:discountLayer",
@@ -3111,6 +3297,12 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:BotCycle"
+        },
+        {
+          "@id": "acom:CustomerBotRun"
+        },
+        {
+          "@id": "acom:CustomerBotSession"
         }
       ],
       "schema:rangeIncludes": [
@@ -3638,6 +3830,22 @@
         }
       ],
       "rdfs:comment": "ISO 4217 code of gift_wrap_value."
+    },
+    {
+      "@id": "acom:goal",
+      "@type": "rdf:Property",
+      "rdfs:label": "goal",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotSession"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Text"
+        }
+      ],
+      "rdfs:comment": "what the shopper came for this time, in its own words."
     },
     {
       "@id": "acom:gradeLevel",
@@ -4897,6 +5105,22 @@
       "rdfs:comment": "what kind of organization this is (API: org_type). values: organization_type"
     },
     {
+      "@id": "acom:outcome",
+      "@type": "rdf:Property",
+      "rdfs:label": "outcome",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotSession"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "what the session did: {chat_turns, orders[{order_id, total}], spent, reviews, memories, tools[]}."
+    },
+    {
       "@id": "acom:output",
       "@type": "rdf:Property",
       "rdfs:label": "output",
@@ -5137,6 +5361,38 @@
         }
       ],
       "rdfs:comment": "the entry-limit period the entry counts in: a store date for day, an ISO week for week, event or unlimited."
+    },
+    {
+      "@id": "acom:persona",
+      "@type": "rdf:Property",
+      "rdfs:label": "persona",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ShopperPersona"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "the persona: {age_range, location, occupation, style[], colors[], sizes{}, budget{}, categories[], shopping_style, voice, interests[]}."
+    },
+    {
+      "@id": "acom:personaBuilt",
+      "@type": "rdf:Property",
+      "rdfs:label": "personaBuilt",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotSession"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Boolean"
+        }
+      ],
+      "rdfs:comment": "whether this session made the member's persona before shopping."
     },
     {
       "@id": "acom:pickupWindow",
@@ -5917,6 +6173,22 @@
       "rdfs:comment": "why it was reported (catalog.yml review.report_reasons). values: report_reason"
     },
     {
+      "@id": "acom:request",
+      "@type": "rdf:Property",
+      "rdfs:label": "request",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotStep"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "what it sent: {method, path, body} for a request, {message} for a chat turn."
+    },
+    {
       "@id": "acom:requestText",
       "@type": "rdf:Property",
       "rdfs:label": "requestText",
@@ -5967,6 +6239,9 @@
       "schema:domainIncludes": [
         {
           "@id": "acom:BotCycle"
+        },
+        {
+          "@id": "acom:CustomerBotRun"
         }
       ],
       "schema:rangeIncludes": [
@@ -5974,7 +6249,7 @@
           "@id": "schema:Text"
         }
       ],
-      "rdfs:comment": "the operator who ran it now (adm_ id); NULL for a scheduled cycle."
+      "rdfs:comment": "the operator who ran it now (adm_ id); NULL for a scheduled run."
     },
     {
       "@id": "acom:requiredScope",
@@ -6061,6 +6336,22 @@
         }
       ],
       "rdfs:comment": "what kind of display content changed; all clears every page. values: cache_resource_type"
+    },
+    {
+      "@id": "acom:response",
+      "@type": "rdf:Property",
+      "rdfs:label": "response",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotStep"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:StructuredValue"
+        }
+      ],
+      "rdfs:comment": "what came back, shortened: {status, body}."
     },
     {
       "@id": "acom:resultId",
@@ -6518,6 +6809,22 @@
       "rdfs:comment": "pickup or drop_off, from fulfillment.yml return.send_back_methods."
     },
     {
+      "@id": "acom:sessionCount",
+      "@type": "rdf:Property",
+      "rdfs:label": "sessionCount",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:ShopperPersona"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "how many sessions have shopped as this persona."
+    },
+    {
       "@id": "acom:sessionId",
       "@type": "rdf:Property",
       "rdfs:label": "sessionId",
@@ -6946,6 +7253,9 @@
         "@id": "schema:description"
       },
       "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotRun"
+        },
         {
           "@id": "acom:Task"
         },
@@ -7699,6 +8009,22 @@
       "rdfs:comment": "when the member withdrew; NULL for members who did not."
     },
     {
+      "@id": "acom:workers",
+      "@type": "rdf:Property",
+      "rdfs:label": "workers",
+      "schema:domainIncludes": [
+        {
+          "@id": "acom:CustomerBotRun"
+        }
+      ],
+      "schema:rangeIncludes": [
+        {
+          "@id": "schema:Integer"
+        }
+      ],
+      "rdfs:comment": "how many sessions shop at the same time in this run."
+    },
+    {
       "@id": "acom:writePermission",
       "@type": "rdf:Property",
       "rdfs:label": "writePermission",
@@ -8079,6 +8405,66 @@
       },
       "rdfs:comment": "Values of the coupon_status list (docs/api/enums.md).",
       "acom:wireList": "coupon_status"
+    },
+    {
+      "@id": "acom:CustomerBotAccountOrigin",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CustomerBotAccountOrigin",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the customer_bot_account_origin list (docs/api/enums.md).",
+      "acom:wireList": "customer_bot_account_origin"
+    },
+    {
+      "@id": "acom:CustomerBotMode",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CustomerBotMode",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the customer_bot_mode list (docs/api/enums.md).",
+      "acom:wireList": "customer_bot_mode"
+    },
+    {
+      "@id": "acom:CustomerBotRunState",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CustomerBotRunState",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the customer_bot_run_state list (docs/api/enums.md).",
+      "acom:wireList": "customer_bot_run_state"
+    },
+    {
+      "@id": "acom:CustomerBotSessionState",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CustomerBotSessionState",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the customer_bot_session_state list (docs/api/enums.md).",
+      "acom:wireList": "customer_bot_session_state"
+    },
+    {
+      "@id": "acom:CustomerBotStepKind",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CustomerBotStepKind",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the customer_bot_step_kind list (docs/api/enums.md).",
+      "acom:wireList": "customer_bot_step_kind"
+    },
+    {
+      "@id": "acom:CustomerBotStepStatus",
+      "@type": "rdfs:Class",
+      "rdfs:label": "CustomerBotStepStatus",
+      "rdfs:subClassOf": {
+        "@id": "schema:Enumeration"
+      },
+      "rdfs:comment": "Values of the customer_bot_step_status list (docs/api/enums.md).",
+      "acom:wireList": "customer_bot_step_status"
     },
     {
       "@id": "acom:DeliveryState",
@@ -9887,6 +10273,174 @@
       "rdfs:label": "Revoked",
       "acom:wireWord": "revoked",
       "schema:position": 6
+    },
+    {
+      "@id": "acom:CustomerBotAccountOriginExisting",
+      "@type": "acom:CustomerBotAccountOrigin",
+      "rdfs:label": "Existing",
+      "acom:wireWord": "existing",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:CustomerBotAccountOriginCreated",
+      "@type": "acom:CustomerBotAccountOrigin",
+      "rdfs:label": "Created",
+      "acom:wireWord": "created",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:CustomerBotModeOff",
+      "@type": "acom:CustomerBotMode",
+      "rdfs:label": "Off",
+      "acom:wireWord": "off",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:CustomerBotModeOn",
+      "@type": "acom:CustomerBotMode",
+      "rdfs:label": "On",
+      "acom:wireWord": "on",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:CustomerBotRunStateQueued",
+      "@type": "acom:CustomerBotRunState",
+      "rdfs:label": "Queued",
+      "acom:wireWord": "queued",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:CustomerBotRunStateRunning",
+      "@type": "acom:CustomerBotRunState",
+      "rdfs:label": "Running",
+      "acom:wireWord": "running",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:CustomerBotRunStateDone",
+      "@type": "acom:CustomerBotRunState",
+      "rdfs:label": "Done",
+      "acom:wireWord": "done",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:CustomerBotRunStateFailed",
+      "@type": "acom:CustomerBotRunState",
+      "rdfs:label": "Failed",
+      "acom:wireWord": "failed",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:CustomerBotSessionStateRunning",
+      "@type": "acom:CustomerBotSessionState",
+      "rdfs:label": "Running",
+      "acom:wireWord": "running",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:CustomerBotSessionStateDone",
+      "@type": "acom:CustomerBotSessionState",
+      "rdfs:label": "Done",
+      "acom:wireWord": "done",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:CustomerBotSessionStateFailed",
+      "@type": "acom:CustomerBotSessionState",
+      "rdfs:label": "Failed",
+      "acom:wireWord": "failed",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:CustomerBotStepKindSignUp",
+      "@type": "acom:CustomerBotStepKind",
+      "rdfs:label": "SignUp",
+      "acom:wireWord": "sign_up",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:CustomerBotStepKindSignIn",
+      "@type": "acom:CustomerBotStepKind",
+      "rdfs:label": "SignIn",
+      "acom:wireWord": "sign_in",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:CustomerBotStepKindPersona",
+      "@type": "acom:CustomerBotStepKind",
+      "rdfs:label": "Persona",
+      "acom:wireWord": "persona",
+      "schema:position": 3
+    },
+    {
+      "@id": "acom:CustomerBotStepKindVisit",
+      "@type": "acom:CustomerBotStepKind",
+      "rdfs:label": "Visit",
+      "acom:wireWord": "visit",
+      "schema:position": 4
+    },
+    {
+      "@id": "acom:CustomerBotStepKindRead",
+      "@type": "acom:CustomerBotStepKind",
+      "rdfs:label": "Read",
+      "acom:wireWord": "read",
+      "schema:position": 5
+    },
+    {
+      "@id": "acom:CustomerBotStepKindThink",
+      "@type": "acom:CustomerBotStepKind",
+      "rdfs:label": "Think",
+      "acom:wireWord": "think",
+      "schema:position": 6
+    },
+    {
+      "@id": "acom:CustomerBotStepKindChat",
+      "@type": "acom:CustomerBotStepKind",
+      "rdfs:label": "Chat",
+      "acom:wireWord": "chat",
+      "schema:position": 7
+    },
+    {
+      "@id": "acom:CustomerBotStepKindPress",
+      "@type": "acom:CustomerBotStepKind",
+      "rdfs:label": "Press",
+      "acom:wireWord": "press",
+      "schema:position": 8
+    },
+    {
+      "@id": "acom:CustomerBotStepKindReview",
+      "@type": "acom:CustomerBotStepKind",
+      "rdfs:label": "Review",
+      "acom:wireWord": "review",
+      "schema:position": 9
+    },
+    {
+      "@id": "acom:CustomerBotStepKindSignOut",
+      "@type": "acom:CustomerBotStepKind",
+      "rdfs:label": "SignOut",
+      "acom:wireWord": "sign_out",
+      "schema:position": 10
+    },
+    {
+      "@id": "acom:CustomerBotStepStatusOk",
+      "@type": "acom:CustomerBotStepStatus",
+      "rdfs:label": "Ok",
+      "acom:wireWord": "ok",
+      "schema:position": 1
+    },
+    {
+      "@id": "acom:CustomerBotStepStatusFailed",
+      "@type": "acom:CustomerBotStepStatus",
+      "rdfs:label": "Failed",
+      "acom:wireWord": "failed",
+      "schema:position": 2
+    },
+    {
+      "@id": "acom:CustomerBotStepStatusSkipped",
+      "@type": "acom:CustomerBotStepStatus",
+      "rdfs:label": "Skipped",
+      "acom:wireWord": "skipped",
+      "schema:position": 3
     },
     {
       "@id": "acom:DeliveryStateAwaitingStock",

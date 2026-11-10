@@ -106,10 +106,10 @@ Method: [eval/README.md](eval/README.md).
 
 | | |
 |---|---|
-| Commerce operations | **298 tools in 13 domains** (138 reads, 119 writes, 41 writes that move money or reach customers) and **23 person-only endpoints**. Every one is specified in [docs/api/](docs/api/README.md) and built; CI fails if one is missing or outside its folder. |
+| Commerce operations | **304 tools in 13 domains** (144 reads, 119 writes, 41 writes that move money or reach customers) and **25 person-only endpoints**. Every one is specified in [docs/api/](docs/api/README.md) and built; CI fails if one is missing or outside its folder. |
 | Domains | platform · catalog · customer · promotion · merchandising · search · sales · fulfillment · messaging · analytics · community · partner · integration |
 | Agents | `promotion`, `orders`, `catalog`, `insights`, `marketplace` (back office), `shopper` (storefront), defined in [agents/README.md](agents/README.md) |
-| Background work | 3 watchers, Ailism Bot's cycle and 8 scheduled jobs (promotion start and end, points expiry, tier evaluation, subscription renewal, campaign sending, seller status changes, held events) |
+| Background work | 3 watchers, Ailism Bot's cycle, Ailism Customer Bot's shoppers (members who shop through the storefront every 10 minutes in a demo store, every step recorded) and 8 scheduled jobs (promotion start and end, points expiry, tier evaluation, subscription renewal, campaign sending, seller status changes, held events) |
 | Data | PostgreSQL, 139 tables and views named after schema.org, a comment with its term on every table and column ([data dictionary](docs/backend/schema.generated.md)); a demo store of about 158,000 rows (Northwind Apparel: 14,000 members, 1,009 products with 9,239 variants, five weeks of daily orders, about 8,300 in all) |
 
 ### A showcase, on purpose
@@ -139,7 +139,7 @@ The services:
                   v                          v                         v
         +------------------+      +----------------------+    +--------------------+
         |  web (Next.js,   |      |  agent (Rust)        |    |  commerce (Rust)    |
-        |  Meta Astryx)    |      |  router · tool search|--->|  298 operations     |
+        |  Meta Astryx)    |      |  router · tool search|--->|  304 operations     |
         |  blocks, AI      |      |  planner · executor  |    |  previews, checks   |
         |  targets, person |      |  reply checks · log  |    |  change sets        |
         |  buttons         |      +----------+-----------+    |  policies           |

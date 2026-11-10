@@ -20,6 +20,7 @@ mod api_key;
 mod auth;
 mod bot;
 mod change_set;
+mod customer_bot;
 mod r#enum;
 mod menu;
 mod org;
@@ -38,6 +39,7 @@ use acom_store::{Cx, Page};
 use serde_json::{Value, json};
 
 pub use bot::report::record as record_bot_report;
+pub use customer_bot::record as customer_bot_record;
 pub use task::{TASK_NOT_FOUND, note_undrafted};
 
 /// Adds every platform operation to the registry.
@@ -86,7 +88,15 @@ pub fn register(b: &mut RegistryBuilder<Cx>) {
         .person(bot::give_bot_feedback::GiveBotFeedback)
         .person(bot::close_bot_feedback::CloseBotFeedback)
         .person(bot::rerequest_bot_decision::RerequestBotDecision)
-        .job(bot::watch::AilismBotCycle);
+        .job(bot::watch::AilismBotCycle)
+        .read(customer_bot::get_customer_bot_status::GetCustomerBotStatus)
+        .read(customer_bot::list_customer_bot_runs::ListCustomerBotRuns)
+        .read(customer_bot::get_customer_bot_run::GetCustomerBotRun)
+        .read(customer_bot::list_customer_bot_sessions::ListCustomerBotSessions)
+        .read(customer_bot::get_customer_bot_session::GetCustomerBotSession)
+        .read(customer_bot::list_shopper_personas::ListShopperPersonas)
+        .person(customer_bot::run_customer_bot::RunCustomerBot)
+        .person(customer_bot::update_customer_bot_settings::UpdateCustomerBotSettings);
 }
 
 /// Shared by the reads: a time input in store time.

@@ -10,6 +10,8 @@
 //! `serve` and `work` load the policy files at start and refuse to run if one is invalid, and
 //! report ready only when the database answers and every migration is applied.
 
+mod customer_bot;
+
 use std::process::ExitCode;
 use std::sync::Arc;
 
@@ -391,6 +393,7 @@ fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
     };
     Ok(acom_http::router(api.clone())
         .merge(bot_report(api.clone()))
+        .merge(customer_bot::routes(api.clone()))
         .merge(pickup_ended(api.clone()))
         .merge(page_image(api.clone()))
         .merge(demo_reset(api, reset)))

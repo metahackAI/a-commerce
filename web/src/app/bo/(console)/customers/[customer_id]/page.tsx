@@ -3,7 +3,7 @@ import {ErrorState} from '@/components/bo/ErrorState';
 import {PageFrame} from '@/components/bo/PageFrame';
 
 import {read, readOptional} from '../../../_lib/server';
-import type {Member, MemberTier, OrderSummary, Page, ReturnHistory, StoreMessage, Tier} from '../../../_lib/types';
+import type {CustomerBotSession, Member, MemberTier, OrderSummary, Page, ReturnHistory, ShopperPersona, StoreMessage, Tier} from '../../../_lib/types';
 
 export const metadata = {title: 'Customer'};
 
@@ -20,12 +20,14 @@ export default async function CustomerPage({params}: {params: Promise<{customer_
       </PageFrame>
     );
   }
-  const [tier, returns, orders, tiers, messages] = await Promise.all([
+  const [tier, returns, orders, tiers, messages, personas, botSessions] = await Promise.all([
     read<MemberTier>(`/v1/customer/people/${enc}/tier`),
     read<ReturnHistory>(`/v1/customer/people/${enc}/returns`, {limit: 20}),
     read<Page<OrderSummary>>('/v1/sales/orders', {customer_id: id, limit: 10}),
     readOptional<Page<Tier>>('/v1/customer/tiers', {limit: 100}),
     read<Page<StoreMessage>>('/v1/messaging/notifications', {customer_id: id, limit: 20}),
+    readOptional<Page<ShopperPersona>>('/v1/platform/customer-bot/personas', {customer_id: id, limit: 1}),
+    readOptional<Page<CustomerBotSession>>('/v1/platform/customer-bot/sessions', {customer_id: id, limit: 5}),
   ]);
 
   return (
@@ -41,6 +43,7 @@ export default async function CustomerPage({params}: {params: Promise<{customer_
       ordersError={orders.ok ? null : orders.error}
       messages={messages.ok ? messages.data : null}
       messagesError={messages.ok ? null : messages.error}
+      shopperBot={{persona: personas?.items[0] ?? null, sessions: botSessions?.items ?? []}}
     />
   );
 }

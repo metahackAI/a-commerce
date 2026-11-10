@@ -54,6 +54,21 @@ bot:
   cooldown_days: 7                       # 거절·치운 제안과 같은 원인은 이 기간 다시 제안하지 않는다
   directives: []                         # 사람이 정한 고정 지시(["Never discount new arrivals"]). 피드백의 directive와 함께 분석에 들어간다
 
+# Ailism Customer Bot: 데모 스토어를 실제로 운영되는 가게처럼 움직이게 하는 가상 쇼퍼들. 주기마다 workers만큼의
+# 세션이 동시에 회원 하나씩으로 스토어프론트에 들어와(데모 로그인, 또는 새 계정 가입) 채팅으로 찾고 묻고 담고 주문하고
+# 리뷰를 쓴다. 페르소나가 없는 회원은 먼저 페르소나를 만든다. 모든 행동은 세션의 단계로 남는다. 데모 모드에서만 돈다.
+# 설정 화면이 사람 전용 PUT /v1/platform/customer-bot/settings로 이 값을 덮어쓴다. docs/api/platform.md §customer_bot
+customer_bot:
+  mode: on                               # off(돌지 않음, 지금 돌리기는 됨) | on(every_minutes마다)
+  every_minutes: 10                      # 기본 10분. 실제 시간으로 센다(데모 시계가 멈춰 있어도)
+  workers: 2                             # 한 번에 쇼핑하는 세션 수(1–10)
+  new_account_percent: 20                # 세션 가운데 새 계정을 만들어 들어오는 비율(0–100)
+  max_actions: 8                         # 세션 하나가 하는 행동(채팅·주문·리뷰)의 최대 수
+  reviews_per_session: 2                 # 배송 완료된 품목에 쓰는 리뷰의 최대 수
+  model: glimmer                         # 페르소나를 만들고 다음 행동을 고르는 모델(agents/models.yml 별칭)
+  never_shop_as: [cus_jamie, cus_alex, cus_4431, cus_riley, cus_sam, cus_dana, cus_priya, cus_marcus, cus_elena,
+                  cus_noor, cus_theo, cus_grace, cus_owen]   # 장면의 인물(seed generate.yml never_touch). 봇은 이 회원으로 들어오지 않는다
+
 # 할 일 맡기기: 감시 작업이 새로 연 agent_noticed 할 일을 사람이 열기 전에 운영 에이전트가 맡는다. docs/api/platform.md §task
 # 게이트웨이가 acts_as 운영자의 위임 토큰(human:* 스코프 없음)으로 할 일의 요청 문장을 턴으로 보낸다. 초안은 승인 대기에서 멈춘다.
 task_pickup:

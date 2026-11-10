@@ -232,6 +232,11 @@ Ailism Bot([../api/platform.md](../api/platform.md#bot))의 한 주기는 턴이
 
 ---
 
+
+### 10.2 Ailism Customer Bot의 쇼퍼
+
+Ailism Customer Bot([../api/platform.md](../api/platform.md#customer_bot))의 세션은 게이트웨이가 브라우저처럼 돌리고, 사람이 정할 것만 `acom-agent`의 `customer_bot::think`에 묻습니다. 엔드포인트는 `POST /customer-bot/think {task, model, input}` → `{output, usage}`이고, 게이트웨이 작업자의 시스템 토큰(`sys_customer_bot`)만 받습니다. 툴은 부르지 않습니다. 과제는 넷입니다: `identity`(새 계정의 이름·이메일 앞부분·미국 주소), `persona`(회원의 주문·프로필에 맞춘 페르소나와 한 줄 설명, 이름 없이), `next`(다음 행동 `say` · `place_order` · `leave`와 보낼 말·이유·목표), `review`(받은 품목의 별점·본문·핏). 과제마다 닫힌 JSON 스키마로 답을 받고, 실패하거나 읽을 수 없으면 한 번 더 묻습니다. 프롬프트는 [prompts/customer_bot.md](../../agents/prompts/customer_bot.md), 모델은 `customer_bot.model`(기본 `glimmer`)입니다.
+
 ## 11. 크레이트 구성
 
 ```

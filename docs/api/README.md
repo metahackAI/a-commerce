@@ -87,6 +87,8 @@ a-commerce API
 | `POST /v1/platform/bot/feedback` | `{kind, text, bot_decision_id?}` | 운영자 | `human:bot` | 봇에게 피드백·지시·재요청 남기기 | 〃 |
 | `POST /v1/platform/bot/feedback/{bot_feedback_id}/close` | — | 운영자 | `human:bot` | 피드백 닫기 | 〃 |
 | `POST /v1/platform/bot/decisions/{bot_decision_id}/rerequest` | `{text}` | 운영자 | `human:bot`(+ 기다리는 변경셋이 있으면 `human:reject`) | 봇의 결정을 고칠 내용과 함께 다시 요청 | 〃 |
+| `POST /v1/platform/customer-bot/runs` | `{}` | 운영자 | `human:bot` | Ailism Customer Bot 지금 돌리기(실행을 줄 세움) | [platform.md](platform.md#customer_bot) |
+| `PUT /v1/platform/customer-bot/settings` | 바꿀 설정 | 운영자 | `human:bot` | Ailism Customer Bot 설정(정책 덮어쓰기) | 〃 |
 | `POST /v1/sales/orders` | `{preview_id}` | 쇼퍼 | `human:order` | 주문하기(`prepare_order`·`prepare_gift_order`의 프리뷰) | [sales.md](sales.md) |
 | `POST /v1/sales/subscriptions` | `{preview_id}` | 쇼퍼 | `human:order` | 정기 주문 시작(`prepare_subscription`의 프리뷰) | 〃 |
 | `POST /v1/sales/gift-orders/{id}/accept` | `{delivery_address, size?, color?}` | 선물 받는 사람 | `human:order` | 선물 수락(가격은 못 바꿈) | 〃 |
@@ -302,6 +304,7 @@ a-commerce API
 | change_set | **`get_change_set`** R · `search_change_sets` R · **`verify_change_set`** R · 사람 전용 `POST /v1/platform/change-sets/{id}/approve`, `…/reject`, `…/undo` · 런타임 전용 만들기·항목·제출(§2.2) |
 | task | `list_tasks` R · `get_task` R · 사람 전용 `POST /v1/platform/tasks/{task_id}/dismiss` |
 | bot | `get_bot_status` R · `list_bot_cycles` R · `get_bot_cycle` R · `list_bot_decisions` R · `get_bot_decision` R · `list_bot_feedback` R · 사람 전용 `POST /v1/platform/bot/cycles`, `PUT /v1/platform/bot/settings`, `POST /v1/platform/bot/feedback`, `…/feedback/{bot_feedback_id}/close`, `…/decisions/{bot_decision_id}/rerequest` · 내부 `POST /v1/platform/bot/cycles/{bot_cycle_id}/report` |
+| customer_bot | `get_customer_bot_status` R · `list_customer_bot_runs` R · `get_customer_bot_run` R · `list_customer_bot_sessions` R · `get_customer_bot_session` R · `list_shopper_personas` R · 사람 전용 `POST /v1/platform/customer-bot/runs`, `PUT /v1/platform/customer-bot/settings` · 내부 `POST /v1/platform/customer-bot/runs/next`, `POST /v1/platform/customer-bot/accounts`, `…/sessions/{customer_bot_session_id}/steps`, `…/sessions/{customer_bot_session_id}/finish`, `PUT /v1/platform/customer-bot/personas/{customer_id}` |
 | demo_clock | 런타임 전용 `GET`·`PUT /v1/platform/demo-clock`(§2.2) — 예약 작업([platform.md](platform.md#예약-작업))을 시각에 맞춰 실행 |
 | action_log | `search_action_log` R · `get_action_log` R |
 | schema | `describe_data` R (DB 데이터 사전) |
