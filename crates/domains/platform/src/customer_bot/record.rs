@@ -49,7 +49,12 @@ pub async fn claim_next_run(tx: &mut TxCx) -> Result<Option<NextRun>, ToolError>
            finished_at = now(), error = 'The workers stopped before the run ended.',
            updated_at = now(), version = version + 1
          WHERE tenant_id = $1 AND run_state = 'running'
-           AND claimed_at < now() - make_interval(mins => $3)
+           AND greatest(claimed_at,
+                 (SELECT max(t.created_at) FROM platform.customer_bot_step t
+                    JOIN platform.customer_bot_session s
+                      ON s.tenant_id = t.tenant_id AND s.id = t.session_id
+                   WHERE s.tenant_id = customer_bot_run.tenant_id AND s.run_id = customer_bot_run.id))
+               < now() - make_interval(mins => $3)
          RETURNING id",
     )
     .bind(tx.tenant.as_str())

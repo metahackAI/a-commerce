@@ -31,9 +31,10 @@ pub const CUSTOMER_BOT_RUN_NOT_FOUND: ErrorCode =
 pub const CUSTOMER_BOT_SESSION_NOT_FOUND: ErrorCode =
     ErrorCode::new("customer_bot_session_not_found", ErrorClass::NotFound);
 
-/// A run still running this long after the gateway took it lost its workers (a restart, a
-/// deploy): it is closed as failed before the next one starts. Technical pacing, not a rule.
-pub(crate) const STALE_RUN_MINUTES: i64 = 45;
+/// A running run whose sessions have recorded nothing for this long lost its workers (a deploy
+/// restarted the gateway): it is closed as failed before the next one starts. A session records a
+/// step at least every few minutes (a chat turn ends within three). Technical pacing, not a rule.
+pub(crate) const STALE_RUN_MINUTES: i64 = 8;
 
 fn db(e: sqlx::Error) -> ToolError {
     ToolError::from(StoreError::from(e))

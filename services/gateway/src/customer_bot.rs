@@ -930,6 +930,17 @@ async fn visit(
                 Some(e),
             ),
         };
+        let mut next = next;
+        // Ready to buy with no checkout card on screen: a person first asks to check out, and
+        // the card with Place order comes back.
+        if next["action"] == "place_order" && checkout.is_none() && !placed {
+            next["action"] = json!("say");
+            next["message"] = json!("I'd like to check out now.");
+            next["reason"] = json!(format!(
+                "Ready to buy, so asked to check out first ({}).",
+                next["reason"].as_str().unwrap_or_default()
+            ));
+        }
         let action = next["action"].as_str().unwrap_or("leave").to_owned();
         let mut t = step(
             "think",
