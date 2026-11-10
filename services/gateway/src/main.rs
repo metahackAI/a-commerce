@@ -18,6 +18,7 @@
 
 mod auth;
 mod chat_ws;
+mod customer_bot;
 mod pickup;
 mod session;
 
@@ -116,6 +117,8 @@ pub struct Gateway {
     commerce: Arc<str>,
     agent: Arc<str>,
     web: Arc<str>,
+    /// This gateway's own address, for Ailism Customer Bot's sessions (they shop through it).
+    self_url: Arc<str>,
     signer: Signer,
     pub sessions: Sessions,
     pub demo_personas: Vec<String>,
@@ -436,6 +439,7 @@ fn gateway(cli: &Cli) -> Result<Gateway, String> {
         commerce: cli.commerce_url.trim_end_matches('/').into(),
         agent: cli.agent_url.trim_end_matches('/').into(),
         web: cli.web_url.trim_end_matches('/').into(),
+        self_url: own_address(&cli.addr).into(),
         signer,
         sessions: Sessions::new(
             db,
@@ -451,6 +455,17 @@ fn gateway(cli: &Cli) -> Result<Gateway, String> {
             .collect(),
         cookie_secure: cli.cookie_secure,
     })
+}
+
+/// The address this gateway answers on from inside its own host: the listening address, with a
+/// wildcard host read as the loopback.
+fn own_address(addr: &str) -> String {
+    let (host, port) = addr.rsplit_once(':').unwrap_or((addr, "80"));
+    let host = match host.trim_matches(['[', ']']) {
+        "" | "0.0.0.0" | "::" => "127.0.0.1",
+        h => h,
+    };
+    format!("http://{host}:{port}")
 }
 
 #[tokio::main]
@@ -469,6 +484,7 @@ async fn main() -> ExitCode {
     };
     tracing::info!(store = %cli.store_id, demo_mode = cli.demo_mode, "gateway configured");
     pickup::spawn(gw.clone());
+    customer_bot::spawn(gw.clone());
     match acom_server::serve(SERVICE, &cli.addr, app(gw)).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {

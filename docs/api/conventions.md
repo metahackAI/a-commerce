@@ -131,6 +131,8 @@ schema.org `MonetaryAmount` 형태입니다.
 | 판매자 / 계약 | `slr` / `ctr` | 연동 채널 / 받은 웹훅 | `chn` / `whk` |
 | 반품 정책 | `mrp` | 예약 작업 / 에이전트 단계 | `job` / `step` |
 | 대화 / 턴 / UI 블록 | `conv` / `turn` / `blk` | 업로드 / 요청 추적 | `upl` / `req` |
+| Ailism Customer Bot 실행 | `cbr` | Ailism Customer Bot 세션 | `cbs` |
+| 쇼퍼 페르소나 | `spn` | | |
 
 - **등급 id**는 스토어가 정한 단어(`vip`, `gold`)이고 접두가 없습니다. `"everyone"`은 예약어입니다([enums.md](enums.md) §5).
 - **사람에게 보이는 번호**는 따로 둡니다: 주문 `order_number: "20402"`, 변경셋 `number: 1042`(`#`은 화면 표기일 뿐 값에 넣지 않음).

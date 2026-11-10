@@ -169,6 +169,12 @@
 | Ailism Bot 제안의 위험 `acom:bot_risk` | `low`, `medium`, `high` |
 | Ailism Bot 피드백 `acom:bot_feedback_kind` | `feedback`, `directive`, `correction` |
 | Ailism Bot 피드백 상태 `acom:bot_feedback_state` | `open`, `closed` |
+| Ailism Customer Bot 모드 `acom:customer_bot_mode` | `off`(예약 실행 없음, 지금 돌리기는 됨), `on` |
+| Ailism Customer Bot 실행 `acom:customer_bot_run_state` | `queued`, `running`, `done`, `failed` |
+| Ailism Customer Bot 세션 `acom:customer_bot_session_state` | `running`, `done`, `failed` |
+| Ailism Customer Bot 세션의 계정 `acom:customer_bot_account_origin` | `existing`(있던 회원), `created`(세션이 가입한 회원) |
+| Ailism Customer Bot 단계 `acom:customer_bot_step_kind` | `sign_up`, `sign_in`, `persona`, `visit`, `read`, `think`, `chat`, `press`, `review`, `sign_out` |
+| Ailism Customer Bot 단계 결과 `acom:customer_bot_step_status` | `ok`, `failed`, `skipped` |
 | 예약 작업 `acom:job_state` (`job.updated` 이벤트, 열에서 계산) | `scheduled`, `retrying`, `done` |
 | 운영자 계정 `acom:admin_status` | `active`, `suspended`, `locked` |
 | 스토어 `acom:store_status` (API `acom:status`) | `active`, `suspended` |

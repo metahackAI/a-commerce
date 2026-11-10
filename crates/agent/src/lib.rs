@@ -22,6 +22,7 @@ pub mod blocks;
 pub mod bot;
 pub mod checker;
 pub mod client;
+pub mod customer_bot;
 pub mod executor;
 pub mod memory;
 pub mod planner;

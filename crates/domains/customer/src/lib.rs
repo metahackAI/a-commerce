@@ -9,6 +9,7 @@
 //! through `service::providers`, which they fill in at start-up.
 
 pub mod service;
+pub mod shopper_bot;
 
 mod access;
 mod address;

@@ -90,3 +90,4 @@ prompts:
   arguments: prompts/arguments.md
   reply: prompts/reply.md
   bot: prompts/bot.md
+  customer_bot: prompts/customer_bot.md

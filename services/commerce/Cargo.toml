@@ -17,6 +17,7 @@ acom-facade.workspace = true
 acom-http.workspace = true
 acom-mcp.workspace = true
 acom-platform.workspace = true
+acom-customer.workspace = true
 acom-policy.workspace = true
 acom-registry.workspace = true
 acom-server.workspace = true

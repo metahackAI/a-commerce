@@ -2072,6 +2072,73 @@
 | `updated_at` | timestamptz |  | `-` | when the row was last changed. |
 | `version` | integer |  | `-` | row version, +1 on every change; previews record it in basis and execution compares it. |
 
+### `platform.customer_bot_run`
+
+`acom:CustomerBotRun` — one round of Ailism Customer Bot: its workers each shop once as a member. id prefix cbr_. · id `cbr_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix cbr_; the same value the API, logs and events use. |
+| `bot_trigger` | text |  | `acom:botTrigger` | what started the run: its schedule or a person. values: bot_trigger Values: `schedule` · `manual`. |
+| `requested_by` | text | ✓ | `acom:requestedBy` | the operator who ran it now (adm_ id); NULL for a scheduled run. |
+| `run_state` | text |  | `acom:customerBotRunState` | queued until the gateway takes it, running while its sessions shop, then done or failed. values: customer_bot_run_state Values: `queued` · `running` · `done` · `failed`. |
+| `workers` | integer |  | `acom:workers` | how many sessions shop at the same time in this run. |
+| `start_time` | timestamptz |  | `schema:startTime` | when the run opened, in store time (API at). |
+| `end_time` | timestamptz | ✓ | `schema:endTime` | when its last session ended, in store time. |
+| `summary` | jsonb |  | `acom:summary` | what its sessions did together: {sessions, done, failed, accounts_created, personas_built, chat_turns, orders, spent, reviews}. |
+| `error` | text | ✓ | `acom:error` | why the run failed; NULL otherwise. |
+| `claimed_at` | timestamptz | ✓ | `-` | when the gateway took the run, by the server's clock (the schedule follows real minutes). |
+| `finished_at` | timestamptz | ✓ | `-` | when the run ended, by the server's clock. |
+| `created_at` | timestamptz |  | `-` | row creation time, by the server's clock; the schedule counts from it. |
+| `updated_at` | timestamptz |  | `-` | last update time. |
+| `version` | integer |  | `-` | row version, +1 on every change. |
+
+### `platform.customer_bot_session`
+
+`acom:CustomerBotSession` — one shopping visit a worker made as one member, start to sign-out. id prefix cbs_. · id `cbs_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix cbs_; the same value the API, logs and events use. |
+| `run_id` | text |  | `acom:customerBotRun` | the run the session belongs to (cbr_ id). → `platform.customer_bot_run` |
+| `customer_id` | text | ✓ | `schema:customer` | the member the session shopped as (cus_ id); NULL until a new account exists. |
+| `account_origin` | text |  | `acom:accountOrigin` | an existing member or an account the session signed up. values: customer_bot_account_origin Values: `existing` · `created`. |
+| `session_state` | text |  | `acom:customerBotSessionState` | running, then done or failed. values: customer_bot_session_state Values: `running` · `done` · `failed`. |
+| `persona_built` | boolean |  | `acom:personaBuilt` | whether this session made the member's persona before shopping. |
+| `goal` | text | ✓ | `acom:goal` | what the shopper came for this time, in its own words. |
+| `outcome` | jsonb |  | `acom:outcome` | what the session did: {chat_turns, orders[{order_id, total}], spent, reviews, memories, tools[]}. |
+| `conversation_ids` | jsonb |  | `acom:conversation` | the storefront conversations it had (conv_ ids). |
+| `error` | text | ✓ | `acom:error` | why the session stopped early; NULL otherwise. |
+| `start_time` | timestamptz |  | `schema:startTime` | when the session started, in store time. |
+| `end_time` | timestamptz | ✓ | `schema:endTime` | when it ended, in store time. |
+| `finished_at` | timestamptz | ✓ | `-` | when it ended, by the server's clock. |
+| `created_at` | timestamptz |  | `-` | row creation time, by the server's clock. |
+| `updated_at` | timestamptz |  | `-` | last update time. |
+| `version` | integer |  | `-` | row version, +1 on every change. |
+
+### `platform.customer_bot_step`
+
+`acom:CustomerBotStep` — one thing a session did, in order: a request it sent, a message it wrote, a decision it took. Kept whole and never changed.
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `session_id` | text |  | `acom:customerBotSession` | the session (cbs_ id). → `platform.customer_bot_session` |
+| `position` | integer |  | `schema:position` | the step's place in the session, from 1. |
+| `step_kind` | text |  | `acom:customerBotStepKind` | what kind of action it was. values: customer_bot_step_kind Values: `sign_up` · `sign_in` · `persona` · `visit` · `read` · `think` · `chat` · `press` · `review` · `sign_out`. |
+| `step_status` | text |  | `acom:customerBotStepStatus` | whether it worked. values: customer_bot_step_status Values: `ok` · `failed` · `skipped`. |
+| `title` | text |  | `schema:name` | one sentence saying what it did. |
+| `request` | jsonb | ✓ | `acom:request` | what it sent: {method, path, body} for a request, {message} for a chat turn. |
+| `response` | jsonb | ✓ | `acom:response` | what came back, shortened: {status, body}. |
+| `detail` | jsonb |  | `acom:detail` | the rest worth keeping: the reply and blocks of a chat turn, the reason for a decision, the model's usage. |
+| `duration_ms` | integer |  | `schema:duration` | how long it took, in milliseconds. |
+| `start_time` | timestamptz |  | `schema:startTime` | when it happened, in store time. |
+| `created_at` | timestamptz |  | `-` | row creation time, by the server's clock. |
+| `updated_at` | timestamptz |  | `-` | last update time. |
+| `version` | integer |  | `-` | row version, +1 on every change. |
+
 ### `platform.demo_clock`
 
 `-` — the store's demo time; in demo mode every Clock read and due job uses it.
@@ -2284,6 +2351,24 @@
 | `refresh_token_hash` | text | ✓ | `-` | SHA-256 (hex) of an API client session's refresh token; NULL for a browser session. |
 | `refresh_expires_at` | timestamptz | ✓ | `-` | when the refresh token stops being accepted; NULL for a browser session. |
 | `replaced_by_id` | text | ✓ | `-` | the session its refresh token was exchanged for; a refresh token that comes back after that is reuse and ends every session of the client. → `platform.session` |
+
+### `platform.shopper_persona`
+
+`acom:ShopperPersona` — who a member is when Ailism Customer Bot shops as them: style, sizes, budget, habits and voice. One per member. id prefix spn_. · id `spn_…`
+
+| column | type | null | term | description |
+|---|---|:--:|---|---|
+| `tenant_id` | text |  | `-` | store (tenant) that owns this row; row-level security key. → `platform.online_store` |
+| `id` | text |  | `-` | id with prefix spn_; the same value the API, logs and events use. |
+| `customer_id` | text |  | `schema:customer` | the member (cus_ id). |
+| `description` | text |  | `schema:description` | the persona in one line. |
+| `persona` | jsonb |  | `acom:persona` | the persona: {age_range, location, occupation, style[], colors[], sizes{}, budget{}, categories[], shopping_style, voice, interests[]}. |
+| `built_by_session_id` | text | ✓ | `acom:customerBotSession` | the session that made it (cbs_ id). → `platform.customer_bot_session` |
+| `session_count` | integer |  | `acom:sessionCount` | how many sessions have shopped as this persona. |
+| `last_session_at` | timestamptz | ✓ | `-` | when a session last shopped as it, by the server's clock. |
+| `created_at` | timestamptz |  | `-` | row creation time, by the server's clock. |
+| `updated_at` | timestamptz |  | `-` | last update time. |
+| `version` | integer |  | `-` | row version, +1 on every change. |
 
 ### `platform.site_navigation_element`
 

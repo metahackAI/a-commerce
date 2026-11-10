@@ -908,3 +908,153 @@ export interface BotDecision {
   at: string;
   updated_at: string;
 }
+
+// ---- Ailism Customer Bot (docs/api/platform.md#customer_bot) --------------------------------
+
+export type CustomerBotMode = 'on' | 'off';
+
+export interface CustomerBotSettings {
+  mode: CustomerBotMode;
+  every_minutes: number;
+  workers: number;
+  new_account_percent: number;
+  max_actions: number;
+  reviews_per_session: number;
+  model: string;
+  never_shop_as: string[];
+}
+
+/** What a run's sessions did together. */
+export interface CustomerBotSummary {
+  sessions?: number;
+  done?: number;
+  failed?: number;
+  accounts_created?: number;
+  personas_built?: number;
+  chat_turns?: number;
+  orders?: number;
+  reviews?: number;
+  memories?: number;
+  cart_adds?: number;
+  spent?: Money;
+}
+
+export interface CustomerBotRun {
+  id: string;
+  trigger: 'schedule' | 'manual';
+  requested_by: string | null;
+  state: 'queued' | 'running' | 'done' | 'failed';
+  workers: number;
+  /** Store time (the demo clock). */
+  at: string;
+  end_time: string | null;
+  /** Real time the run started and ended. */
+  started: string;
+  finished: string | null;
+  sessions: number;
+  summary: CustomerBotSummary;
+  error: string | null;
+}
+
+/** What one session did. */
+export interface CustomerBotOutcome {
+  chat_turns?: number;
+  orders?: number;
+  order_ids?: {order_id: string; total: string}[];
+  spent?: {value: number | string | null; currency: string};
+  reviews?: number;
+  memories?: number;
+  cart_adds?: number;
+  tools?: string[];
+  fallbacks?: number;
+}
+
+export interface CustomerBotSession {
+  id: string;
+  run_id: string;
+  customer_id: string | null;
+  account: 'existing' | 'created';
+  state: 'running' | 'done' | 'failed';
+  persona_built: boolean;
+  /** The persona's one line. */
+  persona: string | null;
+  goal: string | null;
+  outcome: CustomerBotOutcome;
+  conversation_ids: string[];
+  error: string | null;
+  steps: number;
+  at: string;
+  end_time: string | null;
+  started: string;
+  finished: string | null;
+}
+
+export interface ShopperPersonaBody {
+  age_range?: string;
+  location?: string;
+  occupation?: string;
+  style?: string[];
+  colors?: string[];
+  sizes?: {top?: string; bottom?: string; shoes?: string};
+  budget_per_order?: number;
+  categories?: string[];
+  shopping_style?: string;
+  chattiness?: string;
+  voice?: string;
+  interests?: string[];
+  [key: string]: unknown;
+}
+
+export interface ShopperPersona {
+  id: string;
+  customer_id: string;
+  description: string;
+  persona: ShopperPersonaBody;
+  built_by_session_id: string | null;
+  sessions: number;
+  last_session: string | null;
+  created: string;
+}
+
+export type CustomerBotStepKind = 'sign_up' | 'sign_in' | 'persona' | 'visit' | 'read' | 'think' | 'chat' | 'press' | 'review' | 'sign_out';
+
+export interface CustomerBotStep {
+  position: number;
+  kind: CustomerBotStepKind;
+  status: 'ok' | 'failed' | 'skipped';
+  title: string;
+  request: {method?: string; path?: string; body?: unknown} | null;
+  response: {status?: number; body?: unknown} | null;
+  detail: Record<string, unknown>;
+  ms: number;
+  at: string;
+  recorded: string;
+}
+
+export interface CustomerBotSessionDetail extends Omit<CustomerBotSession, 'persona' | 'steps'> {
+  persona: ShopperPersona | null;
+  steps: CustomerBotStep[];
+}
+
+export interface CustomerBotRunDetail extends Omit<CustomerBotRun, 'sessions'> {
+  sessions: CustomerBotSession[];
+}
+
+export interface CustomerBotStatus {
+  settings: CustomerBotSettings;
+  working: CustomerBotRun | null;
+  last_run: CustomerBotRun | null;
+  next_run_at: string | null;
+  next_run_in_seconds: number | null;
+  totals: {
+    runs: number;
+    sessions: number;
+    failed_sessions: number;
+    accounts_created: number;
+    personas: number;
+    chat_turns: number;
+    orders: number;
+    reviews: number;
+    spent: Money;
+  };
+}

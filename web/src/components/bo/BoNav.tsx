@@ -31,6 +31,7 @@ import {
   ShoppingBagIcon,
   SparklesIcon,
   TagIcon,
+  UserGroupIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline';
 import {
@@ -45,6 +46,7 @@ import {
   ShoppingBagIcon as ShoppingBagSolid,
   SparklesIcon as SparklesSolid,
   TagIcon as TagSolid,
+  UserGroupIcon as UserGroupSolid,
   UsersIcon as UsersSolid,
 } from '@heroicons/react/24/solid';
 
@@ -77,6 +79,17 @@ const WORK: NavLink[] = [
       {label: 'AI decisions', href: '/bo/bot/decisions'},
       {label: 'History', href: '/bo/bot/history'},
       {label: 'Settings', href: '/bo/bot/settings'},
+    ],
+  },
+  {
+    label: 'Ailism Customer Bot',
+    href: '/bo/customer-bot',
+    icon: UserGroupIcon,
+    selectedIcon: UserGroupSolid,
+    children: [
+      {label: 'Sessions', href: '/bo/customer-bot/sessions'},
+      {label: 'Personas', href: '/bo/customer-bot/personas'},
+      {label: 'Settings', href: '/bo/customer-bot/settings'},
     ],
   },
   {label: 'Change sets', href: '/bo/change-sets', icon: ClipboardDocumentListIcon, selectedIcon: ClipboardDocumentListSolid},

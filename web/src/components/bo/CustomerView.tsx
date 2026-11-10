@@ -11,7 +11,7 @@ import {MetadataList, MetadataListItem} from '@astryxdesign/core/MetadataList';
 
 import type {ApiErrorBody} from '@/lib/api';
 import {date, dateTime, isMoney, money, value, words} from '@/app/bo/_lib/format';
-import type {Member, MemberTier, OrderSummary, Page, ReturnHistory, StoreMessage} from '@/app/bo/_lib/types';
+import type {CustomerBotSession, Member, MemberTier, OrderSummary, Page, ReturnHistory, ShopperPersona, StoreMessage} from '@/app/bo/_lib/types';
 
 import {ErrorState} from './ErrorState';
 import {MessageList} from './MessageList';
@@ -20,6 +20,7 @@ import {StateToken} from './StateToken';
 import {OrderList} from './lists/sales';
 import {DataTable, Figure} from './tables';
 import {TargetCard, TargetFact} from './targets';
+import {PersonaFacts, SessionTable} from './customer-bot/parts';
 
 const amount = (v: unknown) => (isMoney(v) ? money(v) : value(v));
 
@@ -35,6 +36,8 @@ export interface CustomerViewProps {
   ordersError: ApiErrorBody | null;
   messages: Page<StoreMessage> | null;
   messagesError: ApiErrorBody | null;
+  /** The persona Ailism Customer Bot shops as for this member, and its sessions as them. */
+  shopperBot?: {persona: ShopperPersona | null; sessions: CustomerBotSession[]};
 }
 
 export function CustomerView({
@@ -49,6 +52,7 @@ export function CustomerView({
   ordersError,
   messages,
   messagesError,
+  shopperBot,
 }: CustomerViewProps) {
   const ids = {customer_id: m.id};
   const tierName = (id: string | null | undefined) => (id ? (tierNames[id] ?? id) : '—');
@@ -177,6 +181,22 @@ export function CustomerView({
         {messagesError ? <ErrorState error={messagesError} title="The messages could not be loaded." /> : null}
         {messages ? <MessageList messages={messages.items} customerId={m.id} /> : null}
       </PageSection>
+
+      {shopperBot && (shopperBot.persona || shopperBot.sessions.length > 0) ? (
+        <PageSection
+          title="Ailism Customer Bot"
+          count={shopperBot.sessions.length}
+          description="This member is one of the demo store's made-up shoppers: the bot signs in as them and shops as this persona."
+          actions={<Link href={`/bo/customer-bot/sessions?customer_id=${encodeURIComponent(m.id)}`}>All their sessions</Link>}>
+          {shopperBot.persona ? (
+            <VStack gap={2}>
+              <Text weight="semibold">{shopperBot.persona.description}</Text>
+              <PersonaFacts p={shopperBot.persona.persona} />
+            </VStack>
+          ) : null}
+          <SessionTable sessions={shopperBot.sessions} />
+        </PageSection>
+      ) : null}
     </PageFrame>
   );
 }
