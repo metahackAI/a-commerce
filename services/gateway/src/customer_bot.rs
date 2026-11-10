@@ -814,10 +814,63 @@ async fn visit(
         review(gw, http, model, &persona, item, &mut browser, ledger, tally).await;
     }
 
-    // 6. Shopping with the assistant.
+    // 6. Shopping with the assistant: why they came and the first thing they say, then one
+    // decision at a time.
     let mut conversation: Option<String> = None;
     let mut transcript: Vec<Value> = Vec::new();
-    let mut goal = String::new();
+    let started = Instant::now();
+    let opening = think(
+        gw,
+        http,
+        model,
+        "start",
+        json!({"persona": persona, "page": title}),
+    )
+    .await;
+    let (mut goal, first, fallback, usage) = match opening {
+        Ok((o, u)) if o["message"].as_str().is_some_and(|m| !m.trim().is_empty()) => (
+            o["goal"].as_str().unwrap_or_default().to_owned(),
+            Some(o["message"].as_str().unwrap_or_default().trim().to_owned()),
+            None,
+            u,
+        ),
+        Ok((_, u)) => (
+            String::new(),
+            None,
+            Some("The answer had no first message.".to_owned()),
+            u,
+        ),
+        Err(e) => (String::new(), None, Some(e), Value::Null),
+    };
+    if fallback.is_some() {
+        tally.fallbacks += 1;
+    }
+    if goal.trim().is_empty() {
+        goal = format!(
+            "Find {}",
+            persona["categories"][0]
+                .as_str()
+                .unwrap_or("something to wear")
+        );
+    }
+    let first = first.unwrap_or_else(|| {
+        plain_next(&persona, 0, false, false)["message"]
+            .as_str()
+            .unwrap_or("Show me what's new.")
+            .to_owned()
+    });
+    let mut t = step(
+        "think",
+        fallback.is_none(),
+        format!("Came for: {goal}"),
+        millis(started),
+    );
+    t["detail"] = json!({"action": "say", "message": first, "goal": goal, "usage": usage, "fallback": fallback});
+    if fallback.is_some() {
+        t["status"] = json!("skipped");
+    }
+    ledger.note(t, json!({"goal": goal})).await;
+    let mut pending: Option<String> = Some(first);
     let mut checkout: Option<Value> = None;
     let mut placed = false;
     let mut said = 0usize;
@@ -836,6 +889,28 @@ async fn visit(
             break;
         }
         let can_place_order = checkout.is_some() && !placed;
+        if let Some(message) = pending.take() {
+            said += 1;
+            let turn = chat_step(
+                &mut browser,
+                conversation.as_deref(),
+                &message,
+                &format!("Asked: {message}"),
+                ledger,
+                tally,
+            )
+            .await;
+            failed_in_a_row = u32::from(turn.error.is_some());
+            conversation.clone_from(&turn.conversation_id);
+            if let Some(c) = turn.block("checkout_card") {
+                checkout = Some(summary(c));
+            }
+            transcript.push(json!({"you": message,
+                                   "assistant": turn.reply.chars().take(REPLY_CHARS).collect::<String>(),
+                                   "shown": turn.blocks.iter().map(summary).collect::<Vec<_>>(),
+                                   "problem": turn.error}));
+            continue;
+        }
         let input = json!({"persona": persona, "goal": goal, "transcript": transcript,
                            "can_place_order": can_place_order,
                            "checkout": checkout.as_ref().map(|c| json!({"total": c["total"], "failed_checks": c["failed_checks"]})),
@@ -855,22 +930,6 @@ async fn visit(
                 Some(e),
             ),
         };
-        if goal.is_empty() {
-            goal = next["goal"]
-                .as_str()
-                .filter(|g| !g.trim().is_empty())
-                .map_or_else(
-                    || {
-                        format!(
-                            "Find {}",
-                            persona["categories"][0]
-                                .as_str()
-                                .unwrap_or("something to wear")
-                        )
-                    },
-                    str::to_owned,
-                );
-        }
         let action = next["action"].as_str().unwrap_or("leave").to_owned();
         let mut t = step(
             "think",
