@@ -717,7 +717,7 @@ async fn visit(
     tally: &mut Tally,
 ) -> Result<(), String> {
     let model = settings["model"].as_str().unwrap_or("glimmer");
-    let max_actions = settings["max_actions"].as_u64().unwrap_or(8).clamp(1, 20);
+    let max_actions = settings["max_actions"].as_u64().unwrap_or(12).clamp(1, 20);
     let reviews_wanted = settings["reviews_per_session"].as_u64().unwrap_or(2).min(5);
     let mut browser = Browser::new(http, &front_door(gw));
 
@@ -875,7 +875,19 @@ async fn visit(
     let mut placed = false;
     let mut said = 0usize;
     let mut failed_in_a_row = 0u32;
-    for left in (1..=max_actions).rev() {
+    let mut remaining = max_actions;
+    let mut bonus = false;
+    loop {
+        // The checkout card came with the last action: the shopper may still press it.
+        let left = match remaining {
+            0 if checkout.is_some() && !placed && !bonus => {
+                bonus = true;
+                1
+            }
+            0 => break,
+            n => n,
+        };
+        remaining = left - 1;
         // The assistant is not answering: a person gives up after a couple of tries.
         if failed_in_a_row >= 2 {
             ledger

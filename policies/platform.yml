@@ -63,7 +63,7 @@ customer_bot:
   every_minutes: 10                      # 기본 10분. 실제 시간으로 센다(데모 시계가 멈춰 있어도)
   workers: 2                             # 한 번에 쇼핑하는 세션 수(1–10)
   new_account_percent: 20                # 세션 가운데 새 계정을 만들어 들어오는 비율(0–100)
-  max_actions: 8                         # 세션 하나가 하는 행동(채팅·주문·리뷰)의 최대 수
+  max_actions: 12                        # 세션 하나가 하는 행동(채팅·주문)의 최대 수. 마지막 행동에 확인 카드가 나오면 주문할지 한 번 더 정한다
   reviews_per_session: 2                 # 배송 완료된 품목에 쓰는 리뷰의 최대 수
   model: glimmer                         # 페르소나를 만들고 다음 행동을 고르는 모델(agents/models.yml 별칭)
   never_shop_as: [cus_jamie, cus_alex, cus_4431, cus_riley, cus_sam, cus_dana, cus_priya, cus_marcus, cus_elena,
