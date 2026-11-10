@@ -42,6 +42,10 @@ fn schema(task: &str) -> Option<Value> {
                 "shopping_style": {"type": "string", "enum": ["decisive", "browser", "bargain_hunter", "researcher", "gift_giver"]},
                 "chattiness": {"type": "string", "enum": ["brief", "normal", "chatty"]},
                 "voice": text(160), "interests": list(5)}}),
+        "start" => json!({
+            "type": "object", "additionalProperties": false,
+            "required": ["goal", "message", "reason"],
+            "properties": {"goal": text(200), "message": text(300), "reason": text(160)}}),
         "next" => json!({
             "type": "object", "additionalProperties": false,
             "required": ["action", "message", "reason", "goal"],
@@ -126,7 +130,7 @@ mod tests {
 
     #[test]
     fn every_task_has_a_closed_shape_and_others_are_refused() {
-        for t in ["identity", "persona", "next", "review"] {
+        for t in ["identity", "persona", "start", "next", "review"] {
             let s = schema(t).unwrap();
             assert_eq!(s["additionalProperties"], false, "{t}");
             assert!(
