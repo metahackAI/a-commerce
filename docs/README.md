@@ -12,6 +12,7 @@ The map of `docs/`. Each folder's README lists what is under it, so you can walk
 | [research.md](research.md) | What AI-native commerce means, who else is building it, where A-Commerce fits |
 | [architecture.md](architecture.md) | Services and trust boundaries, API hierarchy, schema.org data model, AI-native features |
 | [scenarios.md](scenarios.md) | The demo store: people, products, policies, each scene with expected results |
+| [catalog-taxonomy.md](catalog-taxonomy.md) | Draft: product taxonomy and attributes for several verticals, back-office entry, showcase scenes, data generation |
 | [plan.md](plan.md) | Scope, milestones, status, open work |
 | [serving.md](serving.md) | Glimmer's image and flags, speed, the RTX 5090 crash and its fix |
 
@@ -30,6 +31,7 @@ The map of `docs/`. Each folder's README lists what is under it, so you can walk
 | [agents/README.md](../agents/README.md) | Agent definitions, their prompts, the step prompts, models and runtime settings |
 | [policies/README.md](../policies/README.md) | The store's rules as data |
 | [seed/demo/README.md](../seed/demo/README.md) | The demo store's data and how each number in the scenes maps to rows |
+| [seed/mall/README.md](../seed/mall/README.md) | Draft: a second demo store, a fashion mall of 30 brands and 5,000 products, with tiers, brands and garment types |
 | [eval/README.md](../eval/README.md) | Task sets, how to run them, and every result |
 | [infra/README.md](../infra/README.md) | Containers, Compose, Kubernetes, the demo server, local secrets |
 | [design/README.md](../design/README.md) | Mockups, layout options, the storefront plan, the demo storyboard |

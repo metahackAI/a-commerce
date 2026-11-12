@@ -1,0 +1,406 @@
+# Fashion mall assortment (draft): the store, its standard categories and the garment types each sells.
+# Not data, and nothing reads it yet: the generator for this store is still to be written (README.md).
+# Prices here are the mid tier's, in USD; brands.yml scales them by tier.
+# A type's level picks its slice of the category range: 1 the lower third, 2 the middle, 3 the upper third.
+# Types are unisex unless listed under women or men. Those two lists are written cheapest first, and a
+# type's place in its list gives its level (first third 1, middle 2, last third 3).
+# Every type keeps its noun in the product name.
+
+store:
+  id: store_arbor_row
+  name: Arbor Row
+  description: A fashion mall where about thirty brands sell, from luxury houses to SPA chains and boutique sellers.
+  currency: USD
+  in_language: en
+  time_zone: America/Los_Angeles
+  products: 5000
+
+size_systems:
+  alpha: [XS, S, M, L, XL]
+  alpha_wide: [XS, S, M, L, XL, XXL]
+  one_size: [One size]
+  women_numeric: ["0", "2", "4", "6", "8", "10", "12", "14", "16"]
+  waist: ["28", "30", "32", "34", "36", "38", "40"]
+  suit: [36R, 38R, 40R, 42R, 44R, 46R, 40L, 42L, 44L]
+  bra: [32B, 32C, 34B, 34C, 34D, 36B, 36C, 36D, 38C]
+  shoe_us_men: ["7", "8", "9", "10", "11", "12", "13"]
+  shoe_us_women: ["5", "6", "7", "8", "9", "10", "11"]
+  sock: [S/M, L/XL]
+  hat: [S/M, L/XL]
+  glove: [S, M, L]
+  belt: ["30", "32", "34", "36", "38", "40"]
+
+materials:                       # class: premium, standard or value (brands.yml says which tiers use which). fits: the categories it is sold in
+  # premium
+  Cashmere:           {class: premium, family: cashmere, fits: [knitwear, scarves, gloves, outerwear, loungewear, hats, socks]}
+  Silk:               {class: premium, family: silk, fits: [blouses, shirts, dresses, skirts, sleepwear, lingerie, ties, scarves]}
+  Silk satin:         {class: premium, family: silk, fits: [dresses, skirts, blouses, sleepwear, lingerie]}
+  Merino wool:        {class: premium, family: wool, fits: [knitwear, tees, polos, activewear, socks, hats, gloves, scarves]}
+  Lambswool:          {class: premium, family: wool, fits: [knitwear, scarves, gloves, hats]}
+  Alpaca blend:       {class: premium, family: wool, fits: [knitwear, outerwear, scarves]}
+  Mohair blend:       {class: premium, family: wool, fits: [knitwear]}
+  Double-faced wool:  {class: premium, family: wool, fits: [outerwear]}
+  Wool flannel:       {class: premium, family: wool, fits: [pants, blazers, suits, skirts]}
+  Wool gabardine:     {class: premium, family: wool, fits: [pants, blazers, suits, outerwear, skirts]}
+  Tropical wool:      {class: premium, family: wool, fits: [suits, blazers, pants]}
+  Tweed:              {class: premium, family: wool, fits: [blazers, outerwear, skirts, hats, suits]}
+  Lambskin leather:   {class: premium, family: leather, fits: [outerwear, skirts, gloves, bags, small_leather_goods, pants]}
+  Calfskin leather:   {class: premium, family: leather, fits: [bags, small_leather_goods, belts, dress_shoes, boots, heels_flats, sneakers]}
+  Suede:              {class: premium, family: suede, fits: [outerwear, boots, dress_shoes, heels_flats, bags, sneakers, sandals, gloves]}
+  Shearling:          {class: premium, family: leather, fits: [outerwear, boots]}
+  Selvedge denim:     {class: premium, family: cotton, fits: [denim, outerwear, shirts]}
+  Pima cotton:        {class: premium, family: cotton, fits: [tees, polos, shirts, underwear, sleepwear]}
+  # standard
+  Cotton:             {class: standard, family: cotton, fits: [tees, sweatshirts, shirts, blouses, pants, shorts, dresses, skirts, sleepwear, underwear, socks, hats, loungewear]}
+  Organic cotton:     {class: standard, family: cotton, fits: [tees, sweatshirts, sleepwear, underwear, loungewear, dresses]}
+  Cotton poplin:      {class: standard, family: cotton, fits: [shirts, blouses, dresses, skirts, sleepwear, shorts]}
+  Oxford cloth:       {class: standard, family: cotton, fits: [shirts]}
+  Cotton twill:       {class: standard, family: cotton, fits: [pants, shorts, skirts, outerwear, hats, jumpsuits]}
+  Cotton jersey:      {class: standard, family: cotton, fits: [tees, dresses, loungewear, sleepwear, underwear]}
+  Piqué cotton:       {class: standard, family: cotton, fits: [polos, dresses]}
+  French terry:       {class: standard, family: cotton, fits: [sweatshirts, loungewear, shorts, pants]}
+  Fleece:             {class: standard, family: polyester, fits: [sweatshirts, outerwear, activewear, loungewear, hats, gloves]}
+  Flannel:            {class: standard, family: cotton, fits: [shirts, sleepwear, pants]}
+  Chambray:           {class: standard, family: cotton, fits: [shirts, dresses]}
+  Seersucker:         {class: standard, family: cotton, fits: [shirts, shorts, suits, blazers, sleepwear]}
+  Corduroy:           {class: standard, family: cotton, fits: [pants, shirts, outerwear, skirts, hats, blazers, jumpsuits]}
+  Denim:              {class: standard, family: cotton, fits: [denim, outerwear, shirts, skirts, shorts, jumpsuits, bags, hats]}
+  Linen:              {class: standard, family: linen, fits: [shirts, blouses, pants, shorts, dresses, skirts, blazers, suits, jumpsuits, sleepwear]}
+  Linen blend:        {class: standard, family: linen, fits: [shirts, blouses, pants, shorts, dresses, skirts, blazers, jumpsuits]}
+  Canvas:             {class: standard, family: cotton, fits: [bags, sneakers, hats, belts, outerwear]}
+  Waxed cotton:       {class: standard, family: cotton, fits: [outerwear, bags, hats]}
+  Wool blend:         {class: standard, family: wool, fits: [outerwear, knitwear, pants, blazers, skirts, scarves, hats, gloves, socks]}
+  Cashmere blend:     {class: standard, family: wool, fits: [knitwear, scarves, gloves, hats]}
+  Merino blend:       {class: standard, family: wool, fits: [knitwear, socks, activewear]}
+  Lyocell:            {class: standard, family: modal_rayon, fits: [shirts, blouses, dresses, pants, jumpsuits, sleepwear]}
+  Modal:              {class: standard, family: modal_rayon, fits: [tees, underwear, sleepwear, loungewear, lingerie]}
+  Viscose:            {class: standard, family: modal_rayon, fits: [blouses, dresses, skirts, pants]}
+  Crepe:              {class: standard, family: polyester, fits: [blouses, dresses, pants, jumpsuits, skirts]}
+  Lace:               {class: standard, family: nylon, fits: [lingerie, blouses, dresses, skirts]}
+  Velvet:             {class: standard, family: polyester, fits: [blazers, dresses, skirts, heels_flats]}
+  Nylon:              {class: standard, family: nylon, fits: [outerwear, bags, swimwear, activewear, hats, lingerie]}
+  Recycled nylon:     {class: standard, family: nylon, fits: [outerwear, swimwear, bags, activewear]}
+  Ripstop:            {class: standard, family: nylon, fits: [outerwear, pants, shorts, bags]}
+  Nylon-spandex:      {class: standard, family: nylon, fits: [activewear, swimwear, lingerie, underwear]}
+  Down:               {class: standard, family: nylon, fits: [outerwear]}
+  Leather:            {class: standard, family: leather, fits: [belts, bags, small_leather_goods, boots, dress_shoes, sneakers, sandals, gloves, heels_flats]}
+  Knit mesh:          {class: standard, family: polyester, fits: [sneakers]}
+  Rubber:             {class: standard, family: rubber, fits: [sandals, boots]}
+  # value
+  Polyester:          {class: value, family: polyester, fits: [outerwear, activewear, dresses, blouses, skirts, bags, swimwear, scarves, ties]}
+  Recycled polyester: {class: value, family: polyester, fits: [outerwear, activewear, swimwear, bags]}
+  Polyester satin:    {class: value, family: polyester, fits: [blouses, dresses, skirts, sleepwear, scarves, ties]}
+  Chiffon:            {class: value, family: polyester, fits: [blouses, dresses, skirts, scarves]}
+  Cotton-poly blend:  {class: value, family: mixed, fits: [tees, sweatshirts, shirts, pants, socks, polos]}
+  Acrylic:            {class: value, family: acrylic, fits: [knitwear, hats, scarves, gloves, socks]}
+  Acrylic blend:      {class: value, family: acrylic, fits: [knitwear, hats, scarves]}
+  Rayon:              {class: value, family: modal_rayon, fits: [blouses, dresses, skirts, shirts, sleepwear]}
+  Faux leather:       {class: value, family: synthetic_leather, fits: [outerwear, pants, skirts, bags, belts, small_leather_goods, boots, heels_flats]}
+  Faux suede:         {class: value, family: synthetic_leather, fits: [outerwear, skirts, boots, bags]}
+  Faux fur:           {class: value, family: polyester, fits: [outerwear, hats]}
+  Microfiber:         {class: value, family: polyester, fits: [underwear, lingerie, activewear]}
+  Tulle:              {class: value, family: polyester, fits: [skirts, dresses]}
+
+categories:                      # store standard category → taxonomy node (policies/taxonomy/nodes.yml)
+  # ---------------------------------------------------------------- tops
+  tees:
+    node: tees
+    price: [19, 59]
+    sizes: alpha
+    types:
+      1: [crew neck tee, v-neck tee, pocket tee, tank top, ringer tee, muscle tee]
+      2: [long-sleeve tee, henley, raglan tee, boxy tee, oversized tee, breton top, printed tee]
+      3: [mock neck tee]
+    women: [baby tee, cropped tee, ribbed tank]
+  polos:
+    node: polos
+    price: [35, 89]
+    sizes: alpha
+    types:
+      1: [piqué polo, tennis polo]
+      2: [long-sleeve polo, rugby shirt, zip polo]
+      3: [knit polo]
+    women: [cropped polo]
+  shirts:
+    node: shirts
+    price: [39, 99]
+    sizes: alpha
+    types:
+      1: [short-sleeve shirt, camp shirt, chambray shirt]
+      2: [oxford shirt, button-down shirt, poplin shirt, flannel shirt, linen shirt, band-collar shirt, denim shirt, seersucker shirt, western shirt]
+      3: [overshirt, corduroy shirt, work shirt]
+    men: [dress shirt, tuxedo shirt]
+  blouses:
+    node: blouses
+    price: [35, 99]
+    sizes: alpha
+    women:
+      - camisole
+      - shell top
+      - square-neck top
+      - smocked top
+      - off-shoulder top
+      - sleeveless blouse
+      - button-front blouse
+      - peasant blouse
+      - ruffle blouse
+      - puff-sleeve blouse
+      - peplum top
+      - tunic
+      - bodysuit
+      - wrap blouse
+      - tie-neck blouse
+      - lace blouse
+      - silk blouse
+  knitwear:
+    node: knitwear
+    price: [49, 179]
+    sizes: alpha
+    types:
+      1: [sweater vest, knit tank]
+      2: [crewneck sweater, v-neck sweater, mock neck sweater, cardigan, ribbed sweater, knit hoodie]
+      3: [turtleneck, cable-knit sweater, fisherman sweater, quarter-zip sweater]
+    women: [cropped cardigan, off-shoulder sweater, boyfriend cardigan, longline cardigan]
+    men: [shawl-collar cardigan]
+  sweatshirts:
+    node: sweatshirts
+    price: [39, 119]
+    sizes: alpha
+    types:
+      1: [crewneck sweatshirt, oversized sweatshirt]
+      2: [pullover hoodie, half-zip sweatshirt, fleece pullover]
+      3: [zip hoodie, quilted sweatshirt]
+    women: [cropped hoodie]
+  # ---------------------------------------------------------------- outerwear and tailoring
+  outerwear:
+    node: outerwear
+    price: [79, 349]
+    sizes: alpha
+    types:
+      1: [down vest, gilet, windbreaker, fleece jacket, liner jacket, coach jacket]
+      2: [rain jacket, anorak, shacket, bomber jacket, field jacket, chore coat, utility jacket, quilted jacket, harrington jacket, denim jacket]
+      3: [puffer jacket, parka, trench coat, car coat, peacoat, duffle coat, wool coat, leather jacket, biker jacket, suede jacket, shearling jacket]
+    women: [wrap coat, cocoon coat, teddy coat, cape]
+    men: [overcoat]
+  blazers:
+    node: blazers
+    price: [119, 279]
+    sizes: alpha
+    types:
+      1: [knit blazer, unstructured blazer]
+      2: [single-breasted blazer, linen blazer, double-breasted blazer]
+      3: [tweed blazer, velvet blazer]
+    women: [oversized blazer, cropped blazer]
+    men: [sport coat, tuxedo jacket]
+  suits:
+    node: suits
+    price: [299, 599]
+    sizes: {male: suit, female: alpha}
+    types:
+      2: [linen suit]
+    men: [two-piece suit, double-breasted suit, three-piece suit, tuxedo, waistcoat]
+    women: [pantsuit, skirt suit]
+  # ---------------------------------------------------------------- bottoms
+  pants:
+    node: pants
+    price: [45, 129]
+    sizes: {male: waist, female: alpha, unisex: alpha}
+    types:
+      1: [joggers, drawstring pants, track pants]
+      2: [chinos, straight-leg pants, tapered pants, cargo pants, linen pants, carpenter pants]
+      3: [trousers, pleated trousers, corduroy pants]
+    women: [wide-leg trousers, palazzo pants, cigarette pants, culottes, paperbag pants, flared pants]
+    men: [dress pants, suit trousers, work pants]
+  denim:
+    node: denim
+    price: [59, 159]
+    sizes: {male: waist, female: women_numeric, unisex: waist}
+    types:
+      2: [straight-leg jeans, slim jeans, relaxed jeans, wide-leg jeans, bootcut jeans, carpenter jeans]
+      3: [selvedge jeans]
+    women: [skinny jeans, flare jeans, mom jeans, boyfriend jeans, barrel jeans, cropped jeans]
+    men: [tapered jeans, raw denim jeans]
+  shorts:
+    node: shorts
+    price: [29, 89]
+    sizes: alpha
+    types:
+      1: [drawstring shorts, sweat shorts]
+      2: [chino shorts, denim shorts, cargo shorts, linen shorts, bermuda shorts, pleated shorts]
+      3: [tailored shorts]
+    women: [bike shorts, paperbag shorts]
+  skirts:
+    node: skirts
+    price: [35, 119]
+    sizes: alpha
+    women: [mini skirt, tennis skirt, denim skirt, tiered skirt, cargo skirt, a-line skirt, midi skirt, wrap skirt, knit skirt, pleated skirt, slip skirt, maxi skirt, pencil skirt, tulle skirt, leather skirt]
+  # ---------------------------------------------------------------- dresses
+  dresses:
+    node: dresses
+    price: [49, 189]
+    sizes: alpha
+    women: [t-shirt dress, tank dress, sundress, polo dress, mini dress, smock dress, shirt dress, wrap dress, tiered dress, knit dress, linen dress, midi dress, maxi dress, slip dress, sweater dress, shift dress, sheath dress, fit-and-flare dress, bodycon dress, cocktail dress, evening gown]
+  jumpsuits:
+    node: jumpsuits
+    price: [59, 169]
+    sizes: alpha
+    types:
+      2: [overalls, denim overalls, boiler suit, utility jumpsuit]
+    women: [romper, jumpsuit, wide-leg jumpsuit]
+  # ---------------------------------------------------------------- active, lounge, sleep, under, swim
+  activewear:
+    node: activewear
+    price: [29, 119]
+    sizes: alpha
+    types:
+      1: [running shorts, training tank, running tee, base layer top, base layer bottom]
+      2: [running tights, half-zip top, track jacket, hiking pants, golf polo]
+      3: [running jacket]
+    women: [leggings, sports bra, yoga pants, tennis dress]
+    men: [training shorts, golf pants]
+  loungewear:
+    node: loungewear
+    price: [29, 99]
+    sizes: alpha
+    types:
+      1: [lounge shorts, sweatpants]
+      2: [lounge pants, waffle henley, knit lounge top, fleece lounge pants]
+    women: [lounge set, lounge dress]
+  sleepwear:
+    node: sleepwear
+    price: [35, 109]
+    sizes: alpha
+    types:
+      1: [sleep shorts, pajama pants]
+      2: [pajama set, sleep shirt, flannel pajama set, robe]
+    women: [nightgown, chemise, kimono robe, silk pajama set]
+  underwear:
+    node: underwear
+    price: [12, 39]
+    sizes: alpha
+    men: [briefs, boxer briefs, boxers, trunks, undershirt]
+    women: [bikini briefs, hipsters, high-rise briefs, boyshorts, seamless briefs]
+  lingerie:
+    node: lingerie
+    price: [25, 79]
+    sizes: {female: bra}
+    women: [bralette, wireless bra, t-shirt bra, balconette bra, plunge bra, longline bra, slip, lace bodysuit, camisole set]
+    alpha_types: [bralette, slip, lace bodysuit, camisole set]   # these take alpha sizes, not bra sizes
+  swimwear:
+    node: swimwear
+    price: [29, 99]
+    sizes: alpha
+    types:
+      2: [rash guard]
+    women: [one-piece swimsuit, bikini top, bikini bottom, tankini, cover-up]
+    men: [swim trunks, board shorts, swim shorts, swim briefs]
+  socks:
+    node: socks
+    price: [8, 29]
+    sizes: sock
+    types:
+      1: [crew socks, ankle socks, no-show socks, running socks]
+      2: [wool socks, hiking socks, compression socks, slipper socks]
+    women: [knee socks, tights, sheer tights]
+    men: [dress socks]
+  # ---------------------------------------------------------------- shoes
+  sneakers:
+    node: sneakers
+    price: [59, 169]
+    sizes: {male: shoe_us_men, female: shoe_us_women, unisex: shoe_us_men}
+    types:
+      1: [canvas sneakers, slip-on sneakers]
+      2: [low-top sneakers, high-top sneakers, court sneakers, retro runners, walking shoes, training shoes]
+      3: [running shoes, trail running shoes]
+    women: [platform sneakers]
+  boots:
+    node: boots
+    price: [99, 299]
+    sizes: {male: shoe_us_men, female: shoe_us_women, unisex: shoe_us_men}
+    types:
+      1: [rain boots]
+      2: [chelsea boots, combat boots, lace-up boots, snow boots, ankle boots]
+      3: [hiking boots, western boots]
+    women: [knee-high boots, over-the-knee boots]
+    men: [work boots, desert boots]
+  dress_shoes:
+    node: dress_shoes
+    price: [89, 249]
+    sizes: {male: shoe_us_men, female: shoe_us_women, unisex: shoe_us_men}
+    types:
+      2: [loafers, penny loafers, boat shoes]
+    men: [oxfords, derby shoes, brogues, monk straps]
+  heels_flats:
+    node: heels_flats
+    price: [59, 199]
+    sizes: {female: shoe_us_women}
+    women: [ballet flats, mary janes, mules, espadrille wedges, block heels, kitten heels, slingback heels, pumps]
+  sandals:
+    node: sandals
+    price: [29, 99]
+    sizes: {male: shoe_us_men, female: shoe_us_women, unisex: shoe_us_men}
+    types:
+      1: [flip-flops, slides]
+      2: [sport sandals, fisherman sandals, espadrilles, clogs]
+    women: [strappy sandals, platform sandals, heeled sandals, gladiator sandals]
+  # ---------------------------------------------------------------- bags and accessories
+  bags:
+    node: bags
+    price: [35, 199]
+    sizes: one_size
+    types:
+      1: [canvas tote, belt bag, sling bag]
+      2: [tote bag, backpack, crossbody bag, messenger bag, laptop bag]
+      3: [duffel bag, weekender]
+    women: [shoulder bag, clutch, bucket bag, hobo bag, top-handle bag, mini bag]
+    men: [briefcase]
+  small_leather_goods:
+    node: small_leather_goods
+    price: [19, 89]
+    sizes: one_size
+    types:
+      1: [key ring, coin purse, glasses case]
+      2: [card holder, wallet, passport holder]
+      3: [zip wallet]
+    women: [wristlet]
+    men: [money clip]
+  hats:
+    node: hats
+    price: [19, 69]
+    sizes: hat
+    types:
+      1: [baseball cap, trucker hat, beanie, visor]
+      2: [bucket hat, earflap hat, flat cap]
+      3: [fedora, panama hat, wide-brim hat]
+    women: [sun hat, beret]
+  belts:
+    node: belts
+    price: [25, 79]
+    sizes: belt
+    types:
+      1: [web belt, canvas belt]
+      2: [leather belt, braided belt, western belt]
+    women: [chain belt, wide belt, skinny belt]
+    men: [dress belt, reversible belt]
+  ties:
+    node: ties
+    price: [25, 69]
+    sizes: one_size
+    men: [pocket square, necktie, skinny tie, knit tie, bow tie, ascot]
+  scarves:
+    node: scarves
+    price: [19, 99]
+    sizes: one_size
+    types:
+      1: [bandana, neckerchief, infinity scarf]
+      2: [scarf, snood, square scarf]
+      3: [wrap, shawl, stole, blanket scarf]
+  gloves:
+    node: gloves
+    price: [19, 79]
+    sizes: glove
+    types:
+      1: [knit gloves, liner gloves, fingerless gloves, touchscreen gloves]
+      2: [mittens, ski gloves]
+      3: [leather gloves]
+    men: [driving gloves]
