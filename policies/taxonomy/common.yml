@@ -1,5 +1,5 @@
 # policy: taxonomy/common — 모든 상품군이 쓰는 단위와 속성 (초안)
-# 아직 어떤 코드도 이 파일을 읽지 않는다. 설계: docs/catalog-taxonomy.md
+# 플랫폼 코드는 아직 읽지 않는다. 패션몰 시드 생성기(crates/testkit/src/mall)만 읽는다. 설계: docs/catalog-taxonomy.md
 # 모양: 속성은 한 번만 정의하고, 노드(nodes.yml)가 골라 쓴다. 값 목록은 짧게(20개 안팎), 긴 꼬리 낱말은 words에.
 # 언어: 정의는 영어 하나(코드, 이름표, means, words). 다른 언어의 이름표는 그 언어 스토어가 생길 때 언어별 번역 파일에 따로 둔다. 쇼퍼의 다른 언어 질문은 질의 쪽(에이전트, 질의 이해)이 영어 코드로 바꾼다.
 version: 0
@@ -119,6 +119,7 @@ attributes:
       synthetic_leather: {label: Synthetic leather, words: [faux leather, vegan leather, pu leather]}
       rubber: {label: Rubber}
       cork: {label: Cork}
+      straw: {label: Straw, words: [raffia, toquilla, panama]}
       plastic: {label: Plastic, words: [polycarbonate, tpu]}
       metal: {label: Metal, words: [aluminium, aluminum, steel]}
       silicone: {label: Silicone}

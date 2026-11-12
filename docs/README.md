@@ -31,7 +31,7 @@ The map of `docs/`. Each folder's README lists what is under it, so you can walk
 | [agents/README.md](../agents/README.md) | Agent definitions, their prompts, the step prompts, models and runtime settings |
 | [policies/README.md](../policies/README.md) | The store's rules as data |
 | [seed/demo/README.md](../seed/demo/README.md) | The demo store's data and how each number in the scenes maps to rows |
-| [seed/mall/README.md](../seed/mall/README.md) | Draft: a second demo store, a fashion mall of 30 brands and 5,000 products, with tiers, brands and garment types |
+| [seed/mall/README.md](../seed/mall/README.md) | A second demo store, the fashion mall Arbor Row: 30 brands in six tiers and 5,000 generated products, and how each product's facts are drawn |
 | [eval/README.md](../eval/README.md) | Task sets, how to run them, and every result |
 | [infra/README.md](../infra/README.md) | Containers, Compose, Kubernetes, the demo server, local secrets |
 | [design/README.md](../design/README.md) | Mockups, layout options, the storefront plan, the demo storyboard |

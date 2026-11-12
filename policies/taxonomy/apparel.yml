@@ -1,5 +1,5 @@
 # policy: taxonomy/apparel — 의류·신발·잡화 속성 (초안)
-# 아직 어떤 코드도 이 파일을 읽지 않는다. 설계: docs/catalog-taxonomy.md §5.1
+# 플랫폼 코드는 아직 읽지 않는다. 패션몰 시드 생성기(crates/testkit/src/mall)만 읽는다. 설계: docs/catalog-taxonomy.md §5.1
 # 데모 상품의 값은 생성 어휘(소재·의류 규칙)에서 끌어온다. 모델이 고른 태그에서 가져오지 않는다.
 # 카테고리별 속성(sleeve_length, neckline, closure_type, rise, leg_shape, leg_length, waistband, wash,
 # skirt_length, silhouette, shoe_height, sole, carry, capacity, laptop_size, brim, width)은 다음 초안.

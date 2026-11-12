@@ -1,5 +1,5 @@
 # policy: taxonomy/nodes — 플랫폼 분류 트리 (초안)
-# 아직 어떤 코드도 이 파일을 읽지 않는다. 설계: docs/catalog-taxonomy.md §3
+# 플랫폼 코드는 아직 읽지 않는다. 패션몰 시드 생성기(crates/testkit/src/mall)만 읽는다. 설계: docs/catalog-taxonomy.md §3
 # 스토어의 standard 카테고리(merchandising.defined_term)는 노드 하나에 연결된다. 자식은 부모의 속성을 물려받는다.
 # required = 검색과 공개에 필요한 속성. 법정 고시 항목은 notice.yml이 따로 정하고, 스토어가 한국 고시를 켰을 때만 공개 조건이 된다.
 # google: Google 상품 분류 경로(2021-09-21판). null은 분류 파일에서 확인한 뒤 채운다.
