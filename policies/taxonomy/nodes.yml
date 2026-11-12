@@ -1,0 +1,186 @@
+# policy: taxonomy/nodes — 플랫폼 분류 트리 (초안)
+# 플랫폼 코드는 아직 읽지 않는다. 패션몰 시드 생성기(crates/testkit/src/mall)만 읽는다. 설계: docs/catalog-taxonomy.md §3
+# 스토어의 standard 카테고리(merchandising.defined_term)는 노드 하나에 연결된다. 자식은 부모의 속성을 물려받는다.
+# required = 검색과 공개에 필요한 속성. 법정 고시 항목은 notice.yml이 따로 정하고, 스토어가 한국 고시를 켰을 때만 공개 조건이 된다.
+# google: Google 상품 분류 경로(2021-09-21판). null은 분류 파일에서 확인한 뒤 채운다.
+# notice: 상품정보제공고시 상품군 번호(notice.yml). kc: 전기생활용품안전법·전파법 인증 대상이면 true(공개 조건).
+version: 0
+
+nodes:
+  # ---------------------------------------------------------------- 의류·신발·잡화 (Northwind의 standard 카테고리와 같은 id)
+  apparel:
+    label: Apparel
+    required: [product_type, color_family, material_family, care_method, target_gender, age_group]
+    optional: [pattern, use, season, performance, details, fiber_composition, country_of_origin, manufacturer]
+    defaults: {target_gender: unisex, age_group: adult}
+    variant_axes: [color, size]
+    product_types: from_vocab            # 생성 어휘의 의류 type(약 120종)
+  clothing:
+    parent: apparel
+    label: Clothing
+    required: [fit, thickness]
+    optional: [warmth, stretch_level, sheerness, softness, fabric_type, lining, layer]
+    notice: 1
+  outerwear: {parent: clothing, label: Outerwear, required: [warmth, water_resistance], google: "Apparel & Accessories > Clothing > Outerwear > Coats & Jackets"}
+  summer_outerwear: {parent: outerwear, label: Summer outerwear}
+  knitwear: {parent: clothing, label: Knitwear, google: "Apparel & Accessories > Clothing > Shirts & Tops"}
+  shirts: {parent: clothing, label: Shirts, google: "Apparel & Accessories > Clothing > Shirts & Tops"}
+  tees: {parent: clothing, label: Tees, google: "Apparel & Accessories > Clothing > Shirts & Tops"}
+  sweatshirts: {parent: clothing, label: Sweatshirts, google: "Apparel & Accessories > Clothing > Shirts & Tops"}
+  pants: {parent: clothing, label: Pants, google: "Apparel & Accessories > Clothing > Pants"}
+  denim: {parent: clothing, label: Denim, google: "Apparel & Accessories > Clothing > Pants"}
+  shorts: {parent: clothing, label: Shorts, google: "Apparel & Accessories > Clothing > Shorts"}
+  dresses: {parent: clothing, label: Dresses, google: "Apparel & Accessories > Clothing > Dresses"}
+  skirts: {parent: clothing, label: Skirts, google: "Apparel & Accessories > Clothing > Skirts"}
+  activewear: {parent: clothing, label: Activewear, google: "Apparel & Accessories > Clothing > Activewear"}
+  loungewear: {parent: clothing, label: Loungewear, google: "Apparel & Accessories > Clothing > Sleepwear & Loungewear"}
+  swimwear: {parent: clothing, label: Swimwear, google: "Apparel & Accessories > Clothing > Swimwear"}
+  underwear: {parent: clothing, label: Underwear, google: "Apparel & Accessories > Clothing > Underwear & Socks > Underwear"}
+  # 아래는 패션몰(seed/mall)을 위해 더한 의류 노드. google이 null인 것은 분류 파일에서 확인한 뒤 채운다
+  polos: {parent: clothing, label: Polos, google: "Apparel & Accessories > Clothing > Shirts & Tops"}
+  blouses: {parent: clothing, label: Blouses and tops, defaults: {target_gender: female}, google: "Apparel & Accessories > Clothing > Shirts & Tops"}
+  tailoring: {parent: clothing, label: Tailoring, google: null}
+  blazers: {parent: tailoring, label: Blazers, google: null}
+  suits: {parent: tailoring, label: Suits, google: "Apparel & Accessories > Clothing > Suits"}
+  jumpsuits: {parent: clothing, label: Jumpsuits and overalls, google: null}
+  sleepwear: {parent: clothing, label: Sleepwear, google: "Apparel & Accessories > Clothing > Sleepwear & Loungewear"}
+  lingerie: {parent: underwear, label: Lingerie, defaults: {target_gender: female}, google: null}
+  shoes:
+    parent: apparel
+    label: Shoes
+    required: [foot_length]
+    notice: 2
+    google: "Apparel & Accessories > Shoes"
+  sneakers: {parent: shoes, label: Sneakers}
+  sandals: {parent: shoes, label: Sandals}
+  boots: {parent: shoes, label: Boots}
+  dress_shoes: {parent: shoes, label: Dress shoes}
+  heels_flats: {parent: shoes, label: Heels and flats, required: [heel_height], defaults: {target_gender: female}}
+  accessories:
+    parent: apparel
+    label: Accessories
+    notice: 4
+    google: "Apparel & Accessories > Clothing Accessories"
+  bags: {parent: accessories, label: Bags, notice: 3, google: "Apparel & Accessories > Handbags, Wallets & Cases"}
+  hats: {parent: accessories, label: Hats, google: "Apparel & Accessories > Clothing Accessories > Hats"}
+  socks: {parent: accessories, label: Socks, notice: 1, google: "Apparel & Accessories > Clothing > Underwear & Socks > Socks"}
+  scarves: {parent: accessories, label: Scarves, google: "Apparel & Accessories > Clothing Accessories > Scarves & Shawls"}
+  belts: {parent: accessories, label: Belts, google: "Apparel & Accessories > Clothing Accessories > Belts"}
+  small_leather_goods: {parent: accessories, label: Wallets and small leather goods, google: "Apparel & Accessories > Handbags, Wallets & Cases > Wallets & Money Clips"}
+  ties: {parent: accessories, label: Ties, google: "Apparel & Accessories > Clothing Accessories > Neckties"}
+  gloves: {parent: accessories, label: Gloves, google: "Apparel & Accessories > Clothing Accessories > Gloves & Mittens"}
+
+  # ---------------------------------------------------------------- 전자기기
+  electronics:
+    label: Electronics
+    required: [product_type, model_name, model_number, release_month, country_of_origin, manufacturer]
+    optional: [color_family, weight, dimensions, warranty_months, certifications]
+    variant_axes: [color]
+  phones:
+    parent: electronics
+    label: Smartphones
+    kc: true
+    notice: 13
+    required: [screen_size, storage, memory, os, battery_capacity, connectivity, connector]
+    optional: [resolution, refresh_rate, charging_standard]
+    variant_axes: [color, storage]
+    product_types: [smartphone, foldable_phone]
+    sale: unlocked_only                  # 약정 판매 없음 → 고시의 이동통신 가입조건은 "해당 없음(자급제)"
+    google: null
+  laptops:
+    parent: electronics
+    label: Laptops
+    kc: true
+    notice: 10
+    required: [screen_size, resolution, storage, memory, os, battery_capacity, weight]
+    optional: [refresh_rate, connectivity, connector, port_count]
+    variant_axes: [color, storage, memory]
+    product_types: [laptop, two_in_one]
+    google: null
+  headphones:
+    parent: electronics
+    label: Headphones
+    kc: true                             # 무선(블루투스)은 전파 적합성 대상. 유선은 확인 필요
+    notice: 12
+    required: [form_factor, connectivity, noise_cancelling]
+    optional: [connector, battery_capacity, certifications]
+    product_types: [earbuds, headphones]
+    form_factor: [earbuds, on_ear, over_ear]
+    google: null
+  chargers:
+    parent: electronics
+    label: Chargers
+    kc: true
+    notice: 12                           # 가장 비슷한 상품군(확인 필요)
+    required: [output_power, connector, port_count]
+    optional: [charging_standard, rated_voltage]
+    product_types: [wall_charger, wireless_charger, car_charger]
+    google: null
+  power_banks:
+    parent: electronics
+    label: Power banks
+    kc: true
+    notice: 12                           # 가장 비슷한 상품군(확인 필요)
+    required: [battery_capacity, output_power, connector, port_count]
+    optional: [charging_standard]
+    product_types: [power_bank]
+    google: null
+  cables:
+    parent: electronics
+    label: Cables
+    kc: false                            # 확인 필요
+    notice: 40
+    required: [connector, cable_length]
+    optional: [output_power]
+    variant_axes: [color, cable_length]
+    product_types: [charging_cable, video_cable]
+    google: null
+  phone_cases:
+    parent: electronics
+    label: Phone cases
+    kc: false
+    notice: 40
+    required: [compatible_with, material_family, form_factor]
+    optional: [charging_standard]        # qi2: 자석 무선충전과 함께 쓸 수 있음
+    variant_axes: [color]
+    product_types: [phone_case]
+    form_factor: [slim, rugged, wallet, clear]
+    google: null
+
+  # ---------------------------------------------------------------- 식품 (시연은 상온 가공식품만)
+  food:
+    label: Food
+    required: [product_type, food_type, net_quantity, ingredients, allergens, nutrition, storage_temperature, country_of_origin, manufacturer]
+    optional: [diet, free_from, nutrition_claim, shelf_life_rule, storage_note, gmo, flavor]
+    defaults: {storage_temperature: room, gmo: not_applicable}
+    notice: 21
+    variant_axes: [flavor, net_quantity]
+  snacks:
+    parent: food
+    label: Snacks
+    product_types: [chips, crackers, cookies, popcorn]
+    food_types: [confectionery]          # 한국 법정 이름은 notice.yml food_type_names
+    flavors: [original, salted, cheese, barbecue, sour_cream_onion, honey_butter, seaweed]
+    google: null
+  nuts_seeds:
+    parent: food
+    label: Nuts and seeds
+    product_types: [mixed_nuts, almonds, cashews, walnuts, peanuts, seeds]
+    food_types: [nut_products]
+    flavors: [unsalted, salted, roasted, honey_roasted]
+    google: null
+  protein_bars:
+    parent: food
+    label: Protein bars
+    product_types: [protein_bar]
+    food_types: [other_processed_food]   # 건강기능식품이면 22번 상품군(시연에서는 제외)
+    flavors: [chocolate, peanut_butter, cookies_and_cream, berry, vanilla]
+    google: null
+  instant_noodles:
+    parent: food
+    label: Instant noodles
+    required: [spiciness]
+    product_types: [cup_noodles, packet_noodles]
+    food_types: [fried_noodles]
+    flavors: [original, seafood, kimchi, cheese, chicken, black_bean]
+    google: null

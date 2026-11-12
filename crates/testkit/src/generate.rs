@@ -15,10 +15,10 @@ mod members;
 mod named;
 mod orders;
 mod spec;
-mod util;
+pub(crate) mod util;
 
 #[cfg(test)]
-mod schema_check;
+pub(crate) mod schema_check;
 #[cfg(test)]
 mod tests;
 

@@ -1,8 +1,10 @@
-//! Test support: load the demo store (`seed/demo/`), set the demo clock to a scene, and
-//! replay a scenario's tool calls over HTTP. Scenarios: `docs/scenarios.md`.
+//! Test support: load the demo store (`seed/demo/`) and the fashion mall (`seed/mall/`), set the
+//! demo clock to a scene, and replay a scenario's tool calls over HTTP. Scenarios:
+//! `docs/scenarios.md`.
 
 pub mod generate;
 pub mod load;
+pub mod mall;
 pub mod media;
 pub mod named;
 

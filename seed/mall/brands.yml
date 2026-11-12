@@ -1,0 +1,566 @@
+# Fashion mall brands: tier rules and brand profiles. All brands, people and places are fictional.
+# The generator (acom_testkit::mall) reads it with assortment.yml. A brand's tier is its guardrail: the
+# generator draws only products that pass the tier's rules, and a test checks every product against them.
+# Facts and prices come from these rules; the text model only writes words from the facts.
+#
+# Product names come from the tier's template. {word} is one of the tier's words, or none. A word fits
+# what it lists: categories, departments (assortment.yml), garment types, or `all`. `word_materials`
+# limits a word to some materials (names or material families). A word in `women_only` is used only for
+# women's products; a word that shares a part with the type or the material is skipped ("lace-trim" with
+# lace); a word whose fit (assortment.yml fit) differs from the type's is skipped. {material} is left out
+# when the type names its material itself. A unisex type sold for women or men starts with "Women's" or
+# "Men's".
+
+tiers:                           # in price order, dearest first
+  luxury:
+    label: Luxury
+    price_factor: [7.0, 12.0]    # × the mid-tier price drawn from the category range; each brand draws its own factor once
+    price_ending: tens           # $890
+    cost_share: [0.18, 0.28]     # cost as a share of the price
+    type_levels: {1: 1, 2: 2, 3: 4}   # how often each type level is drawn
+    materials: {premium: 0.75, standard: 0.25, value: 0}
+    origin: [IT, FR, GB, PT, ES, JP]
+    colors_per_product: [1, 3]
+    stock_per_variant: [1, 6]
+    women_sizes: women_numeric   # women's products in these categories take this size system instead of alpha
+    women_sizes_in: [dresses, blouses, skirts, pants, blazers, suits, jumpsuits]
+    name: "{word} {material} {type}"
+    words:
+      Hand-finished: [tops, coats_tailoring, bottoms, dresses_jumpsuits, scarves, ties]
+      Unlined: [blazers, suits, trench coat, car coat, overcoat, wool coat, chore coat, field jacket, wrap coat]
+      Belted: [trench coat, wrap coat, car coat, wool coat, overcoat, cocoon coat, shirt dress, wrap dress, midi dress, jumpsuit, boiler suit]
+      Shawl-collar: [cardigan, longline cardigan, boyfriend cardigan, wrap coat, car coat]
+      Cable-knit: [knitwear, beanie, scarf, snood, knit gloves]
+      Pleated: [pants, skirts]
+      Bias-cut: [skirts, slip dress, midi dress, maxi dress, evening gown]
+      Draped: [dresses, blouses]
+      Tailored: [pants, shorts, shirts, blouses]
+      Silk-lined: [blazers, suits, overcoat, wool coat, car coat, peacoat, wrap coat, cocoon coat, trench coat, leather gloves, driving gloves]
+      Hand-stitched: [shoes, bags, small_leather_goods, belts, leather gloves, driving gloves]
+      Hand-welted: [boots, dress_shoes]
+      Hand-rolled: [scarves, ties]
+    word_materials:
+      Hand-stitched: [leather, suede]
+      Hand-welted: [leather, suede]
+      Draped: [silk, modal_rayon, Crepe, Chiffon, Polyester satin, Lace]
+      Bias-cut: [silk, modal_rayon, Crepe, Chiffon, Polyester satin]
+      Hand-rolled: [silk, cashmere, wool, Linen, Cotton]
+    women_only: [Draped, Bias-cut]
+    voice: Measured and exact. About cut, cloth and making; no hype and no superlatives.
+  designer:
+    label: Designer
+    price_factor: [2.5, 4.5]
+    price_ending: fives          # $345
+    cost_share: [0.22, 0.32]
+    type_levels: {1: 1, 2: 2, 3: 3}
+    materials: {premium: 0.45, standard: 0.55, value: 0}
+    origin: [PT, IT, JP, US, TR, ES, VN, CN]
+    colors_per_product: [2, 4]
+    stock_per_variant: [2, 10]
+    women_sizes: women_numeric
+    women_sizes_in: [dresses, blouses, skirts, pants, blazers, suits, jumpsuits]
+    name: "{material} {word} {type}"
+    words:
+      Relaxed: [tees, shirts, knitwear, sweatshirts, outerwear, blazers, pants, shorts]
+      Cropped: [tees, knitwear, sweatshirts, outerwear, blazers, pants, denim]
+      Longline: [outerwear, knitwear, blazers, tees]
+      Boxy: [tees, shirts, knitwear, outerwear, blazers]
+      Fluid: [blouses, dresses, pants, skirts, jumpsuits]
+      Structured: [blazers, bags, trench coat, car coat, overcoat, wool coat, peacoat, wrap coat]
+      Wrap-front: [blouses, dresses, skirts, knitwear]
+      Pleat-front: [pants, shorts]
+      Raw-hem: [denim, skirts]
+      Utility: [outerwear, pants, shorts, shirts, jumpsuits]
+      Technical: [activewear]
+      Ribbed: [swimwear, tees, knitwear, beanie, socks]
+      Ruched: [swimwear, dresses]
+      High-leg: [swimwear]
+      Scoop-back: [swimwear, dresses]
+      Woven: [espadrilles, fisherman sandals, slides, tote bag, bucket bag, crossbody bag, clutch, sun hat, panama hat]
+      Welted: [boots, dress_shoes]
+      Lug-sole: [boots]
+      Minimal: [sneakers]
+      Square-toe: [boots, heels_flats]
+      Pointed-toe: [heels_flats, boots]
+      Padded: [bags]
+      Soft: [bags, knitwear, gloves]
+    word_materials:
+      Fluid: [silk, modal_rayon, Crepe, Chiffon, Polyester satin, Silk satin]
+      Woven: [leather, straw, Canvas, Linen]
+      Welted: [leather, suede]
+      Soft: [leather, suede, wool, cashmere]
+    women_only: [Cropped, Fluid, Wrap-front, Ruched, High-leg, Scoop-back, Pointed-toe]
+    voice: Clear and confident. What it is, what it is made of, how it wears.
+  contemporary:
+    label: Contemporary
+    price_factor: [1.5, 2.4]
+    price_ending: eights         # $168
+    cost_share: [0.28, 0.38]
+    type_levels: {1: 1, 2: 2, 3: 2}
+    materials: {premium: 0.15, standard: 0.75, value: 0.10}
+    value_only_in: [activewear, outerwear, swimwear]
+    origin: [PT, TR, CN, IN, VN, LK, ES, IT]
+    colors_per_product: [2, 4]
+    stock_per_variant: [3, 15]
+    name: "{word} {material} {type}"
+    words:
+      Relaxed: [tees, shirts, knitwear, sweatshirts, outerwear, pants, denim, shorts]
+      Easy: [tees, blouses, pants, dresses, shorts, loungewear, sleepwear]
+      Puff-sleeve: [blouses, dresses, knitwear]
+      Belted: [trench coat, wrap coat, car coat, wool coat, overcoat, cocoon coat, shirt dress, wrap dress, midi dress, jumpsuit, boiler suit, utility jumpsuit, wide-leg jumpsuit, wide-leg trousers, paperbag pants]
+      Cropped: [tees, knitwear, outerwear, pants, denim, blazers]
+      High-rise: [pants, denim, shorts, skirts, underwear, swimwear]
+      Wide-leg: [pants, denim, jumpsuits]
+      Slim: [pants, denim, shirts, blazers, suits, small_leather_goods, belts]
+      Soft: [knitwear, loungewear, sleepwear, lingerie, underwear, tees, scarves, gloves]
+      Pleated: [skirts, pants, dresses]
+      Lace-trim: [lingerie, sleepwear, underwear]
+      Washed: [loungewear, sleepwear, shirts]
+      Slouchy: [bags, boots]
+      Structured: [bags]
+      Square-toe: [heels_flats, boots]
+      Hand-stitched: [small_leather_goods, belts, sandals, dress_shoes, bags, leather gloves, driving gloves]
+    word_materials:
+      Washed: [cotton, linen, silk, modal_rayon]
+      Hand-stitched: [leather, suede]
+      Slouchy: [leather, suede, synthetic_leather, Canvas, Waxed cotton]
+    women_only: [Puff-sleeve, Lace-trim, High-rise, Cropped]
+    voice: Warm and plain. How it fits and when to wear it.
+  mid:
+    label: Mid
+    price_factor: [1.0, 1.0]     # the category range itself
+    price_ending: nines          # $79 (as Northwind)
+    cost_share: [0.35, 0.45]
+    type_levels: {1: 1, 2: 1, 3: 1}
+    materials: {premium: 0.05, standard: 0.70, value: 0.25}
+    premium_allowed: [Merino wool, Lambswool, Suede, Pima cotton, Selvedge denim]
+    origin: [CN, VN, IN, BD, US, PE, MX, KH, ID, TR]
+    colors_per_product: [3, 5]
+    stock_per_variant: [5, 25]
+    name: "{word} {material} {type}"
+    words:
+      Classic: [tops, coats_tailoring, bottoms, shoes, bags, belts, baseball cap, flat cap, fedora, beanie]
+      Everyday: [tees, sweatshirts, socks, underwear, bags, pants]
+      Stretch: [denim, pants, shorts, skirts, activewear]
+      Rigid: [denim]
+      High-rise: [denim, pants, shorts, skirts, activewear]
+      Mid-rise: [denim, pants]
+      Washed: [tees, shirts, sweatshirts, denim, shorts, baseball cap, bucket hat]
+      Ribbed: [tees, knitwear, socks, beanie, underwear]
+      Seamless: [activewear, underwear]
+      Trail: [hiking pants, hiking socks, hiking boots, running shoes, walking shoes, training shoes, cargo shorts, cargo pants, half-zip top, base layer top, base layer bottom, running shorts, running tee, running jacket, rain jacket, windbreaker, fleece jacket, anorak]
+      Relaxed: [tees, shirts, sweatshirts, pants, denim, shorts, outerwear]
+      Slim: [shirts, pants, denim, polos]
+    word_materials:
+      Washed: [cotton, linen]
+      Rigid: [Denim, Selvedge denim]
+      Stretch: [cotton, nylon, polyester, Denim, Selvedge denim, mixed, modal_rayon]
+    women_only: [High-rise]
+    voice: Practical. What it does and how to care for it.
+  spa:
+    label: SPA
+    price_factor: [0.35, 0.6]
+    price_ending: ninety_cents   # $24.90
+    cost_share: [0.40, 0.50]
+    type_levels: {1: 3, 2: 2, 3: 1}
+    materials: {premium: 0, standard: 0.55, value: 0.45}
+    origin: [BD, VN, CN, KH, TR, IN]
+    colors_per_product: [4, 8]
+    stock_per_variant: [20, 120]
+    sizes_wide: true             # alpha_wide (to XXL) where the category uses alpha
+    name: "{word} {type}"
+    words:
+      Essential: [all]
+      Everyday: [all]
+      Easy-care: [shirts, blouses, pants, dresses, polos, suits, blazers]
+      Smart: [shirts, pants, blazers, suits, dress_shoes, polos]
+      Soft: [tees, knitwear, sweatshirts, loungewear, underwear, socks, scarves]
+      Relaxed: [tees, shirts, pants, denim, shorts, sweatshirts]
+      Light: [outerwear, shirts, blouses, dresses, sneakers]
+      Basic: [tees, underwear, socks, polos]
+      Stretch: [pants, denim, activewear, underwear, suits, blazers, shorts]
+      Airy: [blouses, dresses, shirts, shorts]
+    word_materials:
+      Airy: [linen, cotton, modal_rayon, Chiffon]
+      Easy-care: [mixed, polyester, modal_rayon, Cotton, Linen blend]
+    voice: Short and practical. Comfort, ease and how many ways to wear it.
+  boutique:
+    label: Boutique
+    price_factor: [0.3, 0.55]
+    price_ending: whole          # $29.00
+    cost_share: [0.45, 0.60]
+    type_levels: {1: 3, 2: 2, 3: 1}
+    materials: {premium: 0, standard: 0.40, value: 0.60}
+    origin: [KR, CN, VN, TR]
+    colors_per_product: [3, 6]
+    stock_per_variant: [3, 20]
+    one_size_share: 0.5          # half of tees, blouses, knitwear, sweatshirts, dresses, skirts and loungewear sell as One size
+    one_size_in: [tees, blouses, knitwear, sweatshirts, dresses, skirts, loungewear]
+    name: "{word} {type}"
+    words:
+      Puff-sleeve: [blouses, dresses, knitwear, tees]
+      Ruched: [dresses, skirts, tees, swimwear]
+      Cropped: [tees, knitwear, sweatshirts, outerwear, denim, pants]
+      Balloon-sleeve: [blouses, dresses, knitwear]
+      Shirred: [dresses, blouses, skirts]
+      Ribbed: [tees, knitwear, dresses, loungewear, socks, beanie]
+      Oversized: [tees, sweatshirts, knitwear, outerwear, shirts, blazers]
+      Wide-leg: [pants, denim, jumpsuits]
+      Square-neck: [blouses, dresses, tees]
+      Lace-trim: [blouses, dresses, skirts, sleepwear, socks]
+      Pintuck: [pants, blouses]
+      Ruffled: [blouses, dresses, skirts]
+      Two-way: [outerwear, bags, knitwear]
+      Side-slit: [skirts, dresses]
+      Mini: [bags, small_leather_goods]
+      Quilted: [bags, outerwear]
+      Chunky: [sneakers, sandals, boots, knitwear]
+      Pearl: [bags, belts, heels_flats]
+      Knotted: [scarves, sandals, belts, bucket hat, sun hat]
+      Graphic: [tees, sweatshirts, baseball cap, trucker hat, socks]
+      Washed: [denim, tees, sweatshirts, baseball cap, bucket hat]
+      Fuzzy: [knitwear, slipper socks, crew socks, beanie, bucket hat, knit gloves, mittens, scarf, snood, infinity scarf, blanket scarf]
+      Slouchy: [bags, socks, knitwear]
+      Glitter: [heels_flats, bags, socks]
+      Cozy: [sleepwear, loungewear, socks, gloves]
+    word_materials:
+      Washed: [cotton, linen]
+      Fuzzy: [Mohair blend, Alpaca blend, Faux fur, Fleece, Acrylic, Acrylic blend, Cashmere blend, Lambswool, Cashmere, Wool blend]
+      Cozy: [Fleece, French terry, Flannel, wool, cashmere, acrylic, Faux fur]
+      Quilted: [nylon, polyester, Cotton, Down]
+    women_only: [Puff-sleeve, Ruched, Cropped, Balloon-sleeve, Shirred, Square-neck, Lace-trim, Ruffled, Pearl, Glitter, Mini]
+    voice: Friendly. One styling idea; still only the facts.
+
+rules:                           # every drawn product passes these; the generator's tests check all of them
+  - The price lies inside the brand's tier band for that category (mid range × price_factor), and ends as the tier says.
+  - The material is one the tier allows, in the category it fits (assortment.yml materials.fits) or the type's own list (type_materials).
+  - A brand that lists its materials uses only those, in every category where one of them fits.
+  - The country of origin is on the tier's list.
+  - Every color is on the brand's palette and in policies/taxonomy/colors.yml.
+  - The product's gender is drawn from the brand's audience among the genders the category's types allow
+    (a men's tailor's ties are all men's). A category with no type for any of the brand's genders is an error.
+  - Within one brand, a dearer type never costs less than a cheaper type of the same category (each brand has one price factor).
+  - No two products of one brand have the same name.
+
+palettes:                        # names from policies/taxonomy/colors.yml
+  neutral_luxe: [Black, Ivory, Camel, Charcoal, Navy, Chocolate, Ecru, Dove grey, Taupe]
+  tailoring: [Navy, Charcoal, Midnight, Graphite, Black, Camel, Taupe, Burgundy, Bottle green, Optic white, Sky]
+  knit_luxe: [Oatmeal, Camel, Charcoal, Ivory, Navy, Bottle green, Burgundy, Heather grey, Mocha]
+  leather: [Black, Cognac, Tan, Chocolate, Espresso, Taupe, Burgundy, Olive]
+  denim: [Indigo, Dark wash, Light wash, Denim blue, Ecru, Black, Chambray]
+  outdoor: [Forest, Olive, Black, Slate, Rust, Mustard, Navy, Sand, Cobalt, Tangerine]
+  earth_casual: [Sand, Olive, Navy, Stone, Clay, Sky, White, Black, Slate, Rust, Navy stripe]
+  resort: [Ivory, Sand, Terracotta, Sky, Butter, Coral, Sage, Navy, Aqua, Multicolor]
+  sleep: [Ivory, Powder blue, Sage, Blush, Navy, Dove grey, Lavender, Cream]
+  lingerie: [Black, Ivory, Blush, Ballet pink, Mocha, Burgundy, Navy, Lavender]
+  athletic: [Black, Graphite, Optic white, Cobalt, Coral, Mint, Navy, Lemon, Hot pink]
+  basics_wide: [Black, White, Heather grey, Navy, Oatmeal, Olive, Mocha, Sky, Red, Kelly green, Butter, Rose, Lavender, Royal blue]
+  trend_fast: [Fuchsia, Lemon, Kelly green, Tangerine, Cobalt, Black, Optic white, Cherry, Lilac, Hot pink, Multicolor]
+  romantic: [Blush, Ballet pink, Lavender, Butter, Cream, Mint, Powder blue, Dusty pink, Lilac]
+  street: [Black, Heather grey, Optic white, Army green, Cobalt, Red, Mustard, Burgundy]
+  party: [Black, Wine, Emerald, Gold, Silver, Fuchsia, Cobalt, Red, Plum]
+
+brands:                          # products: how many this brand sells (sum 5,000). audience: share by target_gender. focus: % of its products by category. materials: when given, the only ones it uses
+  # ---------------------------------------------------------------- luxury
+  brn_maison_orvelle:
+    name: Maison Orvelle
+    tier: luxury
+    products: 100
+    identity: Paris ready-to-wear built around the coat; double-faced wool, quiet colors, long lines.
+    audience: {female: 0.6, male: 0.4}
+    focus: {outerwear: 28, knitwear: 14, blazers: 10, blouses: 10, pants: 10, dresses: 10, bags: 10, scarves: 4, boots: 4}
+    palette: [neutral_luxe]
+    origin: [FR, IT]
+    materials: [Double-faced wool, Cashmere, Alpaca blend, Wool gabardine, Wool flannel, Tweed, Merino wool, Lambswool, Silk, Silk satin, Lambskin leather, Calfskin leather, Suede, Shearling]   # its own cloth; the tier's other materials are not used
+  brn_calder_vane:
+    name: Calder & Vane
+    tier: luxury
+    products: 100
+    identity: English tailoring; suits, shirts and ties cut to be worn together.
+    audience: {male: 0.85, female: 0.15}
+    focus: {suits: 24, blazers: 14, shirts: 16, ties: 10, outerwear: 10, dress_shoes: 10, knitwear: 6, pants: 5, belts: 3, small_leather_goods: 2}
+    palette: [tailoring]
+    origin: [GB, IT]
+    materials: [Wool flannel, Wool gabardine, Tropical wool, Tweed, Seersucker, Linen, Pima cotton, Cotton poplin, Oxford cloth, Silk, Merino wool, Lambswool, Cashmere, Double-faced wool, Wool blend, Calfskin leather, Suede]   # its own cloth; the tier's other materials are not used
+  brn_atelier_venturi:
+    name: Atelier Venturi
+    tier: luxury
+    products: 100
+    identity: Cashmere knitwear and leather goods from a family workshop near Florence.
+    audience: {female: 0.5, male: 0.5}
+    focus: {knitwear: 30, bags: 15, scarves: 12, small_leather_goods: 10, gloves: 9, outerwear: 9, belts: 5, dress_shoes: 5, heels_flats: 5}
+    palette: [knit_luxe, leather]
+    origin: [IT]
+    materials: [Cashmere, Merino wool, Lambswool, Alpaca blend, Mohair blend, Cashmere blend, Silk, Silk satin, Double-faced wool, Shearling, Calfskin leather, Lambskin leather, Suede, Leather]   # its own cloth; the tier's other materials are not used
+  # ---------------------------------------------------------------- designer
+  brn_hollis_grey:
+    name: Hollis Grey
+    tier: designer
+    products: 120
+    identity: Minimal womenswear for work and after; clean lines in crepe and wool, no logos.
+    audience: {female: 1.0}
+    focus: {blouses: 18, pants: 16, dresses: 16, outerwear: 12, knitwear: 12, skirts: 8, blazers: 8, heels_flats: 6, bags: 4}
+    palette: [neutral_luxe]
+    extra_colors: [Sage, Cobalt]
+    origin: [PT, IT, US]
+  brn_haldvik:
+    name: Haldvik
+    tier: designer
+    products: 120
+    identity: Weatherproof shells and down from a northern coast, built for wind and rain.
+    audience: {unisex: 0.5, male: 0.3, female: 0.2}
+    focus: {outerwear: 45, activewear: 15, knitwear: 10, pants: 10, boots: 8, hats: 6, gloves: 6}
+    palette: [outdoor]
+    origin: [PT, VN, CN]
+    materials: [Nylon, Recycled nylon, Ripstop, Down, Fleece, Waxed cotton, Cotton twill, Wool blend, Double-faced wool, Shearling, Merino wool, Merino blend, Lambswool, Nylon-spandex, Leather, Calfskin leather, Suede, Rubber]   # its own cloth; the tier's other materials are not used
+  brn_maree_studio:
+    name: Marée Studio
+    tier: designer
+    products: 120
+    identity: Resort swimwear and linen made for a long summer by the sea.
+    audience: {female: 0.9, unisex: 0.1}
+    focus: {swimwear: 35, dresses: 20, blouses: 10, sandals: 12, skirts: 8, hats: 7, bags: 8}
+    palette: [resort]
+    origin: [IT, PT, ES]
+  brn_aokawa:
+    name: Aokawa Denim Works
+    tier: designer
+    products: 120
+    identity: Selvedge denim and chore coats woven and sewn in Japan.
+    audience: {male: 0.6, unisex: 0.2, female: 0.2}
+    focus: {denim: 45, shirts: 15, outerwear: 15, pants: 10, tees: 7, belts: 5, boots: 3}
+    palette: [denim]
+    extra_colors: [Olive, Navy]
+    origin: [JP]
+    materials: [Selvedge denim, Denim, Chambray, Oxford cloth, Flannel, Cotton twill, Canvas, Waxed cotton, Corduroy, Pima cotton, Cotton, Organic cotton, Cotton jersey, Calfskin leather, Leather, Suede]   # its own cloth; the tier's other materials are not used
+  brn_ashby_lowe:
+    name: Ashby & Lowe
+    tier: designer
+    products: 120
+    identity: Welted leather shoes, boots and clean leather sneakers made in Portugal.
+    audience: {male: 0.5, female: 0.5}
+    focus: {boots: 30, dress_shoes: 25, sneakers: 25, heels_flats: 12, belts: 5, small_leather_goods: 3}
+    palette: [leather]
+    extra_colors: [Optic white]
+    origin: [PT, ES, IT]
+    materials: [Calfskin leather, Lambskin leather, Suede, Leather, Shearling, Canvas, Knit mesh]   # its own cloth; the tier's other materials are not used
+  # ---------------------------------------------------------------- contemporary
+  brn_linden_fold:
+    name: Linden & Fold
+    tier: contemporary
+    products: 175
+    identity: Easy dresses and blouses in soft colors for every day and for occasions.
+    audience: {female: 1.0}
+    focus: {dresses: 22, blouses: 18, knitwear: 14, skirts: 12, pants: 10, outerwear: 8, jumpsuits: 6, heels_flats: 5, bags: 5}
+    palette: [romantic]
+    extra_colors: [Ivory, Sage, Navy, Camel, Black, Rust]
+    origin: [PT, TR, CN, IN]
+  brn_elm_oar:
+    name: Elm & Oar
+    tier: contemporary
+    products: 175
+    identity: Smart casual for men; oxford shirts, chinos and knits for the office and the weekend.
+    audience: {male: 0.85, unisex: 0.15}
+    focus: {shirts: 20, pants: 15, knitwear: 13, outerwear: 11, polos: 10, blazers: 8, shorts: 8, tees: 7, suits: 3, dress_shoes: 3, belts: 2}
+    palette: [earth_casual]
+    extra_colors: [Burgundy, Forest, Camel]
+    origin: [PT, TR, IN, VN]
+  brn_tessa_rowe:
+    name: Tessa Rowe
+    tier: contemporary
+    products: 175
+    identity: Suits and separates for women, cut to go from the desk to dinner.
+    audience: {female: 1.0}
+    focus: {pants: 20, blazers: 18, blouses: 18, suits: 12, dresses: 10, skirts: 8, outerwear: 8, heels_flats: 6}
+    palette: [tailoring]
+    extra_colors: [Ivory, Cobalt, Blush]
+    origin: [PT, TR, CN]
+  brn_lune_linen:
+    name: Lune & Linen
+    tier: contemporary
+    products: 175
+    identity: Sleepwear and loungewear in washed linen, cotton and silk.
+    audience: {female: 0.7, unisex: 0.3}
+    focus: {sleepwear: 45, loungewear: 35, knitwear: 8, socks: 7, tees: 5}
+    palette: [sleep]
+    origin: [PT, IN, CN]
+    materials: [Linen, Linen blend, Cotton, Organic cotton, Cotton poplin, Cotton jersey, Flannel, Seersucker, Silk, Silk satin, Modal, Lyocell, French terry, Cashmere, Cashmere blend, Merino wool, Lambswool, Wool blend]   # its own cloth; the tier's other materials are not used
+  brn_bramble:
+    name: Bramble Leather Co.
+    tier: contemporary
+    products: 175
+    identity: Vegetable-tanned leather bags, belts and wallets that age well.
+    audience: {unisex: 0.6, female: 0.25, male: 0.15}
+    focus: {bags: 38, small_leather_goods: 24, belts: 14, boots: 12, gloves: 6, sandals: 6}
+    palette: [leather]
+    origin: [ES, IT, IN, TR]
+    materials: [Calfskin leather, Lambskin leather, Leather, Suede, Shearling, Canvas, Waxed cotton, Rubber]   # its own cloth; the tier's other materials are not used
+  brn_ninette:
+    name: Ninette
+    tier: contemporary
+    products: 175
+    identity: Lingerie and underwear made for comfort first; soft cups and fine lace.
+    audience: {female: 1.0}
+    focus: {lingerie: 50, underwear: 25, sleepwear: 15, swimwear: 10}
+    palette: [lingerie]
+    origin: [LK, PT, CN]
+  # ---------------------------------------------------------------- mid
+  brn_daybook:
+    name: Daybook Supply
+    tier: mid
+    products: 200
+    identity: Everyday basics in plain colors; tees, sweats and chinos you wear every week.
+    audience: {unisex: 0.6, male: 0.2, female: 0.2}
+    focus: {tees: 20, sweatshirts: 13, pants: 13, shirts: 11, shorts: 10, knitwear: 8, outerwear: 8, socks: 5, hats: 5, polos: 4, underwear: 3}
+    palette: [earth_casual]
+    origin: [VN, IN, PE, US, CN]
+  brn_cairnline:
+    name: Cairnline Outdoor
+    tier: mid
+    products: 200
+    identity: Hiking and camp clothes; fleece, rain shells and boots for weekends outside.
+    audience: {unisex: 0.5, male: 0.3, female: 0.2}
+    focus: {outerwear: 26, activewear: 14, pants: 12, boots: 10, shirts: 8, sweatshirts: 8, hats: 6, bags: 6, socks: 5, shorts: 3, gloves: 2}
+    palette: [outdoor]
+    origin: [VN, CN, BD, US]
+    materials: [Nylon, Recycled nylon, Ripstop, Down, Fleece, Polyester, Recycled polyester, Waxed cotton, Cotton twill, Canvas, Corduroy, Flannel, Cotton, French terry, Cotton-poly blend, Merino wool, Merino blend, Wool blend, Acrylic, Nylon-spandex, Knit mesh, Leather, Suede, Rubber]   # its own cloth; the tier's other materials are not used
+  brn_paceform:
+    name: Paceform Athletic
+    tier: mid
+    products: 200
+    identity: Running and training gear tested on the track and in the gym.
+    audience: {unisex: 0.4, female: 0.35, male: 0.25}
+    focus: {activewear: 60, sneakers: 18, shorts: 6, tees: 4, socks: 4, bags: 3, sandals: 3, hats: 2}
+    palette: [athletic]
+    origin: [VN, ID, KH, CN]
+    materials: [Polyester, Recycled polyester, Nylon, Recycled nylon, Nylon-spandex, Microfiber, Merino wool, Merino blend, Fleece, French terry, Cotton, Cotton jersey, Cotton-poly blend, Modal, Knit mesh, Leather, Rubber]   # its own cloth; the tier's other materials are not used
+  brn_blue_hour:
+    name: Blue Hour Denim
+    tier: mid
+    products: 200
+    identity: Jeans in every fit and wash, cut and finished plainly.
+    audience: {unisex: 0.4, female: 0.35, male: 0.25}
+    focus: {denim: 50, shirts: 10, outerwear: 10, shorts: 10, skirts: 8, jumpsuits: 6, tees: 6}
+    palette: [denim]
+    extra_colors: [Optic white]
+    origin: [MX, TR, BD, CN]
+    materials: [Denim, Selvedge denim, Chambray, Cotton, Cotton jersey, Organic cotton, Cotton twill, Cotton poplin, Corduroy, Linen blend]   # its own cloth; the tier's other materials are not used
+  brn_marigold_lane:
+    name: Marigold Lane
+    tier: mid
+    products: 200
+    identity: Bright, easy clothes for women for warm days and long weekends.
+    audience: {female: 1.0}
+    focus: {dresses: 18, tees: 14, blouses: 12, knitwear: 12, skirts: 10, pants: 8, sandals: 8, shorts: 6, swimwear: 6, bags: 6}
+    palette: [resort]
+    extra_colors: [Blush, Mint, Rust, Navy]
+    origin: [IN, CN, VN]
+  brn_ironbridge:
+    name: Ironbridge Workwear
+    tier: mid
+    products: 200
+    identity: Duck canvas, heavy twill and work boots made for real work.
+    audience: {male: 0.8, unisex: 0.2}
+    focus: {outerwear: 20, pants: 18, shirts: 16, boots: 12, tees: 10, sweatshirts: 10, shorts: 4, hats: 4, belts: 3, socks: 3}
+    palette: []
+    extra_colors: [Khaki, Army green, Navy, Brick, Mustard, Charcoal, Tan, Black, Denim blue]
+    origin: [US, MX, BD, CN]
+    materials: [Canvas, Cotton twill, Denim, Chambray, Flannel, Corduroy, Waxed cotton, Ripstop, Cotton, Cotton jersey, French terry, Fleece, Cotton-poly blend, Wool blend, Merino blend, Acrylic, Leather, Rubber]   # its own cloth; the tier's other materials are not used
+  # ---------------------------------------------------------------- SPA
+  brn_plainform:
+    name: Plainform
+    tier: spa
+    products: 350
+    identity: Wardrobe basics in many colors at everyday prices.
+    audience: {unisex: 0.4, female: 0.35, male: 0.25}
+    focus: {tees: 15, underwear: 12, pants: 8, knitwear: 8, sweatshirts: 8, activewear: 8, outerwear: 7, denim: 6, shirts: 5, socks: 5, loungewear: 5, polos: 4, sneakers: 3, shorts: 3, swimwear: 2, hats: 1}
+    palette: [basics_wide]
+    origin: [BD, VN, CN, KH]
+  brn_wavelet:
+    name: Wavelet
+    tier: spa
+    products: 350
+    identity: New styles every week, from the runway to the rail.
+    audience: {female: 0.65, male: 0.3, unisex: 0.05}
+    focus: {dresses: 13, blouses: 11, tees: 10, pants: 9, skirts: 8, denim: 8, outerwear: 8, knitwear: 6, swimwear: 6, heels_flats: 6, jumpsuits: 4, sneakers: 3, bags: 3, shorts: 3, sandals: 2}
+    palette: [trend_fast]
+    extra_colors: [Ivory, Navy, Camel]
+    origin: [CN, TR, BD]
+  brn_tenfold:
+    name: Tenfold
+    tier: spa
+    products: 350
+    identity: Office wear and essentials at prices that make a full week of outfits easy.
+    audience: {male: 0.5, female: 0.5}
+    focus: {shirts: 18, pants: 15, polos: 10, blazers: 8, knitwear: 8, underwear: 8, suits: 8, dress_shoes: 6, socks: 5, outerwear: 5, ties: 5, belts: 4}
+    palette: [tailoring]
+    extra_colors: [White, Grey, Powder blue]
+    origin: [BD, VN, CN, IN]
+  # ---------------------------------------------------------------- boutique sellers
+  brn_room_204:
+    name: Room 204
+    tier: boutique
+    products: 115
+    identity: Daily outfits for women, picked fresh from the market every week.
+    audience: {female: 1.0}
+    focus: {tees: 20, knitwear: 14, blouses: 12, pants: 12, denim: 10, skirts: 10, sweatshirts: 10, bags: 6, sneakers: 6}
+    palette: [romantic]
+    extra_colors: [Black, Optic white, Heather grey]
+    origin: [KR, CN]
+  brn_moon_mint:
+    name: Moon & Mint
+    tier: boutique
+    products: 115
+    identity: Lace, ruffles and pastel blouses for dates and brunch.
+    audience: {female: 1.0}
+    focus: {blouses: 26, dresses: 26, skirts: 20, knitwear: 12, heels_flats: 8, bags: 8}
+    palette: [romantic]
+    origin: [KR, CN]
+  brn_lazy_afternoon:
+    name: Lazy Afternoon
+    tier: boutique
+    products: 114
+    identity: Soft knits and wide pants for slow days at home and out.
+    audience: {female: 0.7, unisex: 0.3}
+    focus: {knitwear: 26, loungewear: 24, pants: 14, sweatshirts: 14, sleepwear: 12, socks: 6, hats: 4}
+    palette: []
+    extra_colors: [Oatmeal, Cream, Mocha, Sage, Lavender, Heather grey, Butter, Dusty pink]
+    origin: [KR, CN]
+  brn_cherry_mile:
+    name: Cherry Mile
+    tier: boutique
+    products: 114
+    identity: Crop tops, mini skirts and throwback denim for going out.
+    audience: {female: 1.0}
+    focus: {tees: 18, skirts: 16, denim: 14, dresses: 14, swimwear: 10, hats: 8, jumpsuits: 8, sneakers: 6, sandals: 6}
+    palette: [trend_fast]
+    extra_colors: [Butter, Light wash]
+    origin: [CN, KR]
+  brn_streetcorner:
+    name: Streetcorner 99
+    tier: boutique
+    products: 114
+    identity: Oversized hoodies, cargo pants and caps for the street.
+    audience: {male: 0.7, unisex: 0.3}
+    focus: {sweatshirts: 22, tees: 18, pants: 16, outerwear: 12, hats: 10, sneakers: 10, bags: 6, shorts: 6}
+    palette: [street]
+    origin: [CN, KR, VN]
+  brn_sunny_shelf:
+    name: Sunny Shelf
+    tier: boutique
+    products: 114
+    identity: Hats, bags, socks and small things to finish an outfit.
+    audience: {unisex: 0.5, female: 0.5}
+    focus: {hats: 24, bags: 18, scarves: 18, socks: 12, gloves: 10, small_leather_goods: 10, belts: 8}
+    palette: []
+    extra_colors: [Butter, Mint, Coral, Black, Cream, Lilac, Sky, Tan, Navy, Red]
+    origin: [CN, KR]
+  brn_velvet_attic:
+    name: Velvet Attic
+    tier: boutique
+    products: 114
+    identity: Party dresses, heels and small bags for weddings and nights out.
+    audience: {female: 1.0}
+    focus: {dresses: 40, heels_flats: 18, bags: 14, skirts: 10, jumpsuits: 10, blouses: 8}
+    palette: [party]
+    origin: [CN, KR, TR]
