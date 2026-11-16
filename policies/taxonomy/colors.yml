@@ -1,0 +1,124 @@
+# policy: taxonomy/colors — named colors (draft)
+# The platform does not read this file yet; the fashion mall's seed generator (crates/testkit/src/mall)
+# does. Design: docs/catalog-taxonomy.md §4.
+# Every color name a store sells maps to one to three color families (common.yml color_family,
+# main one first) and one swatch. The swatch is the chip on the page and the shade the photo
+# prompt asks for. Shoppers filter and search by family ("grey" finds Charcoal, Slate and Ash);
+# the name stays what the brand calls it.
+# A store may add its own names. Each one needs a family and a swatch before a product can use it.
+# `for` limits a name to some categories (denim washes). `pattern` sets the variant's pattern (apparel.yml pattern); other colors are solid.
+version: 0
+
+colors:
+  # black
+  Black:          {family: [black], hex: "#141414"}
+  Onyx:           {family: [black], hex: "#22201F"}
+  Ink:            {family: [black], hex: "#1B1F2A"}
+  # grey
+  Charcoal:       {family: [grey], hex: "#3B3D40"}
+  Graphite:       {family: [grey], hex: "#4A4B4D"}
+  Slate:          {family: [grey], hex: "#5E6670"}
+  Smoke:          {family: [grey], hex: "#6F7173"}
+  Pewter:         {family: [grey], hex: "#8A8D8F"}
+  Grey:           {family: [grey], hex: "#9A9B9D"}
+  Heather grey:   {family: [grey], hex: "#A3A5A8"}
+  Ash:            {family: [grey], hex: "#B9B7B2"}
+  Dove grey:      {family: [grey], hex: "#C9C8C4"}
+  # white
+  Optic white:    {family: [white], hex: "#FBFBFB"}
+  White:          {family: [white], hex: "#F7F7F5"}
+  Ivory:          {family: [white], hex: "#F4EFE3"}
+  Cream:          {family: [white], hex: "#EFE6D2"}
+  Natural:        {family: [white], hex: "#EDE6D6"}
+  Ecru:           {family: [white], hex: "#E8DFC8"}
+  # beige
+  Oatmeal:        {family: [beige], hex: "#D6CCB8"}
+  Sand:           {family: [beige], hex: "#D8C7A8"}
+  Biscuit:        {family: [beige], hex: "#D9C29F"}
+  Putty:          {family: [beige], hex: "#C9BFA8"}
+  Stone:          {family: [beige], hex: "#C2B8A3"}
+  Mushroom:       {family: [beige], hex: "#B7A99A"}
+  Taupe:          {family: [beige], hex: "#A8988A"}
+  # brown
+  Tan:            {family: [brown], hex: "#C49A6C"}
+  Camel:          {family: [brown], hex: "#B98A55"}
+  Clay:           {family: [brown], hex: "#C2876B"}
+  Toffee:         {family: [brown], hex: "#A7713F"}
+  Mocha:          {family: [brown], hex: "#8A6B57"}
+  Cognac:         {family: [brown], hex: "#9A4E28"}
+  Chestnut:       {family: [brown], hex: "#7B4A2D"}
+  Chocolate:      {family: [brown], hex: "#4E3326"}
+  Espresso:       {family: [brown], hex: "#3B2A22"}
+  # navy
+  Marine:         {family: [navy], hex: "#23395B"}
+  Navy:           {family: [navy], hex: "#1F2A44"}
+  Midnight:       {family: [navy], hex: "#191F33"}
+  # blue
+  Powder blue:    {family: [blue], hex: "#B8D0E6"}
+  Sky:            {family: [blue], hex: "#9CC3E0"}
+  Aqua:           {family: [blue], hex: "#7FC8C9"}
+  Chambray:       {family: [blue], hex: "#8DA4C4"}
+  Light wash:     {family: [blue], hex: "#A9C0D6", for: [denim, shorts, skirts, jumpsuits, outerwear]}
+  Denim blue:     {family: [blue], hex: "#4A6FA5"}
+  Teal:           {family: [blue], hex: "#2F7F86"}
+  Cobalt:         {family: [blue], hex: "#1F4FB5"}
+  Royal blue:     {family: [blue], hex: "#2648A8"}
+  Indigo:         {family: [blue], hex: "#2E3E6E"}
+  Dark wash:      {family: [blue], hex: "#2C3A57", for: [denim, shorts, skirts, jumpsuits, outerwear]}
+  # green
+  Mint:           {family: [green], hex: "#BFE3CF"}
+  Pistachio:      {family: [green], hex: "#C5D9A5"}
+  Sage:           {family: [green], hex: "#9CAF94"}
+  Kelly green:    {family: [green], hex: "#2E9E4F"}
+  Emerald:        {family: [green], hex: "#1E7A55"}
+  Hunter green:   {family: [green], hex: "#355E3B"}
+  Forest:         {family: [green], hex: "#2F4A35"}
+  Bottle green:   {family: [green], hex: "#1F3D2B"}
+  # khaki
+  Khaki:          {family: [khaki], hex: "#A39A6D"}
+  Moss:           {family: [khaki], hex: "#6B7A47"}
+  Olive:          {family: [khaki], hex: "#6B6B3A"}
+  Army green:     {family: [khaki], hex: "#4B5320"}
+  # red
+  Tomato:         {family: [red], hex: "#D9442F"}
+  Red:            {family: [red], hex: "#C0272D"}
+  Crimson:        {family: [red], hex: "#A3162B"}
+  Cherry:         {family: [red], hex: "#9E1B32"}
+  Brick:          {family: [red], hex: "#9C3D2E"}
+  Burgundy:       {family: [red], hex: "#6D1F2E"}
+  Wine:           {family: [red], hex: "#5A1A2A"}
+  # pink
+  Ballet pink:    {family: [pink], hex: "#F2D4D7"}
+  Blush:          {family: [pink], hex: "#E8C4C0"}
+  Dusty pink:     {family: [pink], hex: "#D3A3A0"}
+  Rose:           {family: [pink], hex: "#C97B84"}
+  Hot pink:       {family: [pink], hex: "#E0457B"}
+  Fuchsia:        {family: [pink], hex: "#C2337A"}
+  # purple
+  Lilac:          {family: [purple], hex: "#C8A9C9"}
+  Lavender:       {family: [purple], hex: "#B9A9D4"}
+  Mauve:          {family: [purple], hex: "#A07D8D"}
+  Violet:         {family: [purple], hex: "#6A4C9C"}
+  Plum:           {family: [purple], hex: "#5E2B4E"}
+  # yellow
+  Butter:         {family: [yellow], hex: "#F1E3A1"}
+  Lemon:          {family: [yellow], hex: "#F4E04D"}
+  Saffron:        {family: [yellow], hex: "#E2A62A"}
+  Mustard:        {family: [yellow], hex: "#C99B2E"}
+  Ochre:          {family: [yellow], hex: "#C28F2C"}
+  # orange
+  Apricot:        {family: [orange], hex: "#F3B486"}
+  Coral:          {family: [orange], hex: "#F07F6A"}
+  Tangerine:      {family: [orange], hex: "#F28C28"}
+  Burnt orange:   {family: [orange], hex: "#C0581F"}
+  Terracotta:     {family: [orange], hex: "#B9603F"}
+  Rust:           {family: [orange], hex: "#A6512B"}
+  # metallic
+  Silver:         {family: [metallic], hex: "#C0C0C0"}
+  Gold:           {family: [metallic], hex: "#C9A64B"}
+  Rose gold:      {family: [metallic], hex: "#C99A86"}
+  Bronze:         {family: [metallic], hex: "#8C6239"}
+  Gunmetal:       {family: [metallic], hex: "#50555A"}
+  # patterns sold as one color
+  Navy stripe:    {family: [navy, white], hex: "#1F2A44", pattern: striped}
+  Multicolor:     {family: [multi], hex: null, pattern: printed}

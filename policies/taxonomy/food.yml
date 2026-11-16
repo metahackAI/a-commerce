@@ -1,0 +1,185 @@
+# policy: taxonomy/food — 식품 속성 (초안)
+# 아직 어떤 코드도 이 파일을 읽지 않는다. 설계: docs/catalog-taxonomy.md §5.3
+# 시연 범위: 상온 가공식품(과자, 견과, 단백질바, 컵라면). 냉장·냉동과 신선식품은 재고 로트와 배송 구분이 생긴 뒤.
+# 알레르기와 영양은 schema.org Product에 칸이 없어 GS1 Web Vocabulary로 내보낸다.
+version: 0
+
+attributes:
+  net_quantity:
+    kind: number
+    level: variant                       # 중량이나 개수가 옵션 축일 수 있음
+    label: Net quantity
+    unit: gram
+    accepts: [gram, kilogram, millilitre, litre, piece]   # 무게, 부피, 개수 중 하나. 묶음은 총량
+    filter: true
+    words: [size, pack]
+    export: {schema_org: additionalProperty, feed: unit_pricing_measure}
+
+  unit_price:
+    kind: computed
+    level: variant
+    label: Unit price
+    from: [price, net_quantity]
+    per: {gram: 100, millilitre: 100, piece: 1}   # 100g당, 100mL당, 1개당. 한국 단위가격 기준은 확인 후 맞춤
+    sortable: true                       # "100g당 제일 싼" 정렬
+    export: {schema_org: offers.priceSpecification.UnitPriceSpecification, feed: unit_pricing_base_measure}
+
+  food_type:
+    kind: one
+    level: group
+    label: Food type
+    values_from: node
+    export: {schema_org: additionalProperty}
+
+  ingredients:
+    kind: text
+    level: group
+    label: Ingredients
+    parts: [{name: text, percent: number, origin: country_of_origin}]   # 함량 표시가 필요한 원재료만 percent
+    export: {gs1: ingredientStatement}
+
+  allergens:
+    kind: tri_state
+    level: group
+    label: Allergens
+    filter: true
+    absence_needs_declaration: true      # "땅콩 없는"은 peanut: free_from인 상품만. 표시가 없으면 모름
+    from_ingredients: true               # 데모 데이터는 원재료 → 알레르기 표로만 정한다. AI가 정하지 않는다
+    entry_by_person: true                # BO에서 AI 후보를 기본값으로 채우지 않는다
+    list_basis: "Korea, food labelling act enforcement rule, annex 2 (to verify against the text)"
+    items:
+      eggs: {label: Eggs}
+      milk: {label: Milk, words: [dairy]}
+      buckwheat: {label: Buckwheat}
+      peanut: {label: Peanut}
+      soybean: {label: Soybean, words: [soy]}
+      wheat: {label: Wheat, words: [gluten]}
+      mackerel: {label: Mackerel}
+      crab: {label: Crab}
+      shrimp: {label: Shrimp}
+      pork: {label: Pork}
+      peach: {label: Peach}
+      tomato: {label: Tomato}
+      sulfites: {label: Sulfites}
+      walnut: {label: Walnut}
+      chicken: {label: Chicken}
+      beef: {label: Beef}
+      squid: {label: Squid}
+      shellfish: {label: Shellfish (oyster, abalone, mussel)}
+      pine_nut: {label: Pine nut}
+      sesame: {label: Sesame, status: proposed}        # 2026-08-07 입법예고, 시행일 확인 필요
+      perilla_seed: {label: Perilla seed, status: proposed}
+      almond: {label: Almond, status: proposed}
+      cashew: {label: Cashew, status: proposed}
+    export: {gs1: hasAllergen}
+
+  diet:
+    kind: many
+    level: group
+    label: Diet
+    filter: true
+    values:
+      vegan: {label: Vegan, requires_evidence: [certifications.vegan, ingredient_rule]}   # 인증, 또는 원재료 규칙(동물성 원료 없음)
+      vegetarian: {label: Vegetarian, requires_evidence: [ingredient_rule]}
+      halal: {label: Halal, requires_evidence: [certifications.halal]}
+      organic: {label: Organic, requires_evidence: [certifications.organic]}
+    export: {gs1: dietCode}
+
+  free_from:
+    kind: many
+    level: group
+    label: Free from
+    filter: true
+    values:
+      gluten: {label: Gluten-free, requires_evidence: [certifications.gluten_free]}
+      lactose: {label: Lactose-free}
+      added_sugar: {label: No added sugar, words: [unsweetened]}
+      preservatives: {label: No preservatives}
+    note: Values that follow from allergen free_from states are derived from them. Claim wording follows the labelling standard (to verify).
+    export: {gs1: packagingMarkedFreeFrom}
+
+  nutrition:
+    kind: number
+    level: group
+    label: Nutrition facts
+    basis: [per_100g, per_serving]       # 기준량을 함께 저장. 검색은 100g당으로 바꿔 비교
+    parts:                               # 한국 의무 표시 9개
+      energy: {label: Calories, unit: kilocalorie}
+      sodium: {label: Sodium, unit: milligram}
+      carbohydrate: {label: Carbohydrate, unit: gram}
+      sugars: {label: Sugars, unit: gram}
+      fat: {label: Fat, unit: gram}
+      trans_fat: {label: Trans fat, unit: gram}
+      saturated_fat: {label: Saturated fat, unit: gram}
+      cholesterol: {label: Cholesterol, unit: milligram}
+      protein: {label: Protein, unit: gram, filter: true}
+    filter: [energy, protein, sugars, sodium]
+    checks:
+      energy_matches_macros: 0.15        # 열량이 4×탄수화물 + 4×단백질 + 9×지방과 15% 안에서 맞아야 함(생성 데이터 검사)
+    export: {gs1: nutrientBasisQuantity}
+
+  nutrition_claim:
+    kind: many
+    level: group
+    label: Nutrition claims
+    filter: true
+    values:
+      high_protein: {label: High protein}
+      low_sugar: {label: Low sugar}
+      low_sodium: {label: Low sodium}
+      low_calorie: {label: Low calorie}
+    rule: A value exists only when the labelling threshold is met. Thresholds go here once verified.
+    export: {schema_org: additionalProperty}
+
+  storage_temperature:
+    kind: one
+    level: group
+    label: Storage
+    filter: true
+    values:
+      room: {label: Room temperature, words: [shelf-stable, pantry]}
+      chilled: {label: Refrigerated}
+      frozen: {label: Frozen}
+    drives: shipping_method              # 배송 방법을 정한다. 시연은 room만
+    export: {gs1: consumerStorageInstructions}
+
+  storage_note:
+    kind: text
+    level: group
+    label: Storage note
+
+  shelf_life_rule:
+    kind: number
+    level: group
+    label: Minimum days left when shipped
+    unit: day
+    note: The use-by date itself belongs on the stock lot, once lots exist.
+
+  spiciness:
+    kind: scale
+    level: group
+    label: Spiciness
+    filter: true
+    values:
+      none: {label: Not spicy, words: [mild]}
+      mild: {label: Mild}
+      medium: {label: Medium}
+      hot: {label: Hot, words: [spicy]}
+      very_hot: {label: Very hot, words: [extra spicy, fire]}
+    export: {schema_org: additionalProperty}
+
+  flavor:
+    kind: one
+    level: variant
+    label: Flavor
+    filter: true
+    values_from: node
+    export: {schema_org: additionalProperty}
+
+  gmo:
+    kind: one
+    level: group
+    label: GMO labelling
+    values:
+      not_applicable: {label: Not applicable}
+      contains_gmo: {label: Contains GMO}

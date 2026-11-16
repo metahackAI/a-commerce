@@ -53,13 +53,19 @@ struct Cli {
     /// stores across row-level security, so the worker is told which ones.
     #[arg(long, env = "ACOM_STORE_ID", value_delimiter = ',')]
     store_id: Vec<String>,
-    /// What `migrate` loads after the migrations: `none`, or `demo` (the demo store, loaded again
+    /// What `migrate` loads after the migrations: `none`, or `demo` (the demo stores, loaded again
     /// whenever the seed rows change).
     #[arg(long, env = "ACOM_SEED", value_enum, default_value_t = SeedMode::None)]
     seed: SeedMode,
-    /// Folder with the demo store files (`seed/demo`).
-    #[arg(long, env = "ACOM_SEED_DIR", default_value = "seed/demo")]
-    seed_dir: String,
+    /// Folders with the demo stores' files, comma-separated: `seed/demo` (Northwind), and
+    /// `seed/mall` (the fashion mall) beside it.
+    #[arg(
+        long,
+        env = "ACOM_SEED_DIR",
+        value_delimiter = ',',
+        default_value = "seed/demo"
+    )]
+    seed_dir: Vec<String>,
     #[command(subcommand)]
     command: Option<Command>,
 }
@@ -79,7 +85,7 @@ enum Command {
     /// Apply migrations as the owner role, then exit. With `ACOM_SEED=demo`, also load the demo
     /// store if it is not there yet or was loaded from other seed rows.
     Migrate,
-    /// Load the demo store (named rows and generated history) as the owner role.
+    /// Load the demo stores in `ACOM_SEED_DIR` (named rows and generated rows) as the owner role.
     Seed {
         /// Empty every store table first, then load again.
         #[arg(long)]
@@ -136,7 +142,8 @@ fn database(cli: &Cli) -> Option<Db> {
 #[derive(Debug, Clone)]
 struct DemoReset {
     owner_url: Option<String>,
-    seed_dir: String,
+    seed_dir: Vec<String>,
+    taxonomy_dir: String,
     demo_mode: bool,
 }
 
@@ -181,7 +188,10 @@ fn demo_reset(api: Arc<acom_http::Api>, reset: DemoReset) -> Router {
                         let _one = RESETTING.lock().await;
                         let started = std::time::Instant::now();
                         let loaded = match Db::connect(&url, 1).await {
-                            Ok(db) => seed(&db, &reset.seed_dir, SeedWhen::Reset).await,
+                            Ok(db) => {
+                                seed(&db, &reset.seed_dir, &reset.taxonomy_dir, SeedWhen::Reset)
+                                    .await
+                            }
                             Err(e) => Err(e.to_string()),
                         };
                         match loaded {
@@ -389,6 +399,7 @@ fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
     let reset = DemoReset {
         owner_url: cli.migration_database_url.clone(),
         seed_dir: cli.seed_dir.clone(),
+        taxonomy_dir: taxonomy_dir(cli),
         demo_mode: cli.demo_mode,
     };
     Ok(acom_http::router(api.clone())
@@ -399,30 +410,43 @@ fn api(cli: &Cli, db: Db, policy: PolicySet) -> Result<Router, String> {
         .merge(demo_reset(api, reset)))
 }
 
-/// When `seed` loads the demo store.
+/// When `seed` loads the demo stores.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SeedWhen {
-    /// Only when the store is not there yet.
+    /// Only the stores that are not there yet.
     Missing,
-    /// When it is missing or was loaded from other seed rows (`migrate` with `ACOM_SEED=demo`:
-    /// a deployed demo store follows the seed files, losing what was done in it since).
+    /// The missing stores, or all of them again when one was loaded from other seed rows
+    /// (`migrate` with `ACOM_SEED=demo`: a deployed demo store follows the seed files, losing
+    /// what was done in it since).
     Changed,
     /// Always: empty every store table first.
     Reset,
 }
 
-/// Loads the demo store: the named rows in `dir`, then the history `dir/generate.yml` describes
-/// with `dir/catalog_content.yml` laid over its products, and records the fingerprint of those
-/// rows on the store.
-async fn seed(db: &Db, dir: &str, when: SeedWhen) -> Result<(), String> {
-    use acom_testkit::{generate, load, named};
-    let rows = named::load(std::path::Path::new(dir))?;
+/// The taxonomy the mall's generator reads (`policies/taxonomy`).
+fn taxonomy_dir(cli: &Cli) -> String {
+    format!("{}/taxonomy", cli.policy_dir)
+}
+
+/// One demo store's rows: the named rows in `dir`, then what its generator adds. The demo store
+/// has `generate.yml` (history) with `catalog_content.yml` laid over its products; the fashion
+/// mall has `assortment.yml` and `brands.yml`.
+fn store_rows(dir: &str, taxonomy: &str) -> Result<(String, acom_testkit::SeedRows), String> {
+    use acom_testkit::{generate, mall, named};
+    use std::path::Path;
+    let rows = named::load(Path::new(dir))?;
     let tenant = rows
         .iter()
         .find(|(t, _)| t == "platform.online_store")
         .and_then(|(_, r)| r.get("id").and_then(|v| v.as_str()))
-        .ok_or("the seed has no platform.online_store row")?
+        .ok_or_else(|| format!("{dir}: the seed has no platform.online_store row"))?
         .to_owned();
+    if mall::is_mall(Path::new(dir)) {
+        let generated = mall::generate(&rows, Path::new(dir), Path::new(taxonomy))?;
+        let mut all = rows;
+        all.extend(generated);
+        return Ok((tenant, all));
+    }
     let spec = std::fs::read_to_string(format!("{dir}/generate.yml"))
         .map_err(|e| format!("{dir}/generate.yml: {e}"))?;
     let generated = generate::generate(&rows, &spec)?;
@@ -432,39 +456,72 @@ async fn seed(db: &Db, dir: &str, when: SeedWhen) -> Result<(), String> {
         let products = generate::content::overlay(&mut all, &text)?;
         tracing::info!(products, "catalog content laid over the generated products");
     }
-    let fingerprint = load::fingerprint(&all)?;
-    let loaded = load::seeded_fingerprint(db.pool(), &tenant).await?;
-    let reset = match (when, &loaded) {
-        (SeedWhen::Reset, _) => true,
-        (_, None) => false,
-        (_, Some(Some(f))) if *f == fingerprint => {
-            tracing::info!(store = %tenant, "demo store already loaded from this seed; nothing to do");
-            return Ok(());
-        }
-        (SeedWhen::Missing, Some(_)) => {
-            tracing::info!(store = %tenant, "demo store already loaded; nothing to do");
-            return Ok(());
-        }
-        (SeedWhen::Changed, Some(_)) => {
-            tracing::warn!(store = %tenant, "the demo seed changed; loading the demo store again");
-            true
-        }
+    Ok((tenant, all))
+}
+
+/// Loads the demo stores in `dirs` and records on each store the fingerprint of the rows it was
+/// loaded from. Emptying the tables empties every store, so a reset or a changed store loads
+/// them all again; a store that is only missing is loaded beside the others.
+async fn seed(db: &Db, dirs: &[String], taxonomy: &str, when: SeedWhen) -> Result<(), String> {
+    use acom_testkit::load;
+    struct Store {
+        tenant: String,
+        rows: acom_testkit::SeedRows,
+        fingerprint: String,
+        loaded: Option<Option<String>>,
+    }
+    let mut stores = Vec::new();
+    for dir in dirs {
+        let (tenant, rows) = store_rows(dir, taxonomy)?;
+        let fingerprint = load::fingerprint(&rows)?;
+        let loaded = load::seeded_fingerprint(db.pool(), &tenant).await?;
+        stores.push(Store {
+            tenant,
+            rows,
+            fingerprint,
+            loaded,
+        });
+    }
+    let reset = match when {
+        SeedWhen::Reset => true,
+        SeedWhen::Missing => false,
+        SeedWhen::Changed => stores.iter().any(|s| {
+            s.loaded
+                .as_ref()
+                .is_some_and(|f| f.as_deref() != Some(s.fingerprint.as_str()))
+        }),
     };
+    if when == SeedWhen::Changed && reset {
+        tracing::warn!("the demo seed changed; loading every demo store again");
+    }
+    let todo: Vec<&Store> = stores
+        .iter()
+        .filter(|s| reset || s.loaded.is_none())
+        .collect();
+    if todo.is_empty() {
+        tracing::info!(
+            stores = stores.len(),
+            "demo stores already loaded; nothing to do"
+        );
+        return Ok(());
+    }
     if reset {
         let n = load::reset(db.pool()).await?;
         tracing::info!(tables = n, "store tables emptied");
     }
-    let started = std::time::Instant::now();
-    let report = load::load(db.pool(), &all).await?;
-    load::record_fingerprint(db.pool(), &tenant, &fingerprint).await?;
-    tracing::info!(
-        store = %tenant,
-        rows = report.total(),
-        tables = report.tables.len(),
-        seconds = started.elapsed().as_secs_f32(),
-        fingerprint = %&fingerprint[..12],
-        "demo store loaded"
-    );
+    for s in todo {
+        let started = std::time::Instant::now();
+        let report = load::load(db.pool(), &s.rows).await?;
+        load::record_fingerprint(db.pool(), &s.tenant, &s.fingerprint).await?;
+        tracing::info!(
+            store = %s.tenant,
+            rows = report.total(),
+            tables = report.tables.len(),
+            seconds = started.elapsed().as_secs_f32(),
+            fingerprint = %&s.fingerprint[..12],
+            "demo store loaded"
+        );
+    }
     Ok(())
 }
 
@@ -480,7 +537,7 @@ async fn run(cli: Cli, command: Command) -> Result<(), String> {
             db.migrate().await.map_err(|e| e.to_string())?;
             tracing::info!("migrations applied");
             if cli.seed == SeedMode::Demo {
-                seed(&db, &cli.seed_dir, SeedWhen::Changed).await?;
+                seed(&db, &cli.seed_dir, &taxonomy_dir(&cli), SeedWhen::Changed).await?;
             }
             Ok(())
         }
@@ -495,7 +552,7 @@ async fn run(cli: Cli, command: Command) -> Result<(), String> {
             } else {
                 SeedWhen::Missing
             };
-            seed(&db, &cli.seed_dir, when).await
+            seed(&db, &cli.seed_dir, &taxonomy_dir(&cli), when).await
         }
         Command::Serve => {
             let policy = load_policies(&cli.policy_dir)?;

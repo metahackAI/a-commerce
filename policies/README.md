@@ -57,6 +57,7 @@
 | [partner.yml](partner.yml) | partner | 입점 서류·금지 업종·사업자 번호 형식, 판매자 상태 전이, 수수료 범위, 계약 기간, 등급 기준·배송 기한·평가일, 정산 지급일, 사업자 번호·정산 계좌 가림, 대시보드 역할별 지표 |
 | [integration.yml](integration.yml) | integration | 가져오기 배치 한도·필수 필드, 외부 상태 매핑, 자격 증명 보관, 이벤트 서명·재생 창, 대상이 없는 이벤트의 재시도 간격·포기 시간 |
 | [platform.yml](platform.yml) | platform | **할 일 감시 작업(`watchers`)**, 역할·관리자·조직·API 키 규칙 |
+| [taxonomy/](taxonomy/README.md) | catalog, search | (초안, 아직 읽는 코드 없음) 여러 상품군의 분류 트리, 속성 사전, 단위, 상품정보제공고시 템플릿 |
 
 `acom-policy::FILES`는 이 13개 파일을 모두 읽고, 하나라도 없으면 서비스가 뜨지 않습니다.
 

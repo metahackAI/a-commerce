@@ -1,0 +1,5 @@
+# Catalog: the return policy every product of the mall has. Brands, products, variants and offers are
+# generated from assortment.yml and brands.yml after these rows.
+tables:
+  catalog.merchant_return_policy:
+    - {tenant_id: store_arbor_row, id: mrp_standard, name: Standard 30 days, merchant_return_days: 30, return_fees: return_fees_customer_responsibility, return_method: [pickup, drop_off], refund_type: full_refund}

@@ -1,0 +1,278 @@
+# policy: taxonomy/apparel — 의류·신발·잡화 속성 (초안)
+# 플랫폼 코드는 아직 읽지 않는다. 패션몰 시드 생성기(crates/testkit/src/mall)만 읽는다. 설계: docs/catalog-taxonomy.md §5.1
+# 데모 상품의 값은 생성 어휘(소재·의류 규칙)에서 끌어온다. 모델이 고른 태그에서 가져오지 않는다.
+# 카테고리별 속성(sleeve_length, neckline, closure_type, rise, leg_shape, leg_length, waistband, wash,
+# skirt_length, silhouette, shoe_height, sole, carry, capacity, laptop_size, brim, width)은 다음 초안.
+version: 0
+
+attributes:
+  fit:
+    kind: one
+    level: group
+    label: Fit
+    filter: true
+    values:
+      slim: {label: Slim, means: "Cut close to the body.", words: [fitted, skinny]}
+      regular: {label: Regular, means: "Standard room; neither close nor loose.", words: [classic, standard]}
+      relaxed: {label: Relaxed, means: "Cut with extra room through the body; not tight anywhere.", words: [loose, roomy, easy fit]}
+      oversized: {label: Oversized, means: "Deliberately larger than the body, with dropped shoulders or extra length.", words: [boxy, baggy]}
+      compression: {label: Compression, means: "Stretches to hug the body; for sport."}
+    export: {schema_org: additionalProperty}
+
+  warmth:
+    kind: scale
+    level: group
+    label: Warmth
+    filter: true
+    compare: true
+    values:
+      light: {label: Light, means: "For mild days or layering; adds little warmth.", words: [cool, airy]}
+      medium: {label: Medium, means: "For cool days around 10–18 °C."}
+      warm: {label: Warm, means: "For cold days; insulated or heavy fabric.", words: [insulated, cozy]}
+    export: {schema_org: additionalProperty}
+
+  thickness:
+    kind: scale
+    level: group
+    label: Thickness
+    filter: true
+    values:
+      thin: {label: Thin, words: [sheer weight, featherweight]}
+      fairly_thin: {label: Fairly thin, words: [lightweight]}
+      medium: {label: Medium}
+      fairly_thick: {label: Fairly thick, words: [midweight, substantial]}
+      thick: {label: Thick, words: [heavyweight, chunky]}
+    from_fabric_weight:                  # 원단 무게(g/m2)의 경계. 네 숫자가 다섯 단계를 나눈다. 991개에 돌려 본 뒤 정함(임시)
+      knit: [140, 180, 240, 320]
+      woven: [110, 160, 220, 300]
+    export: {schema_org: additionalProperty}
+
+  stretch_level:
+    kind: scale
+    level: group
+    label: Stretch
+    filter: true
+    values:
+      none: {label: None, words: [rigid, non-stretch]}
+      low: {label: Low, words: [slight stretch, comfort stretch]}
+      medium: {label: Medium}
+      high: {label: High, words: [stretchy, four-way stretch]}
+    from_elastane_percent: [1, 3, 6]     # 엘라스테인 %의 경계(임시). 니트는 한 단계 올림
+    export: {schema_org: additionalProperty}
+
+  sheerness:
+    kind: scale
+    level: group
+    label: Sheerness
+    filter: true
+    values:
+      none: {label: Opaque, words: [opaque, not see-through]}
+      slight: {label: Slightly sheer}
+      sheer: {label: Sheer, words: [see-through]}
+    export: {schema_org: additionalProperty}
+
+  softness:
+    kind: scale
+    level: group
+    label: Hand feel
+    filter: true
+    values:
+      soft: {label: Soft, words: [brushed, buttery]}
+      medium: {label: Medium}
+      crisp: {label: Crisp, words: [structured, stiff]}
+    export: {schema_org: additionalProperty}
+
+  fabric_type:
+    kind: one
+    level: group
+    label: Fabric
+    filter: true
+    values:                              # 지금 자유 글 101종을 넣어 보고 확정
+      jersey: {label: Jersey}
+      rib: {label: Rib knit}
+      waffle: {label: Waffle}
+      terry: {label: Terry, words: [french terry]}
+      fleece: {label: Fleece}
+      knit: {label: Sweater knit}
+      twill: {label: Twill, words: [chino]}
+      denim: {label: Denim}
+      canvas: {label: Canvas}
+      corduroy: {label: Corduroy}
+      flannel: {label: Flannel}
+      poplin: {label: Poplin}
+      oxford: {label: Oxford}
+      seersucker: {label: Seersucker}
+      plain_weave: {label: Plain weave, words: [linen weave, voile]}
+      ripstop: {label: Ripstop}
+      satin: {label: Satin}
+      crepe: {label: Crepe}
+      chiffon: {label: Chiffon, words: [georgette]}
+      lace: {label: Lace}
+      tulle: {label: Tulle}
+      velvet: {label: Velvet}
+      mesh: {label: Mesh}
+      pique: {label: Piqué, words: [pique]}
+      tweed: {label: Tweed}
+      gabardine: {label: Gabardine}
+    export: {schema_org: additionalProperty}
+
+  lining:
+    kind: one
+    level: group
+    label: Lining
+    filter: true
+    values:
+      unlined: {label: Unlined}
+      lined: {label: Lined}
+      insulated: {label: Insulated, means: "Filled with down or synthetic insulation.", words: [padded, puffer, quilted]}
+    export: {schema_org: additionalProperty}
+
+  layer:
+    kind: one
+    level: group
+    label: Layer
+    values:
+      base: {label: Base layer}
+      mid: {label: Mid layer}
+      outer: {label: Outer layer}
+    export: {schema_org: additionalProperty}
+
+  pattern:
+    kind: one
+    level: variant
+    label: Pattern
+    filter: true
+    values:
+      solid: {label: Solid, words: [plain]}
+      striped: {label: Striped}
+      checked: {label: Checked, words: [plaid, gingham]}
+      printed: {label: Printed, words: [floral, graphic]}
+      textured: {label: Textured, words: [herringbone, slub]}
+    export: {schema_org: pattern, feed: pattern}
+
+  use:
+    kind: many
+    level: group
+    label: Use
+    filter: true
+    values:
+      everyday: {label: Everyday}
+      office: {label: Office, words: [work, business casual]}
+      city: {label: City commute, words: [commute]}
+      travel: {label: Travel, words: [trip, vacation]}
+      outdoor: {label: Outdoor, words: [camping]}
+      hiking: {label: Hiking, words: [trail]}
+      running: {label: Running}
+      training: {label: Training, words: [gym, workout]}
+      yoga: {label: Yoga, words: [pilates]}
+      swim: {label: Swim}
+      beach: {label: Beach}
+      lounge: {label: Lounge, words: [at home]}
+      sleep: {label: Sleep, words: [pajamas]}
+      evening: {label: Evening, words: [dinner, party]}
+      layering: {label: Layering}
+    export: {schema_org: additionalProperty}
+
+  season:
+    kind: many
+    level: group
+    label: Season
+    filter: true
+    values:
+      spring: {label: Spring}
+      summer: {label: Summer}
+      fall: {label: Fall, words: [autumn]}
+      winter: {label: Winter}
+    phrases:                             # 낱말 하나가 값 여러 개로
+      transitional: {values: [spring, fall], words: [transitional, between seasons]}
+      all_year: {values: [spring, summer, fall, winter], words: [all season, year-round]}
+    export: {schema_org: additionalProperty}
+
+  water_resistance:
+    kind: scale
+    level: group
+    label: Water resistance
+    filter: true
+    compare: true
+    values:
+      none: {label: None}
+      water_repellent: {label: Water-repellent, means: "Sheds light rain for a short time; a finish on the fabric.", words: [dwr, showerproof]}
+      water_resistant: {label: Water-resistant, means: "Coated or laminated fabric for steady rain; seams may not be sealed.", words: [rain jacket, rainproof]}
+    # waterproof는 값이 아니다: 시험 성적(인증 기록)이 생기면 맨 위 단계로 더한다
+    export: {schema_org: additionalProperty}
+
+  performance:
+    kind: many
+    level: group
+    label: Performance
+    filter: true
+    compare: true
+    values:
+      wind_resistant: {label: Wind-resistant, words: [windproof]}
+      insulated: {label: Insulated}
+      breathable: {label: Breathable}
+      quick_dry: {label: Quick-dry}
+      moisture_wicking: {label: Moisture-wicking, words: [sweat-wicking]}
+      wrinkle_resistant: {label: Wrinkle-resistant, words: [non-iron]}
+      odor_resistant: {label: Odor-resistant}
+      cushioned: {label: Cushioned}
+    export: {schema_org: additionalProperty}
+
+  details:
+    kind: many
+    level: group
+    label: Details
+    filter: true
+    values:
+      hooded: {label: Hood}
+      pockets: {label: Pockets}
+      adjustable: {label: Adjustable}
+      packable: {label: Packable}
+      reflective: {label: Reflective}
+      laptop_sleeve: {label: Laptop sleeve}
+      thumbholes: {label: Thumbholes}
+    export: {schema_org: additionalProperty}
+
+  care_method:
+    kind: one
+    level: group
+    label: Care
+    filter: true
+    values:
+      machine_wash: {label: Machine wash}
+      hand_wash: {label: Hand wash}
+      dry_clean: {label: Dry clean}
+      wipe_clean: {label: Wipe or rinse clean}
+      brush_clean: {label: Brush clean}
+      spot_clean: {label: Spot clean}
+    export: {schema_org: additionalProperty}
+
+  fiber_composition:
+    kind: number
+    level: group
+    label: Fiber content
+    unit: percent
+    parts_from: fiber                    # [{fiber, percent}], 합계 100. 섬유 이름은 생성 어휘의 닫힌 목록
+    compare: true
+    export: {schema_org: additionalProperty}
+
+  foot_length:
+    kind: number
+    level: variant
+    label: Foot length
+    unit: millimetre
+    from_size:                           # 사이즈 체계별 US 사이즈 → mm(임시 표, 확인 후 확정). 고시 (2) 신발 치수
+      us_men:   {"7": 250, "8": 260, "9": 270, "10": 280, "11": 290, "12": 300, "13": 310}
+      us_women: {"5": 220, "6": 230, "7": 240, "8": 250, "9": 260, "10": 270, "11": 280}
+
+  heel_height:
+    kind: number
+    level: group
+    label: Heel height
+    unit: millimetre
+    accepts: [millimetre, centimetre, inch]
+    filter: true
+    range: [0, 150]
+    bands: [10, 50, 80]                  # flat < 10 mm ≤ low < 50 ≤ mid < 80 ≤ high
+    words: [heel, heels]
+    export: {schema_org: additionalProperty}

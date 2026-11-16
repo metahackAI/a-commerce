@@ -1,0 +1,216 @@
+# policy: taxonomy/electronics — 전자기기 속성 (초안)
+# 아직 어떤 코드도 이 파일을 읽지 않는다. 설계: docs/catalog-taxonomy.md §5.2
+# 숫자 사양은 단어 목록이 아니라 숫자 + 단위로 둔다(쇼퍼는 범위로 묻고, 고시는 사양을 요구한다).
+# 시연 범위: 휴대폰, 케이스, 충전기, 케이블, 보조배터리, 헤드폰, 노트북. 대형 가전과 약정 휴대폰은 다음.
+version: 0
+
+attributes:
+  release_month:
+    kind: date
+    precision: month
+    level: group
+    label: Release month
+    filter: false
+    export: {schema_org: releaseDate}
+
+  rated_voltage:
+    kind: number
+    level: group
+    label: Rated voltage
+    unit: volt
+
+  power_consumption:
+    kind: number
+    level: group
+    label: Power consumption
+    unit: watt
+    compare: true
+
+  screen_size:
+    kind: number
+    level: group
+    label: Screen size
+    unit: inch
+    accepts: [inch, centimetre]
+    filter: true
+    compare: true
+    range: [1, 120]                      # 이 밖이면 입력 오류
+    bands: [5.5, 6.1, 6.5, 6.9, 11, 13, 14, 15.6, 17]
+    words: [screen, display]
+    export: {schema_org: additionalProperty}
+
+  resolution:
+    kind: one
+    level: group
+    label: Resolution
+    filter: true
+    compare: true
+    values:
+      hd: {label: HD, means: "About 1280 × 720 pixels."}
+      fhd: {label: Full HD, means: "About 1920 × 1080 pixels.", words: [1080p]}
+      qhd: {label: QHD, means: "About 2560 × 1440 pixels.", words: [1440p, 2k]}
+      uhd_4k: {label: 4K UHD, means: "About 3840 × 2160 pixels.", words: [4k, 2160p]}
+      uhd_8k: {label: 8K}
+    export: {schema_org: additionalProperty}
+
+  refresh_rate:
+    kind: number
+    level: group
+    label: Refresh rate
+    unit: hertz
+    filter: true
+    compare: true
+    bands: [60, 90, 120, 144]
+    export: {schema_org: additionalProperty}
+
+  storage:
+    kind: number
+    level: variant                       # 용량은 보통 옵션 축
+    label: Storage
+    unit: gigabyte
+    accepts: [gigabyte, terabyte]
+    filter: true
+    compare: true
+    bands: [64, 128, 256, 512, 1024, 2048]
+    words: [storage, capacity]
+    export: {schema_org: additionalProperty}
+
+  memory:
+    kind: number
+    level: variant
+    label: Memory (RAM)
+    unit: gigabyte
+    filter: true
+    compare: true
+    bands: [4, 8, 16, 32, 64]
+    words: [ram]
+    export: {schema_org: additionalProperty}
+
+  os:
+    kind: one
+    level: group
+    label: Operating system
+    filter: true
+    values:
+      android: {label: Android}
+      ios: {label: iOS}
+      windows: {label: Windows}
+      macos: {label: macOS}
+      chromeos: {label: ChromeOS}
+      linux: {label: Linux}
+      none: {label: No OS, words: [freedos]}
+    export: {schema_org: additionalProperty}
+
+  battery_capacity:
+    kind: number
+    level: group
+    label: Battery capacity
+    unit: milliampere_hour
+    accepts: [milliampere_hour, watt_hour]   # 노트북은 Wh로 적고 그대로 표시. 서로 바꾸지 않음(전압이 다름)
+    filter: true
+    compare: true
+    bands: [3000, 4000, 5000, 10000, 20000]
+    export: {schema_org: additionalProperty}
+
+  output_power:
+    kind: number
+    level: group
+    label: Output power
+    unit: watt
+    filter: true
+    compare: true
+    bands: [20, 30, 45, 65, 100, 140]
+    words: [fast charging, watt]
+    export: {schema_org: additionalProperty}
+
+  port_count:
+    kind: number
+    level: group
+    label: Ports
+    unit: piece
+    filter: true
+
+  cable_length:
+    kind: number
+    level: variant
+    label: Cable length
+    unit: centimetre
+    accepts: [centimetre, millimetre, inch]
+    filter: true
+    bands: [30, 100, 150, 200, 300]
+
+  connectivity:
+    kind: many
+    level: group
+    label: Connectivity
+    filter: true
+    values:
+      bluetooth: {label: Bluetooth, words: [wireless]}
+      wifi_6: {label: Wi-Fi 6}
+      wifi_7: {label: Wi-Fi 7}
+      lte: {label: LTE}
+      five_g: {label: 5G}
+      nfc: {label: NFC, words: [tap to pay]}
+      wired_3_5mm: {label: 3.5 mm jack, words: [aux, headphone jack]}
+    export: {schema_org: additionalProperty}
+
+  connector:
+    kind: many
+    level: group
+    label: Connector
+    filter: true
+    values:
+      usb_c: {label: USB-C, words: [type-c, usb type c]}
+      usb_a: {label: USB-A}
+      lightning: {label: Lightning}
+      micro_usb: {label: Micro-USB}
+      hdmi: {label: HDMI}
+    export: {schema_org: additionalProperty}
+
+  charging_standard:
+    kind: many
+    level: group
+    label: Charging standard
+    filter: true
+    values:
+      usb_pd: {label: USB Power Delivery, words: [pd]}
+      qi: {label: Qi wireless, words: [wireless charging]}
+      qi2: {label: Qi2 magnetic, words: [magnetic charging]}
+    export: {schema_org: additionalProperty}
+
+  compatible_with:
+    kind: compatibility
+    level: group
+    label: Fits
+    filter: true
+    target: device_models                # 아래 목록의 id. 우리가 파는 기기면 그 상품과도 연결
+    words: [fits, compatible with, for]
+    export: {schema_org: isAccessoryOrSparePartFor, feed: related_product.accessory}
+
+  noise_cancelling:
+    kind: scale
+    level: group
+    label: Noise cancelling
+    filter: true
+    compare: true
+    values:
+      none: {label: None}
+      passive: {label: Passive isolation, means: "Blocks sound by fit and padding only."}
+      active: {label: Active (ANC), means: "Microphones cancel outside sound electronically.", words: [anc]}
+    export: {schema_org: additionalProperty}
+
+  form_factor:
+    kind: one
+    level: group
+    label: Style
+    filter: true
+    values_from: node                    # 헤드폰: earbuds, on_ear, over_ear / 케이스: slim, rugged, wallet …(nodes.yml)
+    export: {schema_org: additionalProperty}
+
+device_models:                           # compatible_with의 대상. 시연은 가상 기기만(실제 기기명 사용은 팀 결정)
+  shape: {id: word, name: text, brand: word, release_month: date, screen_size: number}
+  # 값은 시연 데이터 생성기가 정한다(seed). 매년 늘어나므로 나중에 카탈로그 데이터로 옮긴다.
+  items: []
+
+publish_requires:                        # 노드가 kc 대상이면 공개 조건에 더해진다
+  kc_marked_nodes: certifications.kc_safety   # 인증 기록이 없으면 공개 실패. 사유와 다음 할 일(update_product_group)을 돌려준다
