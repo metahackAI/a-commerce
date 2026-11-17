@@ -7,7 +7,10 @@
 //! the name set the fit. Each brand draws from its own ChaCha8 stream (seeded with the store's
 //! seed and the brand id), so a change to one brand moves no other brand's rows. The text model
 //! writes descriptions later, from these facts; until then a product has a one-line description.
+//! Photos are laid over the rows from `catalog_content.yml` ([`content`]); a product without one
+//! keeps its drawing.
 
+mod content;
 mod draw;
 mod rows;
 mod spec;
@@ -23,7 +26,8 @@ use crate::SeedRows;
 
 /// Generates the mall's brands, categories and products for the files in `dir` (`seed/mall`),
 /// with the taxonomy in `taxonomy` (`policies/taxonomy`), on top of `named` (the store's named
-/// rows from [`crate::named::load`]), in an order that satisfies foreign keys.
+/// rows from [`crate::named::load`]), in an order that satisfies foreign keys. The photos in
+/// `catalog_content.yml`, when the folder has that file, replace the drawings they are for.
 pub fn generate(named: &SeedRows, dir: &Path, taxonomy: &Path) -> Result<SeedRows, String> {
     let mall = spec::Mall::read(dir, taxonomy)?;
     let store = named_store(named, &mall.store.id)?;
@@ -37,7 +41,15 @@ pub fn generate(named: &SeedRows, dir: &Path, taxonomy: &Path) -> Result<SeedRow
         ));
     }
     let products = draw::products(&mall)?;
-    Ok(rows::rows(&mall, &store, &products))
+    let mut rows = rows::rows(&mall, &store, &products);
+    match std::fs::read_to_string(dir.join("catalog_content.yml")) {
+        Ok(text) => {
+            content::overlay(&mut rows, &text)?;
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(format!("seed/mall/catalog_content.yml: {e}")),
+    }
+    Ok(rows)
 }
 
 /// Whether `dir` holds a mall's files rather than a demo store's generator spec.

@@ -4,7 +4,7 @@
 
 A second demo store: a fashion mall where 30 brands sell 5,000 products, from luxury houses to SPA chains and boutique sellers. It exists to show the platform with a wide catalog and to measure search on it. [Northwind](../demo/README.md) stays as it is, so its scenes and eval do not move. All brands, people and places are fictional.
 
-`acom-commerce migrate` (and `seed`) loads it when `ACOM_SEED_DIR` names this folder beside Northwind's: `ACOM_SEED_DIR=seed/demo,seed/mall`. The store is `store_arbor_row`; sign in as admin / admin123. Products have their facts, prices, colors, sizes and stock, and a one-line description; the written descriptions and photos come later.
+`acom-commerce migrate` (and `seed`) loads it when `ACOM_SEED_DIR` names this folder beside Northwind's: `ACOM_SEED_DIR=seed/demo,seed/mall`. The store is `store_arbor_row`; sign in as admin / admin123. Products have their facts, prices, colors, sizes and stock, and a one-line description. 2,102 of them have a photo and the others a drawing; the written descriptions come later.
 
 ## Files
 
@@ -14,6 +14,7 @@ A second demo store: a fashion mall where 30 brands sell 5,000 products, from lu
 | [03_catalog.yml](03_catalog.yml) | The return policy every product has |
 | [assortment.yml](assortment.yml) | Seed, product count and release dates; 7 departments and 34 categories (each linked to a taxonomy node, with its mid-tier price range and its 420 garment types: unisex, women's or men's); the materials (class, family, care, thickness, fabric, the categories each fits); the materials each type may be made of; fit words; warmth, water resistance and heel height by type |
 | [brands.yml](brands.yml) | Six tiers (luxury, designer, contemporary, mid, SPA, boutique) with their price factor and ending, cost share, materials, origins, colors per product, stock, size rules and name words; the rules every product passes; 16 palettes; and 30 brand profiles (tier, identity, audience, category focus, palette, origin, and for 12 brands their own materials) |
+| [catalog_content.yml](catalog_content.yml) | Photos for 2,102 products: the product's picture, the picture of each color drawn (66 products have two), and the run and API response each came from. The files are in `web/public/media/mall/` |
 
 The colors come from [policies/taxonomy/colors.yml](../../policies/taxonomy/colors.yml): each name has one to three color families and a swatch. The attributes each category needs come from [policies/taxonomy/nodes.yml](../../policies/taxonomy/nodes.yml) and [apparel.yml](../../policies/taxonomy/apparel.yml).
 
@@ -26,10 +27,11 @@ The generator is `acom_testkit::mall` ([crates/testkit/src/mall.rs](../../crates
 3. **Facts.** `additional_property` holds what the category's taxonomy node needs: product type, gender, age group, material family, care and origin; fit (from the words of the name, else drawn), thickness, fabric, warmth and water resistance for clothing; heel height for heels and flats. Each variant has its color families and pattern, and shoes their foot length. `keywords` add the gender, color families, material family and fit.
 4. **Checks.** The tests in `crates/testkit/src/mall/tests.rs` check every product against its tier: price band and ending, materials, origins, colors, sizes and stock, a dearer type never cheaper within a brand, dearer tiers dearer overall, unique names per brand, words that suit their product, every attribute its node needs, and every row against the migrations.
 
+5. **Photos.** The image model (Muse Image) draws one photo per product from its facts, in the color its page opens on (the one with the most stock); the prompt names the color's swatch. A run is checked by rule (framing, background) and by eye, and what fails is drawn again. [catalog_content.yml](catalog_content.yml) lays the photos over the rows (`mall/content.rs`): the product and the variants of that color show the photo, and everything else keeps its drawing. The tests check that the file changes pictures only and that every photo it names is in `web/public/media/mall/`, with none left over. 2,898 products are still to be drawn.
+
 Later steps, not built yet:
 
-5. **Text model.** It writes the description and summary from the product's facts only, in the tier's voice (`voice` in brands.yml). The name stays the generator's.
-6. **Image model.** It draws one photo per product in its first color. The prompt names the color's swatch.
+6. **Text model.** It writes the description and summary from the product's facts only, in the tier's voice (`voice` in brands.yml). The name stays the generator's.
 7. **People.** They read a pilot of 100 products before the full run.
 
 ## Numbers
@@ -39,5 +41,5 @@ Later steps, not built yet:
 ## Still to do
 
 - A gateway (and web) for this store on the demo server (`ACOM_STORE_ID=store_arbor_row`), and `seed/mall` in the deployed `ACOM_SEED_DIR`.
-- Descriptions and photos (steps 5 to 7).
+- Photos for the other 2,898 products (step 5), and descriptions (steps 6 and 7).
 - The search question set and its measurement ([docs/catalog-taxonomy.md](../../docs/catalog-taxonomy.md) §4.2).
