@@ -14,7 +14,7 @@
 tiers:                           # in price order, dearest first
   luxury:
     label: Luxury
-    price_factor: [7.0, 12.0]    # × the mid-tier price drawn from the category range; each brand draws its own factor once
+    price_factor: [3.0, 5.0]     # × the mid-tier price drawn from the category range; each brand draws its own factor once
     price_ending: tens           # $890
     cost_share: [0.18, 0.28]     # cost as a share of the price
     type_levels: {1: 1, 2: 2, 3: 4}   # how often each type level is drawn
